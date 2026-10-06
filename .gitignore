@@ -11,3 +11,4 @@ docs/.vitepress/dist/
 tools/golden/python/.venv/
 fixtures/remote/
 .env*
+*.tsbuildinfo
