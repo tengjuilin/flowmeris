@@ -9,6 +9,7 @@
 export interface NameInput {
   id: string;
   fileName: string;
+  label?: string | undefined;
   relativePath: string;
   datasetIndex: number;
 }
@@ -76,7 +77,11 @@ export function displayNames(samples: NameInput[]): Record<string, string> {
   samples.forEach((s, i) => {
     const dup = (seen.get(`${names[i]}\u0000${s.datasetIndex}`) ?? 0) > 1;
     const name = dup ? full[i]! : names[i]!;
-    out[s.id] = s.datasetIndex > 0 ? `${name} #${s.datasetIndex + 1}` : name;
+    out[s.id] = s.label?.trim()
+      ? s.label.trim()
+      : s.datasetIndex > 0
+        ? `${name} #${s.datasetIndex + 1}`
+        : name;
   });
   return out;
 }

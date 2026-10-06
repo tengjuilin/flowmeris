@@ -113,6 +113,8 @@ export type ParseWarning = z.infer<typeof ParseWarningSchema>;
 export const SampleSchema = z.object({
   id: Id,
   fileName: z.string(),
+  /** User-chosen display name; overrides the derived short name. */
+  label: z.string().optional(),
   relativePath: z.string(),
   sha256: z.string().regex(/^[0-9a-f]{64}$/),
   byteSize: z.number().int().nonnegative(),

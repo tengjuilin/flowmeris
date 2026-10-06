@@ -267,6 +267,10 @@ code,
   border-radius: 4px;
   text-align: left;
 }
+.sample-list .sample-rename {
+  flex: 1;
+  min-width: 0;
+}
 .sample-list button.on {
   background: var(--surface-2);
   font-weight: 600;

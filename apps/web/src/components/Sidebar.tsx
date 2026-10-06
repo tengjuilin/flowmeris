@@ -1,4 +1,5 @@
 import type { Group } from '@flowmeris/model';
+import { useState } from 'react';
 import { useSampleNames, useStore } from '../state/store.ts';
 import { drill } from './PlotPanel.tsx';
 
@@ -36,6 +37,7 @@ export function Sidebar() {
   const mutate = useStore((s) => s.mutate);
   const activeGroup = ws.groups.find((g) => g.id === ui.groupId);
   const names = useSampleNames(activeGroup);
+  const [editing, setEditing] = useState<string | null>(null);
 
   return (
     <nav className="sidebar" aria-label="Groups and samples">
@@ -99,37 +101,63 @@ export function Sidebar() {
                           setUi({ excluded });
                         }}
                       />
-                      <button
-                        type="button"
-                        className={sel ? 'on' : ''}
-                        onClick={() => setUi({ sampleId: id })}
-                        title={`${s.relativePath}${s.datasetIndex ? ` (dataset ${s.datasetIndex + 1})` : ''}\nSHA-256 ${s.sha256}`}
-                      >
-                        <span className="name">{names[id] ?? s.fileName}</span>
-                        <span className="badges">
-                          {ui.missing[id] && (
-                            <span
-                              className="badge danger"
-                              title="Event data missing from browser storage — re-add the file"
-                            >
-                              missing
-                            </span>
-                          )}
-                          {nOv.has(id) && (
-                            <span className="badge warn" title="This sample has gate overrides">
-                              override
-                            </span>
-                          )}
-                          {s.parseWarnings.length > 0 && (
-                            <span
-                              className="badge"
-                              title={s.parseWarnings.map((w) => `${w.code}: ${w.message}`).join('\n')}
-                            >
-                              {s.parseWarnings.length} note{s.parseWarnings.length > 1 ? 's' : ''}
-                            </span>
-                          )}
-                        </span>
-                      </button>
+                      {editing === id ? (
+                        <input
+                          autoFocus
+                          className="sample-rename"
+                          defaultValue={names[id] ?? s.fileName}
+                          aria-label="Sample name"
+                          onFocus={(e) => e.target.select()}
+                          onBlur={(e) => {
+                            const label = e.target.value.trim();
+                            if (label !== (names[id] ?? s.fileName))
+                              mutate('Rename sample', (w) => {
+                                const smp = w.samples[id];
+                                if (!smp) return;
+                                if (label) smp.label = label;
+                                else smp.label = undefined;
+                              });
+                            setEditing(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                            if (e.key === 'Escape') setEditing(null);
+                          }}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          className={sel ? 'on' : ''}
+                          onClick={() => setUi({ sampleId: id })}
+                          onDoubleClick={() => setEditing(id)}
+                          title={`Double-click to rename\n${s.relativePath}${s.datasetIndex ? ` (dataset ${s.datasetIndex + 1})` : ''}\nSHA-256 ${s.sha256}`}
+                        >
+                          <span className="name">{names[id] ?? s.fileName}</span>
+                          <span className="badges">
+                            {ui.missing[id] && (
+                              <span
+                                className="badge danger"
+                                title="Event data missing from browser storage — re-add the file"
+                              >
+                                missing
+                              </span>
+                            )}
+                            {nOv.has(id) && (
+                              <span className="badge warn" title="This sample has gate overrides">
+                                override
+                              </span>
+                            )}
+                            {s.parseWarnings.length > 0 && (
+                              <span
+                                className="badge"
+                                title={s.parseWarnings.map((w) => `${w.code}: ${w.message}`).join('\n')}
+                              >
+                                {s.parseWarnings.length} note{s.parseWarnings.length > 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      )}
                     </li>
                   );
                 })}
