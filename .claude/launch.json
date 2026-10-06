@@ -4,38 +4,19 @@
     {
       "name": "web",
       "runtimeExecutable": "corepack",
-      "runtimeArgs": [
-        "pnpm",
-        "--filter",
-        "@flowmeris/web",
-        "dev",
-        "--port",
-        "5173",
-        "--strictPort"
-      ],
+      "runtimeArgs": ["pnpm", "--filter", "@flowmeris/web", "dev", "--port", "5173", "--strictPort"],
       "port": 5173
     },
     {
       "name": "web-alt",
       "runtimeExecutable": "corepack",
-      "runtimeArgs": [
-        "pnpm",
-        "--filter",
-        "@flowmeris/web",
-        "dev",
-        "--port",
-        "5180",
-        "--strictPort"
-      ],
+      "runtimeArgs": ["pnpm", "--filter", "@flowmeris/web", "dev", "--port", "5180", "--strictPort"],
       "port": 5180
     },
     {
       "name": "site",
       "runtimeExecutable": "corepack",
-      "runtimeArgs": [
-        "pnpm",
-        "preview"
-      ],
+      "runtimeArgs": ["pnpm", "preview"],
       "port": 4174
     }
   ]
