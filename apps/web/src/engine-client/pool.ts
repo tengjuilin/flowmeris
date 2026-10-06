@@ -246,6 +246,10 @@ class WorkerPool {
   stats(ctx: AnalysisContext, sampleId: string, specs: StatSpec[]) {
     return this.w(sampleId).stats(ctx, sampleId, specs);
   }
+  /** Counts and statistics of one sample in a single round trip (Statistics table). */
+  table(ctx: AnalysisContext, sampleId: string, popIds: string[], specs: StatSpec[]) {
+    return this.w(sampleId).table(ctx, sampleId, popIds, specs);
+  }
   preview(ctx: AnalysisContext, req: GatePreviewRequest) {
     return this.w(req.sampleId).preview(ctx, req);
   }

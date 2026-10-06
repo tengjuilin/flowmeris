@@ -265,23 +265,24 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         // smoothing and every normalisation are linear, so one factor maps counts to heights.
         const style = { ...plot.style, histNorm: 'count' as const };
         const [base, sub] = await Promise.all([
-          pool.histogram(ctx, sampleId, plot.population, plot.x, style),
-          pool.histogram(ctx, sampleId, bgPop.popId, plot.x, style),
+          pool.histogram(ctx, sampleId, plot.population, plot.x, style, { key: `${bgKey}|base` }),
+          pool.histogram(ctx, sampleId, bgPop.popId, plot.x, style, { key: `${bgKey}|sub` }),
         ]);
         if (live) setBgHist({ sub: sub.heights, base: base.heights });
       } else {
-        const r = await pool.raster(ctx, {
+        const req = {
           sampleId,
           plot: {
             ...plot,
             population: bgPop.popId,
-            kind: 'dot',
+            kind: 'dot' as const,
             style: { ...plot.style, pointPx: Math.min(4, Math.max(2, plot.style.pointPx)) },
           },
           width: Math.round(pw * dpr),
           height: Math.round(ph * dpr),
           dotColor: bgPop.color,
-        });
+        };
+        const r = await pool.raster(ctx, req, { key: `${bgKey}|raster|${req.width}|${req.height}` });
         if (live) setBgRaster(r);
       }
     };
@@ -298,11 +299,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     c.height = bgRaster.height;
     const g = c.getContext('2d');
     if (!g) return;
-    g.putImageData(
-      new ImageData(new Uint8ClampedArray(bgRaster.rgba), bgRaster.width, bgRaster.height),
-      0,
-      0,
-    );
+    g.putImageData(new ImageData(bgRaster.rgba, bgRaster.width, bgRaster.height), 0, 0);
   }, [bgRaster, is1d]);
 
   // --- overlaid samples ----------------------------------------------------------
@@ -354,7 +351,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       tmp.height = h;
       const tg = tmp.getContext('2d')!;
       for (const r of rs) {
-        tg.putImageData(new ImageData(new Uint8ClampedArray(r.rgba), r.width, r.height), 0, 0);
+        tg.putImageData(new ImageData(r.rgba, r.width, r.height), 0, 0);
         g.drawImage(tmp, 0, 0);
       }
     };
@@ -441,14 +438,29 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     draft?.gateId === gate.id ? draft.geom : effectiveGeometry(group, gate.id, sampleId);
 
   // --- preview counts while editing -----------------------------------------------
+  // At most one preview is in flight; edits made meanwhile collapse into the latest
+  // one, so a slow worker never builds up a queue of stale drag positions.
   const previewTimer = useRef<number | null>(null);
+  const previewBusy = useRef(false);
+  const previewNext = useRef<(() => void) | null>(null);
   const schedulePreview = (gate: Gate, geom: Geometry) => {
     if (previewTimer.current) cancelAnimationFrame(previewTimer.current);
     previewTimer.current = requestAnimationFrame(() => {
-      pool
-        .preview(ctx, { sampleId, gate: { ...gate, geometry: geom } })
-        .then((r) => setPreview({ gateId: gate.id, parent: r.parentCount, regions: r.regions }))
-        .catch(() => {});
+      const send = () => {
+        previewBusy.current = true;
+        pool
+          .preview(ctx, { sampleId, gate: { ...gate, geometry: geom } })
+          .then((r) => setPreview({ gateId: gate.id, parent: r.parentCount, regions: r.regions }))
+          .catch(() => {})
+          .finally(() => {
+            previewBusy.current = false;
+            const next = previewNext.current;
+            previewNext.current = null;
+            next?.();
+          });
+      };
+      if (previewBusy.current) previewNext.current = send;
+      else send();
     });
   };
 
@@ -463,19 +475,34 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         : { kind: 'spider', center: hover, arms: edgeArms() }
       : null;
   const hoverKey = hoverGeom && canDraw ? JSON.stringify(hoverGeom) : '';
+  const hoverBusy = useRef(false);
+  const hoverNext = useRef<(() => void) | null>(null);
   useEffect(() => {
     setHoverCounts(null);
     if (!hoverKey || !hoverGeom) return;
     let live = true;
     const raf = requestAnimationFrame(() => {
-      pool
-        .preview(ctx, { sampleId, gate: { ...newGateBase(), id: '__hover', geometry: hoverGeom } })
-        .then((r) => live && setHoverCounts({ parent: r.parentCount, regions: r.regions }))
-        .catch(() => {});
+      const send = () => {
+        hoverBusy.current = true;
+        pool
+          .preview(ctx, { sampleId, gate: { ...newGateBase(), id: '__hover', geometry: hoverGeom } })
+          .then((r) => live && setHoverCounts({ parent: r.parentCount, regions: r.regions }))
+          .catch(() => {})
+          .finally(() => {
+            hoverBusy.current = false;
+            const next = hoverNext.current;
+            hoverNext.current = null;
+            next?.();
+          });
+      };
+      // Coalesce like schedulePreview: only the newest cursor position waits for the worker.
+      if (hoverBusy.current) hoverNext.current = send;
+      else send();
     });
     return () => {
       live = false;
       cancelAnimationFrame(raf);
+      hoverNext.current = null;
     };
     // hoverKey captures hoverGeom; ctx/sample changes restart the preview
   }, [hoverKey, ctx, sampleId]);

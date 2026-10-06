@@ -74,6 +74,43 @@ describe('smoothing', () => {
       expect(Array.from(got)).toEqual(Array.from(ref));
     }
   });
+
+  it('is bit-identical to the direct per-cell convolution', () => {
+    // Reference: each output sums its in-range taps in ascending order (the definition).
+    const direct = (v: Float64Array, nx: number, ny: number, sigma: number) => {
+      const k = gaussianKernel(sigma);
+      const r = (k.length - 1) / 2;
+      const tmp = new Float64Array(nx * ny);
+      const out = new Float64Array(nx * ny);
+      for (let y = 0; y < ny; y++)
+        for (let x = 0; x < nx; x++) {
+          let s = 0;
+          for (let j = -r; j <= r; j++) if (x + j >= 0 && x + j < nx) s += v[y * nx + x + j]! * k[j + r]!;
+          tmp[y * nx + x] = s;
+        }
+      for (let x = 0; x < nx; x++)
+        for (let y = 0; y < ny; y++) {
+          let s = 0;
+          for (let j = -r; j <= r; j++) if (y + j >= 0 && y + j < ny) s += tmp[(y + j) * nx + x]! * k[j + r]!;
+          out[y * nx + x] = s;
+        }
+      return out;
+    };
+    const rng = new Rng(3);
+    for (const [nx, ny, sigma] of [
+      [37, 23, 1.5],
+      [5, 9, 3],
+      [64, 64, 0.4],
+      [3, 2, 6],
+    ] as const) {
+      const values = new Float64Array(nx * ny);
+      // Sparse counts with empty rows, as in a binned plot.
+      for (let i = 0; i < values.length; i++) if (rng.next() < 0.3) values[i] = Math.floor(rng.next() * 50);
+      for (let x = 0; x < nx; x++) values[x] = 0;
+      const got = smooth2d({ nx, ny, values, x: [0, 1], y: [0, 1] }, sigma).values;
+      expect(Array.from(got)).toEqual(Array.from(direct(values, nx, ny, sigma)));
+    }
+  });
 });
 
 describe('M-PLOT-CONTOUR-EQP: equal-probability levels', () => {

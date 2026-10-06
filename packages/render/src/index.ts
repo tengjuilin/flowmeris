@@ -169,30 +169,47 @@ export function raster2d(inp: Raster2DInput): Raster2DOutput {
   let contours: ContourLine[] = [];
 
   // grid row 0 is the lowest y → image row h−1.
-  const each = (fn: (gx: number, gy: number, v: number) => void) => {
-    for (let gy = 0; gy < h; gy++)
-      for (let gx = 0; gx < w; gx++) fn(gx, gy, grid.values[gy * w + gx] as number);
-  };
+  const counts = grid.values;
+  const px = style.pointPx;
 
   switch (inp.kind) {
     case 'dot':
-      each((gx, gy, v) => {
-        if (v > 0) putPixel(rgba, w, h, gx, h - 1 - gy, dr, dg, db, style.pointPx);
-      });
+      for (let gy = 0; gy < h; gy++) {
+        const row = gy * w;
+        for (let gx = 0; gx < w; gx++) {
+          if (!((counts[row + gx] as number) > 0)) continue;
+          if (px === 1) {
+            const o = ((h - 1 - gy) * w + gx) * 4;
+            rgba[o] = dr;
+            rgba[o + 1] = dg;
+            rgba[o + 2] = db;
+            rgba[o + 3] = 255;
+          } else putPixel(rgba, w, h, gx, h - 1 - gy, dr, dg, db, px);
+        }
+      }
       break;
     case 'pseudocolor': {
       // M-PLOT-PSEUDO: each occupied pixel coloured by log(1 + local density) / log(1 + max).
-      const dens = sigma > 0 ? smooth2d(grid, sigma) : grid;
+      const dens = sigma > 0 ? smooth2d(grid, sigma).values : counts;
       let max = 0;
-      for (const v of dens.values) if (v > max) max = v;
+      for (let i = 0; i < dens.length; i++) if ((dens[i] as number) > max) max = dens[i] as number;
       const lmax = Math.log1p(max);
-      each((gx, gy, v) => {
-        if (v <= 0) return;
-        const d = dens.values[gy * w + gx] as number;
-        const t = lmax > 0 ? Math.log1p(d) / lmax : 0;
-        const i = Math.max(0, Math.min(255, Math.round(t * 255)));
-        putPixel(rgba, w, h, gx, h - 1 - gy, lut[i * 3]!, lut[i * 3 + 1]!, lut[i * 3 + 2]!, style.pointPx);
-      });
+      for (let gy = 0; gy < h; gy++) {
+        const row = gy * w;
+        for (let gx = 0; gx < w; gx++) {
+          if (!((counts[row + gx] as number) > 0)) continue;
+          const d = dens[row + gx] as number;
+          const t = lmax > 0 ? Math.log1p(d) / lmax : 0;
+          const i = Math.max(0, Math.min(255, Math.round(t * 255)));
+          if (px === 1) {
+            const o = ((h - 1 - gy) * w + gx) * 4;
+            rgba[o] = lut[i * 3]!;
+            rgba[o + 1] = lut[i * 3 + 1]!;
+            rgba[o + 2] = lut[i * 3 + 2]!;
+            rgba[o + 3] = 255;
+          } else putPixel(rgba, w, h, gx, h - 1 - gy, lut[i * 3]!, lut[i * 3 + 1]!, lut[i * 3 + 2]!, px);
+        }
+      }
       break;
     }
     case 'density': {
@@ -234,13 +251,15 @@ export function raster2d(inp: Raster2DInput): Raster2DOutput {
       contours = contourLines(dens, levels);
       if (style.showOutliers && levels.length > 0) {
         const lowest = levels[0] as number;
-        each((gx, gy, v) => {
-          if (v <= 0) return;
-          const cx = Math.min(dens.nx - 1, Math.floor(gx / cell));
+        for (let gy = 0; gy < h; gy++) {
           const cy = Math.min(dens.ny - 1, Math.floor(gy / cell));
-          if ((dens.values[cy * dens.nx + cx] as number) < lowest)
-            putPixel(rgba, w, h, gx, h - 1 - gy, dr, dg, db, style.pointPx);
-        });
+          for (let gx = 0; gx < w; gx++) {
+            if (!((counts[gy * w + gx] as number) > 0)) continue;
+            const cx = Math.min(dens.nx - 1, Math.floor(gx / cell));
+            if ((dens.values[cy * dens.nx + cx] as number) < lowest)
+              putPixel(rgba, w, h, gx, h - 1 - gy, dr, dg, db, px);
+          }
+        }
       }
       break;
     }

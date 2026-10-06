@@ -113,6 +113,10 @@ const api = {
     return engine.stats(ctx, sampleId, specs);
   },
 
+  table(ctx: AnalysisContext, sampleId: string, popIds: string[], specs: StatSpec[]) {
+    return engine.table(ctx, sampleId, popIds, specs);
+  },
+
   preview(ctx: AnalysisContext, req: GatePreviewRequest) {
     return engine.preview(ctx, req);
   },
