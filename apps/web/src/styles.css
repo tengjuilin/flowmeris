@@ -369,6 +369,9 @@ code,
 }
 .seg {
   display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
+  row-gap: 4px;
 }
 .seg button {
   border-radius: 0;

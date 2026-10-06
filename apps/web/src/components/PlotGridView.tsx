@@ -456,6 +456,7 @@ function GridCell({
               width={side}
               height={side}
               compact={size < COMPACT_BELOW}
+              hideOffScaleNote
               interactive={active}
               onDrill={onDrill}
               {...(overlaying && overlay ? { overlay } : {})}

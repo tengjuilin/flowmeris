@@ -66,6 +66,8 @@ interface Props {
   height: number;
   interactive?: boolean;
   compact?: boolean;
+  /** Hide the off-scale / non-positive event note below the plot. */
+  hideOffScaleNote?: boolean;
   /** Called when a population is double-clicked (drill-down). */
   onDrill?: (popId: string) => void;
   /** Emphasise the gate producing this population and dim the plot's other gates. */
@@ -119,6 +121,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     height,
     interactive = false,
     compact = false,
+    hideOffScaleNote = false,
     onDrill,
     focusPopId,
     backgate,
@@ -1173,6 +1176,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         </div>
       )}
       {!compact &&
+        !hideOffScaleNote &&
         (() => {
           const st = is1d ? hist : raster;
           if (!st || (st.offScale === 0 && st.nan === 0)) return null;
