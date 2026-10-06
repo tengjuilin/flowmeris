@@ -165,37 +165,37 @@ export function smooth2d(g: Grid2D, sigma: number): Grid2D {
   const k = gaussianKernel(sigma);
   const r = (k.length - 1) / 2;
   const src = g.values;
-  // Each output is Σ_j value[t + j]·k[j + r] over in-range taps, accumulated in
-  // ascending j from 0. Both passes keep exactly that order (so results are
-  // bit-identical to the direct form) but clip the tap range once per position
-  // instead of testing every tap, and the vertical pass streams whole rows.
+  // Each pass scatters the non-zero inputs (cytometry grids are mostly empty) in ascending source
+  // order, so every output receives the same terms in the same order as a direct convolution sum:
+  // the result is bit-identical to it.
   const tmp = new Float64Array(nx * ny);
   for (let y = 0; y < ny; y++) {
     const row = y * nx;
-    let empty = true;
-    for (let x = 0; x < nx; x++)
-      if (src[row + x] !== 0) {
-        empty = false;
-        break;
-      }
-    if (empty) continue; // every tap is 0, so the row's output is 0 as well
-    for (let x = 0; x < nx; x++) {
-      const j0 = x - r < 0 ? -x : -r;
-      const j1 = x + r >= nx ? nx - 1 - x : r;
-      let s = 0;
-      for (let j = j0; j <= j1; j++) s += (src[row + x + j] as number) * (k[j + r] as number);
-      tmp[row + x] = s;
+    for (let t = 0; t < nx; t++) {
+      const v = src[row + t] as number;
+      if (v === 0) continue;
+      const lo = Math.max(0, t - r);
+      const hi = Math.min(nx - 1, t + r);
+      for (let x = lo; x <= hi; x++) tmp[row + x] = (tmp[row + x] as number) + v * (k[t - x + r] as number);
     }
   }
   const out = new Float64Array(nx * ny);
-  for (let y = 0; y < ny; y++) {
-    const j0 = y - r < 0 ? -y : -r;
-    const j1 = y + r >= ny ? ny - 1 - y : r;
-    const o = y * nx;
-    for (let j = j0; j <= j1; j++) {
-      const kv = k[j + r] as number;
-      const t = (y + j) * nx;
-      for (let x = 0; x < nx; x++) out[o + x] = (out[o + x] as number) + (tmp[t + x] as number) * kv;
+  for (let t = 0; t < ny; t++) {
+    const srow = t * nx;
+    let x0 = 0;
+    while (x0 < nx && tmp[srow + x0] === 0) x0++;
+    if (x0 === nx) continue;
+    let x1 = nx - 1;
+    while (tmp[srow + x1] === 0) x1--;
+    const lo = Math.max(0, t - r);
+    const hi = Math.min(ny - 1, t + r);
+    for (let y = lo; y <= hi; y++) {
+      const w = k[t - y + r] as number;
+      const orow = y * nx;
+      for (let x = x0; x <= x1; x++) {
+        const v = tmp[srow + x] as number;
+        if (v !== 0) out[orow + x] = (out[orow + x] as number) + v * w;
+      }
     }
   }
   return { ...g, values: out };

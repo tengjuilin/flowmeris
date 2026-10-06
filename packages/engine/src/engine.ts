@@ -228,10 +228,24 @@ export class Engine {
     dim: { channel: string; comp: CompRef; transform: string | null },
   ): Float64Array {
     const ci = this.channelIndex(s, dim.channel);
-    const base = dim.comp === 'group' ? this.compensated(ctx, s, ci) : this.linear(s, ci);
-    if (dim.transform === null) return base;
+    if (dim.transform === null)
+      return dim.comp === 'group' ? this.compensated(ctx, s, ci) : this.linear(s, ci);
+    // The untransformed input is only touched on a miss, and an uncompensated one is not cached:
+    // it is cheap to recompute and would otherwise crowd transformed columns out of the cache.
     return this.memo(this.columnKey(ctx, s, ci, dim), () =>
-      makeScale(ctx.transforms[dim.transform!]!).applyArray(base),
+      makeScale(ctx.transforms[dim.transform!]!).applyArray(
+        dim.comp === 'group' && this.resolveComp(ctx, s)
+          ? this.compensated(ctx, s, ci)
+          : this.linearUncached(s, ci),
+      ),
+    );
+  }
+
+  /** linear() without adding the result to the cache (it is still reused when already there). */
+  private linearUncached(s: SampleData, ci: number): Float64Array {
+    return (
+      (this.cache.get(`lin|${this.sampleKey(s)}|${ci}`) as Float64Array | undefined) ??
+      linearize(s.columns[ci] as ArrayLike<number>, s.channels[ci]!.scaling)
     );
   }
 

@@ -20,12 +20,12 @@ import {
   useEffect,
   useId,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
 import { pool } from '../engine-client/pool.ts';
-import { plotResults } from '../engine-client/resultCache.ts';
 import { createGate, lineageKey, plotKey, setGateGeometry } from '../lib/analysis.ts';
 import {
   type DimMap,
@@ -132,8 +132,8 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   },
   ref,
 ) {
-  // Narrow subscriptions: a plot re-renders only for the UI state it shows, not every UI change.
-  const uiMissing = useStore((s) => s.ui.missing);
+  // Narrow subscriptions: a plot (e.g. each of many tiles) re-renders only when what it shows changes.
+  const missingMap = useStore((s) => s.ui.missing);
   const tool = useStore((s) => (interactive ? s.ui.tool : 'select'));
   const selectedGateId = useStore((s) => (interactive ? s.ui.selectedGateId : null));
   const setUi = useStore((s) => s.setUi);
@@ -182,59 +182,69 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   const ctx = useMemo(() => contextFor(ws, group), [ws, group]);
   const key = useMemo(() => plotKey(ws, group, sampleId, plot), [ws, group, sampleId, plot]);
   const dpr = compact ? 1 : Math.min(2, window.devicePixelRatio || 1);
-  const missing = !!uiMissing[sampleId];
+  const missing = !!missingMap[sampleId];
   const ovSamples = useMemo(
-    () => (overlay?.samples ?? []).filter((o) => o.sampleId !== sampleId && !uiMissing[o.sampleId]),
-    [overlay, sampleId, uiMissing],
+    () => (overlay?.samples ?? []).filter((o) => o.sampleId !== sampleId && !missingMap[o.sampleId]),
+    [overlay, sampleId, missingMap],
   );
   const ovColor = ovSamples.length ? overlay?.color : undefined;
 
   // --- data -----------------------------------------------------------------
-  useEffect(() => {
+  // Layout effects, so a result already in the pool's cache (e.g. a tile scrolled back into view)
+  // is drawn before the first paint instead of flashing an empty plot.
+  useLayoutEffect(() => {
     if (missing) return;
     const id = ++reqId.current;
+    const ac = new AbortController();
+    const width = Math.round(pw * dpr);
+    const height = Math.round(ph * dpr);
+    const dotColor =
+      ovColor ?? (getComputedStyle(document.documentElement).getPropertyValue('--dot').trim() || '#333333');
+    const dataKey = JSON.stringify(
+      is1d ? ['hist', key] : ['raster', key, width, height, dotColor, !!ovColor],
+    );
+    const opts = { key: dataKey, signal: ac.signal };
+    const hit = pool.cached<HistogramResponse & RasterResponse>(dataKey);
+    if (hit) {
+      setError(null);
+      setLoading(false);
+      if (is1d) setHist(hit);
+      else setRaster(hit);
+      return;
+    }
     setError(null);
     setLoading(true);
     const run = async () => {
       try {
         if (is1d) {
-          const h = await plotResults.get(`${key}|hist`, histBytes, () =>
-            pool.histogram(ctx, sampleId, plot.population, plot.x, plot.style),
-          );
+          const h = await pool.histogram(ctx, sampleId, plot.population, plot.x, plot.style, opts);
           if (id === reqId.current) setHist(h);
         } else {
-          const req = {
-            sampleId,
-            plot: ovColor ? overlayDots(plot) : plot,
-            width: Math.round(pw * dpr),
-            height: Math.round(ph * dpr),
-            dotColor:
-              ovColor ??
-              (getComputedStyle(document.documentElement).getPropertyValue('--dot').trim() || '#333333'),
-          };
-          const r = await plotResults.get(
-            `${key}|raster|${req.width}|${req.height}|${req.dotColor}|${ovColor ? 'dots' : ''}`,
-            rasterBytes,
-            () => pool.raster(ctx, req),
+          const r = await pool.raster(
+            ctx,
+            { sampleId, plot: ovColor ? overlayDots(plot) : plot, width, height, dotColor },
+            opts,
           );
           if (id === reqId.current) setRaster(r);
         }
       } catch (e) {
-        if (id === reqId.current) setError(e instanceof Error ? e.message : String(e));
+        if (id === reqId.current && !ac.signal.aborted) setError(e instanceof Error ? e.message : String(e));
       } finally {
         if (id === reqId.current) setLoading(false);
       }
     };
     void run();
+    return () => ac.abort();
   }, [key, pw, ph, dpr, missing, ovColor]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const c = canvasRef.current;
     if (!c || !raster || is1d) return;
     c.width = raster.width;
     c.height = raster.height;
     const g = c.getContext('2d');
     if (!g) return;
+    // rgba may be a shared cached result: ImageData only reads it.
     g.putImageData(new ImageData(raster.rgba, raster.width, raster.height), 0, 0);
   }, [raster, is1d]);
 
@@ -255,12 +265,8 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         // smoothing and every normalisation are linear, so one factor maps counts to heights.
         const style = { ...plot.style, histNorm: 'count' as const };
         const [base, sub] = await Promise.all([
-          plotResults.get(`${bgKey}|base`, histBytes, () =>
-            pool.histogram(ctx, sampleId, plot.population, plot.x, style),
-          ),
-          plotResults.get(`${bgKey}|sub`, histBytes, () =>
-            pool.histogram(ctx, sampleId, bgPop.popId, plot.x, style),
-          ),
+          pool.histogram(ctx, sampleId, plot.population, plot.x, style, { key: `${bgKey}|base` }),
+          pool.histogram(ctx, sampleId, bgPop.popId, plot.x, style, { key: `${bgKey}|sub` }),
         ]);
         if (live) setBgHist({ sub: sub.heights, base: base.heights });
       } else {
@@ -276,9 +282,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
           height: Math.round(ph * dpr),
           dotColor: bgPop.color,
         };
-        const r = await plotResults.get(`${bgKey}|raster|${req.width}|${req.height}`, rasterBytes, () =>
-          pool.raster(ctx, req),
-        );
+        const r = await pool.raster(ctx, req, { key: `${bgKey}|raster|${req.width}|${req.height}` });
         if (live) setBgRaster(r);
       }
     };
@@ -379,12 +383,13 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       return;
     }
     let live = true;
+    const ac = new AbortController();
+    const popIds = gatePops.map((p) => p.id);
     pool
-      .counts(
-        ctx,
-        sampleId,
-        gatePops.map((p) => p.id),
-      )
+      .counts(ctx, sampleId, popIds, {
+        key: JSON.stringify(['counts', popIds, countsKey]),
+        signal: ac.signal,
+      })
       .then((cs) => {
         if (!live) return;
         setCounts(Object.fromEntries(cs.map((c) => [c.popId, { count: c.count, parent: c.parentCount }])));
@@ -392,6 +397,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       .catch(() => {});
     return () => {
       live = false;
+      ac.abort();
     };
   }, [countsKey, sampleId, missing]);
 
@@ -1345,9 +1351,6 @@ function formatHistTick(v: number, norm: string): string {
 }
 
 /** A plot drawn as dots of at least 2 px, for overlays where every sample needs its own flat colour. */
-const rasterBytes = (r: RasterResponse) => r.rgba.byteLength + 64;
-const histBytes = (h: HistogramResponse) => h.centers.byteLength + h.heights.byteLength + 64;
-
 function overlayDots(plot: PlotSpec): PlotSpec {
   return {
     ...plot,
