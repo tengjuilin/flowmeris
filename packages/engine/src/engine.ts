@@ -54,7 +54,7 @@ interface ResolvedComp {
 
 const NO_COMP: ResolvedComp = { m: null, key: 'none' };
 
-/** Per-request memo of population keys (a request never changes its context mid-way). */
+/** Population cache keys computed within one request (a key hashes its whole lineage). */
 type KeyMemo = Map<string, string>;
 
 /** Small string-keyed memo that is simply cleared once it grows past `max` entries. */
@@ -80,7 +80,10 @@ export class Engine {
   private cache: LruCache<Cached>;
   private samples: LruCache<SampleData>;
   private loading = new Map<string, Promise<SampleData>>();
-  /** Content-keyed memos for the inputs of cache keys (hashing dominates warm requests otherwise). */
+  /**
+   * Content-keyed memos for the inputs of cache keys (hashing dominates warm requests otherwise).
+   * Keyed by content rather than object identity: each request arrives as a fresh structured clone.
+   */
   private compMemo = new BoundedMemo<ResolvedComp>(256);
   private fpMemo = new BoundedMemo<string>(4096);
 
@@ -231,12 +234,11 @@ export class Engine {
   }
 
   /**
-   * Cache key of a population's membership for a sample (ADR-0004). `memo`
-   * shares the keys of common ancestors across the calls of one request, so a
-   * tree costs one hash per gate rather than one per gate per descendant.
+   * Cache key of a population's membership for a sample (ADR-0004). Pass one `memo` across the
+   * calls of a single request so each ancestor's key is hashed once, not once per descendant.
    */
-  popKey(ctx: AnalysisContext, s: SampleData, popId: string, memo?: KeyMemo): string {
-    const hit = memo?.get(popId);
+  popKey(ctx: AnalysisContext, s: SampleData, popId: string, memo: KeyMemo = new Map()): string {
+    const hit = memo.get(popId);
     if (hit !== undefined) return hit;
     const pop = ctx.group.template.populations[popId];
     if (!pop) throw new Error(`Unknown population ${popId}`);
@@ -249,7 +251,7 @@ export class Engine {
       const geom = effectiveGeometry(ctx.group, gate.id, s.sampleId);
       key = `bits|${this.fp({ p: parentKey, g: geom, d: this.dimsKey(ctx, s, gate.dims), k: KERNEL_VERSION })}|${pop.region}`;
     }
-    memo?.set(popId, key);
+    memo.set(popId, key);
     return key;
   }
 
@@ -277,6 +279,21 @@ export class Engine {
     const out = res.regions[pop.region];
     if (!out) throw new Error(`Gate ${gate.id} has no region ${pop.region}`);
     return out;
+  }
+
+  /**
+   * Indices of a population's events, or null when it holds every event (kernels then scan all
+   * events without materialising an index array). Cached alongside the bitset.
+   */
+  popIndices(
+    ctx: AnalysisContext,
+    s: SampleData,
+    popId: string,
+    memo: KeyMemo = new Map(),
+  ): Uint32Array | null {
+    const bits = this.popBits(ctx, s, popId, memo);
+    if (popcount(bits) === s.eventCount) return null;
+    return this.memo(`idx|${this.popKey(ctx, s, popId, memo)}`, () => toIndices(bits));
   }
 
   async counts(ctx: AnalysisContext, sampleId: string, popIds: string[]): Promise<PopulationCount[]> {
@@ -368,29 +385,18 @@ export class Engine {
     return this.column(ctx, s, { channel: a.channel, comp: a.comp, transform: a.transform });
   }
 
-  /** Events of a population to bin: null (= every event, no index list) when it holds all of them. */
-  private plotEvents(
-    ctx: AnalysisContext,
-    s: SampleData,
-    popId: string,
-  ): { indices: Uint32Array | null; count: number } {
-    const bits = this.popBits(ctx, s, popId);
-    const count = popcount(bits);
-    return { indices: count === s.eventCount ? null : toIndices(bits), count };
-  }
-
   async raster(ctx: AnalysisContext, req: RasterRequest): Promise<RasterResponse> {
     const s = await this.sample(req.sampleId);
     const plot = req.plot;
     if (plot.kind === 'histogram' || !plot.y) throw new Error('raster() needs a 2D plot');
-    const ev = this.plotEvents(ctx, s, plot.population);
+    const idx = this.popIndices(ctx, s, plot.population);
     const r = raster2d({
       kind: plot.kind,
       width: req.width,
       height: req.height,
       x: this.axisColumn(ctx, s, plot.x),
       y: this.axisColumn(ctx, s, plot.y),
-      indices: ev.indices,
+      indices: idx,
       xRange: plot.x.range,
       yRange: plot.y.range,
       style: plot.style,
@@ -401,7 +407,7 @@ export class Engine {
       height: r.height,
       rgba: r.rgba,
       contours: r.contours,
-      eventsPlotted: ev.count,
+      eventsPlotted: idx ? idx.length : s.eventCount,
       offScale: r.stats.offScale,
       nan: r.stats.nan,
       sigmaPx: r.sigmaPx,
@@ -416,12 +422,12 @@ export class Engine {
     style: Parameters<typeof histogram>[3],
   ): Promise<HistogramResponse> {
     const s = await this.sample(sampleId);
-    const ev = this.plotEvents(ctx, s, popId);
-    const h = histogram(this.axisColumn(ctx, s, axis), ev.indices, axis.range, style);
+    const idx = this.popIndices(ctx, s, popId);
+    const h = histogram(this.axisColumn(ctx, s, axis), idx, axis.range, style);
     return {
       centers: h.centers,
       heights: h.heights,
-      eventsPlotted: ev.count,
+      eventsPlotted: idx ? idx.length : s.eventCount,
       offScale: h.stats.offScale,
       nan: h.stats.nan,
     };

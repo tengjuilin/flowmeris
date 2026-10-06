@@ -25,6 +25,7 @@ import {
   useState,
 } from 'react';
 import { pool } from '../engine-client/pool.ts';
+import { plotResults } from '../engine-client/resultCache.ts';
 import { createGate, lineageKey, plotKey, setGateGeometry } from '../lib/analysis.ts';
 import {
   type DimMap,
@@ -131,7 +132,10 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   },
   ref,
 ) {
-  const ui = useStore((s) => s.ui);
+  // Narrow subscriptions: a plot re-renders only for the UI state it shows, not every UI change.
+  const uiMissing = useStore((s) => s.ui.missing);
+  const tool = useStore((s) => (interactive ? s.ui.tool : 'select'));
+  const selectedGateId = useStore((s) => (interactive ? s.ui.selectedGateId : null));
   const setUi = useStore((s) => s.setUi);
   const margin: Margin = compact ? { l: 6, r: 4, t: 4, b: 6 } : { l: 66, r: 14, t: 14, b: 48 };
   const pw = Math.max(10, width - margin.l - margin.r);
@@ -178,10 +182,10 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   const ctx = useMemo(() => contextFor(ws, group), [ws, group]);
   const key = useMemo(() => plotKey(ws, group, sampleId, plot), [ws, group, sampleId, plot]);
   const dpr = compact ? 1 : Math.min(2, window.devicePixelRatio || 1);
-  const missing = !!ui.missing[sampleId];
+  const missing = !!uiMissing[sampleId];
   const ovSamples = useMemo(
-    () => (overlay?.samples ?? []).filter((o) => o.sampleId !== sampleId && !ui.missing[o.sampleId]),
-    [overlay, sampleId, ui.missing],
+    () => (overlay?.samples ?? []).filter((o) => o.sampleId !== sampleId && !uiMissing[o.sampleId]),
+    [overlay, sampleId, uiMissing],
   );
   const ovColor = ovSamples.length ? overlay?.color : undefined;
 
@@ -194,10 +198,12 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     const run = async () => {
       try {
         if (is1d) {
-          const h = await pool.histogram(ctx, sampleId, plot.population, plot.x, plot.style);
+          const h = await plotResults.get(`${key}|hist`, histBytes, () =>
+            pool.histogram(ctx, sampleId, plot.population, plot.x, plot.style),
+          );
           if (id === reqId.current) setHist(h);
         } else {
-          const r = await pool.raster(ctx, {
+          const req = {
             sampleId,
             plot: ovColor ? overlayDots(plot) : plot,
             width: Math.round(pw * dpr),
@@ -205,7 +211,12 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
             dotColor:
               ovColor ??
               (getComputedStyle(document.documentElement).getPropertyValue('--dot').trim() || '#333333'),
-          });
+          };
+          const r = await plotResults.get(
+            `${key}|raster|${req.width}|${req.height}|${req.dotColor}|${ovColor ? 'dots' : ''}`,
+            rasterBytes,
+            () => pool.raster(ctx, req),
+          );
           if (id === reqId.current) setRaster(r);
         }
       } catch (e) {
@@ -244,23 +255,30 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         // smoothing and every normalisation are linear, so one factor maps counts to heights.
         const style = { ...plot.style, histNorm: 'count' as const };
         const [base, sub] = await Promise.all([
-          pool.histogram(ctx, sampleId, plot.population, plot.x, style),
-          pool.histogram(ctx, sampleId, bgPop.popId, plot.x, style),
+          plotResults.get(`${bgKey}|base`, histBytes, () =>
+            pool.histogram(ctx, sampleId, plot.population, plot.x, style),
+          ),
+          plotResults.get(`${bgKey}|sub`, histBytes, () =>
+            pool.histogram(ctx, sampleId, bgPop.popId, plot.x, style),
+          ),
         ]);
         if (live) setBgHist({ sub: sub.heights, base: base.heights });
       } else {
-        const r = await pool.raster(ctx, {
+        const req = {
           sampleId,
           plot: {
             ...plot,
             population: bgPop.popId,
-            kind: 'dot',
+            kind: 'dot' as const,
             style: { ...plot.style, pointPx: Math.min(4, Math.max(2, plot.style.pointPx)) },
           },
           width: Math.round(pw * dpr),
           height: Math.round(ph * dpr),
           dotColor: bgPop.color,
-        });
+        };
+        const r = await plotResults.get(`${bgKey}|raster|${req.width}|${req.height}`, rasterBytes, () =>
+          pool.raster(ctx, req),
+        );
         if (live) setBgRaster(r);
       }
     };
@@ -441,7 +459,6 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   };
 
   // --- editing --------------------------------------------------------------------
-  const tool = interactive ? ui.tool : 'select';
   const canDraw = interactive && !missing;
 
   // the quadrant / spider gate that a click would place now
@@ -485,7 +502,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   }, [hoverKey, ctx, sampleId]);
 
   const commit = (gateId: string, geom: Geometry) => {
-    setGateGeometry(group.id, gateId, geom, ui.editScope, sampleId);
+    setGateGeometry(group.id, gateId, geom, useStore.getState().ui.editScope, sampleId);
   };
 
   const newGateBase = (): Omit<Gate, 'id' | 'geometry'> => ({
@@ -656,7 +673,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         }
         return;
       }
-      const sel = ui.selectedGateId ? group.template.gates[ui.selectedGateId] : undefined;
+      const sel = selectedGateId ? group.template.gates[selectedGateId] : undefined;
       if (!sel || sel.parentPop !== plot.population) return;
       if (e.key.startsWith('Arrow') && maps(sel).every((m) => m.identity)) {
         e.preventDefault();
@@ -861,7 +878,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     const geom = geomOf(gate);
     const m = maps(gate);
     const editable = interactive && m.every((d) => d.identity);
-    const selected = interactive && ui.selectedGateId === gate.id;
+    const selected = interactive && selectedGateId === gate.id;
     const overridden = isOverridden(group, gate.id, sampleId);
     const pops = populationsOfGate(group.template, gate.id);
     const color = pops[0]?.color ?? '#2a78d6';
@@ -1328,6 +1345,9 @@ function formatHistTick(v: number, norm: string): string {
 }
 
 /** A plot drawn as dots of at least 2 px, for overlays where every sample needs its own flat colour. */
+const rasterBytes = (r: RasterResponse) => r.rgba.byteLength + 64;
+const histBytes = (h: HistogramResponse) => h.centers.byteLength + h.heights.byteLength + 64;
+
 function overlayDots(plot: PlotSpec): PlotSpec {
   return {
     ...plot,

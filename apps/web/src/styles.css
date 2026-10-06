@@ -340,9 +340,12 @@ code,
 .plot-layout {
   display: grid;
   grid-template-columns: 1fr 320px;
+  /* One row exactly as tall as the view, so the main plot never runs below the window; only very
+     short windows hit the floor and scroll the view. Columns shrink (and scroll) inside the row. */
+  grid-template-rows: minmax(0, 1fr);
   gap: 10px;
-  /* Grows past the view (which then scrolls) rather than letting a column spill out of its box. */
-  min-height: max(100%, 480px);
+  height: 100%;
+  min-height: 480px;
 }
 .plot-panel {
   display: flex;
@@ -544,15 +547,21 @@ code,
   flex-direction: column;
   gap: 10px;
   min-width: 0;
+  min-height: 0;
+  overflow: auto;
 }
 .plot-side .pop-tree {
   flex: 0 1 auto;
+  min-height: 96px;
   max-height: 40vh;
 }
 .ref-plots {
-  flex: 1;
+  /* Never shrinks below its controls plus the plot's minimum, so a long population tree scrolls first. */
+  flex: 1 0 auto;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: auto;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -626,13 +635,17 @@ code,
   display: grid;
   grid-template-columns: 74px minmax(0, 1fr);
 }
+/* Axis rows keep their scale picker beside the channel instead of on a row of its own. */
+.ref-controls > .field:not(.check):has(select + select) {
+  grid-template-columns: 74px minmax(0, 1fr) 84px;
+}
 .ref-controls select {
   width: 100%;
   min-width: 0;
 }
 .ref-box {
   flex: 1;
-  min-height: 260px;
+  min-height: 200px;
   position: relative;
 }
 .pop-tree ul {
@@ -944,6 +957,9 @@ table.matrix input {
   }
   .plot-box {
     min-height: 460px;
+  }
+  .ref-box {
+    min-height: 320px;
   }
 }
 @media (max-width: 700px) {
