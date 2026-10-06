@@ -848,6 +848,10 @@ table.stats tbody th {
 table.stats tr.on {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
+/* Previous values, shown while the row is being recomputed. */
+table.stats tr.stale td {
+  opacity: 0.45;
+}
 .keywords {
   max-height: 360px;
 }

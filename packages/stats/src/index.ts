@@ -115,68 +115,202 @@ export function dropNaN(xs: ArrayLike<number>): Float64Array {
   return out;
 }
 
+function swap(a: Float64Array, i: number, j: number): void {
+  const t = a[i] as number;
+  a[i] = a[j] as number;
+  a[j] = t;
+}
+
+/**
+ * Floyd–Rivest selection (Floyd & Rivest 1975, algorithm SELECT): rearranges
+ * a[lo..hi] so that a[k] holds the value it would have if the range were
+ * sorted, with every element left of k ≤ a[k] ≤ every element right of it.
+ * Large ranges are first narrowed by recursively selecting within a small
+ * sample around the expected position, which makes the pivot nearly exact.
+ * Expected ~n + min(k, n − k) comparisons; if partitioning ever stalls on
+ * adversarial input, the remaining range is sorted instead.
+ */
+function select(a: Float64Array, lo: number, hi: number, k: number): void {
+  let l = lo;
+  let r = hi;
+  let budget = 4 * Math.ceil(Math.log2(hi - lo + 2)) + 16;
+  while (r > l) {
+    if (budget-- === 0) {
+      a.subarray(l, r + 1).sort();
+      return;
+    }
+    if (r - l > 600) {
+      const n = r - l + 1;
+      const m = k - l + 1;
+      const z = Math.log(n);
+      const s = 0.5 * Math.exp((2 * z) / 3);
+      const sd = 0.5 * Math.sqrt((z * s * (n - s)) / n) * (m - n / 2 < 0 ? -1 : 1);
+      select(
+        a,
+        Math.max(l, Math.floor(k - (m * s) / n + sd)),
+        Math.min(r, Math.floor(k + ((n - m) * s) / n + sd)),
+        k,
+      );
+    }
+    const t = a[k] as number;
+    let i = l;
+    let j = r;
+    swap(a, l, k);
+    if ((a[r] as number) > t) swap(a, l, r);
+    while (i < j) {
+      swap(a, i, j);
+      i++;
+      j--;
+      while ((a[i] as number) < t) i++;
+      while ((a[j] as number) > t) j--;
+    }
+    if (a[l] === t) swap(a, l, j);
+    else {
+      j++;
+      swap(a, j, r);
+    }
+    if (j <= k) l = j + 1;
+    if (k <= j) r = j - 1;
+  }
+}
+
+/** Places every rank of `ranks` (ascending, distinct) at its sorted position in a[lo..hi]. */
+function selectRanks(a: Float64Array, ranks: number[], lo: number, hi: number, rlo: number, rhi: number) {
+  if (rlo > rhi || lo > hi) return;
+  const m = (rlo + rhi) >>> 1;
+  const k = ranks[m] as number;
+  select(a, lo, hi, k);
+  selectRanks(a, ranks, lo, k - 1, rlo, m - 1);
+  selectRanks(a, ranks, k + 1, hi, m + 1, rhi);
+}
+
+/** The order-statistic ranks percentileSorted(·, p) reads for n values. */
+function percentileRanks(n: number, p: number): number[] {
+  if (n === 0) return [];
+  const lo = Math.floor((n - 1) * (p / 100));
+  if (lo >= n - 1) return [n - 1];
+  if (lo < 0) return [0];
+  return [lo, lo + 1];
+}
+
+/** The order-statistic ranks medianSorted reads for n values. */
+function medianRanks(n: number): number[] {
+  if (n === 0) return [];
+  const h = n >>> 1;
+  return n % 2 === 1 ? [h] : [h - 1, h];
+}
+
+/** Above this many distinct ranks a full sort is cheaper than repeated selection. */
+const MAX_SELECT_RANKS = 32;
+
 /**
  * Compute several statistics on one population's values for one channel.
- * Sorting happens at most once.
+ * Order statistics (median, percentiles, robust SD/CV, min, max) come from
+ * selection of just the ranks they read, so the values are exactly those of
+ * a full sort; sorting happens only when many ranks are requested.
+ * With `owned`, the caller hands over `values` (a Float64Array it no longer
+ * needs), which is then reordered in place instead of copied.
  */
 export function summarize(
   values: ArrayLike<number>,
   requests: { stat: ValueStat; p?: number }[],
+  owned = false,
 ): StatValue[] {
-  const clean = dropNaN(values);
+  const clean =
+    owned && values instanceof Float64Array && !values.some(Number.isNaN) ? values : dropNaN(values);
   const nanCount = values.length - clean.length;
-  let sorted: Float64Array | null = null;
-  const getSorted = () => {
-    if (!sorted) {
-      sorted = Float64Array.from(clean);
-      sorted.sort();
-    }
-    return sorted;
-  };
   const n = clean.length;
   const base = (value: number): StatValue => ({ value, n, nExcluded: nanCount });
-  return requests.map(({ stat, p }) => {
+  const out: StatValue[] = new Array(requests.length);
+
+  // Order-dependent statistics first, while `clean` is still in event order.
+  const ranks = new Set<number>();
+  requests.forEach(({ stat, p }, i) => {
     switch (stat) {
       case 'mean':
-        return base(mean(clean));
+        out[i] = base(mean(clean));
+        break;
       case 'sd':
-        return base(sd(clean));
+        out[i] = base(sd(clean));
+        break;
       case 'cv':
-        return base((100 * sd(clean)) / mean(clean));
-      case 'median':
-        return base(medianSorted(getSorted()));
-      case 'percentile':
-        if (p === undefined || !(p >= 0 && p <= 100))
-          throw new RangeError('percentile requires p in [0, 100]');
-        return base(percentileSorted(getSorted(), p));
-      case 'rsd': {
-        const s = getSorted();
-        return base((percentileSorted(s, 84.13) - percentileSorted(s, 15.87)) / 2);
-      }
-      case 'rcv': {
-        const s = getSorted();
-        const rsd = (percentileSorted(s, 84.13) - percentileSorted(s, 15.87)) / 2;
-        return base((100 * rsd) / medianSorted(s));
-      }
-      case 'min':
-        return base(n === 0 ? Number.NaN : (getSorted()[0] as number));
-      case 'max':
-        return base(n === 0 ? Number.NaN : (getSorted()[n - 1] as number));
+        out[i] = base((100 * sd(clean)) / mean(clean));
+        break;
       case 'geomMean': {
         let k = 0;
         const logs = new Float64Array(n);
-        for (let i = 0; i < n; i++) {
-          const v = clean[i] as number;
+        for (let j = 0; j < n; j++) {
+          const v = clean[j] as number;
           if (v > 0) logs[k++] = Math.log(v);
         }
-        return {
+        out[i] = {
           value: k === 0 ? Number.NaN : Math.exp(mean(logs.subarray(0, k))),
           n: k,
           nExcluded: nanCount + (n - k),
         };
+        break;
       }
+      case 'median':
+        for (const r of medianRanks(n)) ranks.add(r);
+        break;
+      case 'percentile':
+        if (p === undefined || !(p >= 0 && p <= 100))
+          throw new RangeError('percentile requires p in [0, 100]');
+        for (const r of percentileRanks(n, p)) ranks.add(r);
+        break;
+      case 'rsd':
+      case 'rcv':
+        for (const r of [...percentileRanks(n, 84.13), ...percentileRanks(n, 15.87)]) ranks.add(r);
+        if (stat === 'rcv') for (const r of medianRanks(n)) ranks.add(r);
+        break;
+      case 'min':
+        if (n > 0) ranks.add(0);
+        break;
+      case 'max':
+        if (n > 0) ranks.add(n - 1);
+        break;
     }
   });
+  // Reorder so every needed rank sits at its sorted position; the *Sorted
+  // helpers below read only those positions.
+  const s = clean;
+  if (ranks.size > MAX_SELECT_RANKS) s.sort();
+  else if (ranks.size > 0)
+    selectRanks(
+      s,
+      [...ranks].sort((a, b) => a - b),
+      0,
+      n - 1,
+      0,
+      ranks.size - 1,
+    );
+  requests.forEach(({ stat, p }, i) => {
+    switch (stat) {
+      case 'median':
+        out[i] = base(medianSorted(s));
+        break;
+      case 'percentile':
+        out[i] = base(percentileSorted(s, p as number));
+        break;
+      case 'rsd':
+        out[i] = base((percentileSorted(s, 84.13) - percentileSorted(s, 15.87)) / 2);
+        break;
+      case 'rcv': {
+        const rsd = (percentileSorted(s, 84.13) - percentileSorted(s, 15.87)) / 2;
+        out[i] = base((100 * rsd) / medianSorted(s));
+        break;
+      }
+      case 'min':
+        out[i] = base(n === 0 ? Number.NaN : (s[0] as number));
+        break;
+      case 'max':
+        out[i] = base(n === 0 ? Number.NaN : (s[n - 1] as number));
+        break;
+      default:
+        break;
+    }
+  });
+  return out;
 }
 
 /** Population frequency statistics. */
