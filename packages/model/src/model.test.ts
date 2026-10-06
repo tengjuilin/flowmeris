@@ -58,3 +58,38 @@ describe('reference plots', () => {
     expect(g.refPlots.map((r) => r.population)).toEqual([undefined, 'root']);
   });
 });
+
+describe('plot grid', () => {
+  const axis = {
+    channel: 'FSC-A',
+    comp: 'group' as const,
+    transform: 't_1',
+    range: [0, 1] as [number, number],
+  };
+
+  it('loads groups saved before the plot grid existed', () => {
+    const ws = newWorkspace('t', { version: '0', commit: 'x', kernels: 'ts-1' });
+    const { grid: _, ...old } = newGroup('g', [], ['FSC-A']);
+    ws.groups.push(old as never);
+    expect(loadWorkspace(JSON.parse(JSON.stringify(ws))).groups[0]!.grid).toEqual({ columns: 3, cells: [] });
+  });
+
+  it('moves cells of a removed population to the removed gate’s parent', () => {
+    const g = newGroup('g', [], ['FSC-A']);
+    g.template.gates.gt_1 = { id: 'gt_1', parentPop: 'root' } as never;
+    g.template.populations.pop_1 = { id: 'pop_1', parent: 'root', gate: 'gt_1' } as never;
+    g.template.gates.gt_2 = { id: 'gt_2', parentPop: 'pop_1' } as never;
+    g.template.populations.pop_2 = { id: 'pop_2', parent: 'pop_1', gate: 'gt_2' } as never;
+    const cell = (id: string, population: string) => ({
+      id,
+      population,
+      overlay: [],
+      kind: 'histogram' as const,
+      x: axis,
+      style: {} as never,
+    });
+    g.grid.cells.push(cell('c_1', 'pop_2'), null, cell('c_2', 'pop_1'));
+    removeGateCascade(g, 'gt_2');
+    expect(g.grid.cells.map((c) => c?.population)).toEqual(['pop_1', undefined, 'pop_1']);
+  });
+});

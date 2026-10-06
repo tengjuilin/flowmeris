@@ -137,7 +137,7 @@ export async function ingestFiles(files: InputFile[]): Promise<void> {
           sampleId: g.sampleIds[0] ?? null,
           popId: 'root',
           plotId: g.plots[0]?.id ?? null,
-          view: 'plot',
+          view: 'gate',
         }
       : {}),
   });

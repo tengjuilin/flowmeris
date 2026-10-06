@@ -28,16 +28,34 @@ e.g. a fluorescence pair while gating on scatter. Add one with **+**; each opens
 **✕** closes it. Reference plots are saved with the group in the workspace.
 
 - Each has its own plot type and X/Y channels. Its axis scales are the group's defaults for those channels.
-- **Population** and **Sample** follow the Plot view by default. Pick one to pin it, e.g. the parent
+- **Population** and **Sample** follow the Gate view by default. Pick one to pin it, e.g. the parent
   population or an unstained control. A pinned population that is deleted goes back to following.
 - Gates drawn on matching axes are shown read-only. Edit gates in the main plot.
 - **Backgate** overlays the population being gated, in its colour, when the reference plot shows a
   different population.
 
+## Plot grid
+
+The **Plot** tab lays plots out in a fixed grid, e.g. scatter, singlets and every marker of a panel side by
+side. **Columns** sets the grid width (3 by default); the grid always ends with a row of empty cells. The
+grid is saved with the group in the workspace.
+
+- Add a plot by choosing its type in an empty cell. It starts on the population selected in the Gate view.
+- Click a plot to select it (blue border). The gating tools and **Edit template** / **This sample only**
+  act on the selected plot, exactly as in the Gate view; gates belong to the same group template.
+- The bar above the grid edits the selected plot: **Population**, **Sample** (◀ ▶ step through the group's
+  samples; *Follow selected* tracks the sample selected in the sidebar), plot type and X/Y channels.
+- **Overlay** draws other samples on the same plot, each in its own colour with a legend: dots on 2D plots,
+  outlines on histograms. Gates and their percentages are those of the plotted sample.
+- **Double-click inside a gate** to show its population in the next empty cell, with the same axes.
+- **Open in Gate view** (or the population link in a plot's title) opens that population, sample and pair
+  of axes in the Gate view.
+- Deleting a gate moves plots of its populations back to the gate's parent population.
+
 ## Gating path
 
 The **Gating path** tab shows, for one sample, how events move through the gating tree. Choose the
-sample and a population in its toolbar (they follow the current sample and population of the Plot view).
+sample and a population in its toolbar (they follow the current sample and population of the Gate view).
 
 - **Path** lays out one plot per step from *All events* to the chosen population. Each plot highlights the
   gate that leads to the next step (other gates on that plot are dimmed; for quadrant and spider gates the
@@ -53,4 +71,4 @@ sample and a population in its toolbar (they follow the current sample and popul
 
 If a step's gate was drawn on axes other than the population's saved plot, the step is drawn on the
 gate's own channels using the group's default axes. Click a plot title to open that population in the
-Plot view.
+Gate view.

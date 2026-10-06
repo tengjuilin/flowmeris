@@ -52,7 +52,7 @@ export function useRidge() {
   const overlap = layout?.overlap ?? DEFAULT_OVERLAP;
   const ch = layout?.axis.channel ?? plot?.x.channel ?? group?.channels[0] ?? '';
 
-  // The displayed axis follows the Plot view's axis for this channel, so scale edits there carry over.
+  // The displayed axis follows the Gate view's axis for this channel, so scale edits there carry over.
   const axis: AxisSpec | null = useMemo(() => {
     if (!group) return null;
     if (plot && plot.x.channel === ch) return plot.x;

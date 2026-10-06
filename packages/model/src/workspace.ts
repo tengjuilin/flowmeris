@@ -61,6 +61,7 @@ export function newGroup(name: string, sampleIds: string[], channels: string[]):
     axisDefaults: {},
     plots: [],
     refPlots: [],
+    grid: { columns: 3, cells: [] },
     layouts: [],
     stats: [],
   };
@@ -130,6 +131,7 @@ export function removeGateCascade(group: Group, gateId: string): void {
   const t = group.template;
   const doomedPops = new Set<string>();
   const doomedGates = new Set<string>([gateId]);
+  const parentPop = t.gates[gateId]?.parentPop ?? ROOT_POPULATION_ID;
   let frontier = populationsOfGate(t, gateId).map((p) => p.id);
   while (frontier.length) {
     const next: string[] = [];
@@ -150,6 +152,8 @@ export function removeGateCascade(group: Group, gateId: string): void {
   group.plots = group.plots.filter((p) => !doomedPops.has(p.population));
   // Reference plots pinned to a removed population fall back to following the gated one.
   for (const r of group.refPlots) if (r.population && doomedPops.has(r.population)) r.population = undefined;
+  // Grid cells showing a removed population go back to the removed gate's parent population.
+  for (const c of group.grid.cells) if (c && doomedPops.has(c.population)) c.population = parentPop;
   group.stats = group.stats.filter((s) => !doomedPops.has(s.population));
   group.layouts = group.layouts.filter((l) => l.kind !== 'ridge' || !doomedPops.has(l.population));
 }

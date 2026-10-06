@@ -11,12 +11,15 @@ Implementation: `packages/model` (zod schema in `schema.ts`). The workspace is p
   groups: [ { sampleIds, channels, compensation,
               template: { populations, gates },
               overrides: [ { sampleId, gateId, geometry, at } ],
-              axisDefaults, plots, layouts, stats } ] }
+              axisDefaults, plots, refPlots, grid: { columns, cells }, layouts, stats } ] }
 ```
 
 - **Gates** store their dimensions (channel, compensation reference, transform id) and geometry in that
   space; populations reference a gate and a region (`in`, `Q1`–`Q4`).
 - **Transforms** are content-addressed: equal parameters give the same id.
+- **Plot grid** (`grid`) holds the Plot view's cells in row order; an empty cell is `null`. Each cell has
+  a population, an optional pinned sample, overlaid sample ids, plot type, axes and style. Workspaces
+  saved before the grid existed load with an empty 3-column grid.
 - **Sample ids** derive from the file's SHA-256 and dataset index, so re-adding the same file re-links it.
 
 ## M-MODEL-CANON — canonical JSON and fingerprints

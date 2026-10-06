@@ -187,10 +187,55 @@ export function AxisSelects({ group, plot, edit }: { group: Group; plot: PlotSpe
   );
 }
 
+/** Gate drawing tools for a 1D or 2D plot; they act on the Gate view's plot or the Plot view's active cell. */
+export function ToolButtons({ is1d }: { is1d: boolean }) {
+  const tool = useStore((s) => s.ui.tool);
+  const setUi = useStore((s) => s.setUi);
+  return (
+    <div className="seg">
+      {TOOLS.filter((t) => (is1d ? !t.twoD : !t.oneD)).map((t) => (
+        <button
+          type="button"
+          key={t.id}
+          title={t.title}
+          aria-pressed={tool === t.id}
+          className={tool === t.id ? 'on' : ''}
+          onClick={() => setUi({ tool: t.id })}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Whether gate edits change the group template or only the plotted sample. */
+export function EditScopeToggle() {
+  const editScope = useStore((s) => s.ui.editScope);
+  const setUi = useStore((s) => s.setUi);
+  return (
+    <div className="seg" title="Whether gate edits change the group template or only this sample">
+      <button
+        type="button"
+        className={editScope === 'template' ? 'on' : ''}
+        onClick={() => setUi({ editScope: 'template' })}
+      >
+        Edit template
+      </button>
+      <button
+        type="button"
+        className={editScope === 'sample' ? 'on warn' : ''}
+        onClick={() => setUi({ editScope: 'sample' })}
+      >
+        This sample only
+      </button>
+    </div>
+  );
+}
+
 export function PlotPanel() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
-  const setUi = useStore((s) => s.setUi);
   const group = useGroup();
   const plot = usePlotForPopulation();
   const box = useRef<HTMLDivElement>(null);
@@ -211,42 +256,13 @@ export function PlotPanel() {
   }
   const is1d = plot.kind === 'histogram';
   const sample = ws.samples[sampleId];
-  const tools = TOOLS.filter((t) => (is1d ? !t.twoD : !t.oneD));
 
   return (
     <div className="plot-panel">
       <div className="toolbar" role="toolbar" aria-label="Gating tools">
-        <div className="seg">
-          {tools.map((t) => (
-            <button
-              type="button"
-              key={t.id}
-              title={t.title}
-              aria-pressed={ui.tool === t.id}
-              className={ui.tool === t.id ? 'on' : ''}
-              onClick={() => setUi({ tool: t.id })}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <ToolButtons is1d={is1d} />
         <PlotKindSelect group={group} plot={plot} />
-        <div className="seg" title="Whether gate edits change the group template or only this sample">
-          <button
-            type="button"
-            className={ui.editScope === 'template' ? 'on' : ''}
-            onClick={() => setUi({ editScope: 'template' })}
-          >
-            Edit template
-          </button>
-          <button
-            type="button"
-            className={ui.editScope === 'sample' ? 'on warn' : ''}
-            onClick={() => setUi({ editScope: 'sample' })}
-          >
-            This sample only
-          </button>
-        </div>
+        <EditScopeToggle />
         <div className="spacer" />
         <div className="seg">
           <button

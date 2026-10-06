@@ -54,7 +54,7 @@ function tabLabel(ws: Workspace, g: Group, r: RefPlot): string {
   return r.kind === 'histogram' || !r.y ? name(r.x.channel) : `${name(r.x.channel)} × ${name(r.y.channel)}`;
 }
 
-/** Tabbed, read-only reference plots under the population tree of the Plot view. */
+/** Tabbed, read-only reference plots under the population tree of the Gate view. */
 export function RefPlots() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);

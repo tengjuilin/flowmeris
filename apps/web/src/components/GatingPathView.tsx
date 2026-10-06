@@ -62,10 +62,10 @@ function pct(c: Counts, id: string): string {
 }
 
 function openInPlot(popId: string, plot: PlotSpec | null, real: boolean) {
-  if (plot && real) useStore.getState().setUi({ popId, plotId: plot.id, selectedGateId: null, view: 'plot' });
+  if (plot && real) useStore.getState().setUi({ popId, plotId: plot.id, selectedGateId: null, view: 'gate' });
   else {
     drill(popId);
-    useStore.getState().setUi({ view: 'plot' });
+    useStore.getState().setUi({ view: 'gate' });
   }
 }
 
@@ -89,7 +89,7 @@ function StepCard({ ws, group, sampleId, pop, plot, real, size, counts, focusPop
       <button
         type="button"
         className="tile-title"
-        title={`Open ${pop.name} in the Plot view`}
+        title={`Open ${pop.name} in the Gate view`}
         onClick={() => openInPlot(pop.id, plot, real)}
       >
         <span>
@@ -120,7 +120,7 @@ function PopChip({ pop, counts, on }: { pop: Population; counts: Counts; on: boo
     <button
       type="button"
       className={`path-chip${on ? ' on' : ''}`}
-      title={`Open ${pop.name} in the Plot view`}
+      title={`Open ${pop.name} in the Gate view`}
       onClick={() => openInPlot(pop.id, null, false)}
     >
       <span className="swatch" style={{ background: pop.color }} aria-hidden="true" />
@@ -349,7 +349,7 @@ export function GatingPathView() {
           ? 'Each plot shows the gate that leads to the next step (highlighted); arrows give the count and % of parent.'
           : 'Every gated population; gates on the way to the selected population are highlighted.'}{' '}
         {backgate && `${targetPop?.name} is overlaid in its colour on the plots above it. `}
-        Click a plot title to open it in the Plot view.
+        Click a plot title to open it in the Gate view.
       </p>
       {ui.missing[sampleId] && (
         <div className="empty">Data not loaded for this sample: re-add its FCS file to view it.</div>
@@ -358,7 +358,7 @@ export function GatingPathView() {
         (mode === 'path' ? (
           lineage.length <= 1 && finalPlots.length === 0 ? (
             <div className="empty">
-              No gates yet. Draw a gate in the Plot view, then choose its population here.
+              No gates yet. Draw a gate in the Gate view, then choose its population here.
             </div>
           ) : (
             renderPath()

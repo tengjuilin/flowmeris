@@ -51,8 +51,8 @@ function Tile({
       <button
         type="button"
         className="tile-title"
-        title={`${s?.relativePath} — open in the plot view`}
-        onClick={() => setUi({ sampleId, view: 'plot' })}
+        title={`${s?.relativePath} — open in the Gate view`}
+        onClick={() => setUi({ sampleId, view: 'gate' })}
       >
         <span>{name}</span>
         {ov && <span className="badge warn">override</span>}
@@ -112,7 +112,7 @@ export function TilesView() {
       </div>
       <p className="muted small">
         Gates are drawn from the group template; samples with overrides are flagged and drawn with their own
-        gate. Click a tile to edit that sample. Plot type and axes are shared with the Plot view; choose
+        gate. Click a tile to edit that sample. Plot type and axes are shared with the Gate view; choose
         samples with the checkboxes in the sidebar.
       </p>
       {shown.length === 0 && <div className="empty">No samples selected: check some in the sidebar.</div>}

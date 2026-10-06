@@ -10,7 +10,7 @@ enablePatches();
 export const APP_INFO = { version: __APP_VERSION__, commit: __APP_COMMIT__, kernels: 'ts-1' };
 
 export type Tool = 'select' | 'rect' | 'range' | 'ellipse' | 'polygon' | 'quadrant' | 'spider';
-export type View = 'plot' | 'tiles' | 'ridge' | 'path' | 'stats' | 'compensation' | 'samples';
+export type View = 'gate' | 'plot' | 'tiles' | 'ridge' | 'path' | 'stats' | 'compensation' | 'samples';
 
 export interface IngestProgress {
   total: number;
@@ -29,8 +29,10 @@ interface UiState {
   /** Whether gate edits change the group template or only the current sample (override). */
   editScope: 'template' | 'sample';
   selectedGateId: string | null;
-  /** Active reference-plot tab of the Plot view. */
+  /** Active reference-plot tab of the Gate view. */
   refPlotId: string | null;
+  /** Active (gateable) cell of the Plot view's grid. */
+  gridCellId: string | null;
   missing: Record<string, true>;
   /** Samples left out of the Tiles, Ridge and Statistics views (unchecked in the sidebar). */
   excluded: Record<string, true>;
@@ -69,11 +71,12 @@ export const useStore = create<Store>((set, get) => ({
     sampleId: null,
     popId: 'root',
     plotId: null,
-    view: 'plot',
+    view: 'gate',
     tool: 'select',
     editScope: 'template',
     selectedGateId: null,
     refPlotId: null,
+    gridCellId: null,
     missing: {},
     excluded: {},
     ingest: null,
@@ -130,6 +133,7 @@ export const useStore = create<Store>((set, get) => ({
         plotId: null,
         selectedGateId: null,
         refPlotId: null,
+        gridCellId: null,
         excluded: {},
       },
     }));

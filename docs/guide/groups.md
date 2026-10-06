@@ -35,4 +35,4 @@ The selection is part of the view, not the analysis: it is not saved in the work
 gates or overrides.
 
 In **Tiles**, the plot type and X / Y channels can be changed directly; they are the same settings as in
-the Plot view for the current population.
+the Gate view for the current population.

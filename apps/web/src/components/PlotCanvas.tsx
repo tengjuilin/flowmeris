@@ -72,6 +72,11 @@ interface Props {
   focusPopId?: string;
   /** Overlay a descendant population's events in its colour (backgating). */
   backgate?: { popId: string; color: string };
+  /**
+   * Overlay other samples' events, each in its colour; `sampleId` is then drawn as dots (2D) or an
+   * outline (histogram) in `color`. Gates and their percentages stay those of `sampleId`.
+   */
+  overlay?: { color: string; samples: { sampleId: string; color: string }[] };
 }
 
 type Drag =
@@ -117,6 +122,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     onDrill,
     focusPopId,
     backgate,
+    overlay,
   },
   ref,
 ) {
@@ -136,6 +142,8 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   const [hist, setHist] = useState<HistogramResponse | null>(null);
   const [bgRaster, setBgRaster] = useState<RasterResponse | null>(null);
   const [bgHist, setBgHist] = useState<{ sub: Float64Array; base: Float64Array } | null>(null);
+  const [ovHists, setOvHists] = useState<{ color: string; heights: Float64Array }[]>([]);
+  const ovCanvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -162,6 +170,11 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   const key = useMemo(() => plotKey(ws, group, sampleId, plot), [ws, group, sampleId, plot]);
   const dpr = compact ? 1 : Math.min(2, window.devicePixelRatio || 1);
   const missing = !!ui.missing[sampleId];
+  const ovSamples = useMemo(
+    () => (overlay?.samples ?? []).filter((o) => o.sampleId !== sampleId && !ui.missing[o.sampleId]),
+    [overlay, sampleId, ui.missing],
+  );
+  const ovColor = ovSamples.length ? overlay?.color : undefined;
 
   // --- data -----------------------------------------------------------------
   useEffect(() => {
@@ -177,11 +190,12 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         } else {
           const r = await pool.raster(ctx, {
             sampleId,
-            plot,
+            plot: ovColor ? overlayDots(plot) : plot,
             width: Math.round(pw * dpr),
             height: Math.round(ph * dpr),
             dotColor:
-              getComputedStyle(document.documentElement).getPropertyValue('--dot').trim() || '#333333',
+              ovColor ??
+              (getComputedStyle(document.documentElement).getPropertyValue('--dot').trim() || '#333333'),
           });
           if (id === reqId.current) setRaster(r);
         }
@@ -192,7 +206,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       }
     };
     void run();
-  }, [key, pw, ph, dpr, missing]);
+  }, [key, pw, ph, dpr, missing, ovColor]);
 
   useEffect(() => {
     const c = canvasRef.current;
@@ -260,6 +274,65 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       0,
     );
   }, [bgRaster, is1d]);
+
+  // --- overlaid samples ----------------------------------------------------------
+  const ovKey = useMemo(
+    () =>
+      JSON.stringify([
+        plot,
+        ws.transforms[plot.x.transform],
+        plot.y ? ws.transforms[plot.y.transform] : null,
+        ovSamples.map((o) => [lineageKey(ws, group, o.sampleId, plot.population), o.color]),
+      ]),
+    [plot, ws, group, ovSamples],
+  );
+  useEffect(() => {
+    setOvHists([]);
+    const c = ovCanvasRef.current;
+    if (c) c.getContext('2d')?.clearRect(0, 0, c.width, c.height);
+    if (ovSamples.length === 0) return;
+    let live = true;
+    const run = async () => {
+      if (is1d) {
+        const hs = await Promise.all(
+          ovSamples.map((o) => pool.histogram(ctx, o.sampleId, plot.population, plot.x, plot.style)),
+        );
+        if (live) setOvHists(hs.map((h, i) => ({ color: ovSamples[i]!.color, heights: h.heights })));
+        return;
+      }
+      const w = Math.round(pw * dpr);
+      const h = Math.round(ph * dpr);
+      const rs = await Promise.all(
+        ovSamples.map((o) =>
+          pool.raster(ctx, {
+            sampleId: o.sampleId,
+            plot: overlayDots(plot),
+            width: w,
+            height: h,
+            dotColor: o.color,
+          }),
+        ),
+      );
+      const c = ovCanvasRef.current;
+      const g = c?.getContext('2d');
+      if (!live || !c || !g) return;
+      c.width = w;
+      c.height = h;
+      // Composite through a scratch canvas: putImageData would overwrite rather than blend.
+      const tmp = document.createElement('canvas');
+      tmp.width = w;
+      tmp.height = h;
+      const tg = tmp.getContext('2d')!;
+      for (const r of rs) {
+        tg.putImageData(new ImageData(new Uint8ClampedArray(r.rgba), r.width, r.height), 0, 0);
+        g.drawImage(tmp, 0, 0);
+      }
+    };
+    run().catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [ovKey, pw, ph, dpr]);
 
   // --- gates on this plot ----------------------------------------------------
   const gates = useMemo(
@@ -657,17 +730,26 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
 
   const histPath = useMemo(() => {
     if (!hist || !is1d) return null;
+    const shown = ovSamples.length ? ovHists : [];
     let max = 0;
-    for (const v of hist.heights) if (v > max) max = v;
+    for (const hs of [hist.heights, ...shown.map((o) => o.heights)]) for (const v of hs) if (v > max) max = v;
     const top = max > 0 ? max * 1.05 : 1;
-    const pts: string[] = [`M${X(hist.centers[0]! - (hist.centers[1]! - hist.centers[0]!) / 2)},${ph}`];
-    for (let i = 0; i < hist.centers.length; i++)
-      pts.push(`L${X(hist.centers[i]!)},${ph - (hist.heights[i]! / top) * ph}`);
-    pts.push(
-      `L${X(hist.centers[hist.centers.length - 1]! + (hist.centers[1]! - hist.centers[0]!) / 2)},${ph}Z`,
-    );
-    return { d: pts.join(''), top };
-  }, [hist, is1d, X, ph]);
+    const c = hist.centers;
+    const half = c.length > 1 ? (c[1]! - c[0]!) / 2 : 0;
+    const path = (hs: Float64Array) => {
+      const pts: string[] = [`M${X(c[0]! - half)},${ph}`];
+      for (let i = 0; i < c.length; i++) pts.push(`L${X(c[i]!)},${ph - ((hs[i] ?? 0) / top) * ph}`);
+      pts.push(`L${X(c[c.length - 1]! + half)},${ph}Z`);
+      return pts.join('');
+    };
+    return {
+      d: path(hist.heights),
+      top,
+      overlays: shown
+        .filter((o) => o.heights.length === c.length)
+        .map((o) => ({ color: o.color, d: path(o.heights) })),
+    };
+  }, [hist, is1d, X, ph, ovHists, ovSamples.length]);
 
   const bgHistPath = useMemo(() => {
     if (!hist || !histPath || !bgHist || !is1d || bgHist.sub.length !== hist.centers.length) return null;
@@ -959,6 +1041,13 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
 
   return (
     <div className="plot" style={{ width, height }}>
+      {!is1d && ovColor && (
+        <canvas
+          ref={ovCanvasRef}
+          className="plot-raster"
+          style={{ left: margin.l, top: margin.t, width: pw, height: ph }}
+        />
+      )}
       {!is1d && (
         <canvas
           ref={canvasRef}
@@ -994,7 +1083,16 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
           </defs>
           <rect x={0} y={0} width={pw} height={ph} className="plot-frame" />
           <g clipPath={`url(#${clipId})`}>
-            {histPath && <path d={histPath.d} className={`hist${bgPop ? ' faded' : ''}`} />}
+            {histPath?.overlays.map((o, i) => (
+              <path key={i} d={o.d} className="hist-overlay" style={{ stroke: o.color }} />
+            ))}
+            {histPath && (
+              <path
+                d={histPath.d}
+                className={`hist${bgPop ? ' faded' : ''}${ovColor ? ' hist-overlay' : ''}`}
+                style={ovColor ? { stroke: ovColor } : undefined}
+              />
+            )}
             {bgHistPath && bgPop && (
               <path
                 d={bgHistPath}
@@ -1109,4 +1207,13 @@ function formatHistTick(v: number, norm: string): string {
   if (norm === 'mode') return `${Math.round(v * 100)}`;
   if (norm === 'area') return v.toPrecision(2);
   return v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(Math.round(v));
+}
+
+/** A plot drawn as dots of at least 2 px, for overlays where every sample needs its own flat colour. */
+function overlayDots(plot: PlotSpec): PlotSpec {
+  return {
+    ...plot,
+    kind: 'dot',
+    style: { ...plot.style, pointPx: Math.min(4, Math.max(2, plot.style.pointPx)) },
+  };
 }

@@ -4,6 +4,7 @@ import { CompensationView, SamplesView } from './components/CompensationView.tsx
 import { GatingPathView } from './components/GatingPathView.tsx';
 import { RidgeView, TilesView } from './components/GroupViews.tsx';
 import { Inspector } from './components/Inspector.tsx';
+import { PlotGridView } from './components/PlotGridView.tsx';
 import { PlotPanel, drill } from './components/PlotPanel.tsx';
 import { PopulationTree } from './components/PopulationTree.tsx';
 import { RefPlots } from './components/RefPlots.tsx';
@@ -17,6 +18,7 @@ import { workspaceToFile } from './state/persist.ts';
 import { APP_INFO, type Tool, type View, toast, useGroup, useStore } from './state/store.ts';
 
 const VIEWS: { id: View; label: string }[] = [
+  { id: 'gate', label: 'Gate' },
   { id: 'plot', label: 'Plot' },
   { id: 'tiles', label: 'Tiles' },
   { id: 'ridge', label: 'Ridge' },
@@ -244,7 +246,8 @@ export function App() {
       }
       if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
       const tool = TOOL_KEYS[e.key.toLowerCase()];
-      if (tool && useStore.getState().ui.view === 'plot') setUi({ tool });
+      const view = useStore.getState().ui.view;
+      if (tool && (view === 'gate' || view === 'plot')) setUi({ tool });
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -283,7 +286,7 @@ export function App() {
                   className={ui.view === v.id ? 'on' : ''}
                   onClick={() => {
                     setUi({ view: v.id });
-                    if (v.id === 'plot' && group) drill(ui.popId);
+                    if (v.id === 'gate' && group) drill(ui.popId);
                   }}
                 >
                   {v.label}
@@ -291,7 +294,7 @@ export function App() {
               ))}
             </div>
             <div className="view">
-              {ui.view === 'plot' && (
+              {ui.view === 'gate' && (
                 <div className="plot-layout">
                   <PlotPanel />
                   <div className="plot-side">
@@ -300,6 +303,7 @@ export function App() {
                   </div>
                 </div>
               )}
+              {ui.view === 'plot' && <PlotGridView />}
               {ui.view === 'tiles' && <TilesView />}
               {ui.view === 'ridge' && <RidgeView />}
               {ui.view === 'path' && <GatingPathView />}
@@ -308,7 +312,7 @@ export function App() {
               {ui.view === 'samples' && <SamplesView />}
             </div>
           </section>
-          {ui.view === 'plot' && <Inspector />}
+          {ui.view === 'gate' && <Inspector />}
           {ui.view === 'ridge' && <RidgeInspector />}
         </div>
       )}

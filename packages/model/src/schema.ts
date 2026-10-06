@@ -267,6 +267,28 @@ export const RefPlotSchema = z.object({
 });
 export type RefPlot = z.infer<typeof RefPlotSchema>;
 
+/** One plot in a cell of the Plot view's grid. Gates can be drawn on it like on the Gate view's plot. */
+export const PlotCellSchema = z.object({
+  id: Id,
+  population: Id,
+  /** Sample gated and shown; omitted = follow the selected sample. */
+  sampleId: Id.optional(),
+  /** Further samples overlaid on the plot, each in its own colour. */
+  overlay: z.array(Id).default([]),
+  kind: PlotKindSchema,
+  x: AxisSpecSchema,
+  y: AxisSpecSchema.optional(),
+  style: PlotStyleSchema,
+});
+export type PlotCell = z.infer<typeof PlotCellSchema>;
+
+/** The Plot view's fixed grid: `cells` fill it row by row; null = empty cell. */
+export const PlotGridSchema = z.object({
+  columns: z.number().int().min(1).max(6).default(3),
+  cells: z.array(PlotCellSchema.nullable()).default([]),
+});
+export type PlotGrid = z.infer<typeof PlotGridSchema>;
+
 export const SampleOrderSchema = z.object({
   by: z.enum(['name', 'keyword', 'custom']),
   keyword: z.string().optional(),
@@ -374,6 +396,8 @@ export const GroupSchema = z.object({
   plots: z.array(PlotSpecSchema),
   /** Reference plots of the Plot view, one per tab. */
   refPlots: z.array(RefPlotSchema).default([]),
+  /** Grid of plots of the Plot view. */
+  grid: PlotGridSchema.default({}),
   layouts: z.array(LayoutSchema),
   stats: z.array(StatSpecSchema),
 });
