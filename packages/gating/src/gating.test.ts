@@ -1,3 +1,5 @@
+import { invert } from '@flowmeris/compensation';
+import type { Geometry } from '@flowmeris/model';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
@@ -8,9 +10,13 @@ import {
   fromBooleans,
   fullBitset,
   getBit,
+  inEllipsoid,
+  inPolygon,
+  inRange,
   not,
   or,
   popcount,
+  preparePolygon,
   spiderFromQuadrant,
   spiderRegion,
   toIndices,
@@ -181,5 +187,150 @@ describe('parent restriction', () => {
     const parent = fromBooleans([true, false, true, false]);
     const r = evaluateGate({ kind: 'rect', min: [0], max: [10] }, [x], 4, parent);
     expect(Array.from(toIndices(r.regions.in!))).toEqual([0, 2]);
+  });
+});
+
+describe('evaluateGate kernels agree with the per-event predicates', () => {
+  // Coordinates with ties on gate boundaries, NaN and ±∞, over a partial parent.
+  const value = fc.oneof(
+    { weight: 6, arbitrary: fc.double({ min: -2, max: 2, noNaN: true }) },
+    { weight: 2, arbitrary: fc.constantFrom(-1, -0.5, 0, 0.25, 0.5, 1, -0) },
+    {
+      weight: 1,
+      arbitrary: fc.constantFrom(Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY),
+    },
+  );
+  const events = fc
+    .integer({ min: 0, max: 150 })
+    .chain((n) =>
+      fc.tuple(
+        fc.array(value, { minLength: n, maxLength: n }),
+        fc.array(value, { minLength: n, maxLength: n }),
+        fc.array(value, { minLength: n, maxLength: n }),
+        fc.array(fc.boolean(), { minLength: n, maxLength: n }),
+      ),
+    );
+  const bound = fc.option(fc.constantFrom(-1, -0.5, 0, 0.5, 1), { nil: null });
+
+  /** Membership by the M-GATE predicates of geometry.ts, event by event (the specification). */
+  function reference(geometry: Geometry, dims: number[][], parent: boolean[]): Record<string, boolean[]> {
+    const x = dims[0]!;
+    const y = dims[1]!;
+    const keep = (f: (i: number) => boolean) => parent.map((p, i) => p && f(i));
+    switch (geometry.kind) {
+      case 'rect':
+        return {
+          in: keep((i) =>
+            dims.every((d, k) => inRange(d[i]!, geometry.min[k] ?? null, geometry.max[k] ?? null)),
+          ),
+        };
+      case 'polygon': {
+        const p = preparePolygon(geometry.vertices);
+        return { in: keep((i) => inPolygon(p, x[i]!, y[i]!)) };
+      }
+      case 'ellipse': {
+        const inv = invert(geometry.cov.map((r) => [...r]));
+        return { in: keep((i) => inEllipsoid([x[i]!, y[i]!], geometry.mean, inv, geometry.d2)) };
+      }
+      case 'quadrant': {
+        const [cx, cy] = geometry.center;
+        const q = (xp: boolean, yp: boolean) =>
+          keep(
+            (i) => !Number.isNaN(x[i]!) && !Number.isNaN(y[i]!) && x[i]! >= cx === xp && y[i]! >= cy === yp,
+          );
+        return { Q1: q(false, true), Q2: q(true, true), Q3: q(true, false), Q4: q(false, false) };
+      }
+      case 'spider': {
+        const [cx, cy] = geometry.center;
+        const r = (k: number) => keep((i) => spiderRegion(cx, cy, geometry.arms, x[i]!, y[i]!) === k);
+        return { Q1: r(1), Q2: r(2), Q3: r(3), Q4: r(4) };
+      }
+    }
+  }
+
+  function check(geometry: Geometry, dims: number[][], parent: boolean[]) {
+    const res = evaluateGate(geometry, dims, parent.length, fromBooleans(parent)).regions;
+    for (const [r, want] of Object.entries(reference(geometry, dims, parent))) {
+      const got = res[r as keyof typeof res]!;
+      expect(got.length).toBe(Math.ceil(parent.length / 32));
+      expect(want.map((_, i) => getBit(got, i))).toEqual(want);
+    }
+  }
+
+  it('rect, 1–3 dimensions with open bounds', () => {
+    fc.assert(
+      fc.property(
+        events,
+        fc.integer({ min: 1, max: 3 }),
+        fc.array(bound, { minLength: 6, maxLength: 6 }),
+        ([x, y, z, par], d, b) => {
+          check({ kind: 'rect', min: b.slice(0, d), max: b.slice(3, 3 + d) }, [x, y, z].slice(0, d), par);
+        },
+      ),
+    );
+  });
+
+  it('polygon, including self-intersecting and degenerate ones', () => {
+    const c = fc.constantFrom(-1, -0.5, 0, 0.5, 1, 1.5);
+    fc.assert(
+      fc.property(
+        events,
+        fc.array(fc.tuple(c, c), { minLength: 3, maxLength: 7 }),
+        ([x, y, , par], vertices) => {
+          check({ kind: 'polygon', vertices }, [x, y], par);
+        },
+      ),
+    );
+  });
+
+  it('ellipse', () => {
+    fc.assert(
+      fc.property(
+        events,
+        fc.double({ min: 0.1, max: 1, noNaN: true }),
+        fc.double({ min: 0.05, max: 1, noNaN: true }),
+        fc.double({ min: 0, max: 3, noNaN: true }),
+        ([x, y, , par], a, b, theta) => {
+          const e = ellipseFromAxes(0.25, -0.5, Math.max(a, b), Math.min(a, b), theta);
+          check({ kind: 'ellipse', ...e }, [x, y], par);
+        },
+      ),
+    );
+  });
+
+  it('quadrant and spider', () => {
+    fc.assert(
+      fc.property(
+        events,
+        fc.constantFrom(-0.5, 0, 0.5),
+        fc.constantFrom(-0.5, 0, 0.25),
+        ([x, y, , par], cx, cy) => {
+          check({ kind: 'quadrant', center: [cx, cy] }, [x, y], par);
+          check(
+            {
+              kind: 'spider',
+              center: [cx, cy],
+              arms: [
+                [cx + 0.2, cy + 1],
+                [cx + 1, cy - 0.3],
+                [cx - 0.1, cy - 1],
+                [cx - 1, cy + 0.4],
+              ],
+            },
+            [x, y],
+            par,
+          );
+        },
+      ),
+    );
+  });
+
+  it('toIndices lists set bits in ascending order, including full words', () => {
+    fc.assert(
+      fc.property(fc.array(fc.oneof(fc.boolean(), fc.constant(true)), { maxLength: 300 }), (a) => {
+        expect(Array.from(toIndices(fromBooleans(a)))).toEqual(a.flatMap((v, i) => (v ? [i] : [])));
+      }),
+    );
+    expect(Array.from(toIndices(fullBitset(70)))).toEqual(Array.from({ length: 70 }, (_, i) => i));
   });
 });
