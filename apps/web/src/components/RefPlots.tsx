@@ -210,7 +210,8 @@ export function RefPlots() {
   );
 }
 
-/** Square plot filling the rest of the panel (own component so the size observer mounts with its box). */
+/** Plot filling the rest of the panel: square when there is room, wider than tall when the panel is short
+ * (own component so the size observer mounts with its box). */
 function RefCanvas({
   ws,
   group,
@@ -226,17 +227,17 @@ function RefCanvas({
 }) {
   const box = useRef<HTMLDivElement>(null);
   const size = useSize(box);
-  const side = Math.min(size.width, size.height);
+  const height = Math.min(size.width, size.height);
   return (
     <div className="ref-box" ref={box}>
-      {side > 0 && (
+      {height > 0 && (
         <PlotCanvas
           ws={ws}
           group={group}
           sampleId={sampleId}
           plot={plot}
-          width={side}
-          height={side}
+          width={size.width}
+          height={height}
           {...(backgate ? { backgate } : {})}
         />
       )}
