@@ -67,8 +67,9 @@ const Tile = memo(function Tile({
   sampleId,
   plot,
   size,
+  renderSize,
   name,
-}: { group: Group; sampleId: string; plot: PlotSpec; size: number; name: string }) {
+}: { group: Group; sampleId: string; plot: PlotSpec; size: number; renderSize: number; name: string }) {
   const ws = useStore((s) => s.ws);
   const current = useStore((s) => s.ui.sampleId === sampleId);
   const setUi = useStore((s) => s.setUi);
@@ -93,19 +94,29 @@ const Tile = memo(function Tile({
         <span>{name}</span>
         {ov && <span className="badge warn">override</span>}
       </button>
-      <div style={{ width: size, height: size }}>
+      <div style={{ width: size, height: size, overflow: 'hidden' }}>
+        {/* While the size slider moves, the last render is stretched to the live size; it is redrawn
+            sharp at `renderSize` once the slider settles. */}
         {visible && (
-          <PlotCanvas
-            ws={ws}
-            group={group}
-            sampleId={sampleId}
-            plot={plot}
-            width={size}
-            height={size}
-            hideOffScaleNote
-            interactive={current}
-            onDrill={drill}
-          />
+          <div
+            style={
+              size === renderSize
+                ? undefined
+                : { transform: `scale(${size / renderSize})`, transformOrigin: '0 0' }
+            }
+          >
+            <PlotCanvas
+              ws={ws}
+              group={group}
+              sampleId={sampleId}
+              plot={plot}
+              width={renderSize}
+              height={renderSize}
+              hideOffScaleNote
+              interactive={current}
+              onDrill={drill}
+            />
+          </div>
         )}
       </div>
     </div>
@@ -119,7 +130,8 @@ export function TilesView() {
   const shown = useSelectedSampleIds(group);
   const [tile, setTile] = useState(280);
   // Re-lay out and re-render the tiles once the slider settles, not on every step of a drag.
-  const size = useSettled(tile, 150);
+  // Tiles resize live; their plots are recomputed at the new size once the slider settles.
+  const renderSize = useSettled(tile, 150);
   if (!group || !plot)
     return (
       <div className="empty">Open a plot first; tiles show that plot for every sample in the group.</div>
@@ -163,7 +175,15 @@ export function TilesView() {
           <PopulationTree />
         </div>
         {shown.map((id) => (
-          <Tile key={id} group={group} sampleId={id} plot={plot} size={size} name={names[id] ?? id} />
+          <Tile
+            key={id}
+            group={group}
+            sampleId={id}
+            plot={plot}
+            size={tile}
+            renderSize={renderSize}
+            name={names[id] ?? id}
+          />
         ))}
       </div>
     </div>
