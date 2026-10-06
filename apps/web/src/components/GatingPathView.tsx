@@ -1,6 +1,6 @@
 import type { Gate, Group, PlotSpec, Population, Workspace } from '@flowmeris/model';
 import { childPopulations, populationLineage, populationsDepthFirst } from '@flowmeris/model';
-import { useEffect, useMemo, useState } from 'react';
+import { Component, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { lineageKey } from '../lib/analysis.ts';
 import { DEFAULT_STYLE } from '../lib/defaults.ts';
@@ -131,6 +131,27 @@ function PopChip({ pop, counts, on }: { pop: Population; counts: Counts; on: boo
   );
 }
 
+/** Shows a render error in place of its children instead of leaving the view blank. */
+class ViewErrorBoundary extends Component<
+  { children: ReactNode; resetKey: string },
+  { error: Error | null }
+> {
+  override state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  override componentDidUpdate(prev: { resetKey: string }) {
+    if (prev.resetKey !== this.props.resetKey && this.state.error) this.setState({ error: null });
+  }
+  override render() {
+    return this.state.error ? (
+      <div className="empty">Could not draw the gating tree: {this.state.error.message}</div>
+    ) : (
+      this.props.children
+    );
+  }
+}
+
 export function GatingPathView() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
@@ -141,6 +162,8 @@ export function GatingPathView() {
   const [backgating, setBackgating] = useState(false);
   const [size, setSize] = useState(280);
   const [counts, setCounts] = useState<Counts>({});
+  const [countError, setCountError] = useState<string | null>(null);
+  const treeRef = useRef<HTMLDivElement>(null);
 
   const sampleId =
     group && ui.sampleId && group.sampleIds.includes(ui.sampleId) ? ui.sampleId : group?.sampleIds[0];
@@ -165,16 +188,33 @@ export function GatingPathView() {
         sampleId,
         pops.map((p) => p.id),
       )
-      .then(
-        (cs) =>
-          live &&
-          setCounts(Object.fromEntries(cs.map((c) => [c.popId, { count: c.count, parent: c.parentCount }]))),
-      )
-      .catch(() => {});
+      .then((cs) => {
+        if (!live) return;
+        setCountError(null);
+        setCounts(Object.fromEntries(cs.map((c) => [c.popId, { count: c.count, parent: c.parentCount }])));
+      })
+      .catch((e: unknown) => live && setCountError(e instanceof Error ? e.message : String(e)));
     return () => {
       live = false;
     };
   }, [key, sampleId]);
+
+  // A wide tree overflows sideways with its plots centred over the leaves; starting at scrollLeft 0
+  // would show only connectors and leaf chips, so bring the selected population (or the root) into view.
+  const templateKey = group
+    ? JSON.stringify([group.template.populations, Object.keys(group.template.gates)])
+    : '';
+  useLayoutEffect(() => {
+    const el = treeRef.current;
+    if (mode !== 'tree' || !el || el.scrollWidth <= el.clientWidth) return;
+    const node =
+      el.querySelector<HTMLElement>('.path-node.on, .path-chip.on') ??
+      el.querySelector<HTMLElement>('.path-node');
+    if (!node) return;
+    const box = el.getBoundingClientRect();
+    const r = node.getBoundingClientRect();
+    el.scrollLeft += r.left + r.width / 2 - (box.left + box.width / 2);
+  }, [mode, target, templateKey, size]);
 
   if (!group) return <div className="empty">Select a group.</div>;
   if (!sampleId) return <div className="empty">This group has no samples.</div>;
@@ -266,7 +306,16 @@ export function GatingPathView() {
     return (
       <li key={pop.id}>
         <div className={`path-node${pop.id === target ? ' on' : ''}`}>
-          <div className="path-node-plots">{plots.map((f) => card(pop, f.plot, f.real, f.plot.id))}</div>
+          <div className="path-node-plots">
+            {plots.length > 0 ? (
+              plots.map((f) => card(pop, f.plot, f.real, f.plot.id))
+            ) : (
+              <div className="path-card path-missing">
+                <PopChip pop={pop} counts={counts} on={pop.id === target} />
+                <span className="muted small">No plot shows the gates of {pop.name}'s children.</span>
+              </div>
+            )}
+          </div>
         </div>
         <ul>{kids.map(node)}</ul>
       </li>
@@ -351,6 +400,7 @@ export function GatingPathView() {
         {backgate && `${targetPop?.name} is overlaid in its colour on the plots above it. `}
         Click a plot title to open it in the Gate view.
       </p>
+      {countError && <div className="empty">Could not compute counts: {countError}</div>}
       {ui.missing[sampleId] && (
         <div className="empty">Data not loaded for this sample: re-add its FCS file to view it.</div>
       )}
@@ -364,9 +414,15 @@ export function GatingPathView() {
             renderPath()
           )
         ) : (
-          <div className="path-tree">
-            <ul>{group.template.populations.root && node(group.template.populations.root)}</ul>
-          </div>
+          <ViewErrorBoundary resetKey={`${group.id}|${sampleId}|${key}`}>
+            {group.template.populations.root ? (
+              <div className="path-tree" ref={treeRef}>
+                <ul>{node(group.template.populations.root)}</ul>
+              </div>
+            ) : (
+              <div className="empty">This group's gating tree has no root population.</div>
+            )}
+          </ViewErrorBoundary>
         ))}
     </div>
   );
