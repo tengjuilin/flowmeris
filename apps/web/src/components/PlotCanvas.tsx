@@ -20,6 +20,7 @@ import {
   useEffect,
   useId,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -131,7 +132,10 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   },
   ref,
 ) {
-  const ui = useStore((s) => s.ui);
+  // Narrow subscriptions: a plot (e.g. each of many tiles) re-renders only when what it shows changes.
+  const missingMap = useStore((s) => s.ui.missing);
+  const tool = useStore((s) => (interactive ? s.ui.tool : 'select'));
+  const selectedGateId = useStore((s) => (interactive ? s.ui.selectedGateId : null));
   const setUi = useStore((s) => s.setUi);
   const margin: Margin = compact ? { l: 6, r: 4, t: 4, b: 6 } : { l: 66, r: 14, t: 14, b: 48 };
   const pw = Math.max(10, width - margin.l - margin.r);
@@ -178,53 +182,70 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   const ctx = useMemo(() => contextFor(ws, group), [ws, group]);
   const key = useMemo(() => plotKey(ws, group, sampleId, plot), [ws, group, sampleId, plot]);
   const dpr = compact ? 1 : Math.min(2, window.devicePixelRatio || 1);
-  const missing = !!ui.missing[sampleId];
+  const missing = !!missingMap[sampleId];
   const ovSamples = useMemo(
-    () => (overlay?.samples ?? []).filter((o) => o.sampleId !== sampleId && !ui.missing[o.sampleId]),
-    [overlay, sampleId, ui.missing],
+    () => (overlay?.samples ?? []).filter((o) => o.sampleId !== sampleId && !missingMap[o.sampleId]),
+    [overlay, sampleId, missingMap],
   );
   const ovColor = ovSamples.length ? overlay?.color : undefined;
 
   // --- data -----------------------------------------------------------------
-  useEffect(() => {
+  // Layout effects, so a result already in the pool's cache (e.g. a tile scrolled back into view)
+  // is drawn before the first paint instead of flashing an empty plot.
+  useLayoutEffect(() => {
     if (missing) return;
     const id = ++reqId.current;
+    const ac = new AbortController();
+    const width = Math.round(pw * dpr);
+    const height = Math.round(ph * dpr);
+    const dotColor =
+      ovColor ?? (getComputedStyle(document.documentElement).getPropertyValue('--dot').trim() || '#333333');
+    const dataKey = JSON.stringify(
+      is1d ? ['hist', key] : ['raster', key, width, height, dotColor, !!ovColor],
+    );
+    const opts = { key: dataKey, signal: ac.signal };
+    const hit = pool.cached<HistogramResponse & RasterResponse>(dataKey);
+    if (hit) {
+      setError(null);
+      setLoading(false);
+      if (is1d) setHist(hit);
+      else setRaster(hit);
+      return;
+    }
     setError(null);
     setLoading(true);
     const run = async () => {
       try {
         if (is1d) {
-          const h = await pool.histogram(ctx, sampleId, plot.population, plot.x, plot.style);
+          const h = await pool.histogram(ctx, sampleId, plot.population, plot.x, plot.style, opts);
           if (id === reqId.current) setHist(h);
         } else {
-          const r = await pool.raster(ctx, {
-            sampleId,
-            plot: ovColor ? overlayDots(plot) : plot,
-            width: Math.round(pw * dpr),
-            height: Math.round(ph * dpr),
-            dotColor:
-              ovColor ??
-              (getComputedStyle(document.documentElement).getPropertyValue('--dot').trim() || '#333333'),
-          });
+          const r = await pool.raster(
+            ctx,
+            { sampleId, plot: ovColor ? overlayDots(plot) : plot, width, height, dotColor },
+            opts,
+          );
           if (id === reqId.current) setRaster(r);
         }
       } catch (e) {
-        if (id === reqId.current) setError(e instanceof Error ? e.message : String(e));
+        if (id === reqId.current && !ac.signal.aborted) setError(e instanceof Error ? e.message : String(e));
       } finally {
         if (id === reqId.current) setLoading(false);
       }
     };
     void run();
+    return () => ac.abort();
   }, [key, pw, ph, dpr, missing, ovColor]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const c = canvasRef.current;
     if (!c || !raster || is1d) return;
     c.width = raster.width;
     c.height = raster.height;
     const g = c.getContext('2d');
     if (!g) return;
-    g.putImageData(new ImageData(new Uint8ClampedArray(raster.rgba), raster.width, raster.height), 0, 0);
+    // rgba may be a shared cached result: ImageData only reads it.
+    g.putImageData(new ImageData(raster.rgba, raster.width, raster.height), 0, 0);
   }, [raster, is1d]);
 
   // --- backgating overlay ------------------------------------------------------
@@ -365,12 +386,13 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       return;
     }
     let live = true;
+    const ac = new AbortController();
+    const popIds = gatePops.map((p) => p.id);
     pool
-      .counts(
-        ctx,
-        sampleId,
-        gatePops.map((p) => p.id),
-      )
+      .counts(ctx, sampleId, popIds, {
+        key: JSON.stringify(['counts', popIds, countsKey]),
+        signal: ac.signal,
+      })
       .then((cs) => {
         if (!live) return;
         setCounts(Object.fromEntries(cs.map((c) => [c.popId, { count: c.count, parent: c.parentCount }])));
@@ -378,6 +400,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       .catch(() => {});
     return () => {
       live = false;
+      ac.abort();
     };
   }, [countsKey, sampleId, missing]);
 
@@ -430,7 +453,6 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   };
 
   // --- editing --------------------------------------------------------------------
-  const tool = interactive ? ui.tool : 'select';
   const canDraw = interactive && !missing;
 
   // the quadrant / spider gate that a click would place now
@@ -459,7 +481,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   }, [hoverKey, ctx, sampleId]);
 
   const commit = (gateId: string, geom: Geometry) => {
-    setGateGeometry(group.id, gateId, geom, ui.editScope, sampleId);
+    setGateGeometry(group.id, gateId, geom, useStore.getState().ui.editScope, sampleId);
   };
 
   const newGateBase = (): Omit<Gate, 'id' | 'geometry'> => ({
@@ -630,7 +652,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         }
         return;
       }
-      const sel = ui.selectedGateId ? group.template.gates[ui.selectedGateId] : undefined;
+      const sel = selectedGateId ? group.template.gates[selectedGateId] : undefined;
       if (!sel || sel.parentPop !== plot.population) return;
       if (e.key.startsWith('Arrow') && maps(sel).every((m) => m.identity)) {
         e.preventDefault();
@@ -835,7 +857,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     const geom = geomOf(gate);
     const m = maps(gate);
     const editable = interactive && m.every((d) => d.identity);
-    const selected = interactive && ui.selectedGateId === gate.id;
+    const selected = interactive && selectedGateId === gate.id;
     const overridden = isOverridden(group, gate.id, sampleId);
     const pops = populationsOfGate(group.template, gate.id);
     const color = pops[0]?.color ?? '#2a78d6';

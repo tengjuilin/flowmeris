@@ -164,27 +164,38 @@ export function smooth2d(g: Grid2D, sigma: number): Grid2D {
   const { nx, ny } = g;
   const k = gaussianKernel(sigma);
   const r = (k.length - 1) / 2;
+  const src = g.values;
+  // Each pass scatters the non-zero inputs (cytometry grids are mostly empty) in ascending source
+  // order, so every output receives the same terms in the same order as a direct convolution sum:
+  // the result is bit-identical to it.
   const tmp = new Float64Array(nx * ny);
   for (let y = 0; y < ny; y++) {
     const row = y * nx;
-    for (let x = 0; x < nx; x++) {
-      let s = 0;
-      for (let j = -r; j <= r; j++) {
-        const t = x + j;
-        if (t >= 0 && t < nx) s += (g.values[row + t] as number) * (k[j + r] as number);
-      }
-      tmp[row + x] = s;
+    for (let t = 0; t < nx; t++) {
+      const v = src[row + t] as number;
+      if (v === 0) continue;
+      const lo = Math.max(0, t - r);
+      const hi = Math.min(nx - 1, t + r);
+      for (let x = lo; x <= hi; x++) tmp[row + x] = (tmp[row + x] as number) + v * (k[t - x + r] as number);
     }
   }
   const out = new Float64Array(nx * ny);
-  for (let x = 0; x < nx; x++) {
-    for (let y = 0; y < ny; y++) {
-      let s = 0;
-      for (let j = -r; j <= r; j++) {
-        const t = y + j;
-        if (t >= 0 && t < ny) s += (tmp[t * nx + x] as number) * (k[j + r] as number);
+  for (let t = 0; t < ny; t++) {
+    const srow = t * nx;
+    let x0 = 0;
+    while (x0 < nx && tmp[srow + x0] === 0) x0++;
+    if (x0 === nx) continue;
+    let x1 = nx - 1;
+    while (tmp[srow + x1] === 0) x1--;
+    const lo = Math.max(0, t - r);
+    const hi = Math.min(ny - 1, t + r);
+    for (let y = lo; y <= hi; y++) {
+      const w = k[t - y + r] as number;
+      const orow = y * nx;
+      for (let x = x0; x <= x1; x++) {
+        const v = tmp[srow + x] as number;
+        if (v !== 0) out[orow + x] = (out[orow + x] as number) + v * w;
       }
-      out[y * nx + x] = s;
     }
   }
   return { ...g, values: out };

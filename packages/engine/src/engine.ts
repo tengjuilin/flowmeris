@@ -120,24 +120,46 @@ export class Engine {
 
   /** The spillover matrix the group's compensation setting resolves to for this sample (null = none). */
   resolveComp(ctx: AnalysisContext, s: SampleData): SpilloverMatrix | null {
-    const c = ctx.group.compensation;
-    if (c.mode === 'none') return null;
-    if (c.mode === 'per-sample-keyword') return findSpillover(s.keywords)?.matrix ?? null;
-    const m = ctx.compMatrices[c.matrixId];
-    if (!m) throw new Error(`Compensation matrix ${c.matrixId} not found`);
-    return { detectors: m.detectors, spill: m.spill };
+    return this.resolvedComp(ctx, s).matrix;
   }
 
   compKey(ctx: AnalysisContext, s: SampleData): string {
-    const m = this.resolveComp(ctx, s);
-    return m ? fingerprint(m) : 'none';
+    return this.resolvedComp(ctx, s).key;
+  }
+
+  // Resolving and fingerprinting a matrix is needed by every column and population key; memoise it
+  // per sample (keyword matrices) and per matrix object (a request's context), so a request does it once.
+  private keywordComp = new WeakMap<SampleData, { matrix: SpilloverMatrix | null; key: string }>();
+  private matrixComp = new WeakMap<object, { matrix: SpilloverMatrix | null; key: string }>();
+  private static readonly NO_COMP = { matrix: null, key: 'none' };
+
+  private resolvedComp(ctx: AnalysisContext, s: SampleData): { matrix: SpilloverMatrix | null; key: string } {
+    const c = ctx.group.compensation;
+    if (c.mode === 'none') return Engine.NO_COMP;
+    const withKey = (matrix: SpilloverMatrix | null) =>
+      matrix ? { matrix, key: fingerprint(matrix) } : Engine.NO_COMP;
+    if (c.mode === 'per-sample-keyword') {
+      let hit = this.keywordComp.get(s);
+      if (!hit) {
+        hit = withKey(findSpillover(s.keywords)?.matrix ?? null);
+        this.keywordComp.set(s, hit);
+      }
+      return hit;
+    }
+    const m = ctx.compMatrices[c.matrixId];
+    if (!m) throw new Error(`Compensation matrix ${c.matrixId} not found`);
+    let hit = this.matrixComp.get(m);
+    if (!hit) {
+      hit = withKey({ detectors: m.detectors, spill: m.spill });
+      this.matrixComp.set(m, hit);
+    }
+    return hit;
   }
 
   /** Linear values of a channel after the group's compensation (pass-through for non-matrix channels). */
   compensated(ctx: AnalysisContext, s: SampleData, ci: number): Float64Array {
-    const m = this.resolveComp(ctx, s);
+    const { matrix: m, key: ck } = this.resolvedComp(ctx, s);
     if (!m) return this.linear(s, ci);
-    const ck = fingerprint(m);
     return this.memo(`comp|${this.sampleKey(s)}|${ci}|${ck}`, () => {
       const comp = makeCompensator(
         m,
@@ -158,13 +180,23 @@ export class Engine {
     dim: { channel: string; comp: CompRef; transform: string | null },
   ): Float64Array {
     const ci = this.channelIndex(s, dim.channel);
-    const base = dim.comp === 'group' ? this.compensated(ctx, s, ci) : this.linear(s, ci);
-    if (dim.transform === null) return base;
+    const comp = dim.comp === 'group' ? this.resolveComp(ctx, s) : null;
+    if (dim.transform === null) return comp ? this.compensated(ctx, s, ci) : this.linear(s, ci);
     const def = ctx.transforms[dim.transform];
     if (!def) throw new Error(`Transform ${dim.transform} not found`);
     const ck = dim.comp === 'group' ? this.compKey(ctx, s) : 'raw';
+    // The untransformed input is only touched on a miss, and an uncompensated one is not cached:
+    // it is cheap to recompute and would otherwise crowd transformed columns out of the cache.
     return this.memo(`tr|${this.sampleKey(s)}|${ci}|${ck}|${fingerprint(def)}`, () =>
-      makeScale(def).applyArray(base),
+      makeScale(def).applyArray(comp ? this.compensated(ctx, s, ci) : this.linearUncached(s, ci)),
+    );
+  }
+
+  /** linear() without adding the result to the cache (it is still reused when already there). */
+  private linearUncached(s: SampleData, ci: number): Float64Array {
+    return (
+      (this.cache.get(`lin|${this.sampleKey(s)}|${ci}`) as Float64Array | undefined) ??
+      linearize(s.columns[ci] as ArrayLike<number>, s.channels[ci]!.scaling)
     );
   }
 
