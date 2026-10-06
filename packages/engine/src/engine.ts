@@ -12,8 +12,9 @@ import {
   type Gate,
   type GateDim,
   ROOT_POPULATION_ID,
+  canonicalJson,
   effectiveGeometry,
-  fingerprint,
+  sha256Hex,
 } from '@flowmeris/model';
 import { histogram, raster2d } from '@flowmeris/render';
 import { type ValueStat, summarize } from '@flowmeris/stats';
@@ -45,8 +46,30 @@ export interface EngineOptions {
 
 type Cached = Float64Array | Uint32Array;
 
+/** Resolved compensation: the spillover matrix (null = none) and its fingerprint. */
+interface ResolvedComp {
+  m: SpilloverMatrix | null;
+  key: string;
+}
+
+const NO_COMP: ResolvedComp = { m: null, key: 'none' };
+
 /** Population cache keys computed within one request (a key hashes its whole lineage). */
 type KeyMemo = Map<string, string>;
+
+/** Small string-keyed memo that is simply cleared once it grows past `max` entries. */
+class BoundedMemo<V> {
+  private map = new Map<string, V>();
+  constructor(private max: number) {}
+  get(key: string, make: () => V): V {
+    const hit = this.map.get(key);
+    if (hit !== undefined) return hit;
+    const v = make();
+    if (this.map.size >= this.max) this.map.clear();
+    this.map.set(key, v);
+    return v;
+  }
+}
 
 /**
  * The analysis engine for the samples a worker owns. All results are derived
@@ -57,10 +80,12 @@ export class Engine {
   private cache: LruCache<Cached>;
   private samples: LruCache<SampleData>;
   private loading = new Map<string, Promise<SampleData>>();
-  /** Spillover parsed from a sample's keywords (keyed by the immutable keyword object). */
-  private keywordSpill = new WeakMap<object, SpilloverMatrix | null>();
-  /** Fingerprints of spillover matrices (keyed by the matrix object). */
-  private spillPrint = new WeakMap<object, string>();
+  /**
+   * Content-keyed memos for the inputs of cache keys (hashing dominates warm requests otherwise).
+   * Keyed by content rather than object identity: each request arrives as a fresh structured clone.
+   */
+  private compMemo = new BoundedMemo<ResolvedComp>(256);
+  private fpMemo = new BoundedMemo<string>(4096);
 
   constructor(
     private storage: StorageAdapter,
@@ -125,40 +150,47 @@ export class Engine {
     );
   }
 
-  /** The spillover matrix the group's compensation setting resolves to for this sample (null = none). */
-  resolveComp(ctx: AnalysisContext, s: SampleData): SpilloverMatrix | null {
-    const c = ctx.group.compensation;
-    if (c.mode === 'none') return null;
-    if (c.mode === 'per-sample-keyword') {
-      if (!this.keywordSpill.has(s.keywords))
-        this.keywordSpill.set(s.keywords, findSpillover(s.keywords)?.matrix ?? null);
-      return this.keywordSpill.get(s.keywords)!;
-    }
-    const m = ctx.compMatrices[c.matrixId];
-    if (!m) throw new Error(`Compensation matrix ${c.matrixId} not found`);
-    return m;
+  /** fingerprint(), memoised on the value's canonical JSON (which is cheap next to SHA-256). */
+  private fp(value: unknown): string {
+    const json = canonicalJson(value);
+    return this.fpMemo.get(json, () => sha256Hex(json).slice(0, 32));
   }
 
-  /** Fingerprint of a spillover matrix's detectors and coefficients (only those fields count). */
-  private spillKey(m: SpilloverMatrix): string {
-    let k = this.spillPrint.get(m);
-    if (k === undefined) {
-      k = fingerprint({ detectors: m.detectors, spill: m.spill });
-      this.spillPrint.set(m, k);
+  /**
+   * The group's compensation resolved for a sample. Memoised by content: a
+   * keyword matrix depends only on the sample's (immutable, content-addressed)
+   * keywords, a workspace matrix only on its detectors and values.
+   */
+  private comp(ctx: AnalysisContext, s: SampleData): ResolvedComp {
+    const c = ctx.group.compensation;
+    if (c.mode === 'none') return NO_COMP;
+    if (c.mode === 'per-sample-keyword') {
+      return this.compMemo.get(`kw|${this.sampleKey(s)}`, () => {
+        const m = findSpillover(s.keywords)?.matrix ?? null;
+        return m ? { m, key: this.fp(m) } : NO_COMP;
+      });
     }
-    return k;
+    const cm = ctx.compMatrices[c.matrixId];
+    if (!cm) throw new Error(`Compensation matrix ${c.matrixId} not found`);
+    return this.compMemo.get(`mx|${JSON.stringify([cm.detectors, cm.spill])}`, () => {
+      const m = { detectors: cm.detectors, spill: cm.spill };
+      return { m, key: this.fp(m) };
+    });
+  }
+
+  /** The spillover matrix the group's compensation setting resolves to for this sample (null = none). */
+  resolveComp(ctx: AnalysisContext, s: SampleData): SpilloverMatrix | null {
+    return this.comp(ctx, s).m;
   }
 
   compKey(ctx: AnalysisContext, s: SampleData): string {
-    const m = this.resolveComp(ctx, s);
-    return m ? this.spillKey(m) : 'none';
+    return this.comp(ctx, s).key;
   }
 
   /** Linear values of a channel after the group's compensation (pass-through for non-matrix channels). */
   compensated(ctx: AnalysisContext, s: SampleData, ci: number): Float64Array {
-    const m = this.resolveComp(ctx, s);
+    const { m, key: ck } = this.comp(ctx, s);
     if (!m) return this.linear(s, ci);
-    const ck = this.spillKey(m);
     return this.memo(`comp|${this.sampleKey(s)}|${ci}|${ck}`, () => {
       const comp = makeCompensator(
         m,
@@ -184,7 +216,7 @@ export class Engine {
     const def = ctx.transforms[dim.transform];
     if (!def) throw new Error(`Transform ${dim.transform} not found`);
     const ck = dim.comp === 'group' ? this.compKey(ctx, s) : 'raw';
-    return this.memo(`tr|${this.sampleKey(s)}|${ci}|${ck}|${fingerprint(def)}`, () =>
+    return this.memo(`tr|${this.sampleKey(s)}|${ci}|${ck}|${this.fp(def)}`, () =>
       makeScale(def).applyArray(base),
     );
   }
@@ -217,7 +249,7 @@ export class Engine {
       if (!gate) throw new Error(`Unknown gate ${pop.gate}`);
       const parentKey = this.popKey(ctx, s, gate.parentPop, memo);
       const geom = effectiveGeometry(ctx.group, gate.id, s.sampleId);
-      key = `bits|${fingerprint({ p: parentKey, g: geom, d: this.dimsKey(ctx, s, gate.dims), k: KERNEL_VERSION })}|${pop.region}`;
+      key = `bits|${this.fp({ p: parentKey, g: geom, d: this.dimsKey(ctx, s, gate.dims), k: KERNEL_VERSION })}|${pop.region}`;
     }
     memo.set(popId, key);
     return key;
@@ -265,16 +297,18 @@ export class Engine {
   }
 
   async counts(ctx: AnalysisContext, sampleId: string, popIds: string[]): Promise<PopulationCount[]> {
-    const s = await this.sample(sampleId);
+    return this.countsOf(ctx, await this.sample(sampleId), popIds, new Map());
+  }
+
+  private countsOf(ctx: AnalysisContext, s: SampleData, popIds: string[], memo: KeyMemo): PopulationCount[] {
     const pops = ctx.group.template.populations;
-    const memo: KeyMemo = new Map();
-    const counted = new Map<string, number>();
+    const n = new Map<string, number>();
     const countOf = (id: string | null | undefined) => {
       if (!id) return Number.NaN;
-      let c = counted.get(id);
+      let c = n.get(id);
       if (c === undefined) {
         c = popcount(this.popBits(ctx, s, id, memo));
-        counted.set(id, c);
+        n.set(id, c);
       }
       return c;
     };
@@ -298,12 +332,13 @@ export class Engine {
 
   async stats(ctx: AnalysisContext, sampleId: string, specs: StatSpec[]): Promise<StatResult[]> {
     const s = await this.sample(sampleId);
+    const memo: KeyMemo = new Map();
     const out: StatResult[] = [];
     // Group value statistics by (population, channel, space) so each column is gathered and sorted once.
     const groups = new Map<string, StatSpec[]>();
     for (const spec of specs) {
       if (['count', 'pctParent', 'pctGrandparent', 'pctTotal'].includes(spec.stat)) {
-        const [c] = await this.counts(ctx, sampleId, [spec.population]);
+        const [c] = this.countsOf(ctx, s, [spec.population], memo);
         const pct = (a: number, b: number) => (b > 0 ? (100 * a) / b : Number.NaN);
         const value =
           spec.stat === 'count'
@@ -323,7 +358,7 @@ export class Engine {
     }
     for (const list of groups.values()) {
       const first = list[0]!;
-      const bits = this.popBits(ctx, s, first.population);
+      const bits = this.popBits(ctx, s, first.population, memo);
       const col = this.column(ctx, s, {
         channel: first.channel!,
         comp: 'group',
