@@ -143,14 +143,6 @@ function putPixel(
   b: number,
   size: number,
 ) {
-  if (size === 1) {
-    const o = (py * w + px) * 4;
-    rgba[o] = r;
-    rgba[o + 1] = g;
-    rgba[o + 2] = b;
-    rgba[o + 3] = 255;
-    return;
-  }
   const half = (size - 1) >> 1;
   for (let dy = -half; dy < size - half; dy++) {
     const yy = py + dy;
@@ -176,29 +168,48 @@ export function raster2d(inp: Raster2DInput): Raster2DOutput {
   const lut = colormapLut(style.colormap);
   let contours: ContourLine[] = [];
 
-  const counts = grid.values;
-  const size = style.pointPx;
-
   // grid row 0 is the lowest y → image row h−1.
+  const counts = grid.values;
+  const px = style.pointPx;
+
   switch (inp.kind) {
     case 'dot':
-      for (let gy = 0, c = 0; gy < h; gy++)
-        for (let gx = 0; gx < w; gx++, c++)
-          if ((counts[c] as number) > 0) putPixel(rgba, w, h, gx, h - 1 - gy, dr, dg, db, size);
+      for (let gy = 0; gy < h; gy++) {
+        const row = gy * w;
+        for (let gx = 0; gx < w; gx++) {
+          if (!((counts[row + gx] as number) > 0)) continue;
+          if (px === 1) {
+            const o = ((h - 1 - gy) * w + gx) * 4;
+            rgba[o] = dr;
+            rgba[o + 1] = dg;
+            rgba[o + 2] = db;
+            rgba[o + 3] = 255;
+          } else putPixel(rgba, w, h, gx, h - 1 - gy, dr, dg, db, px);
+        }
+      }
       break;
     case 'pseudocolor': {
       // M-PLOT-PSEUDO: each occupied pixel coloured by log(1 + local density) / log(1 + max).
-      const dv = (sigma > 0 ? smooth2d(grid, sigma) : grid).values;
+      const dens = sigma > 0 ? smooth2d(grid, sigma).values : counts;
       let max = 0;
-      for (let c = 0; c < dv.length; c++) if ((dv[c] as number) > max) max = dv[c] as number;
+      for (let i = 0; i < dens.length; i++) if ((dens[i] as number) > max) max = dens[i] as number;
       const lmax = Math.log1p(max);
-      for (let gy = 0, c = 0; gy < h; gy++)
-        for (let gx = 0; gx < w; gx++, c++) {
-          if (!((counts[c] as number) > 0)) continue;
-          const t = lmax > 0 ? Math.log1p(dv[c] as number) / lmax : 0;
-          const i = Math.max(0, Math.min(255, Math.round(t * 255))) * 3;
-          putPixel(rgba, w, h, gx, h - 1 - gy, lut[i]!, lut[i + 1]!, lut[i + 2]!, size);
+      for (let gy = 0; gy < h; gy++) {
+        const row = gy * w;
+        for (let gx = 0; gx < w; gx++) {
+          if (!((counts[row + gx] as number) > 0)) continue;
+          const d = dens[row + gx] as number;
+          const t = lmax > 0 ? Math.log1p(d) / lmax : 0;
+          const i = Math.max(0, Math.min(255, Math.round(t * 255)));
+          if (px === 1) {
+            const o = ((h - 1 - gy) * w + gx) * 4;
+            rgba[o] = lut[i * 3]!;
+            rgba[o + 1] = lut[i * 3 + 1]!;
+            rgba[o + 2] = lut[i * 3 + 2]!;
+            rgba[o + 3] = 255;
+          } else putPixel(rgba, w, h, gx, h - 1 - gy, lut[i * 3]!, lut[i * 3 + 1]!, lut[i * 3 + 2]!, px);
         }
+      }
       break;
     }
     case 'density': {
@@ -240,13 +251,13 @@ export function raster2d(inp: Raster2DInput): Raster2DOutput {
       contours = contourLines(dens, levels);
       if (style.showOutliers && levels.length > 0) {
         const lowest = levels[0] as number;
-        for (let gy = 0, c = 0; gy < h; gy++) {
-          const crow = Math.min(dens.ny - 1, Math.floor(gy / cell)) * dens.nx;
-          for (let gx = 0; gx < w; gx++, c++) {
-            if (!((counts[c] as number) > 0)) continue;
+        for (let gy = 0; gy < h; gy++) {
+          const cy = Math.min(dens.ny - 1, Math.floor(gy / cell));
+          for (let gx = 0; gx < w; gx++) {
+            if (!((counts[gy * w + gx] as number) > 0)) continue;
             const cx = Math.min(dens.nx - 1, Math.floor(gx / cell));
-            if ((dens.values[crow + cx] as number) < lowest)
-              putPixel(rgba, w, h, gx, h - 1 - gy, dr, dg, db, size);
+            if ((dens.values[cy * dens.nx + cx] as number) < lowest)
+              putPixel(rgba, w, h, gx, h - 1 - gy, dr, dg, db, px);
           }
         }
       }

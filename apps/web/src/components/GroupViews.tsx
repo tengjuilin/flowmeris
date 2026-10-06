@@ -1,7 +1,7 @@
 import type { HistogramResponse } from '@flowmeris/engine';
 import type { Group, PlotSpec } from '@flowmeris/model';
 import { axisTicks, formatLinear } from '@flowmeris/transforms';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { lineageKey } from '../lib/analysis.ts';
 import { defaultAxis } from '../lib/defaults.ts';
@@ -18,22 +18,43 @@ function truncate(s: string, n: number): string {
   return s.length <= n ? s : `…${s.slice(s.length - n + 1)}`;
 }
 
+// One observer shared by every tile (hundreds of tiles would otherwise each own one).
+const visibility = new Map<Element, (visible: boolean) => void>();
+let observer: IntersectionObserver | null = null;
+
 function useVisible<T extends Element>(): [React.RefObject<T>, boolean] {
   const ref = useRef<T>(null);
   const [vis, setVis] = useState(false);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const io = new IntersectionObserver((es) => setVis(es.some((e) => e.isIntersecting)), {
-      rootMargin: '200px',
-    });
-    io.observe(el);
-    return () => io.disconnect();
+    observer ??= new IntersectionObserver(
+      (es) => {
+        for (const e of es) visibility.get(e.target)?.(e.isIntersecting);
+      },
+      { rootMargin: '200px' },
+    );
+    visibility.set(el, setVis);
+    observer.observe(el);
+    return () => {
+      visibility.delete(el);
+      observer?.unobserve(el);
+    };
   }, []);
   return [ref, vis];
 }
 
-function Tile({
+/** The value, once it has stopped changing for `ms` (e.g. a slider being dragged). */
+function useSettled<T>(value: T, ms: number): T {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setSettled(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return settled;
+}
+
+const Tile = memo(function Tile({
   group,
   sampleId,
   plot,
@@ -41,13 +62,13 @@ function Tile({
   name,
 }: { group: Group; sampleId: string; plot: PlotSpec; size: number; name: string }) {
   const ws = useStore((s) => s.ws);
-  const ui = useStore((s) => s.ui);
+  const current = useStore((s) => s.ui.sampleId === sampleId);
   const setUi = useStore((s) => s.setUi);
   const [ref, visible] = useVisible<HTMLDivElement>();
   const s = ws.samples[sampleId];
   const ov = group.overrides.some((o) => o.sampleId === sampleId);
   return (
-    <div className={`tile${ui.sampleId === sampleId ? ' on' : ''}`} ref={ref}>
+    <div className={`tile${current ? ' on' : ''}`} ref={ref}>
       <button
         type="button"
         className="tile-title"
@@ -72,7 +93,7 @@ function Tile({
       </div>
     </div>
   );
-}
+});
 
 export function TilesView() {
   const group = useGroup();
@@ -82,6 +103,8 @@ export function TilesView() {
   const box = useRef<HTMLDivElement>(null);
   const { width } = useSize(box);
   const [tile, setTile] = useState(220);
+  // Re-lay out and re-render the tiles once the slider settles, not on every step of a drag.
+  const size = useSettled(tile, 150);
   if (!group || !plot)
     return (
       <div className="empty">Open a plot first; tiles show that plot for every sample in the group.</div>
@@ -119,11 +142,11 @@ export function TilesView() {
       <div
         className="tiles"
         style={{
-          gridTemplateColumns: `repeat(${Math.max(1, Math.floor((width - 16) / (tile + 12)))}, ${tile}px)`,
+          gridTemplateColumns: `repeat(${Math.max(1, Math.floor((width - 16) / (size + 12)))}, ${size}px)`,
         }}
       >
         {shown.map((id) => (
-          <Tile key={id} group={group} sampleId={id} plot={plot} size={tile} name={names[id] ?? id} />
+          <Tile key={id} group={group} sampleId={id} plot={plot} size={size} name={names[id] ?? id} />
         ))}
       </div>
     </div>

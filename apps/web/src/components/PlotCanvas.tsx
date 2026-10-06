@@ -20,6 +20,7 @@ import {
   useEffect,
   useId,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -131,11 +132,10 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   },
   ref,
 ) {
-  // Narrow subscriptions: unrelated UI state (ingest progress, toasts, …) must not re-render every plot.
-  const uiTool = useStore((s) => s.ui.tool);
-  const editScope = useStore((s) => s.ui.editScope);
-  const selectedGateId = useStore((s) => s.ui.selectedGateId);
-  const missingSamples = useStore((s) => s.ui.missing);
+  // Narrow subscriptions: a plot (e.g. each of many tiles) re-renders only when what it shows changes.
+  const missingMap = useStore((s) => s.ui.missing);
+  const tool = useStore((s) => (interactive ? s.ui.tool : 'select'));
+  const selectedGateId = useStore((s) => (interactive ? s.ui.selectedGateId : null));
   const setUi = useStore((s) => s.setUi);
   const margin: Margin = compact ? { l: 6, r: 4, t: 4, b: 6 } : { l: 66, r: 14, t: 14, b: 48 };
   const pw = Math.max(10, width - margin.l - margin.r);
@@ -170,8 +170,6 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     regions: Partial<Record<Region, number>>;
   } | null>(null);
   const reqId = useRef(0);
-  const dataQueue = useLatestQueue();
-  const previewQueue = useLatestQueue();
   const clipId = `clip${useId().replace(/:/g, '')}`;
 
   useImperativeHandle(ref, () => ({ svg: svgRef.current, raster, size: { width, height, margin } }), [
@@ -184,59 +182,69 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   const ctx = useMemo(() => contextFor(ws, group), [ws, group]);
   const key = useMemo(() => plotKey(ws, group, sampleId, plot), [ws, group, sampleId, plot]);
   const dpr = compact ? 1 : Math.min(2, window.devicePixelRatio || 1);
-  const missing = !!missingSamples[sampleId];
+  const missing = !!missingMap[sampleId];
   const ovSamples = useMemo(
-    () => (overlay?.samples ?? []).filter((o) => o.sampleId !== sampleId && !missingSamples[o.sampleId]),
-    [overlay, sampleId, missingSamples],
+    () => (overlay?.samples ?? []).filter((o) => o.sampleId !== sampleId && !missingMap[o.sampleId]),
+    [overlay, sampleId, missingMap],
   );
   const ovColor = ovSamples.length ? overlay?.color : undefined;
 
   // --- data -----------------------------------------------------------------
-  useEffect(() => {
+  // Layout effects, so a result already in the pool's cache (e.g. a tile scrolled back into view)
+  // is drawn before the first paint instead of flashing an empty plot.
+  useLayoutEffect(() => {
     if (missing) return;
     const id = ++reqId.current;
+    const ac = new AbortController();
+    const width = Math.round(pw * dpr);
+    const height = Math.round(ph * dpr);
+    const dotColor =
+      ovColor ?? (getComputedStyle(document.documentElement).getPropertyValue('--dot').trim() || '#333333');
+    const dataKey = JSON.stringify(
+      is1d ? ['hist', key] : ['raster', key, width, height, dotColor, !!ovColor],
+    );
+    const opts = { key: dataKey, signal: ac.signal };
+    const hit = pool.cached<HistogramResponse & RasterResponse>(dataKey);
+    if (hit) {
+      setError(null);
+      setLoading(false);
+      if (is1d) setHist(hit);
+      else setRaster(hit);
+      return;
+    }
     setError(null);
     setLoading(true);
-    // Latest only: while one request is computing, newer ones (e.g. every step of a
-    // resize) replace each other instead of queueing up in the worker.
-    dataQueue(async () => {
-      if (id !== reqId.current) return;
+    const run = async () => {
       try {
         if (is1d) {
-          const h = await pool.histogram(ctx, sampleId, plot.population, plot.x, plot.style, key);
+          const h = await pool.histogram(ctx, sampleId, plot.population, plot.x, plot.style, opts);
           if (id === reqId.current) setHist(h);
         } else {
           const r = await pool.raster(
             ctx,
-            {
-              sampleId,
-              plot: ovColor ? overlayDots(plot) : plot,
-              width: Math.round(pw * dpr),
-              height: Math.round(ph * dpr),
-              dotColor:
-                ovColor ??
-                (getComputedStyle(document.documentElement).getPropertyValue('--dot').trim() || '#333333'),
-            },
-            key,
+            { sampleId, plot: ovColor ? overlayDots(plot) : plot, width, height, dotColor },
+            opts,
           );
           if (id === reqId.current) setRaster(r);
         }
       } catch (e) {
-        if (id === reqId.current) setError(e instanceof Error ? e.message : String(e));
+        if (id === reqId.current && !ac.signal.aborted) setError(e instanceof Error ? e.message : String(e));
       } finally {
         if (id === reqId.current) setLoading(false);
       }
-    });
+    };
+    void run();
+    return () => ac.abort();
   }, [key, pw, ph, dpr, missing, ovColor]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const c = canvasRef.current;
     if (!c || !raster || is1d) return;
     c.width = raster.width;
     c.height = raster.height;
     const g = c.getContext('2d');
     if (!g) return;
-    // Results are shared through the pool's cache; ImageData only wraps them and drawing copies.
+    // rgba may be a shared cached result: ImageData only reads it.
     g.putImageData(new ImageData(raster.rgba, raster.width, raster.height), 0, 0);
   }, [raster, is1d]);
 
@@ -257,27 +265,24 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         // smoothing and every normalisation are linear, so one factor maps counts to heights.
         const style = { ...plot.style, histNorm: 'count' as const };
         const [base, sub] = await Promise.all([
-          pool.histogram(ctx, sampleId, plot.population, plot.x, style, bgKey),
-          pool.histogram(ctx, sampleId, bgPop.popId, plot.x, style, bgKey),
+          pool.histogram(ctx, sampleId, plot.population, plot.x, style, { key: `${bgKey}|base` }),
+          pool.histogram(ctx, sampleId, bgPop.popId, plot.x, style, { key: `${bgKey}|sub` }),
         ]);
         if (live) setBgHist({ sub: sub.heights, base: base.heights });
       } else {
-        const r = await pool.raster(
-          ctx,
-          {
-            sampleId,
-            plot: {
-              ...plot,
-              population: bgPop.popId,
-              kind: 'dot',
-              style: { ...plot.style, pointPx: Math.min(4, Math.max(2, plot.style.pointPx)) },
-            },
-            width: Math.round(pw * dpr),
-            height: Math.round(ph * dpr),
-            dotColor: bgPop.color,
+        const req = {
+          sampleId,
+          plot: {
+            ...plot,
+            population: bgPop.popId,
+            kind: 'dot' as const,
+            style: { ...plot.style, pointPx: Math.min(4, Math.max(2, plot.style.pointPx)) },
           },
-          bgKey,
-        );
+          width: Math.round(pw * dpr),
+          height: Math.round(ph * dpr),
+          dotColor: bgPop.color,
+        };
+        const r = await pool.raster(ctx, req, { key: `${bgKey}|raster|${req.width}|${req.height}` });
         if (live) setBgRaster(r);
       }
     };
@@ -317,7 +322,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     const run = async () => {
       if (is1d) {
         const hs = await Promise.all(
-          ovSamples.map((o) => pool.histogram(ctx, o.sampleId, plot.population, plot.x, plot.style, ovKey)),
+          ovSamples.map((o) => pool.histogram(ctx, o.sampleId, plot.population, plot.x, plot.style)),
         );
         if (live) setOvHists(hs.map((h, i) => ({ color: ovSamples[i]!.color, heights: h.heights })));
         return;
@@ -326,11 +331,13 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       const h = Math.round(ph * dpr);
       const rs = await Promise.all(
         ovSamples.map((o) =>
-          pool.raster(
-            ctx,
-            { sampleId: o.sampleId, plot: overlayDots(plot), width: w, height: h, dotColor: o.color },
-            ovKey,
-          ),
+          pool.raster(ctx, {
+            sampleId: o.sampleId,
+            plot: overlayDots(plot),
+            width: w,
+            height: h,
+            dotColor: o.color,
+          }),
         ),
       );
       const c = ovCanvasRef.current;
@@ -376,12 +383,13 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       return;
     }
     let live = true;
+    const ac = new AbortController();
+    const popIds = gatePops.map((p) => p.id);
     pool
-      .counts(
-        ctx,
-        sampleId,
-        gatePops.map((p) => p.id),
-      )
+      .counts(ctx, sampleId, popIds, {
+        key: JSON.stringify(['counts', popIds, countsKey]),
+        signal: ac.signal,
+      })
       .then((cs) => {
         if (!live) return;
         setCounts(Object.fromEntries(cs.map((c) => [c.popId, { count: c.count, parent: c.parentCount }])));
@@ -389,6 +397,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       .catch(() => {});
     return () => {
       live = false;
+      ac.abort();
     };
   }, [countsKey, sampleId, missing]);
 
@@ -429,21 +438,39 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     draft?.gateId === gate.id ? draft.geom : effectiveGeometry(group, gate.id, sampleId);
 
   // --- preview counts while editing -----------------------------------------------
-  // Latest only: a drag outpaces the worker on large samples, so intermediate geometries are
-  // dropped. The epoch discards results that arrive after the drag ended.
+  // At most one preview is in flight; edits made meanwhile collapse into the latest
+  // one, so a slow worker never builds up a queue of stale drag positions.
+  const previewTimer = useRef<number | null>(null);
+  // Bumped when a drag ends, so a preview still in flight cannot reappear afterwards.
   const previewEpoch = useRef(0);
+  const previewBusy = useRef(false);
+  const previewNext = useRef<(() => void) | null>(null);
   const schedulePreview = (gate: Gate, geom: Geometry) => {
+    if (previewTimer.current) cancelAnimationFrame(previewTimer.current);
     const epoch = previewEpoch.current;
-    previewQueue(async () => {
-      if (epoch !== previewEpoch.current) return;
-      const r = await pool.preview(ctx, { sampleId, gate: { ...gate, geometry: geom } });
-      if (epoch === previewEpoch.current)
-        setPreview({ gateId: gate.id, parent: r.parentCount, regions: r.regions });
+    previewTimer.current = requestAnimationFrame(() => {
+      const send = () => {
+        previewBusy.current = true;
+        pool
+          .preview(ctx, { sampleId, gate: { ...gate, geometry: geom } })
+          .then((r) => {
+            if (epoch === previewEpoch.current)
+              setPreview({ gateId: gate.id, parent: r.parentCount, regions: r.regions });
+          })
+          .catch(() => {})
+          .finally(() => {
+            previewBusy.current = false;
+            const next = previewNext.current;
+            previewNext.current = null;
+            next?.();
+          });
+      };
+      if (previewBusy.current) previewNext.current = send;
+      else send();
     });
   };
 
   // --- editing --------------------------------------------------------------------
-  const tool = interactive ? uiTool : 'select';
   const canDraw = interactive && !missing;
 
   // the quadrant / spider gate that a click would place now
@@ -454,26 +481,40 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         : { kind: 'spider', center: hover, arms: edgeArms() }
       : null;
   const hoverKey = hoverGeom && canDraw ? JSON.stringify(hoverGeom) : '';
+  const hoverBusy = useRef(false);
+  const hoverNext = useRef<(() => void) | null>(null);
   useEffect(() => {
     setHoverCounts(null);
     if (!hoverKey || !hoverGeom) return;
     let live = true;
-    previewQueue(async () => {
-      if (!live) return;
-      const r = await pool.preview(ctx, {
-        sampleId,
-        gate: { ...newGateBase(), id: '__hover', geometry: hoverGeom },
-      });
-      if (live) setHoverCounts({ parent: r.parentCount, regions: r.regions });
+    const raf = requestAnimationFrame(() => {
+      const send = () => {
+        hoverBusy.current = true;
+        pool
+          .preview(ctx, { sampleId, gate: { ...newGateBase(), id: '__hover', geometry: hoverGeom } })
+          .then((r) => live && setHoverCounts({ parent: r.parentCount, regions: r.regions }))
+          .catch(() => {})
+          .finally(() => {
+            hoverBusy.current = false;
+            const next = hoverNext.current;
+            hoverNext.current = null;
+            next?.();
+          });
+      };
+      // Coalesce like schedulePreview: only the newest cursor position waits for the worker.
+      if (hoverBusy.current) hoverNext.current = send;
+      else send();
     });
     return () => {
       live = false;
+      cancelAnimationFrame(raf);
+      hoverNext.current = null;
     };
     // hoverKey captures hoverGeom; ctx/sample changes restart the preview
   }, [hoverKey, ctx, sampleId]);
 
   const commit = (gateId: string, geom: Geometry) => {
-    setGateGeometry(group.id, gateId, geom, editScope, sampleId);
+    setGateGeometry(group.id, gateId, geom, useStore.getState().ui.editScope, sampleId);
   };
 
   const newGateBase = (): Omit<Gate, 'id' | 'geometry'> => ({
@@ -616,9 +657,11 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     } else if (draft && draft.gateId === drag.gateId) {
       commit(draft.gateId, draft.geom);
     }
-    previewEpoch.current++;
     setDrag(null);
     setDraft(null);
+    previewEpoch.current++;
+    if (previewTimer.current) cancelAnimationFrame(previewTimer.current);
+    previewNext.current = null;
     setPreview(null);
   };
 
@@ -1323,32 +1366,6 @@ function formatHistTick(v: number, norm: string): string {
   if (norm === 'mode') return `${Math.round(v * 100)}`;
   if (norm === 'area') return v.toPrecision(2);
   return v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(Math.round(v));
-}
-
-/**
- * Runs async tasks one at a time, keeping only the newest task submitted while
- * one is running (older waiting tasks are dropped). Errors are swallowed; tasks
- * report their own.
- */
-function useLatestQueue(): (task: () => Promise<void>) => void {
-  const state = useRef<{ running: boolean; next: (() => Promise<void>) | null }>({
-    running: false,
-    next: null,
-  });
-  return useCallback((task: () => Promise<void>) => {
-    const st = state.current;
-    st.next = task;
-    if (st.running) return;
-    st.running = true;
-    void (async () => {
-      while (st.next) {
-        const t = st.next;
-        st.next = null;
-        await t().catch(() => {});
-      }
-      st.running = false;
-    })();
-  }, []);
 }
 
 /** A plot drawn as dots of at least 2 px, for overlays where every sample needs its own flat colour. */

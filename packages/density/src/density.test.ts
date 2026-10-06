@@ -43,6 +43,74 @@ describe('smoothing', () => {
     const s = smooth2d(g, 3);
     expect(s.values.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 10);
   });
+  it('is bit-identical to a direct separable convolution sum', () => {
+    const rng = new Rng(7);
+    const nx = 37;
+    const ny = 23;
+    const values = new Float64Array(nx * ny);
+    // sparse clusters plus empty rows and columns, like a binned scatter plot
+    for (let i = 0; i < 300; i++) {
+      const x = Math.min(nx - 1, Math.floor(nx * (0.3 + 0.15 * rng.normal())));
+      const y = Math.min(ny - 1, Math.floor(ny * (0.5 + 0.1 * rng.normal())));
+      if (x >= 0 && y >= 0) values[y * nx + x] = (values[y * nx + x] as number) + 1;
+    }
+    values[0] = 3;
+    values[nx * ny - 1] = 2;
+    for (const sigma of [0.7, 1.5, 4]) {
+      const k = gaussianKernel(sigma);
+      const r = (k.length - 1) / 2;
+      const conv = (get: (i: number) => number, n: number, i: number) => {
+        let s = 0;
+        for (let j = -r; j <= r; j++) if (i + j >= 0 && i + j < n) s += get(i + j) * (k[j + r] as number);
+        return s;
+      };
+      const tmp = new Float64Array(nx * ny);
+      for (let y = 0; y < ny; y++)
+        for (let x = 0; x < nx; x++) tmp[y * nx + x] = conv((t) => values[y * nx + t]!, nx, x);
+      const ref = new Float64Array(nx * ny);
+      for (let y = 0; y < ny; y++)
+        for (let x = 0; x < nx; x++) ref[y * nx + x] = conv((t) => tmp[t * nx + x]!, ny, y);
+      const got = smooth2d({ nx, ny, values, x: [0, 1], y: [0, 1] }, sigma).values;
+      expect(Array.from(got)).toEqual(Array.from(ref));
+    }
+  });
+
+  it('is bit-identical to the direct per-cell convolution', () => {
+    // Reference: each output sums its in-range taps in ascending order (the definition).
+    const direct = (v: Float64Array, nx: number, ny: number, sigma: number) => {
+      const k = gaussianKernel(sigma);
+      const r = (k.length - 1) / 2;
+      const tmp = new Float64Array(nx * ny);
+      const out = new Float64Array(nx * ny);
+      for (let y = 0; y < ny; y++)
+        for (let x = 0; x < nx; x++) {
+          let s = 0;
+          for (let j = -r; j <= r; j++) if (x + j >= 0 && x + j < nx) s += v[y * nx + x + j]! * k[j + r]!;
+          tmp[y * nx + x] = s;
+        }
+      for (let x = 0; x < nx; x++)
+        for (let y = 0; y < ny; y++) {
+          let s = 0;
+          for (let j = -r; j <= r; j++) if (y + j >= 0 && y + j < ny) s += tmp[(y + j) * nx + x]! * k[j + r]!;
+          out[y * nx + x] = s;
+        }
+      return out;
+    };
+    const rng = new Rng(3);
+    for (const [nx, ny, sigma] of [
+      [37, 23, 1.5],
+      [5, 9, 3],
+      [64, 64, 0.4],
+      [3, 2, 6],
+    ] as const) {
+      const values = new Float64Array(nx * ny);
+      // Sparse counts with empty rows, as in a binned plot.
+      for (let i = 0; i < values.length; i++) if (rng.next() < 0.3) values[i] = Math.floor(rng.next() * 50);
+      for (let x = 0; x < nx; x++) values[x] = 0;
+      const got = smooth2d({ nx, ny, values, x: [0, 1], y: [0, 1] }, sigma).values;
+      expect(Array.from(got)).toEqual(Array.from(direct(values, nx, ny, sigma)));
+    }
+  });
 });
 
 describe('M-PLOT-CONTOUR-EQP: equal-probability levels', () => {

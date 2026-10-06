@@ -6,6 +6,7 @@ import {
   type Gate,
   type Group,
   type Population,
+  type StatSpec,
   type Transform,
   newGroup,
   transformId,
@@ -164,6 +165,33 @@ describe('engine on data1.fcs vs Gating-ML truth', () => {
     ]);
     expect(mean!.n).toBe(child!.count);
     expect(pct!.value).toBeCloseTo((100 * child!.count) / parent, 12);
+  });
+
+  it('table() matches counts() + stats(); cached statistics follow gate edits', async () => {
+    const specs: StatSpec[] = [
+      { id: 'a', population: 'p_rect1', stat: 'median', channel: 'FSC-H', space: 'linear' },
+      { id: 'b', population: 'p_rect1', stat: 'mean', channel: 'FSC-H', space: 'linear' },
+      { id: 'c', population: 'p_q2', stat: 'rcv', channel: 'FL2-H', space: 'transformed', transform: tid },
+    ];
+    const pops = ['root', 'p_rect1', 'p_q2'];
+    const t = await engine.table(ctx, s.sampleId, pops, specs);
+    expect(t.counts).toEqual(await engine.counts(ctx, s.sampleId, pops));
+    // A fresh engine computes everything from scratch: cached results must be identical.
+    const fresh = new Engine(storage);
+    expect(t.stats).toEqual(await fresh.stats(ctx, s.sampleId, specs));
+    expect(await engine.stats(ctx, s.sampleId, specs)).toEqual(t.stats);
+
+    const gate = group.template.gates.g_rect1!;
+    const old = gate.geometry;
+    gate.geometry = { kind: 'rect', min: [20, 70], max: [60, 200] };
+    try {
+      const edited = await engine.stats(ctx, s.sampleId, specs);
+      expect(edited).toEqual(await new Engine(storage).stats(ctx, s.sampleId, specs));
+      expect(edited[0]!.n).toBeLessThan(t.stats[0]!.n);
+      expect(edited[2]).toEqual(t.stats[2]); // other lineage untouched
+    } finally {
+      gate.geometry = old;
+    }
   });
 });
 

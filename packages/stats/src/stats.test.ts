@@ -1,5 +1,6 @@
 import { linearize, parseFcs } from '@flowmeris/fcs';
 import { TOL, isClose, readFixture, readGolden } from '@flowmeris/testkit';
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { frequencies, medianSorted, percentileSorted, summarize } from './index.ts';
 
@@ -88,6 +89,76 @@ describe('M-STAT definitions', () => {
     expect(m).toEqual({ value: 1, n: 3, nExcluded: 1 });
     expect(g!.value).toBeCloseTo(2, 14);
     expect(g!.nExcluded).toBe(2);
+  });
+  it('order statistics by selection equal those of a full sort', () => {
+    const reqs = [
+      { stat: 'median' as const },
+      { stat: 'min' as const },
+      { stat: 'max' as const },
+      { stat: 'rsd' as const },
+      { stat: 'rcv' as const },
+      { stat: 'percentile' as const, p: 0 },
+      { stat: 'percentile' as const, p: 2.5 },
+      { stat: 'percentile' as const, p: 99.9 },
+      { stat: 'percentile' as const, p: 100 },
+    ];
+    fc.assert(
+      fc.property(
+        fc.array(fc.oneof(fc.double({ noNaN: true, min: -1e6, max: 1e6 }), fc.integer({ min: -3, max: 3 })), {
+          maxLength: 300,
+        }),
+        (xs) => {
+          const sorted = Float64Array.from(xs).sort();
+          const want = (stat: string, p?: number): number => {
+            const n = sorted.length;
+            if (n === 0) return Number.NaN;
+            const rsd = (percentileSorted(sorted, 84.13) - percentileSorted(sorted, 15.87)) / 2;
+            if (stat === 'median') return medianSorted(sorted);
+            if (stat === 'min') return sorted[0]!;
+            if (stat === 'max') return sorted[n - 1]!;
+            if (stat === 'rsd') return rsd;
+            if (stat === 'rcv') return (100 * rsd) / medianSorted(sorted);
+            return percentileSorted(sorted, p!);
+          };
+          const got = summarize(xs, reqs);
+          reqs.forEach((r, i) => expect(got[i]!.value + 0).toBe(want(r.stat, r.p) + 0));
+          // Many ranks: the full-sort path.
+          const ps = Array.from({ length: 40 }, (_, k) => k * 2.5);
+          const many = summarize(
+            Float64Array.from(xs),
+            ps.map((p) => ({ stat: 'percentile' as const, p })),
+            true,
+          );
+          ps.forEach((p, i) => expect(many[i]!.value + 0).toBe(want('percentile', p) + 0));
+        },
+      ),
+    );
+  });
+  it('selection matches a full sort on large inputs (random, ties, presorted)', () => {
+    let seed = 7;
+    const rand = () => {
+      seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+      return seed / 2 ** 32;
+    };
+    const inputs = [
+      Float64Array.from({ length: 200_001 }, () => rand() * 1e4 - 5e3),
+      Float64Array.from({ length: 200_000 }, (_, i) => (i * 7919) % 13),
+      Float64Array.from({ length: 100_000 }, (_, i) => i),
+      Float64Array.from({ length: 100_000 }, (_, i) => -i),
+    ];
+    const ps = [0, 0.1, 15.87, 50, 84.13, 99.9, 100];
+    for (const xs of inputs) {
+      const sorted = Float64Array.from(xs).sort();
+      const got = summarize(xs, [
+        { stat: 'median' },
+        { stat: 'rcv' },
+        ...ps.map((p) => ({ stat: 'percentile' as const, p })),
+      ]);
+      expect(got[0]!.value).toBe(medianSorted(sorted));
+      const rsd = (percentileSorted(sorted, 84.13) - percentileSorted(sorted, 15.87)) / 2;
+      expect(got[1]!.value).toBe((100 * rsd) / medianSorted(sorted));
+      ps.forEach((p, i) => expect(got[i + 2]!.value).toBe(percentileSorted(sorted, p)));
+    }
   });
   it('frequencies', () => {
     expect(frequencies(25, 50, 100, 200)).toEqual({
