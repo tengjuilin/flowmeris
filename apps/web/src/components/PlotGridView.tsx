@@ -157,48 +157,54 @@ export function PlotGridView() {
 
   return (
     <div className="grid-view">
-      <div className="toolbar" role="toolbar" aria-label="Gating tools">
-        <ToolButtons is1d={active?.kind === 'histogram'} />
-        <EditScopeToggle />
-        <div className="spacer" />
-        <label className="field">
-          Columns
-          <select
-            value={columns}
-            onChange={(e) =>
-              editGrid(group.id, 'Change grid columns', (g) => void (g.grid.columns = Number(e.target.value)))
+      <div className="grid-head">
+        <div className="toolbar" role="toolbar" aria-label="Gating tools">
+          <ToolButtons is1d={active?.kind === 'histogram'} />
+          <EditScopeToggle />
+          <div className="spacer" />
+          <label className="field">
+            Columns
+            <select
+              value={columns}
+              onChange={(e) =>
+                editGrid(
+                  group.id,
+                  'Change grid columns',
+                  (g) => void (g.grid.columns = Number(e.target.value)),
+                )
+              }
+            >
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {active ? (
+          <CellControls
+            group={group}
+            cell={active}
+            sampleId={activeSample}
+            sampleName={sampleName}
+            onExport={(fmt) =>
+              handle.current &&
+              void exportPlot(
+                handle.current,
+                plotOf(active),
+                fmt,
+                ws.samples[activeSample ?? '']?.fileName ?? 'plot',
+              )
             }
-          >
-            {[1, 2, 3, 4, 5, 6].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </label>
+          />
+        ) : (
+          <p className="muted small grid-hint">
+            Add a plot to an empty cell, then click a plot to select it: gate on it with the tools above and
+            change its population, sample, overlays, type and axes here.
+          </p>
+        )}
       </div>
-      {active ? (
-        <CellControls
-          group={group}
-          cell={active}
-          sampleId={activeSample}
-          sampleName={sampleName}
-          onExport={(fmt) =>
-            handle.current &&
-            void exportPlot(
-              handle.current,
-              plotOf(active),
-              fmt,
-              ws.samples[activeSample ?? '']?.fileName ?? 'plot',
-            )
-          }
-        />
-      ) : (
-        <p className="muted small grid-hint">
-          Add a plot to an empty cell, then click a plot to select it: gate on it with the tools above and
-          change its population, sample, overlays, type and axes here.
-        </p>
-      )}
       <div
         className="plot-grid"
         ref={box}
@@ -369,11 +375,10 @@ function CellControls({
       </div>
       <button
         type="button"
-        className="icon"
         title="Remove this plot from the grid"
         onClick={() => removeCell(group.id, cell.id)}
       >
-        ✕
+        Remove
       </button>
     </div>
   );

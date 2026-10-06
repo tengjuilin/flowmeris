@@ -1,6 +1,15 @@
 import type { Group, PlotKind, PlotSpec, Workspace } from '@flowmeris/model';
 import { useRef } from 'react';
-import { defaultAxis, groupSample, newPlot } from '../lib/defaults.ts';
+import {
+  SCALE_KINDS,
+  type ScaleKind,
+  defaultAxis,
+  groupSample,
+  newPlot,
+  registerTransform,
+  scaleKindOf,
+  transformOfKind,
+} from '../lib/defaults.ts';
 import { exportPlot } from '../lib/exportPlot.ts';
 import { type Tool, useGroup, useStore } from '../state/store.ts';
 import { PlotCanvas, type PlotHandle } from './PlotCanvas.tsx';
@@ -145,6 +154,34 @@ export function AxisSelects({ group, plot, edit }: { group: Group; plot: PlotSpe
     ed('Change axis channel', (p, g, w) => {
       p[axis] = { ...defaultAxis(w, g, ch) };
     });
+  const setScale = (axis: 'x' | 'y', k: ScaleKind) =>
+    ed('Change axis scale', (p, g, w) => {
+      const a = p[axis];
+      if (!a) return;
+      const cur = w.transforms[a.transform];
+      const top = cur && 'T' in cur ? cur.T : 262144;
+      a.transform = registerTransform(w, transformOfKind(k, top));
+      a.range = [0, 1];
+      g.axisDefaults[a.channel] = { ...a };
+    });
+  const scaleSelect = (axis: 'x' | 'y') => {
+    const def = ws.transforms[plot[axis]?.transform ?? ''];
+    if (!def) return null;
+    return (
+      <select
+        title={`${axis.toUpperCase()} axis scale`}
+        aria-label={`${axis.toUpperCase()} axis scale`}
+        value={scaleKindOf(def)}
+        onChange={(e) => setScale(axis, e.target.value as ScaleKind)}
+      >
+        {SCALE_KINDS.map((k) => (
+          <option key={k.id} value={k.id}>
+            {k.label}
+          </option>
+        ))}
+      </select>
+    );
+  };
   const is1d = plot.kind === 'histogram';
   const options = group.channels.map((c) => (
     <option key={c} value={c}>
@@ -158,6 +195,7 @@ export function AxisSelects({ group, plot, edit }: { group: Group; plot: PlotSpe
         <select value={plot.x.channel} onChange={(e) => setChannel('x', e.target.value)}>
           {options}
         </select>
+        {scaleSelect('x')}
       </label>
       {!is1d && plot.y && (
         <label className="field">
@@ -165,6 +203,7 @@ export function AxisSelects({ group, plot, edit }: { group: Group; plot: PlotSpe
           <select value={plot.y.channel} onChange={(e) => setChannel('y', e.target.value)}>
             {options}
           </select>
+          {scaleSelect('y')}
         </label>
       )}
       {!is1d && plot.y && (

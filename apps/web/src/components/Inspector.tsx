@@ -13,7 +13,13 @@ import { asinhCofactor, asinhDefFromCofactor, makeScale, suggestLogicleW } from 
 import { useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { deleteGate, promoteOverride, revertOverride, setGateGeometry } from '../lib/analysis.ts';
-import { registerTransform } from '../lib/defaults.ts';
+import {
+  SCALE_KINDS,
+  type ScaleKind,
+  registerTransform,
+  scaleKindOf,
+  transformOfKind,
+} from '../lib/defaults.ts';
 import { contextFor, toast, useGroup, useStore } from '../state/store.ts';
 import { usePlotForPopulation } from './PlotPanel.tsx';
 
@@ -46,18 +52,6 @@ export function NumInput({
   );
 }
 
-type Kind = 'linear' | 'log' | 'logicle' | 'arcsinh';
-
-function kindOf(t: Transform): Kind {
-  return t.kind === 'flin'
-    ? 'linear'
-    : t.kind === 'flog'
-      ? 'log'
-      : t.kind === 'fasinh'
-        ? 'arcsinh'
-        : 'logicle';
-}
-
 function AxisEditor({ which, plot }: { which: 'x' | 'y'; plot: PlotSpec }) {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
@@ -85,12 +79,7 @@ function AxisEditor({ which, plot }: { which: 'x' | 'y'; plot: PlotSpec }) {
       g.axisDefaults[a.channel] = { ...a };
     });
   };
-  const setKind = (k: Kind) => {
-    if (k === 'linear') setDef({ kind: 'flin', T: top, A: 0 });
-    else if (k === 'log') setDef({ kind: 'flog', T: top, M: Math.max(1, Math.round(Math.log10(top))) });
-    else if (k === 'logicle') setDef({ kind: 'logicle', T: top, W: 0.5, M: 4.5, A: 0 });
-    else setDef(asinhDefFromCofactor(150, top));
-  };
+  const setKind = (k: ScaleKind) => setDef(transformOfKind(k, top));
   const scale = makeScale(def);
   const setRange = (i: 0 | 1, dataValue: number) => {
     const v = scale.apply(dataValue);
@@ -113,11 +102,12 @@ function AxisEditor({ which, plot }: { which: 'x' | 'y'; plot: PlotSpec }) {
       </legend>
       <label className="field">
         Scale
-        <select value={kindOf(def)} onChange={(e) => setKind(e.target.value as Kind)}>
-          <option value="linear">Linear</option>
-          <option value="log">Log10</option>
-          <option value="logicle">Logicle (biexponential)</option>
-          <option value="arcsinh">Arcsinh</option>
+        <select value={scaleKindOf(def)} onChange={(e) => setKind(e.target.value as ScaleKind)}>
+          {SCALE_KINDS.map((k) => (
+            <option key={k.id} value={k.id}>
+              {k.label}
+            </option>
+          ))}
         </select>
       </label>
       <div className="grid2">

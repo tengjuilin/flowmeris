@@ -1,11 +1,5 @@
 import type { HistogramResponse, RasterResponse } from '@flowmeris/engine';
-import {
-  ellipseAxes,
-  ellipseFromAxes,
-  spiderFromQuadrant,
-  spiderRegion,
-  validateSpider,
-} from '@flowmeris/gating';
+import { ellipseAxes, ellipseFromAxes, spiderRegion, validateSpider } from '@flowmeris/gating';
 import {
   type AxisSpec,
   type Gate,
@@ -43,6 +37,14 @@ import {
   scaleFor,
 } from '../lib/geometry.ts';
 import { contextFor, useStore } from '../state/store.ts';
+
+/** Where each quadrant / spider region's percentage label sits in a pw × ph plot. */
+const QUAD_CORNERS: Partial<Record<Region, (pw: number, ph: number) => [number, number, 'start' | 'end']>> = {
+  Q1: () => [6, 14, 'start'],
+  Q2: (pw) => [pw - 6, 14, 'end'],
+  Q3: (pw, ph) => [pw - 6, ph - 8, 'end'],
+  Q4: (_pw, ph) => [6, ph - 8, 'start'],
+};
 
 export interface PlotHandle {
   svg: SVGSVGElement | null;
@@ -156,6 +158,10 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   const [counts, setCounts] = useState<Record<string, { count: number; parent: number }>>({});
   const [preview, setPreview] = useState<{
     gateId: string;
+    parent: number;
+    regions: Partial<Record<Region, number>>;
+  } | null>(null);
+  const [hoverCounts, setHoverCounts] = useState<{
     parent: number;
     regions: Partial<Record<Region, number>>;
   } | null>(null);
@@ -387,6 +393,23 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     return [e.clientX - r.left - margin.l, e.clientY - r.top - margin.t];
   };
 
+  /** Clamp a data point to the plotted range (spider arm handles stay inside the plot). */
+  const clampPt = (p: readonly [number, number]): [number, number] => [
+    Math.min(Math.max(p[0], Math.min(xr[0], xr[1])), Math.max(xr[0], xr[1])),
+    Math.min(Math.max(p[1], Math.min(yr[0], yr[1])), Math.max(yr[0], yr[1])),
+  ];
+  /** Spider arms at the midpoints of the plot's top, right, bottom and left edges. */
+  const edgeArms = (): [[number, number], [number, number], [number, number], [number, number]] => {
+    const mx = (xr[0] + xr[1]) / 2;
+    const my = (yr[0] + yr[1]) / 2;
+    return [
+      [mx, yr[1]],
+      [xr[1], my],
+      [mx, yr[0]],
+      [xr[0], my],
+    ];
+  };
+
   const maps = useCallback(
     (gate: Gate): DimMap[] => gate.dims.map((d, i) => dimMap(ws, d, i === 0 ? plot.x : (plot.y as AxisSpec))),
     [ws, plot],
@@ -409,6 +432,31 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   // --- editing --------------------------------------------------------------------
   const tool = interactive ? ui.tool : 'select';
   const canDraw = interactive && !missing;
+
+  // the quadrant / spider gate that a click would place now
+  const hoverGeom: Extract<Geometry, { kind: 'quadrant' | 'spider' }> | null =
+    hover && !is1d && !drag && (tool === 'quadrant' || tool === 'spider')
+      ? tool === 'quadrant'
+        ? { kind: 'quadrant', center: hover }
+        : { kind: 'spider', center: hover, arms: edgeArms() }
+      : null;
+  const hoverKey = hoverGeom && canDraw ? JSON.stringify(hoverGeom) : '';
+  useEffect(() => {
+    setHoverCounts(null);
+    if (!hoverKey || !hoverGeom) return;
+    let live = true;
+    const raf = requestAnimationFrame(() => {
+      pool
+        .preview(ctx, { sampleId, gate: { ...newGateBase(), id: '__hover', geometry: hoverGeom } })
+        .then((r) => live && setHoverCounts({ parent: r.parentCount, regions: r.regions }))
+        .catch(() => {});
+    });
+    return () => {
+      live = false;
+      cancelAnimationFrame(raf);
+    };
+    // hoverKey captures hoverGeom; ctx/sample changes restart the preview
+  }, [hoverKey, ctx, sampleId]);
 
   const commit = (gateId: string, geom: Geometry) => {
     setGateGeometry(group.id, gateId, geom, ui.editScope, sampleId);
@@ -485,8 +533,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         return;
       case 'spider':
         if (!is1d) {
-          const len = Math.min(xr[1] - xr[0], yr[1] - yr[0]) * 0.15;
-          finishCreate({ kind: 'spider', center: p, arms: spiderFromQuadrant(p, len) });
+          finishCreate({ kind: 'spider', center: p, arms: edgeArms() });
         }
         return;
       default: {
@@ -513,6 +560,9 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     if (drag.kind === 'move')
       next = translate(drag.base, p[0] - drag.start[0], is1d ? 0 : p[1] - drag.start[1]);
     else next = applyHandle(drag.base, drag.handle, p);
+    // spider points never leave the plot, even when moving the whole gate or one drawn before this rule
+    if (next?.kind === 'spider')
+      next = { ...next, center: clampPt(next.center), arms: next.arms.map(clampPt) as typeof next.arms };
     if (next) {
       setDraft({ gateId: drag.gateId, geom: next });
       schedulePreview(gate, next);
@@ -643,9 +693,10 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       case 'quadrant':
         return { ...base, center: p };
       case 'spider': {
-        if (handle === 'c') return translate(base, p[0] - base.center[0], p[1] - base.center[1]);
+        // arms stay where they are (inside the plot) while the centre moves
+        if (handle === 'c') return { ...base, center: clampPt(p) };
         const i = Number(handle.slice(3));
-        const arms = base.arms.map((q, k) => (k === i ? p : q)) as typeof base.arms;
+        const arms = base.arms.map((q, k) => (k === i ? clampPt(p) : q)) as typeof base.arms;
         return validateSpider(base.center, arms) === null ? { ...base, arms } : null;
       }
     }
@@ -871,14 +922,8 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         geom.arms.forEach((a, i) =>
           handles.push({ id: `arm${i}`, x: X(m[0]!.f(a[0])), y: Y(m[1]!.f(a[1])) }),
         );
-      const corner: Record<string, [number, number, 'start' | 'end']> = {
-        Q1: [6, 14, 'start'],
-        Q2: [pw - 6, 14, 'end'],
-        Q3: [pw - 6, ph - 8, 'end'],
-        Q4: [6, ph - 8, 'start'],
-      };
       for (const p of pops) {
-        const c = corner[p.region];
+        const c = QUAD_CORNERS[p.region]?.(pw, ph);
         if (c)
           labels.push({
             text: `${fmtPct(p.id, p.region, gate.id)}%`,
@@ -1037,6 +1082,48 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     </g>
   ) : null;
 
+  // quadrant / spider: preview the gate and its region percentages under the cursor before it is placed
+  let hoverDraft: JSX.Element | null = null;
+  if (hoverGeom) {
+    const cx = X(hoverGeom.center[0]);
+    const cy = Y(hoverGeom.center[1]);
+    const far = 4 * (pw + ph);
+    const ends: [number, number][] =
+      hoverGeom.kind === 'quadrant'
+        ? [
+            [cx, -far],
+            [cx + far, cy],
+            [cx, far],
+            [cx - far, cy],
+          ]
+        : hoverGeom.arms.map((a) => {
+            const dx = X(a[0]) - cx;
+            const dy = Y(a[1]) - cy;
+            const n = Math.hypot(dx, dy) || 1;
+            return [cx + (dx / n) * far, cy + (dy / n) * far];
+          });
+    const pct = (r: Region) =>
+      hoverCounts && hoverCounts.parent > 0
+        ? `${((100 * (hoverCounts.regions[r] ?? 0)) / hoverCounts.parent).toFixed(2)}%`
+        : '…';
+    hoverDraft = (
+      <g className="hover-draft" pointerEvents="none">
+        {ends.map(([ex, ey], i) => (
+          <line key={i} x1={cx} y1={cy} x2={ex} y2={ey} className="draft" />
+        ))}
+        <circle cx={cx} cy={cy} r={3} className="draft-vertex" />
+        {(Object.keys(QUAD_CORNERS) as Region[]).map((r) => {
+          const [x, y, anchor] = QUAD_CORNERS[r]!(pw, ph);
+          return (
+            <text key={r} x={x} y={y} textAnchor={anchor} className="gate-label draft-label">
+              {pct(r)}
+            </text>
+          );
+        })}
+      </g>
+    );
+  }
+
   const nonIdentityWarning =
     interactive && gates.some((g) => !maps(g).every((m) => m.identity))
       ? 'Some gates were drawn on a different axis scale; they are shown mapped onto this scale and can be edited after switching the axis back.'
@@ -1114,6 +1201,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
             {gateEls}
             {creating}
             {polyDraft}
+            {hoverDraft}
           </g>
           {!compact && (
             <>

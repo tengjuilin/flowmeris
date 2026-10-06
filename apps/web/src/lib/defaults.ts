@@ -11,6 +11,7 @@ import {
   transformId,
 } from '@flowmeris/model';
 import { CATEGORICAL } from '@flowmeris/render';
+import { asinhDefFromCofactor } from '@flowmeris/transforms';
 
 export const DEFAULT_STYLE: PlotStyle = {
   colormap: 'viridis',
@@ -40,6 +41,33 @@ export function groupSample(ws: Workspace, g: Group): Sample | undefined {
  * linear over [0, $PnR]; fluorescence channels logicle with T = $PnR (min
  * 1024), W = 0.5, M = 4.5, A = 0. All map to display range [0, 1].
  */
+export type ScaleKind = 'linear' | 'log' | 'logicle' | 'arcsinh';
+
+export const SCALE_KINDS: { id: ScaleKind; label: string }[] = [
+  { id: 'linear', label: 'Linear' },
+  { id: 'log', label: 'Log10' },
+  { id: 'logicle', label: 'Logicle (biexponential)' },
+  { id: 'arcsinh', label: 'Arcsinh' },
+];
+
+export function scaleKindOf(t: Transform): ScaleKind {
+  return t.kind === 'flin'
+    ? 'linear'
+    : t.kind === 'flog'
+      ? 'log'
+      : t.kind === 'fasinh'
+        ? 'arcsinh'
+        : 'logicle';
+}
+
+/** Default transform of scale kind `k` with top of scale `top`. */
+export function transformOfKind(k: ScaleKind, top: number): Transform {
+  if (k === 'linear') return { kind: 'flin', T: top, A: 0 };
+  if (k === 'log') return { kind: 'flog', T: top, M: Math.max(1, Math.round(Math.log10(top))) };
+  if (k === 'logicle') return { kind: 'logicle', T: top, W: 0.5, M: 4.5, A: 0 };
+  return asinhDefFromCofactor(150, top);
+}
+
 export function defaultAxis(ws: Workspace, g: Group, channel: string): AxisSpec {
   const existing = g.axisDefaults[channel];
   if (existing && ws.transforms[existing.transform]) return existing;
