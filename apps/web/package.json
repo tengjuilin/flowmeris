@@ -1,0 +1,37 @@
+{
+  "name": "@flowmeris/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3",
+    "@types/react-dom": "^18.3",
+    "@vitejs/plugin-react": "^4.3",
+    "vite": "^5.4"
+  },
+  "dependencies": {
+    "@flowmeris/compensation": "workspace:^",
+    "@flowmeris/density": "workspace:^",
+    "@flowmeris/engine": "workspace:^",
+    "@flowmeris/export": "workspace:^",
+    "@flowmeris/fcs": "workspace:^",
+    "@flowmeris/gating": "workspace:^",
+    "@flowmeris/gatingml": "workspace:^",
+    "@flowmeris/model": "workspace:^",
+    "@flowmeris/render": "workspace:^",
+    "@flowmeris/stats": "workspace:^",
+    "@flowmeris/storage": "workspace:^",
+    "@flowmeris/transforms": "workspace:^",
+    "comlink": "^4.4",
+    "idb": "^8",
+    "immer": "^10.1",
+    "react": "^18.3",
+    "react-dom": "^18.3",
+    "zustand": "^4.5"
+  }
+}

@@ -316,14 +316,22 @@ function adler32(bytes: Uint8Array): number {
   return ((b << 16) | a) >>> 0;
 }
 
-/** Encode RGBA as PNG (stored/uncompressed deflate blocks) with a pHYs chunk for `dpi`. */
-export function encodePng(rgba: Uint8ClampedArray, width: number, height: number, dpi = 300): Uint8Array {
+/** PNG scanlines (filter type 0) for RGBA pixels. */
+export function pngScanlines(
+  rgba: Uint8ClampedArray | Uint8Array,
+  width: number,
+  height: number,
+): Uint8Array {
   const raw = new Uint8Array((width * 4 + 1) * height);
   for (let y = 0; y < height; y++) {
     raw[y * (width * 4 + 1)] = 0;
     raw.set(rgba.subarray(y * width * 4, (y + 1) * width * 4), y * (width * 4 + 1) + 1);
   }
-  // zlib stream with stored blocks (≤ 65535 bytes each)
+  return raw;
+}
+
+/** zlib stream made of stored (uncompressed) deflate blocks. */
+export function zlibStored(raw: Uint8Array): Uint8Array {
   const blocks = Math.ceil(raw.length / 65535) || 1;
   const z = new Uint8Array(2 + raw.length + blocks * 5 + 4);
   z[0] = 0x78;
@@ -345,7 +353,11 @@ export function encodePng(rgba: Uint8ClampedArray, width: number, height: number
   z[p++] = (ad >>> 16) & 0xff;
   z[p++] = (ad >>> 8) & 0xff;
   z[p++] = ad & 0xff;
+  return z.subarray(0, p);
+}
 
+/** Assemble a PNG from a zlib-compressed scanline stream, with a pHYs chunk for `dpi`. */
+export function assemblePng(zlib: Uint8Array, width: number, height: number, dpi = 300): Uint8Array {
   const chunks: [string, Uint8Array][] = [];
   const ihdr = new Uint8Array(13);
   const dv = new DataView(ihdr.buffer);
@@ -358,11 +370,10 @@ export function encodePng(rgba: Uint8ClampedArray, width: number, height: number
   const ppm = Math.round(dpi / 0.0254);
   new DataView(phys.buffer).setUint32(0, ppm);
   new DataView(phys.buffer).setUint32(4, ppm);
-  phys[8] = 1; // metre
+  phys[8] = 1; // unit: metre
   chunks.push(['pHYs', phys]);
-  chunks.push(['IDAT', z.subarray(0, p)]);
+  chunks.push(['IDAT', zlib]);
   chunks.push(['IEND', new Uint8Array(0)]);
-
   const total = 8 + chunks.reduce((a, [, d]) => a + 12 + d.length, 0);
   const out = new Uint8Array(total);
   out.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
@@ -375,4 +386,14 @@ export function encodePng(rgba: Uint8ClampedArray, width: number, height: number
     o += 12 + data.length;
   }
   return out;
+}
+
+/** Encode RGBA as PNG (uncompressed deflate blocks; deterministic) with a pHYs chunk for `dpi`. */
+export function encodePng(
+  rgba: Uint8ClampedArray | Uint8Array,
+  width: number,
+  height: number,
+  dpi = 300,
+): Uint8Array {
+  return assemblePng(zlibStored(pngScanlines(rgba, width, height)), width, height, dpi);
 }

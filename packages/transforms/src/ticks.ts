@@ -51,14 +51,16 @@ export function niceLinearTicks(lo: number, hi: number, target = 6): number[] {
 export function formatLinear(v: number): string {
   if (v === 0) return '0';
   const a = Math.abs(v);
-  if (a >= 1e5 || a < 1e-3) {
+  const sign = v < 0 ? '−' : '';
+  const trim = (x: number) => String(Number(x.toPrecision(4)));
+  if (a >= 1e9) return `${sign}${trim(a / 1e9)}G`;
+  if (a >= 1e6) return `${sign}${trim(a / 1e6)}M`;
+  if (a >= 1e3) return `${sign}${trim(a / 1e3)}K`;
+  if (a < 1e-3) {
     const k = Math.floor(Math.log10(a));
-    const m = v / 10 ** k;
-    return Math.abs(m - Math.round(m)) < 1e-9 && Math.abs(Math.round(m)) === 1
-      ? formatPow10(Math.sign(v), k)
-      : `${Number(m.toPrecision(3))}×${formatPow10(1, k)}`;
+    return `${sign}${trim(a / 10 ** k)}×${formatPow10(1, k)}`;
   }
-  return String(Number(v.toPrecision(6))).replace('-', '−');
+  return `${sign}${trim(a)}`;
 }
 
 /**

@@ -1,0 +1,41 @@
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { App } from './App.tsx';
+import { pool } from './engine-client/pool.ts';
+import { checkMissing } from './lib/ingest.ts';
+import { loadAutosave, startAutosave } from './state/persist.ts';
+import { useStore } from './state/store.ts';
+import './styles.css';
+
+async function boot() {
+  const saved = await loadAutosave();
+  if (saved) useStore.getState().setWorkspace(saved);
+  startAutosave();
+  await pool.whenReady();
+  if (navigator.storage?.persist) void navigator.storage.persist();
+  if (saved) await checkMissing();
+  if (import.meta.env.DEV) {
+    // Development/testing hook (not in production builds): load files by URL.
+    const { ingestFiles } = await import('./lib/ingest.ts');
+    (window as unknown as Record<string, unknown>).__flowmeris = {
+      store: useStore,
+      async loadUrls(urls: string[], folder: string) {
+        const files = await Promise.all(
+          urls.map(async (u) => {
+            const name = decodeURIComponent(u.split('/').pop() ?? 'file.fcs');
+            const blob = await (await fetch(u)).blob();
+            return { file: new File([blob], name), path: `${folder}/${name}` };
+          }),
+        );
+        await ingestFiles(files);
+      },
+    };
+  }
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+}
+
+void boot();
