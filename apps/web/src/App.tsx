@@ -305,7 +305,14 @@ export function App() {
               )}
               {ui.view === 'plot' && <PlotGridView />}
               {ui.view === 'tiles' && <TilesView />}
-              {ui.view === 'ridge' && <RidgeView />}
+              {ui.view === 'ridge' && (
+                <div className="plot-layout">
+                  <RidgeView />
+                  <div className="plot-side">
+                    <PopulationTree />
+                  </div>
+                </div>
+              )}
               {ui.view === 'path' && <GatingPathView />}
               {ui.view === 'stats' && <StatsView />}
               {ui.view === 'compensation' && <CompensationView />}

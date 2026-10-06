@@ -546,6 +546,11 @@ code,
 }
 
 /* Gate view side column: population tree above tabbed reference plots. */
+.plot-layout > .ridge-view {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
 .plot-side {
   display: flex;
   flex-direction: column;
