@@ -441,16 +441,22 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   // At most one preview is in flight; edits made meanwhile collapse into the latest
   // one, so a slow worker never builds up a queue of stale drag positions.
   const previewTimer = useRef<number | null>(null);
+  // Bumped when a drag ends, so a preview still in flight cannot reappear afterwards.
+  const previewEpoch = useRef(0);
   const previewBusy = useRef(false);
   const previewNext = useRef<(() => void) | null>(null);
   const schedulePreview = (gate: Gate, geom: Geometry) => {
     if (previewTimer.current) cancelAnimationFrame(previewTimer.current);
+    const epoch = previewEpoch.current;
     previewTimer.current = requestAnimationFrame(() => {
       const send = () => {
         previewBusy.current = true;
         pool
           .preview(ctx, { sampleId, gate: { ...gate, geometry: geom } })
-          .then((r) => setPreview({ gateId: gate.id, parent: r.parentCount, regions: r.regions }))
+          .then((r) => {
+            if (epoch === previewEpoch.current)
+              setPreview({ gateId: gate.id, parent: r.parentCount, regions: r.regions });
+          })
           .catch(() => {})
           .finally(() => {
             previewBusy.current = false;
@@ -598,7 +604,11 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   const onPointerMove = (e: RPointerEvent<SVGSVGElement>) => {
     const [px, py] = evPt(e);
     const p = toData(px, py);
-    setHover(px >= 0 && py >= 0 && px <= pw && py <= ph ? p : null);
+    // The cursor position only drives the polygon draft and the quadrant / spider preview;
+    // tracking it otherwise would re-render the whole plot on every pointer move.
+    if (poly || ((tool === 'quadrant' || tool === 'spider') && !is1d && canDraw))
+      setHover(px >= 0 && py >= 0 && px <= pw && py <= ph ? p : null);
+    else if (hover) setHover(null);
     if (!drag) return;
     if (drag.kind === 'create') {
       setDrag({ ...drag, cur: p });
@@ -649,6 +659,9 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     }
     setDrag(null);
     setDraft(null);
+    previewEpoch.current++;
+    if (previewTimer.current) cancelAnimationFrame(previewTimer.current);
+    previewNext.current = null;
     setPreview(null);
   };
 
@@ -853,6 +866,16 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         .map((o) => ({ color: o.color, d: path(o.heights) })),
     };
   }, [hist, is1d, X, ph, ovHists, ovSamples.length]);
+
+  const contourPaths = useMemo(
+    () =>
+      is1d
+        ? null
+        : raster?.contours.map((c) =>
+            c.rings.map((r) => `M${r.map(([a, b]) => `${X(a)},${Y(b)}`).join('L')}Z`).join(''),
+          ),
+    [raster, is1d, X, Y],
+  );
 
   const bgHistPath = useMemo(() => {
     if (!hist || !histPath || !bgHist || !is1d || bgHist.sub.length !== hist.centers.length) return null;
@@ -1239,14 +1262,9 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
                 style={{ fill: bgPop.color, stroke: bgPop.color }}
               />
             )}
-            {!is1d &&
-              raster?.contours.map((c, i) => (
-                <path
-                  key={i}
-                  className="contour"
-                  d={c.rings.map((r) => `M${r.map(([a, b]) => `${X(a)},${Y(b)}`).join('L')}Z`).join('')}
-                />
-              ))}
+            {contourPaths?.map((d, i) => (
+              <path key={i} className="contour" d={d} />
+            ))}
             {gateEls}
             {creating}
             {polyDraft}

@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { parseMatrixCsv } from '@flowmeris/compensation';
 import { parseFcs } from '@flowmeris/fcs';
 import { getBit, popcount } from '@flowmeris/gating';
 import {
@@ -238,5 +239,69 @@ describe('group application with per-sample overrides', () => {
     expect(after[1]![0]!.count).toBeLessThan(before[1]![0]!.count);
     // $SPILLOVER compensation resolves per sample
     expect(engine.compKey(ctx, samples[0]!)).not.toBe('none');
+  });
+});
+
+describe('lazily loaded sample columns', () => {
+  it('reads only the channels a computation needs and gives the eager results', async () => {
+    const s = load('flowkit/test_comp_example.fcs', 'cc');
+    const m = parseMatrixCsv(new TextDecoder().decode(readFixture('flowkit/comp_complete_example.csv')));
+    const names = s.channels.map((c) => c.pnn);
+    const plain = names.find((n) => !m.detectors.includes(n))!;
+    const [d0, d1] = m.detectors as [string, string];
+    const group = newGroup('g', [s.sampleId], names);
+    group.compensation = { mode: 'matrix', matrixId: 'm1' };
+    const ctx: AnalysisContext = {
+      group,
+      transforms: { lin: { kind: 'flin', T: 1e4, A: 0 } },
+      compMatrices: { m1: { id: 'm1', name: 'm', source: { kind: 'manual' }, ...m } },
+    };
+    addGate(
+      group,
+      {
+        id: 'g1',
+        parentPop: 'root',
+        dims: [{ channel: plain, comp: 'group', transform: null }],
+        geometry: { kind: 'rect', min: [1], max: [null] },
+      },
+      [{ id: 'p1', region: 'in', name: 'p1' }],
+    );
+    const loaded: number[] = [];
+    const lazy = new Engine({
+      async loadSample() {
+        return {
+          ...s,
+          columns: s.columns.map(() => null),
+          loadColumn: async (ci: number) => {
+            loaded.push(ci);
+            return s.columns[ci]!;
+          },
+        };
+      },
+    });
+    const eagerStorage = new MemoryStorage();
+    eagerStorage.put(s);
+    const eager = new Engine(eagerStorage);
+
+    // A channel outside the matrix needs only itself, even when compensated.
+    const [a] = await lazy.counts(ctx, s.sampleId, ['p1']);
+    const [b] = await eager.counts(ctx, s.sampleId, ['p1']);
+    expect(a).toEqual(b);
+    expect(loaded).toEqual([names.indexOf(plain)]);
+
+    // A compensated matrix channel needs every detector of the matrix, each read once.
+    const axis = (channel: string) => ({
+      channel,
+      comp: 'group' as const,
+      transform: 'lin',
+      range: [0, 1] as [number, number],
+    });
+    const style = { histBins: 64, histNorm: 'count', histSmooth: false } as const;
+    const ha = await lazy.histogram(ctx, s.sampleId, 'p1', axis(d0), style);
+    const hb = await eager.histogram(ctx, s.sampleId, 'p1', axis(d0), style);
+    expect(Array.from(ha.heights)).toEqual(Array.from(hb.heights));
+    expect(new Set(loaded)).toEqual(new Set([plain, ...m.detectors].map((n) => names.indexOf(n))));
+    await lazy.histogram(ctx, s.sampleId, 'p1', axis(d1), style);
+    expect(loaded.length).toBe(new Set(loaded).size);
   });
 });

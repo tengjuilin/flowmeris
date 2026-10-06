@@ -8,9 +8,14 @@ export interface SampleData {
   datasetIndex: number;
   eventCount: number;
   channels: { pnn: string; scaling: ChannelScaling }[];
-  /** Stored (pre-linearisation) columns. */
-  columns: (Float32Array | Float64Array)[];
+  /**
+   * Stored (pre-linearisation) columns. A column may be null until it is first
+   * needed when the sample was opened lazily (see `loadColumn`).
+   */
+  columns: (Float32Array | Float64Array | null)[];
   keywords: Record<string, string>;
+  /** Reads one stored column; present when `columns` may hold unloaded (null) entries. */
+  loadColumn?: (ci: number) => Promise<Float32Array | Float64Array>;
 }
 
 /** Where a worker obtains sample data (OPFS in the browser, memory in tests). */
