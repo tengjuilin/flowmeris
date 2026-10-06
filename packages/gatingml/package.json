@@ -1,0 +1,21 @@
+{
+  "name": "@flowmeris/gatingml",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "@flowmeris/compensation": "workspace:*",
+    "@flowmeris/gating": "workspace:*",
+    "@flowmeris/model": "workspace:*",
+    "@flowmeris/transforms": "workspace:*",
+    "fast-xml-parser": "^4.5"
+  },
+  "devDependencies": {
+    "@flowmeris/fcs": "workspace:*",
+    "@flowmeris/testkit": "workspace:*"
+  }
+}

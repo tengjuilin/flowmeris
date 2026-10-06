@@ -1,0 +1,23 @@
+{
+  "description": "Large test fixtures not committed to git. Fetch with `node tools/fetch-fixtures.mjs`; each file is verified against its SHA-256.",
+  "files": [
+    {
+      "path": "fixtures/remote/101_DEN084Y5_15_E01_008_clean.fcs",
+      "url": "https://raw.githubusercontent.com/whitews/FlowKit/f2159043b6a56e527d4baacf97490caf8354618e/data/8_color_data_set/fcs_files/101_DEN084Y5_15_E01_008_clean.fcs",
+      "sha256": "55e2e1231e6a2b310856ef0722b59bb938277c446fe392f53dc007983ecead6d",
+      "license": "BSD-3-Clause (FlowKit, Copyright (c) 2018 Scott White)"
+    },
+    {
+      "path": "fixtures/remote/101_DEN084Y5_15_E03_009_clean.fcs",
+      "url": "https://raw.githubusercontent.com/whitews/FlowKit/f2159043b6a56e527d4baacf97490caf8354618e/data/8_color_data_set/fcs_files/101_DEN084Y5_15_E03_009_clean.fcs",
+      "sha256": "d089c36358716d8c9ec5efc8f3c56b21e318aaff9fa0e7dc515bf3eff54009da",
+      "license": "BSD-3-Clause (FlowKit, Copyright (c) 2018 Scott White)"
+    },
+    {
+      "path": "fixtures/remote/101_DEN084Y5_15_E05_010_clean.fcs",
+      "url": "https://raw.githubusercontent.com/whitews/FlowKit/f2159043b6a56e527d4baacf97490caf8354618e/data/8_color_data_set/fcs_files/101_DEN084Y5_15_E05_010_clean.fcs",
+      "sha256": "3eec1cb3f72477aa35a2ecf0d72361af2e4d502832228336a72464e8af9a563a",
+      "license": "BSD-3-Clause (FlowKit, Copyright (c) 2018 Scott White)"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@flowmeris/export",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "@flowmeris/model": "workspace:*",
+    "@flowmeris/engine": "workspace:*",
+    "@flowmeris/fcs": "workspace:*",
+    "@flowmeris/stats": "workspace:*"
+  },
+  "devDependencies": {
+    "@flowmeris/testkit": "workspace:*"
+  }
+}

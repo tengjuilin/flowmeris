@@ -1,0 +1,12 @@
+[project]
+name = "flowmeris-golden"
+version = "0.1.0"
+description = "Generates golden reference fixtures for flowmeris from FlowKit (Gating-ML 2.0 compliant)."
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "flowkit==1.2.3",
+  "numpy",
+]
+
+[tool.uv]
+package = false

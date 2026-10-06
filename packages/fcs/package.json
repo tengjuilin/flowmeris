@@ -1,0 +1,14 @@
+{
+  "name": "@flowmeris/fcs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "sideEffects": false,
+  "dependencies": {},
+  "devDependencies": {
+    "@flowmeris/testkit": "workspace:*"
+  }
+}

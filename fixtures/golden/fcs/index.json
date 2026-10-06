@@ -1,0 +1,68 @@
+[
+ {
+  "file": "flowkit/gate_ref/data1.fcs",
+  "golden": "fcs/data1.fcs.json",
+  "events": 13367
+ },
+ {
+  "file": "flowkit/test_comp_example.fcs",
+  "golden": "fcs/test_comp_example.fcs.json",
+  "events": 10703
+ },
+ {
+  "file": "flowkit/test_data_2d_01.fcs",
+  "golden": "fcs/test_data_2d_01.fcs.json",
+  "events": 10000
+ },
+ {
+  "file": "flowkit/data_set_simple_line_100.fcs",
+  "golden": "fcs/data_set_simple_line_100.fcs.json",
+  "events": 100
+ },
+ {
+  "file": "flowio/100715.fcs",
+  "golden": "fcs/100715.fcs.json",
+  "events": 65016
+ },
+ {
+  "file": "flowio/3FITC_4PE_004.fcs",
+  "golden": "fcs/3FITC_4PE_004.fcs.json",
+  "events": 94569
+ },
+ {
+  "file": "flowio/B01 KC-A-W---91-US.fcs",
+  "golden": "fcs/B01 KC-A-W---91-US.fcs.json",
+  "events": 1589
+ },
+ {
+  "file": "flowio/G11.fcs",
+  "golden": "fcs/G11.fcs.json",
+  "events": 5785
+ },
+ {
+  "file": "flowio/coulter.lmd",
+  "flowkit_error": "coulter.lmd contains multiple data sets, use read_multiple_data_sets function"
+ },
+ {
+  "file": "flowio/data1.fcs",
+  "golden": "fcs/data1.fcs.json",
+  "events": 13367
+ },
+ {
+  "file": "flowio/variable_int_example.fcs",
+  "flowkit_error": "could not convert string to float: 'xxxxxxxxx'"
+ },
+ {
+  "file": "flowio/data_start_offset_discrepancy_example.fcs",
+  "flowkit_error": "could not convert string to float: 'xxxxxxxxx'"
+ },
+ {
+  "file": "flowio/data_stop_offset_discrepancy_example.fcs",
+  "flowkit_error": "could not convert string to float: 'xxxxxxxxx'"
+ },
+ {
+  "file": "remote/101_DEN084Y5_15_E01_008_clean.fcs",
+  "golden": "fcs/101_DEN084Y5_15_E01_008_clean.fcs.json",
+  "events": 290172
+ }
+]

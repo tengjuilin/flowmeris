@@ -1,0 +1,17 @@
+{
+  "name": "@flowmeris/density",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "d3-contour": "^4"
+  },
+  "devDependencies": {
+    "@flowmeris/testkit": "workspace:*",
+    "@types/d3-contour": "^3"
+  }
+}

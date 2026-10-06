@@ -1,0 +1,23 @@
+{
+  "name": "@flowmeris/engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "@flowmeris/model": "workspace:*",
+    "@flowmeris/fcs": "workspace:*",
+    "@flowmeris/transforms": "workspace:*",
+    "@flowmeris/compensation": "workspace:*",
+    "@flowmeris/gating": "workspace:*",
+    "@flowmeris/stats": "workspace:*",
+    "@flowmeris/density": "workspace:*",
+    "@flowmeris/render": "workspace:*"
+  },
+  "devDependencies": {
+    "@flowmeris/testkit": "workspace:*"
+  }
+}

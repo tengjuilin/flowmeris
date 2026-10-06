@@ -1,0 +1,16 @@
+{
+  "name": "@flowmeris/transforms",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "sideEffects": false,
+  "dependencies": {
+    "@flowmeris/model": "workspace:*"
+  },
+  "devDependencies": {
+    "@flowmeris/testkit": "workspace:*"
+  }
+}
