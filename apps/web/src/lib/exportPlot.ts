@@ -32,6 +32,15 @@ function inlineStyles(src: Element, dst: Element) {
   for (let i = 0; i < src.children.length; i++) inlineStyles(src.children[i]!, dst.children[i]!);
 }
 
+/** Serialise an on-screen SVG as a standalone file, with its CSS-derived styles inlined. */
+export function standaloneSvg(svg: SVGSVGElement): string {
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  inlineStyles(svg, clone);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('viewBox', `0 0 ${svg.getAttribute('width')} ${svg.getAttribute('height')}`);
+  return new XMLSerializer().serializeToString(clone);
+}
+
 function bytesToBase64(b: Uint8Array): string {
   let s = '';
   for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000));

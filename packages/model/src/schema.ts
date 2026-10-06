@@ -257,6 +257,43 @@ export const SampleOrderSchema = z.object({
   custom: z.array(Id).optional(),
 });
 
+const HexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+
+/** Appearance of a ridge plot. Every member has a default, so `RidgeStyleSchema.parse({})` is the default style. */
+export const RidgeStyleSchema = z.object({
+  /** 'single': every ridge uses `color`; 'palette': ridges cycle the categorical palette. */
+  colorMode: z.enum(['single', 'palette']).default('single'),
+  color: HexColor.default('#2a78d6'),
+  /** Per-sample fill colours, overriding `colorMode`. */
+  sampleColors: z.record(HexColor).default({}),
+  fillOpacity: Num.min(0).max(1).default(0.55),
+  /** Outline colour; omitted = the plot background. */
+  strokeColor: HexColor.optional(),
+  strokeWidth: Num.min(0).max(10).default(1.25),
+  /** Row pitch in px; omitted = fit (18–60 px, about 600 px in total). */
+  rowHeight: Num.min(8).max(400).optional(),
+  /** Plot width in px; omitted = fit the view. */
+  width: Num.min(300).max(10000).optional(),
+  fontFamily: z.enum(['sans', 'serif', 'mono']).default('sans'),
+  /** Display order of samples; samples not listed follow in group order. */
+  order: z.array(Id).default([]),
+  /** Per-sample label text, overriding the short sample name. */
+  sampleLabels: z.record(z.string()).default({}),
+  showLabels: z.boolean().default(true),
+  showCounts: z.boolean().default(true),
+  labelFontSize: Num.min(4).max(48).default(11.5),
+  /** Width of the label column in px. */
+  labelWidth: Num.min(0).max(1000).default(240),
+  showTickLabels: z.boolean().default(true),
+  tickFontSize: Num.min(4).max(48).default(11),
+  /** Tick marks in data (linear) units; omitted = automatic. A missing label is formatted from the value. */
+  ticks: z.array(z.object({ value: Num, label: z.string().optional() })).optional(),
+  /** Axis title; omitted = "<marker> :: <channel>". */
+  axisTitle: z.string().optional(),
+  titleFontSize: Num.min(4).max(48).default(12),
+});
+export type RidgeStyle = z.infer<typeof RidgeStyleSchema>;
+
 export const LayoutSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('tiles'), id: Id, plotId: Id, columns: z.number().int().min(1).max(16) }),
   z.object({
@@ -266,9 +303,11 @@ export const LayoutSchema = z.discriminatedUnion('kind', [
     axis: AxisSpecSchema,
     overlap: Num.min(0).max(0.95),
     norm: z.enum(['mode', 'area']),
+    style: RidgeStyleSchema.default({}),
   }),
 ]);
 export type Layout = z.infer<typeof LayoutSchema>;
+export type RidgeLayout = Extract<Layout, { kind: 'ridge' }>;
 
 export const StatKindSchema = z.enum([
   'count',

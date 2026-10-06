@@ -17,7 +17,7 @@ import { registerTransform } from '../lib/defaults.ts';
 import { contextFor, toast, useGroup, useStore } from '../state/store.ts';
 import { usePlotForPopulation } from './PlotPanel.tsx';
 
-function NumInput({
+export function NumInput({
   value,
   onCommit,
   step,

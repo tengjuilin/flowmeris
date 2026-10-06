@@ -653,6 +653,58 @@ code,
 .ridge .ridge-base {
   stroke: var(--border);
 }
+.ridge-samples {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+  max-height: 320px;
+  overflow: auto;
+}
+.ridge-samples li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+.ridge-samples .ridge-move {
+  display: flex;
+  flex-direction: column;
+}
+.ridge-samples .ridge-move button {
+  font-size: 8px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.inspector .ridge-samples input[type="color"] {
+  width: 26px;
+  height: 22px;
+  padding: 0 1px;
+  flex: none;
+}
+.ridge-samples input[type="color"].custom {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.inspector .ridge-samples input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+.ridge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.inspector textarea {
+  width: 100%;
+  font: 12px / 1.4 var(--mono);
+  resize: vertical;
+}
+.inspector textarea[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.inspector .field-error {
+  color: var(--danger);
+}
 
 .table-wrap {
   overflow: auto;

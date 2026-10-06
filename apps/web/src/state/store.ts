@@ -40,6 +40,7 @@ interface History {
   label: string;
   redo: Patch[];
   undo: Patch[];
+  merge?: { key: string; at: number };
 }
 
 interface Store {
@@ -47,8 +48,12 @@ interface Store {
   ui: UiState;
   past: History[];
   future: History[];
-  /** Apply an undoable change to the workspace document. */
-  mutate: (label: string, fn: (ws: Workspace) => void) => void;
+  /**
+   * Apply an undoable change to the workspace document. Changes sharing a
+   * `merge` key less than a second apart (slider drags, colour picking,
+   * typing) collapse into one undo step.
+   */
+  mutate: (label: string, fn: (ws: Workspace) => void, merge?: string) => void;
   undo: () => void;
   redo: () => void;
   setWorkspace: (ws: Workspace) => void;
@@ -73,13 +78,29 @@ export const useStore = create<Store>((set, get) => ({
   },
   past: [],
   future: [],
-  mutate(label, fn) {
+  mutate(label, fn, merge) {
     const [next, redo, undo] = produceWithPatches(get().ws, (draft) => {
       fn(draft as Workspace);
       (draft as Workspace).modifiedAt = new Date().toISOString();
     });
     if (redo.length === 0) return;
-    set((s) => ({ ws: next, past: [...s.past.slice(-199), { label, redo, undo }], future: [] }));
+    const now = Date.now();
+    set((s) => {
+      const last = s.past[s.past.length - 1];
+      if (merge && last?.merge?.key === merge && now - last.merge.at < 1000 && s.future.length === 0) {
+        const merged = {
+          label,
+          redo: [...last.redo, ...redo],
+          undo: [...undo, ...last.undo],
+          merge: { key: merge, at: now },
+        };
+        return { ws: next, past: [...s.past.slice(0, -1), merged] };
+      }
+      const h: History = merge
+        ? { label, redo, undo, merge: { key: merge, at: now } }
+        : { label, redo, undo };
+      return { ws: next, past: [...s.past.slice(-199), h], future: [] };
+    });
   },
   undo() {
     const { past, ws } = get();

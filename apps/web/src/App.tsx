@@ -6,6 +6,7 @@ import { RidgeView, TilesView } from './components/GroupViews.tsx';
 import { Inspector } from './components/Inspector.tsx';
 import { PlotPanel, drill } from './components/PlotPanel.tsx';
 import { PopulationTree } from './components/PopulationTree.tsx';
+import { RidgeInspector } from './components/RidgeInspector.tsx';
 import { Sidebar } from './components/Sidebar.tsx';
 import { StatsView } from './components/StatsView.tsx';
 import { pool } from './engine-client/pool.ts';
@@ -304,6 +305,7 @@ export function App() {
             </div>
           </section>
           {ui.view === 'plot' && <Inspector />}
+          {ui.view === 'ridge' && <RidgeInspector />}
         </div>
       )}
       {ui.ingest && (

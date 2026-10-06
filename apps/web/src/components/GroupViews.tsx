@@ -1,16 +1,17 @@
 import type { HistogramResponse } from '@flowmeris/engine';
-import type { AxisSpec, Group, PlotSpec } from '@flowmeris/model';
-import { CATEGORICAL } from '@flowmeris/render';
-import { axisTicks } from '@flowmeris/transforms';
+import type { Group, PlotSpec } from '@flowmeris/model';
+import { axisTicks, formatLinear } from '@flowmeris/transforms';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { lineageKey } from '../lib/analysis.ts';
 import { defaultAxis } from '../lib/defaults.ts';
 import { download, safeName } from '../lib/download.ts';
+import { standaloneSvg } from '../lib/exportPlot.ts';
 import { scaleFor } from '../lib/geometry.ts';
 import { contextFor, useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
 import { PlotCanvas } from './PlotCanvas.tsx';
 import { AxisSelects, PlotKindSelect, usePlotForPopulation } from './PlotPanel.tsx';
+import { FONT_STACKS, ridgeColor, useRidge } from './RidgeInspector.tsx';
 import { useSize } from './hooks.ts';
 
 function truncate(s: string, n: number): string {
@@ -137,24 +138,11 @@ export function RidgeView() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
   const mutate = useStore((s) => s.mutate);
-  const group = useGroup();
-  const plot = usePlotForPopulation();
-  const names = useSampleNames(group);
-  const shown = useSelectedSampleIds(group);
+  const { group, plot, style, overlap, ch, axis, ordered, names, update } = useRidge();
   const box = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const { width } = useSize(box);
-  const [channel, setChannel] = useState<string | null>(null);
-  const [overlap, setOverlap] = useState(0.6);
   const [data, setData] = useState<Record<string, HistogramResponse>>({});
-
-  const ch = channel ?? plot?.x.channel ?? group?.channels[0] ?? '';
-  const axis: AxisSpec | null = useMemo(() => {
-    if (!group) return null;
-    if (plot && plot.x.channel === ch) return plot.x;
-    if (plot?.y && plot.y.channel === ch) return plot.y;
-    return group.axisDefaults[ch] ?? null;
-  }, [group, plot, ch]);
 
   useEffect(() => {
     if (group && !axis && ch)
@@ -167,12 +155,12 @@ export function RidgeView() {
     () =>
       group && axis
         ? JSON.stringify([
-            shown.map((s) => lineageKey(ws, group, s, ui.popId)),
+            [...ordered].sort().map((s) => lineageKey(ws, group, s, ui.popId)),
             axis,
             ws.transforms[axis.transform],
           ])
         : '',
-    [group, shown, axis, ws, ui.popId],
+    [group, ordered, axis, ws, ui.popId],
   );
   useEffect(() => {
     if (!group || !axis) return;
@@ -185,7 +173,7 @@ export function RidgeView() {
       histSmooth: true,
     };
     setData({});
-    for (const sid of shown) {
+    for (const sid of ordered) {
       if (ui.missing[sid]) continue;
       pool
         .histogram(ctx, sid, ui.popId, axis, style as PlotSpec['style'])
@@ -198,30 +186,49 @@ export function RidgeView() {
   }, [key]);
 
   if (!group || !axis) return <div className="empty">Select a group.</div>;
-  const n = Math.max(1, shown.length);
-  const labelW = 240;
-  const W = Math.max(400, width - 24);
-  const pw = W - labelW - 20;
-  const rowH = Math.max(18, Math.min(60, 600 / n));
-  const H = rowH * (n - 1) + rowH / (1 - overlap) + 60;
-  const X = (v: number) => labelW + ((v - axis.range[0]) / (axis.range[1] - axis.range[0])) * pw;
-  let ticks: ReturnType<typeof axisTicks> = [];
-  try {
-    const s = scaleFor(ws, axis.transform);
-    ticks = axisTicks(s.def, s.apply, s.inverse, axis.range[0], axis.range[1]);
-  } catch {
-    /* ignore */
-  }
+  const n = Math.max(1, ordered.length);
+  const labelW = style.showLabels ? style.labelWidth : 20;
+  const W = style.width ?? Math.max(400, width - 24);
+  const pw = Math.max(50, W - labelW - 20);
+  const rowH = style.rowHeight ?? Math.max(18, Math.min(60, 600 / n));
+  const amp = rowH / (1 - overlap);
+  const axisY = 20 + rowH * (n - 1) + amp + 6;
+  const tickLabelY = style.tickFontSize + 7;
   const pop = group.template.populations[ui.popId];
   const sample0 = ws.samples[group.sampleIds[0] ?? ''];
   const marker = sample0?.channels.find((c) => c.pnn === ch)?.pns;
+  const title = (style.axisTitle ?? (marker ? `${marker} :: ${ch}` : ch)).trim();
+  const titleY = (style.showTickLabels ? tickLabelY : 6) + style.titleFontSize + 2;
+  const H = axisY + (title ? titleY : style.showTickLabels ? tickLabelY : 6) + 6;
+  const X = (v: number) => labelW + ((v - axis.range[0]) / (axis.range[1] - axis.range[0])) * pw;
+  let ticks: { pos: number; label: string; major: boolean }[] = [];
+  try {
+    const s = scaleFor(ws, axis.transform);
+    const [lo, hi] = axis.range;
+    ticks = style.ticks
+      ? style.ticks
+          .map((t) => ({ pos: s.apply(t.value), label: t.label ?? formatLinear(t.value), major: true }))
+          .filter((t) => Number.isFinite(t.pos) && t.pos >= lo - 1e-9 && t.pos <= hi + 1e-9)
+      : axisTicks(s.def, s.apply, s.inverse, lo, hi);
+  } catch {
+    /* ignore */
+  }
+  const labelChars = Math.max(4, Math.floor((labelW - 8) / (style.labelFontSize * 0.55)));
 
   return (
     <div className="ridge-view" ref={box}>
       <div className="toolbar">
         <label className="field">
           Channel
-          <select value={ch} onChange={(e) => setChannel(e.target.value)}>
+          <select
+            value={ch}
+            onChange={(e) => {
+              const c = e.target.value;
+              update('Ridge channel', (l, w, g) => {
+                l.axis = { ...defaultAxis(w, g, c) };
+              });
+            }}
+          >
             {group.channels.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -232,32 +239,19 @@ export function RidgeView() {
             ))}
           </select>
         </label>
-        <label className="field">
-          Overlap
-          <input
-            type="range"
-            min={0}
-            max={0.9}
-            step={0.05}
-            value={overlap}
-            onChange={(e) => setOverlap(Number(e.target.value))}
-          />
-        </label>
         <span className="muted">
           Population: {pop?.name}
-          {shown.length < group.sampleIds.length &&
-            ` · ${shown.length} of ${group.sampleIds.length} samples (sidebar selection)`}
+          {ordered.length < group.sampleIds.length &&
+            ` · ${ordered.length} of ${group.sampleIds.length} samples (sidebar selection)`}
         </span>
         <div className="spacer" />
         <button
           type="button"
           onClick={() => {
             if (!svgRef.current) return;
-            const c = svgRef.current.cloneNode(true) as SVGSVGElement;
-            c.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
             download(
               `${safeName(`${group.name}_${pop?.name}_${ch}_ridge`)}.svg`,
-              new XMLSerializer().serializeToString(c),
+              standaloneSvg(svgRef.current),
               'image/svg+xml',
             );
           }}
@@ -272,12 +266,12 @@ export function RidgeView() {
         className="ridge"
         role="img"
         aria-label={`Ridge plot of ${ch} for ${pop?.name}`}
+        style={{ fontFamily: FONT_STACKS[style.fontFamily] }}
       >
         <rect width={W} height={H} fill="var(--surface)" />
-        {shown.map((sid, i) => {
+        {ordered.map((sid, i) => {
           const h = data[sid];
-          const base = 20 + rowH * i + rowH / (1 - overlap);
-          const amp = rowH / (1 - overlap);
+          const base = 20 + rowH * i + amp;
           const s = ws.samples[sid];
           let d = '';
           if (h) {
@@ -286,45 +280,71 @@ export function RidgeView() {
               d += `L${X(h.centers[k]!)},${base - h.heights[k]! * amp}`;
             d += `L${X(h.centers[h.centers.length - 1]!)},${base}Z`;
           }
+          const count = !style.showCounts
+            ? ''
+            : h
+              ? ` (n=${h.eventsPlotted.toLocaleString()})`
+              : ui.missing[sid]
+                ? ' (missing)'
+                : '';
+          const custom = style.sampleLabels[sid];
+          const name =
+            custom ?? truncate(names[sid] ?? s?.fileName ?? '', Math.max(4, labelChars - count.length));
           return (
             <g key={sid}>
-              <text x={labelW - 8} y={base - 3} textAnchor="end" className="ridge-label">
-                <title>{s?.relativePath}</title>
-                {truncate(names[sid] ?? s?.fileName ?? '', 26)}
-                {h ? ` (n=${h.eventsPlotted.toLocaleString()})` : ui.missing[sid] ? ' (missing)' : ''}
-              </text>
+              {style.showLabels && (
+                <text
+                  x={labelW - 8}
+                  y={base - 3}
+                  textAnchor="end"
+                  className="ridge-label"
+                  style={{ fontSize: style.labelFontSize }}
+                >
+                  <title>{s?.relativePath}</title>
+                  {name}
+                  {count}
+                </text>
+              )}
               {h && (
                 <path
                   d={d}
-                  fill={CATEGORICAL[0]}
-                  fillOpacity={0.55}
-                  stroke="var(--surface)"
-                  strokeWidth={1.25}
+                  fill={ridgeColor(style, sid, i)}
+                  fillOpacity={style.fillOpacity}
+                  stroke={style.strokeColor ?? 'var(--surface)'}
+                  strokeWidth={style.strokeWidth}
                 />
               )}
               <line x1={labelW} x2={labelW + pw} y1={base} y2={base} className="ridge-base" />
             </g>
           );
         })}
-        <g className="axis" transform={`translate(0,${H - 34})`}>
+        <g className="axis" transform={`translate(0,${axisY})`}>
           {ticks.map((t, i) => (
             <g key={i} transform={`translate(${X(t.pos)},0)`}>
               <line y2={t.major ? 6 : 3} />
-              {t.label && (
-                <text y={18} textAnchor="middle">
+              {style.showTickLabels && t.label && (
+                <text y={tickLabelY} textAnchor="middle" style={{ fontSize: style.tickFontSize }}>
                   {t.label}
                 </text>
               )}
             </g>
           ))}
-          <text x={labelW + pw / 2} y={32} textAnchor="middle" className="axis-title">
-            {marker ? `${marker} :: ${ch}` : ch}
-          </text>
+          {title && (
+            <text
+              x={labelW + pw / 2}
+              y={titleY}
+              textAnchor="middle"
+              className="axis-title"
+              style={{ fontSize: style.titleFontSize }}
+            >
+              {title}
+            </text>
+          )}
         </g>
       </svg>
       <p className="muted small">
         Each curve is a histogram normalised to its own mode (smoothed, σ = 1.5 bins); n is the number of
-        events in the population.
+        events in the population. Customise colours, labels, order and axes in the panel on the right.
       </p>
     </div>
   );

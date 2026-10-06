@@ -56,7 +56,11 @@ validated for colour-vision-deficiency separation, and populations are always al
 - **Tiles:** the current plot repeated for every sample in the group, same axes and scales, with each
   sample's effective gates (overrides drawn dashed in orange).
 - **Ridge:** one histogram per sample on a shared x axis, each normalised to its own mode, smoothed
-  (σ = 1.5 bins) and labelled with its event count.
+  (σ = 1.5 bins) and labelled with its event count. The settings panel on the right sets the fill
+  colour (one colour, or the categorical palette, with per-sample overrides), opacity, outline, overlap,
+  row height, sample order and labels, tick positions and labels, axis title, font and width. These are
+  saved per group and population in the workspace (`layouts`, kind `ridge`); the SVG export inlines
+  them.
 
 ## Export (M-EXPORT-PLOT)
 
