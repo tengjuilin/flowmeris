@@ -1,8 +1,18 @@
+import type { PopulationCount, StatResult } from '@flowmeris/engine';
 import { type StatCell, exportGatingML, statLabel, tidyRows, toCsv, wideRows } from '@flowmeris/export';
-import { type StatKind, type StatSpec, newId, populationPath, populationsDepthFirst } from '@flowmeris/model';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  type CompMatrix,
+  type Group,
+  type Population,
+  type StatKind,
+  type StatSpec,
+  type Transform,
+  newId,
+  populationPath,
+  populationsDepthFirst,
+} from '@flowmeris/model';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
-import { lineageKey } from '../lib/analysis.ts';
 import { download, safeName } from '../lib/download.ts';
 import {
   APP_INFO,
@@ -27,151 +37,307 @@ const VALUE_STATS: { id: StatKind; label: string }[] = [
   { id: 'max', label: 'Max' },
 ];
 
+const FREQUENCY_STATS = new Set(['count', 'pctParent', 'pctGrandparent', 'pctTotal']);
+
+const COUNT_FORMAT = new Intl.NumberFormat();
+
 /** Display formatting only; exports carry full double precision. */
 function fmt(v: number | undefined, stat: string): string {
   if (v === undefined) return '';
   if (Number.isNaN(v)) return 'NaN';
-  if (stat === 'count') return v.toLocaleString();
+  if (stat === 'count') return COUNT_FORMAT.format(v);
   if (stat.startsWith('pct') || stat === 'cv' || stat === 'rcv') return v.toFixed(2);
   const a = Math.abs(v);
   return a !== 0 && (a < 1e-3 || a >= 1e7) ? v.toExponential(4) : String(Number(v.toPrecision(5)));
 }
 
+// ---------------------------------------------------------------------------
+// Per-sample results
+// ---------------------------------------------------------------------------
+
+/** One sample's row: values by column key (`pop|count`, `pop|pctParent`, or a StatSpec id) and export cells. */
+interface SampleTable {
+  values: Map<string, number>;
+  cells: StatCell[];
+}
+
+/**
+ * Results by per-sample dependency key, kept across renders and view switches
+ * so an edit only recomputes the samples it affects, and returning to the
+ * view is instant. Bounded; oldest entries go first.
+ */
+const tableCache = new Map<string, SampleTable>();
+const inflight = new Map<string, Promise<SampleTable>>();
+const MAX_CACHED_TABLES = 4000;
+
+function remember(key: string, t: SampleTable) {
+  tableCache.set(key, t);
+  for (const k of tableCache.keys()) {
+    if (tableCache.size <= MAX_CACHED_TABLES) break;
+    tableCache.delete(k);
+  }
+}
+
+/**
+ * Dependency key of each sample's row: the gating structure and geometry
+ * (with the sample's own overrides), compensation, transforms and requested
+ * statistics. Population names and colours are left out — they do not change
+ * any value. The shared part is serialised once, not once per sample.
+ */
+function sampleKeys(
+  g: Group,
+  pops: Population[],
+  transforms: Record<string, Transform>,
+  compMatrices: Record<string, CompMatrix>,
+  sampleIds: string[],
+): Map<string, string> {
+  const comp = g.compensation.mode === 'matrix' ? compMatrices[g.compensation.matrixId] : g.compensation;
+  const shared = JSON.stringify([
+    pops.map((p) => [p.id, p.parent, p.gate, p.region]),
+    g.template.gates,
+    comp,
+    transforms,
+    g.stats,
+  ]);
+  const overrides = new Map<string, unknown[]>();
+  for (const o of g.overrides) {
+    let list = overrides.get(o.sampleId);
+    if (!list) overrides.set(o.sampleId, (list = []));
+    list.push([o.gateId, o.geometry]);
+  }
+  return new Map(
+    sampleIds.map((sid) => [sid, `${sid}\u0000${JSON.stringify(overrides.get(sid) ?? [])}\u0000${shared}`]),
+  );
+}
+
+function toTable(
+  sid: string,
+  counts: PopulationCount[],
+  stats: StatResult[],
+  specs: StatSpec[],
+): SampleTable {
+  const values = new Map<string, number>();
+  const cells: StatCell[] = [];
+  for (const c of counts) {
+    values.set(`${c.popId}|count`, c.count);
+    cells.push({
+      sampleId: sid,
+      population: c.popId,
+      statistic: 'count',
+      space: 'n/a',
+      value: c.count,
+      n: c.count,
+      nExcluded: 0,
+    });
+    if (c.popId !== 'root') {
+      const pct = c.parentCount > 0 ? (100 * c.count) / c.parentCount : Number.NaN;
+      values.set(`${c.popId}|pctParent`, pct);
+      cells.push({
+        sampleId: sid,
+        population: c.popId,
+        statistic: 'pctParent',
+        space: 'n/a',
+        value: pct,
+        n: c.count,
+        nExcluded: 0,
+      });
+    }
+  }
+  const specById = new Map(specs.map((s) => [s.id, s]));
+  for (const r of stats) {
+    const spec = specById.get(r.statId)!;
+    values.set(spec.id, r.value);
+    cells.push({
+      sampleId: sid,
+      population: spec.population,
+      statistic: spec.stat,
+      ...(spec.channel ? { channel: spec.channel } : {}),
+      space: FREQUENCY_STATS.has(spec.stat) ? 'n/a' : spec.space,
+      ...(spec.transform ? { transform: spec.transform } : {}),
+      ...(spec.p !== undefined ? { p: spec.p } : {}),
+      value: r.value,
+      n: r.n,
+      nExcluded: r.nExcluded,
+    });
+  }
+  return { values, cells };
+}
+
+function fetchTable(
+  key: string,
+  ctx: ReturnType<typeof contextFor>,
+  sid: string,
+  popIds: string[],
+): Promise<SampleTable> {
+  let p = inflight.get(key);
+  if (!p) {
+    const specs = ctx.group.stats;
+    p = pool
+      .table(ctx, sid, popIds, specs)
+      .then(({ counts, stats }) => {
+        const t = toTable(sid, counts, stats, specs);
+        remember(key, t);
+        return t;
+      })
+      .finally(() => inflight.delete(key));
+    inflight.set(key, p);
+  }
+  return p;
+}
+
+interface Column {
+  key: string;
+  label: string;
+  pop: string;
+  stat: string;
+  specId?: string;
+}
+
+/** One sample's row; re-renders only when its values, columns or flags change. */
+const StatsRow = memo(function StatsRow(props: {
+  label: string;
+  title: string | undefined;
+  override: boolean;
+  missing: boolean;
+  selected: boolean;
+  stale: boolean;
+  columns: Column[];
+  values: Map<string, number> | undefined;
+}) {
+  const { columns, values } = props;
+  const cls = [props.selected ? 'on' : '', props.stale ? 'stale' : ''].filter(Boolean).join(' ');
+  return (
+    <tr className={cls || undefined}>
+      <th scope="row" title={props.title}>
+        {props.label}
+        {props.override && <span className="badge warn">override</span>}
+        {props.missing && <span className="badge danger">missing</span>}
+      </th>
+      {columns.map((c) => (
+        <td key={c.key}>{fmt(values?.get(c.key), c.stat)}</td>
+      ))}
+    </tr>
+  );
+});
+
 export function StatsView() {
-  const ws = useStore((s) => s.ws);
-  const ui = useStore((s) => s.ui);
+  const samples = useStore((s) => s.ws.samples);
+  const transforms = useStore((s) => s.ws.transforms);
+  const compMatrices = useStore((s) => s.ws.compMatrices);
+  const popId = useStore((s) => s.ui.popId);
+  const selectedSample = useStore((s) => s.ui.sampleId);
+  const missing = useStore((s) => s.ui.missing);
   const mutate = useStore((s) => s.mutate);
   const group = useGroup();
   const shown = useSelectedSampleIds(group);
   const names = useSampleNames(group);
-  const [cells, setCells] = useState<StatCell[]>([]);
-  const [busy, setBusy] = useState(0);
+  const [, setTick] = useState(0);
   const [form, setForm] = useState<{ pop: string; stat: StatKind; channel: string; p: number }>({
-    pop: ui.popId,
+    pop: popId,
     stat: 'median',
     channel: '',
     p: 50,
   });
 
   const pops = useMemo(() => (group ? populationsDepthFirst(group.template) : []), [group]);
-  const key = useMemo(
-    () =>
-      group
-        ? JSON.stringify([
-            shown.map((s) => pops.map((p) => lineageKey(ws, group, s, p.id))),
-            group.stats,
-            Object.keys(ui.missing),
-          ])
-        : '',
-    [group, shown, pops, ws, ui.missing],
+  const keys = useMemo(
+    () => (group ? sampleKeys(group, pops, transforms, compMatrices, shown) : new Map<string, string>()),
+    [group, pops, transforms, compMatrices, shown],
   );
 
+  // Fetch the rows that are not cached yet; re-render (at most once per frame) as they arrive.
   useEffect(() => {
     if (!group) return;
     let live = true;
-    const ctx = contextFor(ws, group);
+    let frame = 0;
+    const ctx = { group, transforms, compMatrices };
     const popIds = pops.map((p) => p.id);
-    const out: StatCell[] = [];
-    const todo = shown.filter((s) => !ui.missing[s]);
-    setBusy(todo.length);
-    setCells([]);
-    Promise.all(
-      todo.map(async (sid) => {
-        const counts = await pool.counts(ctx, sid, popIds);
-        for (const c of counts) {
-          out.push({
-            sampleId: sid,
-            population: c.popId,
-            statistic: 'count',
-            space: 'n/a',
-            value: c.count,
-            n: c.count,
-            nExcluded: 0,
-          });
-          if (c.popId !== 'root')
-            out.push({
-              sampleId: sid,
-              population: c.popId,
-              statistic: 'pctParent',
-              space: 'n/a',
-              value: c.parentCount > 0 ? (100 * c.count) / c.parentCount : Number.NaN,
-              n: c.count,
-              nExcluded: 0,
+    let failed = false;
+    for (const [sid, key] of keys) {
+      if (missing[sid] || tableCache.has(key)) continue;
+      fetchTable(key, ctx, sid, popIds).then(
+        () => {
+          if (live && !frame)
+            frame = requestAnimationFrame(() => {
+              frame = 0;
+              setTick((t) => t + 1);
             });
-        }
-        if (group.stats.length) {
-          const res = await pool.stats(ctx, sid, group.stats);
-          for (const r of res) {
-            const spec = group.stats.find((s) => s.id === r.statId)!;
-            out.push({
-              sampleId: sid,
-              population: spec.population,
-              statistic: spec.stat,
-              ...(spec.channel ? { channel: spec.channel } : {}),
-              space: ['count', 'pctParent', 'pctGrandparent', 'pctTotal'].includes(spec.stat)
-                ? 'n/a'
-                : spec.space,
-              ...(spec.transform ? { transform: spec.transform } : {}),
-              ...(spec.p !== undefined ? { p: spec.p } : {}),
-              value: r.value,
-              n: r.n,
-              nExcluded: r.nExcluded,
-            });
+        },
+        (e) => {
+          if (live && !failed) {
+            failed = true;
+            toast(`Statistics failed: ${e instanceof Error ? e.message : String(e)}`);
           }
-        }
-        if (live) setBusy((b) => b - 1);
-      }),
-    )
-      .then(() => live && setCells([...out]))
-      .catch((e) => toast(`Statistics failed: ${e instanceof Error ? e.message : String(e)}`));
+        },
+      );
+    }
     return () => {
       live = false;
+      cancelAnimationFrame(frame);
     };
-  }, [key]);
+  }, [keys, missing]);
+
+  // Last row shown per sample: kept (dimmed) while its recomputation is pending, so edits don't blank the table.
+  const lastShown = useRef<{ groupId: string; rows: Map<string, SampleTable> }>({
+    groupId: '',
+    rows: new Map(),
+  });
+  if (group && lastShown.current.groupId !== group.id)
+    lastShown.current = { groupId: group.id, rows: new Map() };
+
+  const marker = useMemo(() => {
+    const sample0 = group ? samples[group.sampleIds[0] ?? ''] : undefined;
+    const pns = new Map(sample0?.channels.map((c) => [c.pnn, c.pns]) ?? []);
+    return (c?: string) => (c ? pns.get(c) : undefined);
+  }, [group, samples]);
+
+  const columns = useMemo(() => {
+    const out: Column[] = [];
+    if (!group) return out;
+    const byPop = new Map<string, StatSpec[]>();
+    for (const s of group.stats) {
+      const list = byPop.get(s.population);
+      if (list) list.push(s);
+      else byPop.set(s.population, [s]);
+    }
+    for (const p of pops) {
+      out.push({ key: `${p.id}|count`, label: 'Count', pop: p.id, stat: 'count' });
+      if (p.id !== 'root')
+        out.push({ key: `${p.id}|pctParent`, label: '% Parent', pop: p.id, stat: 'pctParent' });
+      for (const s of byPop.get(p.id) ?? [])
+        out.push({
+          key: s.id,
+          label: statLabel(s, marker(s.channel)),
+          pop: p.id,
+          stat: s.stat,
+          specId: s.id,
+        });
+    }
+    return out;
+  }, [group, pops, marker]);
+
+  const span = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of columns) m.set(c.pop, (m.get(c.pop) ?? 0) + 1);
+    return m;
+  }, [columns]);
+
+  const overridden = useMemo(() => new Set(group?.overrides.map((o) => o.sampleId)), [group]);
 
   if (!group) return <div className="empty">Select a group.</div>;
-  const sample0 = ws.samples[group.sampleIds[0] ?? ''];
-  const marker = (c?: string) => (c ? sample0?.channels.find((x) => x.pnn === c)?.pns : undefined);
 
-  const columns: {
-    key: string;
-    label: string;
-    pop: string;
-    stat: string;
-    channel?: string;
-    p?: number;
-    specId?: string;
-  }[] = [];
-  for (const p of pops) {
-    columns.push({ key: `${p.id}|count`, label: 'Count', pop: p.id, stat: 'count' });
-    if (p.id !== 'root')
-      columns.push({ key: `${p.id}|pctParent`, label: '% Parent', pop: p.id, stat: 'pctParent' });
-    for (const s of group.stats.filter((x) => x.population === p.id))
-      columns.push({
-        key: s.id,
-        label: statLabel(s, marker(s.channel)),
-        pop: p.id,
-        stat: s.stat,
-        ...(s.channel ? { channel: s.channel } : {}),
-        ...(s.p !== undefined ? { p: s.p } : {}),
-        specId: s.id,
-      });
-  }
-  const lookup = new Map<string, number>();
-  for (const c of cells) {
-    const spec = group.stats.find(
-      (s) =>
-        s.population === c.population &&
-        s.stat === c.statistic &&
-        (s.channel ?? '') === (c.channel ?? '') &&
-        (s.p ?? null) === (c.p ?? null),
-    );
-    const k =
-      c.statistic === 'count' || c.statistic === 'pctParent'
-        ? `${c.population}|${c.statistic}`
-        : (spec?.id ?? '');
-    if (k) lookup.set(`${c.sampleId}|${k}`, c.value);
-  }
+  let busy = 0;
+  const rows = shown.map((sid) => {
+    const fresh = tableCache.get(keys.get(sid) ?? '');
+    if (fresh) lastShown.current.rows.set(sid, fresh);
+    else if (!missing[sid]) busy++;
+    return {
+      sid,
+      table: missing[sid] ? undefined : (fresh ?? lastShown.current.rows.get(sid)),
+      stale: !fresh,
+    };
+  });
+  const complete = busy === 0 && rows.some((r) => r.table);
 
   const addStat = () => {
     if (!form.channel) {
@@ -190,13 +356,16 @@ export function StatsView() {
   };
 
   const exportStats = (kind: 'tidy' | 'wide') => {
+    const ws = useStore.getState().ws;
     // Only the samples checked in the sidebar (cells are computed for those alone).
     const g = { ...group, sampleIds: shown };
-    const rows = kind === 'tidy' ? tidyRows(ws, g, cells, APP_INFO.version) : wideRows(ws, g, cells);
-    download(`${safeName(`${group.name}_statistics_${kind}`)}.csv`, toCsv(rows), 'text/csv');
+    const cells = rows.flatMap((r) => (r.stale ? [] : r.table!.cells));
+    const out = kind === 'tidy' ? tidyRows(ws, g, cells, APP_INFO.version) : wideRows(ws, g, cells);
+    download(`${safeName(`${group.name}_statistics_${kind}`)}.csv`, toCsv(out), 'text/csv');
   };
 
   const exportGml = () => {
+    const ws = useStore.getState().ws;
     download(
       `${safeName(group.name)}_template.gating-ml.xml`,
       exportGatingML(ws, group, { appVersion: APP_INFO.version }),
@@ -212,11 +381,12 @@ export function StatsView() {
   };
 
   const exportEvents = async (format: 'fcs' | 'csv', mode: 'raw' | 'compensated') => {
-    const sid = ui.sampleId ?? group.sampleIds[0];
+    const ws = useStore.getState().ws;
+    const sid = selectedSample ?? group.sampleIds[0];
     if (!sid) return;
     const s = ws.samples[sid]!;
-    const path = populationPath(group.template, ui.popId);
-    const bytes = await pool.exportEvents(contextFor(ws, group), sid, ui.popId, mode, format, {
+    const path = populationPath(group.template, popId);
+    const bytes = await pool.exportEvents(contextFor(ws, group), sid, popId, mode, format, {
       FLOWMERIS_VERSION: `${APP_INFO.version} (${APP_INFO.commit})`,
       FLOWMERIS_SRC_SHA256: s.sha256,
       FLOWMERIS_SRC_FILE: s.fileName,
@@ -224,7 +394,7 @@ export function StatsView() {
       FLOWMERIS_VALUES: mode === 'raw' ? 'linearised, uncompensated' : 'linearised, compensated',
     });
     download(
-      `${safeName(`${s.fileName.replace(/\.(fcs|lmd)$/i, '')}_${group.template.populations[ui.popId]?.name ?? 'population'}`)}.${format}`,
+      `${safeName(`${s.fileName.replace(/\.(fcs|lmd)$/i, '')}_${group.template.populations[popId]?.name ?? 'population'}`)}.${format}`,
       bytes,
     );
   };
@@ -243,12 +413,12 @@ export function StatsView() {
         <button
           type="button"
           onClick={() => exportStats('tidy')}
-          disabled={cells.length === 0}
+          disabled={!complete}
           title="One row per sample × population × statistic, with provenance"
         >
           CSV (tidy)
         </button>
-        <button type="button" onClick={() => exportStats('wide')} disabled={cells.length === 0}>
+        <button type="button" onClick={() => exportStats('wide')} disabled={!complete}>
           CSV (wide)
         </button>
         <button
@@ -317,19 +487,16 @@ export function StatsView() {
           <thead>
             <tr>
               <th rowSpan={2}>Sample</th>
-              {pops.map((p) => {
-                const n = columns.filter((c) => c.pop === p.id).length;
-                return (
-                  <th
-                    key={p.id}
-                    colSpan={n}
-                    className="pop-head"
-                    title={populationPath(group.template, p.id)}
-                  >
-                    <span className="swatch" style={{ background: p.color }} /> {p.name}
-                  </th>
-                );
-              })}
+              {pops.map((p) => (
+                <th
+                  key={p.id}
+                  colSpan={span.get(p.id) ?? 1}
+                  className="pop-head"
+                  title={populationPath(group.template, p.id)}
+                >
+                  <span className="swatch" style={{ background: p.color }} /> {p.name}
+                </th>
+              ))}
             </tr>
             <tr>
               {columns.map((c) => (
@@ -355,31 +522,26 @@ export function StatsView() {
             </tr>
           </thead>
           <tbody>
-            {shown.map((sid) => {
-              const s = ws.samples[sid];
-              const ov = group.overrides.some((o) => o.sampleId === sid);
-              return (
-                <tr key={sid} className={ui.sampleId === sid ? 'on' : ''}>
-                  <th scope="row" title={s?.relativePath}>
-                    {names[sid] ?? s?.fileName}
-                    {ov && <span className="badge warn">override</span>}
-                    {ui.missing[sid] && <span className="badge danger">missing</span>}
-                  </th>
-                  {columns.map((c) => (
-                    <td key={c.key}>
-                      {fmt(lookup.get(`${sid}|${c.specId ?? `${c.pop}|${c.stat}`}`), c.stat)}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
+            {rows.map(({ sid, table, stale }) => (
+              <StatsRow
+                key={sid}
+                label={names[sid] ?? samples[sid]?.fileName ?? sid}
+                title={samples[sid]?.relativePath}
+                override={overridden.has(sid)}
+                missing={!!missing[sid]}
+                selected={selectedSample === sid}
+                stale={stale && !!table}
+                columns={columns}
+                values={table?.values}
+              />
+            ))}
           </tbody>
         </table>
       </div>
       <div className="toolbar">
         <span className="muted">
-          Export events of the current population ({group.template.populations[ui.popId]?.name}) for the
-          selected sample:
+          Export events of the current population ({group.template.populations[popId]?.name}) for the selected
+          sample:
         </span>
         <button
           type="button"

@@ -5,7 +5,15 @@ import {
   makeCompensator,
 } from '@flowmeris/compensation';
 import { linearize } from '@flowmeris/fcs';
-import { type Bitset, evaluateGate, fullBitset, popcount, regionsOf, toIndices } from '@flowmeris/gating';
+import {
+  type Bitset,
+  evaluateGate,
+  forEachSet,
+  fullBitset,
+  popcount,
+  regionsOf,
+  toIndices,
+} from '@flowmeris/gating';
 import {
   type AxisSpec,
   type CompRef,
@@ -56,6 +64,15 @@ const NO_COMP: ResolvedComp = { m: null, key: 'none' };
 
 /** Population cache keys computed within one request (a key hashes its whole lineage). */
 type KeyMemo = Map<string, string>;
+
+const FREQUENCY_STATS = new Set(['count', 'pctParent', 'pctGrandparent', 'pctTotal']);
+
+const statTransform = (spec: StatSpec): string | null =>
+  spec.space === 'transformed' ? (spec.transform ?? null) : null;
+
+/** Cache key of one value statistic: the population's and column's content keys (ADR-0004). */
+const statKey = (bitsKey: string, colKey: string, spec: StatSpec): string =>
+  `stat|${KERNEL_VERSION}|${bitsKey}|${colKey}|${spec.stat}|${spec.p ?? ''}`;
 
 /** Small string-keyed memo that is simply cleared once it grows past `max` entries. */
 class BoundedMemo<V> {
@@ -213,12 +230,23 @@ export class Engine {
     const ci = this.channelIndex(s, dim.channel);
     const base = dim.comp === 'group' ? this.compensated(ctx, s, ci) : this.linear(s, ci);
     if (dim.transform === null) return base;
+    return this.memo(this.columnKey(ctx, s, ci, dim), () =>
+      makeScale(ctx.transforms[dim.transform!]!).applyArray(base),
+    );
+  }
+
+  /** Identifies a column's values: channel, compensation and transform. */
+  private columnKey(
+    ctx: AnalysisContext,
+    s: SampleData,
+    ci: number,
+    dim: { comp: CompRef; transform: string | null },
+  ): string {
+    const ck = dim.comp === 'group' ? this.compKey(ctx, s) : 'raw';
+    if (dim.transform === null) return `lin|${this.sampleKey(s)}|${ci}|${ck}`;
     const def = ctx.transforms[dim.transform];
     if (!def) throw new Error(`Transform ${dim.transform} not found`);
-    const ck = dim.comp === 'group' ? this.compKey(ctx, s) : 'raw';
-    return this.memo(`tr|${this.sampleKey(s)}|${ci}|${ck}|${this.fp(def)}`, () =>
-      makeScale(def).applyArray(base),
-    );
+    return `tr|${this.sampleKey(s)}|${ci}|${ck}|${this.fp(def)}`;
   }
 
   // -------------------------------------------------------------------------
@@ -331,13 +359,30 @@ export class Engine {
   // -------------------------------------------------------------------------
 
   async stats(ctx: AnalysisContext, sampleId: string, specs: StatSpec[]): Promise<StatResult[]> {
+    return this.statsOf(ctx, await this.sample(sampleId), specs, new Map());
+  }
+
+  /** Population counts and statistics of one sample in a single request (the Statistics table). */
+  async table(
+    ctx: AnalysisContext,
+    sampleId: string,
+    popIds: string[],
+    specs: StatSpec[],
+  ): Promise<{ counts: PopulationCount[]; stats: StatResult[] }> {
     const s = await this.sample(sampleId);
     const memo: KeyMemo = new Map();
+    return { counts: this.countsOf(ctx, s, popIds, memo), stats: this.statsOf(ctx, s, specs, memo) };
+  }
+
+  private statsOf(ctx: AnalysisContext, s: SampleData, specs: StatSpec[], memo: KeyMemo): StatResult[] {
+    const sampleId = s.sampleId;
     const out: StatResult[] = [];
-    // Group value statistics by (population, channel, space) so each column is gathered and sorted once.
-    const groups = new Map<string, StatSpec[]>();
+    // Value statistics are cached one by one, keyed by the population's and the column's
+    // content keys (so a hit is always valid). Misses are grouped by (population, column)
+    // so each column is gathered and ordered once.
+    const groups = new Map<string, { bitsKey: string; colKey: string; specs: StatSpec[] }>();
     for (const spec of specs) {
-      if (['count', 'pctParent', 'pctGrandparent', 'pctTotal'].includes(spec.stat)) {
+      if (FREQUENCY_STATS.has(spec.stat)) {
         const [c] = this.countsOf(ctx, s, [spec.population], memo);
         const pct = (a: number, b: number) => (b > 0 ? (100 * a) / b : Number.NaN);
         const value =
@@ -352,26 +397,47 @@ export class Engine {
         continue;
       }
       if (!spec.channel) throw new Error(`Statistic ${spec.stat} requires a channel`);
-      const k = `${spec.population}|${spec.channel}|${spec.space}|${spec.transform ?? ''}`;
-      if (!groups.has(k)) groups.set(k, []);
-      groups.get(k)!.push(spec);
+      const bitsKey = this.popKey(ctx, s, spec.population, memo);
+      const colKey = this.columnKey(ctx, s, this.channelIndex(s, spec.channel), {
+        comp: 'group',
+        transform: statTransform(spec),
+      });
+      const hit = this.cache.get(statKey(bitsKey, colKey, spec)) as Float64Array | undefined;
+      if (hit) {
+        out.push({ statId: spec.id, sampleId, value: hit[0]!, n: hit[1]!, nExcluded: hit[2]! });
+        continue;
+      }
+      const k = `${bitsKey}|${colKey}`;
+      let g = groups.get(k);
+      if (!g) {
+        g = { bitsKey, colKey, specs: [] };
+        groups.set(k, g);
+      }
+      g.specs.push(spec);
     }
-    for (const list of groups.values()) {
+    for (const { bitsKey, colKey, specs: list } of groups.values()) {
       const first = list[0]!;
       const bits = this.popBits(ctx, s, first.population, memo);
       const col = this.column(ctx, s, {
         channel: first.channel!,
         comp: 'group',
-        transform: first.space === 'transformed' ? (first.transform ?? null) : null,
+        transform: statTransform(first),
       });
-      const idx = toIndices(bits);
-      const vals = new Float64Array(idx.length);
-      for (let i = 0; i < idx.length; i++) vals[i] = col[idx[i]!] as number;
+      const vals = new Float64Array(popcount(bits));
+      let k = 0;
+      forEachSet(bits, (i) => {
+        vals[k++] = col[i] as number;
+      });
       const res = summarize(
         vals,
         list.map((sp) => ({ stat: sp.stat as ValueStat, ...(sp.p !== undefined ? { p: sp.p } : {}) })),
+        true,
       );
-      list.forEach((sp, i) => out.push({ statId: sp.id, sampleId, ...res[i]! }));
+      list.forEach((sp, i) => {
+        const r = res[i]!;
+        this.cache.set(statKey(bitsKey, colKey, sp), Float64Array.of(r.value, r.n, r.nExcluded));
+        out.push({ statId: sp.id, sampleId, ...r });
+      });
     }
     const order = new Map(specs.map((sp, i) => [sp.id, i]));
     return out.sort((a, b) => order.get(a.statId)! - order.get(b.statId)!);
