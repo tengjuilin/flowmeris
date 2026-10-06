@@ -341,7 +341,8 @@ code,
   display: grid;
   grid-template-columns: 1fr 320px;
   gap: 10px;
-  height: 100%;
+  /* Grows past the view (which then scrolls) rather than letting a column spill out of its box. */
+  min-height: max(100%, 480px);
 }
 .plot-panel {
   display: flex;
@@ -404,7 +405,8 @@ code,
 }
 .plot-box {
   flex: 1;
-  min-height: 320px;
+  min-height: 0;
+  overflow: hidden;
   position: relative;
 }
 .plot {
@@ -542,17 +544,15 @@ code,
   flex-direction: column;
   gap: 10px;
   min-width: 0;
-  min-height: 0;
 }
 .plot-side .pop-tree {
   flex: 0 1 auto;
-  max-height: 45%;
+  max-height: 40vh;
 }
 .ref-plots {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 360px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -567,6 +567,7 @@ code,
 }
 .ref-tabs {
   display: flex;
+  flex-shrink: 0;
   align-items: flex-end;
   gap: 2px;
   overflow-x: auto;
@@ -606,6 +607,7 @@ code,
 }
 .ref-controls {
   display: grid;
+  flex-shrink: 0;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 4px 6px;
   align-items: center;
