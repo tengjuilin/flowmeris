@@ -309,7 +309,14 @@ export function App() {
                 </div>
               )}
               {ui.view === 'plot' && <PlotGridView />}
-              {ui.view === 'tiles' && <TilesView />}
+              {ui.view === 'tiles' && (
+                <div className="plot-layout">
+                  <TilesView />
+                  <div className="plot-side">
+                    <PopulationTree />
+                  </div>
+                </div>
+              )}
               {ui.view === 'ridge' && (
                 <div className="plot-layout">
                   <RidgeView />
