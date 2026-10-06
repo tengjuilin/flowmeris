@@ -881,13 +881,14 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
           <rect x={0} y={0} width={pw} height={ph} className="plot-frame" />
           <g clipPath={`url(#${clipId})`}>
             {histPath && <path d={histPath.d} className="hist" />}
-            {raster?.contours.map((c, i) => (
-              <path
-                key={i}
-                className="contour"
-                d={c.rings.map((r) => `M${r.map(([a, b]) => `${X(a)},${Y(b)}`).join('L')}Z`).join('')}
-              />
-            ))}
+            {!is1d &&
+              raster?.contours.map((c, i) => (
+                <path
+                  key={i}
+                  className="contour"
+                  d={c.rings.map((r) => `M${r.map(([a, b]) => `${X(a)},${Y(b)}`).join('L')}Z`).join('')}
+                />
+              ))}
             {gateEls}
             {creating}
             {polyDraft}

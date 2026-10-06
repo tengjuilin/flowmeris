@@ -45,30 +45,33 @@ function csp(): Plugin {
   };
 }
 
-const DOCS_DEV_PORT = 5175;
-
 /**
- * Dev only: serve the VitePress docs at /docs/ (as in the built site) by
- * starting `vitepress dev` alongside Vite and proxying to it. Without this the
- * SPA fallback answers /docs/ with the app itself.
+ * Dev only: mirror the deployed layout (docs at /, app at /app/) by starting
+ * `vitepress dev` alongside Vite and proxying every path outside /app/ to it.
  */
 function docsDev(): Plugin {
+  let docsPort = 5175;
   return {
     name: 'flowmeris-docs-dev',
     apply: 'serve',
-    config: () => ({
-      server: {
-        proxy: {
-          '/docs': { target: `http://localhost:${DOCS_DEV_PORT}`, ws: true, changeOrigin: true },
+    config: (cfg, env) => {
+      if (env.isPreview) return;
+      // Two ports above Vite's (5175 by default), so parallel dev servers don't collide.
+      docsPort = (cfg.server?.port ?? 5173) + 2;
+      return {
+        server: {
+          proxy: {
+            '^/(?!app(/|$))': { target: `http://localhost:${docsPort}`, ws: true, changeOrigin: true },
+          },
         },
-      },
-    }),
+      };
+    },
     configureServer(server) {
       const root = fileURLToPath(new URL('../..', import.meta.url));
       const child = spawn(
         'corepack',
-        ['pnpm', 'exec', 'vitepress', 'dev', 'docs', '--port', String(DOCS_DEV_PORT), '--strictPort'],
-        { cwd: root, stdio: 'ignore', env: { ...process.env, DOCS_BASE: '/docs/' } },
+        ['pnpm', 'exec', 'vitepress', 'dev', 'docs', '--port', String(docsPort), '--strictPort'],
+        { cwd: root, stdio: 'ignore', env: { ...process.env, DOCS_BASE: '/' } },
       );
       const stop = () => child.kill();
       server.httpServer?.once('close', stop);
@@ -77,8 +80,10 @@ function docsDev(): Plugin {
   };
 }
 
-export default defineConfig({
-  base: './',
+export default defineConfig(({ command, isPreview }) => ({
+  // Dev mirrors the site (/app/); builds are relative so they work under any prefix
+  // (/app/, /<repo>/app/, or / when `vite preview` serves them for e2e).
+  base: command === 'serve' && !isPreview ? '/app/' : './',
   plugins: [react(), csp(), docsDev()],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
@@ -87,4 +92,4 @@ export default defineConfig({
   worker: { format: 'es' },
   build: { target: 'es2022', sourcemap: true },
   server: { port: 5173 },
-});
+}));

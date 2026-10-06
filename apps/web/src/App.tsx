@@ -165,7 +165,7 @@ function Header() {
       >
         New
       </button>
-      <a className="button" href="./docs/" target="_blank" rel="noreferrer">
+      <a className="button" href="../" target="_blank" rel="noreferrer">
         Docs
       </a>
       {!pool.opfs && (

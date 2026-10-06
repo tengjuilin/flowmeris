@@ -1,17 +1,22 @@
 import mathjax3 from 'markdown-it-mathjax3';
 import { defineConfig } from 'vitepress';
 
-// Served under the app at ./docs/ (DOCS_BASE overrides, e.g. "/flowmeris/docs/" on GitHub Pages).
+// The docs are the site's landing page; the app is served beside them at <base>app/.
+// DOCS_BASE overrides the base, e.g. "/flowmeris/" on GitHub Pages.
 export default defineConfig({
   title: 'flowmeris',
   description: 'Client-side flow cytometry analysis — user guide, methods and validation',
-  base: process.env.DOCS_BASE ?? '/docs/',
+  base: process.env.DOCS_BASE ?? '/',
   cleanUrls: false,
+  // The app is not a VitePress page; links to it are checked by the e2e tests instead.
+  ignoreDeadLinks: [/(^|\/)app\/$/],
   markdown: { config: (md) => md.use(mathjax3) },
   // MathJax emits <mjx-*> elements; Vue must not treat them as components.
   vue: { template: { compilerOptions: { isCustomElement: (tag) => tag.startsWith('mjx-') } } },
   themeConfig: {
     nav: [
+      // target makes the link a full page load: the VitePress router would otherwise 404 on /app/.
+      { text: 'Open app', link: '/app/', target: '_self' },
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'Methods', link: '/methods/' },
       { text: 'Validation', link: '/validation/' },

@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "corepack pnpm --filter @flowmeris/web dev",
     "build": "corepack pnpm --filter @flowmeris/web build",
-    "preview": "corepack pnpm --filter @flowmeris/web preview",
+    "preview": "vitepress preview docs --port 4174 --strictPort",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "biome check .",
     "format": "biome format --write .",
@@ -21,7 +21,7 @@
     "e2e": "playwright test",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "build:site": "corepack pnpm build && DOCS_BASE=${DOCS_BASE:-/docs/} vitepress build docs && rm -rf apps/web/dist/docs && cp -R docs/.vitepress/dist apps/web/dist/docs",
+    "build:site": "corepack pnpm build && DOCS_BASE=${DOCS_BASE:-/} vitepress build docs && rm -rf docs/.vitepress/dist/app && cp -R apps/web/dist docs/.vitepress/dist/app",
     "fixtures:fetch": "node tools/fetch-fixtures.mjs",
     "golden": "uv run --project tools/golden/python python tools/golden/python/generate.py",
     "check": "corepack pnpm lint && corepack pnpm typecheck && corepack pnpm test"

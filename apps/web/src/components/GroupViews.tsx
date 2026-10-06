@@ -8,14 +8,13 @@ import { lineageKey } from '../lib/analysis.ts';
 import { defaultAxis } from '../lib/defaults.ts';
 import { download, safeName } from '../lib/download.ts';
 import { scaleFor } from '../lib/geometry.ts';
-import { contextFor, useGroup, useStore } from '../state/store.ts';
+import { contextFor, useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
 import { PlotCanvas } from './PlotCanvas.tsx';
-import { usePlotForPopulation } from './PlotPanel.tsx';
+import { AxisSelects, PlotKindSelect, usePlotForPopulation } from './PlotPanel.tsx';
 import { useSize } from './hooks.ts';
 
 function truncate(s: string, n: number): string {
-  const base = s.replace(/\.(fcs|lmd)$/i, '');
-  return base.length <= n ? base : `…${base.slice(base.length - n + 1)}`;
+  return s.length <= n ? s : `…${s.slice(s.length - n + 1)}`;
 }
 
 function useVisible<T extends Element>(): [React.RefObject<T>, boolean] {
@@ -38,7 +37,8 @@ function Tile({
   sampleId,
   plot,
   size,
-}: { group: Group; sampleId: string; plot: PlotSpec; size: number }) {
+  name,
+}: { group: Group; sampleId: string; plot: PlotSpec; size: number; name: string }) {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
   const setUi = useStore((s) => s.setUi);
@@ -53,7 +53,7 @@ function Tile({
         title={`${s?.relativePath} — open in the plot view`}
         onClick={() => setUi({ sampleId, view: 'plot' })}
       >
-        <span>{s?.fileName}</span>
+        <span>{name}</span>
         {ov && <span className="badge warn">override</span>}
       </button>
       <div style={{ width: size, height: size }}>
@@ -74,9 +74,10 @@ function Tile({
 }
 
 export function TilesView() {
-  const ws = useStore((s) => s.ws);
   const group = useGroup();
   const plot = usePlotForPopulation();
+  const names = useSampleNames(group);
+  const shown = useSelectedSampleIds(group);
   const box = useRef<HTMLDivElement>(null);
   const { width } = useSize(box);
   const [tile, setTile] = useState(220);
@@ -88,10 +89,13 @@ export function TilesView() {
   return (
     <div className="tiles-view" ref={box}>
       <div className="toolbar">
-        <span>
-          <strong>{pop?.name}</strong> · {plot.kind} · {plot.x.channel}
-          {plot.y && plot.kind !== 'histogram' ? ` × ${plot.y.channel}` : ''} · {group.sampleIds.length}{' '}
-          samples
+        <strong>{pop?.name}</strong>
+        <PlotKindSelect group={group} plot={plot} />
+        <AxisSelects group={group} plot={plot} />
+        <span className="muted">
+          {shown.length === group.sampleIds.length
+            ? `${shown.length} samples`
+            : `${shown.length} of ${group.sampleIds.length} samples`}
         </span>
         <div className="spacer" />
         <label className="field">
@@ -107,19 +111,20 @@ export function TilesView() {
       </div>
       <p className="muted small">
         Gates are drawn from the group template; samples with overrides are flagged and drawn with their own
-        gate. Click a tile to edit that sample.
+        gate. Click a tile to edit that sample. Plot type and axes are shared with the Plot view; choose
+        samples with the checkboxes in the sidebar.
       </p>
+      {shown.length === 0 && <div className="empty">No samples selected: check some in the sidebar.</div>}
       <div
         className="tiles"
         style={{
           gridTemplateColumns: `repeat(${Math.max(1, Math.floor((width - 16) / (tile + 12)))}, ${tile}px)`,
         }}
       >
-        {group.sampleIds.map((id) => (
-          <Tile key={id} group={group} sampleId={id} plot={plot} size={tile} />
+        {shown.map((id) => (
+          <Tile key={id} group={group} sampleId={id} plot={plot} size={tile} name={names[id] ?? id} />
         ))}
       </div>
-      {ws.groups.length === 0 && null}
     </div>
   );
 }
@@ -134,6 +139,8 @@ export function RidgeView() {
   const mutate = useStore((s) => s.mutate);
   const group = useGroup();
   const plot = usePlotForPopulation();
+  const names = useSampleNames(group);
+  const shown = useSelectedSampleIds(group);
   const box = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const { width } = useSize(box);
@@ -160,12 +167,12 @@ export function RidgeView() {
     () =>
       group && axis
         ? JSON.stringify([
-            group.sampleIds.map((s) => lineageKey(ws, group, s, ui.popId)),
+            shown.map((s) => lineageKey(ws, group, s, ui.popId)),
             axis,
             ws.transforms[axis.transform],
           ])
         : '',
-    [group, axis, ws, ui.popId],
+    [group, shown, axis, ws, ui.popId],
   );
   useEffect(() => {
     if (!group || !axis) return;
@@ -178,7 +185,7 @@ export function RidgeView() {
       histSmooth: true,
     };
     setData({});
-    for (const sid of group.sampleIds) {
+    for (const sid of shown) {
       if (ui.missing[sid]) continue;
       pool
         .histogram(ctx, sid, ui.popId, axis, style as PlotSpec['style'])
@@ -191,7 +198,7 @@ export function RidgeView() {
   }, [key]);
 
   if (!group || !axis) return <div className="empty">Select a group.</div>;
-  const n = group.sampleIds.length;
+  const n = Math.max(1, shown.length);
   const labelW = 240;
   const W = Math.max(400, width - 24);
   const pw = W - labelW - 20;
@@ -236,7 +243,11 @@ export function RidgeView() {
             onChange={(e) => setOverlap(Number(e.target.value))}
           />
         </label>
-        <span className="muted">Population: {pop?.name}</span>
+        <span className="muted">
+          Population: {pop?.name}
+          {shown.length < group.sampleIds.length &&
+            ` · ${shown.length} of ${group.sampleIds.length} samples (sidebar selection)`}
+        </span>
         <div className="spacer" />
         <button
           type="button"
@@ -263,7 +274,7 @@ export function RidgeView() {
         aria-label={`Ridge plot of ${ch} for ${pop?.name}`}
       >
         <rect width={W} height={H} fill="var(--surface)" />
-        {group.sampleIds.map((sid, i) => {
+        {shown.map((sid, i) => {
           const h = data[sid];
           const base = 20 + rowH * i + rowH / (1 - overlap);
           const amp = rowH / (1 - overlap);
@@ -279,7 +290,7 @@ export function RidgeView() {
             <g key={sid}>
               <text x={labelW - 8} y={base - 3} textAnchor="end" className="ridge-label">
                 <title>{s?.relativePath}</title>
-                {truncate(s?.fileName ?? '', 26)}
+                {truncate(names[sid] ?? s?.fileName ?? '', 26)}
                 {h ? ` (n=${h.eventsPlotted.toLocaleString()})` : ui.missing[sid] ? ' (missing)' : ''}
               </text>
               {h && (

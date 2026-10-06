@@ -10,7 +10,7 @@
     {
       "name": "site",
       "runtimeExecutable": "corepack",
-      "runtimeArgs": ["pnpm", "--filter", "@flowmeris/web", "preview", "--port", "4174", "--strictPort"],
+      "runtimeArgs": ["pnpm", "preview"],
       "port": 4174
     }
   ]

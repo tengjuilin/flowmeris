@@ -4,7 +4,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { lineageKey } from '../lib/analysis.ts';
 import { download, safeName } from '../lib/download.ts';
-import { APP_INFO, contextFor, toast, useGroup, useStore } from '../state/store.ts';
+import {
+  APP_INFO,
+  contextFor,
+  toast,
+  useGroup,
+  useSampleNames,
+  useSelectedSampleIds,
+  useStore,
+} from '../state/store.ts';
 
 const VALUE_STATS: { id: StatKind; label: string }[] = [
   { id: 'median', label: 'Median' },
@@ -34,6 +42,8 @@ export function StatsView() {
   const ui = useStore((s) => s.ui);
   const mutate = useStore((s) => s.mutate);
   const group = useGroup();
+  const shown = useSelectedSampleIds(group);
+  const names = useSampleNames(group);
   const [cells, setCells] = useState<StatCell[]>([]);
   const [busy, setBusy] = useState(0);
   const [form, setForm] = useState<{ pop: string; stat: StatKind; channel: string; p: number }>({
@@ -48,12 +58,12 @@ export function StatsView() {
     () =>
       group
         ? JSON.stringify([
-            group.sampleIds.map((s) => pops.map((p) => lineageKey(ws, group, s, p.id))),
+            shown.map((s) => pops.map((p) => lineageKey(ws, group, s, p.id))),
             group.stats,
             Object.keys(ui.missing),
           ])
         : '',
-    [group, pops, ws, ui.missing],
+    [group, shown, pops, ws, ui.missing],
   );
 
   useEffect(() => {
@@ -62,7 +72,7 @@ export function StatsView() {
     const ctx = contextFor(ws, group);
     const popIds = pops.map((p) => p.id);
     const out: StatCell[] = [];
-    const todo = group.sampleIds.filter((s) => !ui.missing[s]);
+    const todo = shown.filter((s) => !ui.missing[s]);
     setBusy(todo.length);
     setCells([]);
     Promise.all(
@@ -180,7 +190,9 @@ export function StatsView() {
   };
 
   const exportStats = (kind: 'tidy' | 'wide') => {
-    const rows = kind === 'tidy' ? tidyRows(ws, group, cells, APP_INFO.version) : wideRows(ws, group, cells);
+    // Only the samples checked in the sidebar (cells are computed for those alone).
+    const g = { ...group, sampleIds: shown };
+    const rows = kind === 'tidy' ? tidyRows(ws, g, cells, APP_INFO.version) : wideRows(ws, g, cells);
     download(`${safeName(`${group.name}_statistics_${kind}`)}.csv`, toCsv(rows), 'text/csv');
   };
 
@@ -221,6 +233,11 @@ export function StatsView() {
     <div className="stats-view">
       <div className="toolbar">
         <strong>Statistics · {group.name}</strong>
+        {shown.length < group.sampleIds.length && (
+          <span className="muted">
+            {shown.length} of {group.sampleIds.length} samples (sidebar selection)
+          </span>
+        )}
         {busy > 0 && <span className="muted">computing… {busy} sample(s) left</span>}
         <div className="spacer" />
         <button
@@ -338,13 +355,13 @@ export function StatsView() {
             </tr>
           </thead>
           <tbody>
-            {group.sampleIds.map((sid) => {
+            {shown.map((sid) => {
               const s = ws.samples[sid];
               const ov = group.overrides.some((o) => o.sampleId === sid);
               return (
                 <tr key={sid} className={ui.sampleId === sid ? 'on' : ''}>
-                  <th scope="row">
-                    {s?.fileName}
+                  <th scope="row" title={s?.relativePath}>
+                    {names[sid] ?? s?.fileName}
                     {ov && <span className="badge warn">override</span>}
                     {ui.missing[sid] && <span className="badge danger">missing</span>}
                   </th>

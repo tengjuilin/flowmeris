@@ -1,7 +1,9 @@
 import type { AnalysisContext } from '@flowmeris/engine';
 import { type Group, type Workspace, newWorkspace } from '@flowmeris/model';
 import { type Patch, applyPatches, enablePatches, produceWithPatches } from 'immer';
+import { useMemo } from 'react';
 import { create } from 'zustand';
+import { displayNames } from '../lib/names.ts';
 
 enablePatches();
 
@@ -28,6 +30,8 @@ interface UiState {
   editScope: 'template' | 'sample';
   selectedGateId: string | null;
   missing: Record<string, true>;
+  /** Samples left out of the Tiles, Ridge and Statistics views (unchecked in the sidebar). */
+  excluded: Record<string, true>;
   ingest: IngestProgress | null;
   toast: { text: string; action?: { label: string; run: () => void } } | null;
 }
@@ -63,6 +67,7 @@ export const useStore = create<Store>((set, get) => ({
     editScope: 'template',
     selectedGateId: null,
     missing: {},
+    excluded: {},
     ingest: null,
     toast: null,
   },
@@ -100,6 +105,7 @@ export const useStore = create<Store>((set, get) => ({
         popId: 'root',
         plotId: null,
         selectedGateId: null,
+        excluded: {},
       },
     }));
   },
@@ -110,6 +116,21 @@ export const useStore = create<Store>((set, get) => ({
 
 export function useGroup(): Group | undefined {
   return useStore((s) => s.ws.groups.find((g) => g.id === s.ui.groupId));
+}
+
+/** Short display names of a group's samples (lib/names.ts). */
+export function useSampleNames(g: Group | undefined): Record<string, string> {
+  const samples = useStore((s) => s.ws.samples);
+  return useMemo(
+    () => (g ? displayNames(g.sampleIds.flatMap((id) => (samples[id] ? [samples[id]] : []))) : {}),
+    [g, samples],
+  );
+}
+
+/** The group's samples that are checked for display, in group order. */
+export function useSelectedSampleIds(g: Group | undefined): string[] {
+  const excluded = useStore((s) => s.ui.excluded);
+  return useMemo(() => (g ? g.sampleIds.filter((id) => !excluded[id]) : []), [g, excluded]);
 }
 
 export function contextFor(ws: Workspace, g: Group): AnalysisContext {

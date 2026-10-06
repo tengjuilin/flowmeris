@@ -20,3 +20,19 @@ The edit is stored as an **override** for that sample only. Overrides are visibl
 
 In the inspector, **Revert to template** removes the override and **Make this the template** promotes it.
 Adding or deleting gates always changes the whole group's tree; overrides change geometry only.
+
+## Sample names and selection
+
+The sidebar, tiles, ridge plot and statistics table show **short sample names**: the file name with its
+extension, any repeat of the folder name, and any prefix or suffix shared by every file in the group
+removed (trimmed at `_`, `-`, `.` or space boundaries only, so `exp1_2024_A01_stained.fcs` in folder `exp1` shows as `A01`).
+If trimming would make two names identical, the full names are kept. Hover a name for its full path; CSV
+and Gating-ML exports always use the full file name.
+
+The checkbox next to each sample (with *all* / *none* above the list) chooses which samples appear in the
+**Tiles**, **Ridge** and **Statistics** views. Statistics CSV exports contain the checked samples only.
+The selection is part of the view, not the analysis: it is not saved in the workspace and does not change
+gates or overrides.
+
+In **Tiles**, the plot type and X / Y channels can be changed directly; they are the same settings as in
+the Plot view for the current population.

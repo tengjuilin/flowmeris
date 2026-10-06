@@ -26,10 +26,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build:site
         env:
-          DOCS_BASE: /${{ github.event.repository.name }}/docs/
+          DOCS_BASE: /${{ github.event.repository.name }}/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/web/dist
+          path: docs/.vitepress/dist
   deploy:
     needs: build
     runs-on: ubuntu-latest

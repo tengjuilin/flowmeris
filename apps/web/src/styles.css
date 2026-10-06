@@ -248,8 +248,18 @@ code,
   margin: 0 0 0 4px;
   padding: 0;
 }
+.sample-list li {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.sample-list input[type="checkbox"] {
+  margin: 0 2px;
+  flex: none;
+}
 .sample-list button {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   border: none;
   background: none;
   justify-content: space-between;
@@ -260,6 +270,12 @@ code,
 .sample-list button.on {
   background: var(--surface-2);
   font-weight: 600;
+}
+.selection-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 2px 8px;
 }
 .sample-list .name {
   overflow: hidden;

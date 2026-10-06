@@ -34,7 +34,7 @@ export function lineageKey(ws: Workspace, g: Group, sampleId: string | null, pop
     ),
   );
   const comp = g.compensation.mode === 'matrix' ? ws.compMatrices[g.compensation.matrixId] : g.compensation;
-  return JSON.stringify([gates, transforms, comp]);
+  return JSON.stringify([sampleId, gates, transforms, comp]);
 }
 
 export function plotKey(ws: Workspace, g: Group, sampleId: string, plot: PlotSpec): string {

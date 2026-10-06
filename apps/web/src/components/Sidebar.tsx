@@ -1,11 +1,41 @@
-import { useStore } from '../state/store.ts';
+import type { Group } from '@flowmeris/model';
+import { useSampleNames, useStore } from '../state/store.ts';
 import { drill } from './PlotPanel.tsx';
+
+function SelectionControls({ g }: { g: Group }) {
+  const excluded = useStore((s) => s.ui.excluded);
+  const setUi = useStore((s) => s.setUi);
+  const nSel = g.sampleIds.filter((id) => !excluded[id]).length;
+  const set = (all: boolean) => {
+    const next = { ...excluded };
+    for (const id of g.sampleIds) {
+      if (all) delete next[id];
+      else next[id] = true;
+    }
+    setUi({ excluded: next });
+  };
+  return (
+    <div className="selection-controls muted small">
+      <span title="Checked samples are shown in the Tiles, Ridge and Statistics views">
+        {nSel}/{g.sampleIds.length} shown
+      </span>
+      <button type="button" className="link" onClick={() => set(true)} disabled={nSel === g.sampleIds.length}>
+        all
+      </button>
+      <button type="button" className="link" onClick={() => set(false)} disabled={nSel === 0}>
+        none
+      </button>
+    </div>
+  );
+}
 
 export function Sidebar() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
   const setUi = useStore((s) => s.setUi);
   const mutate = useStore((s) => s.mutate);
+  const activeGroup = ws.groups.find((g) => g.id === ui.groupId);
+  const names = useSampleNames(activeGroup);
 
   return (
     <nav className="sidebar" aria-label="Groups and samples">
@@ -48,6 +78,7 @@ export function Sidebar() {
                 </button>
               )}
             </header>
+            {active && <SelectionControls g={g} />}
             {active && (
               <ul className="sample-list">
                 {g.sampleIds.map((id) => {
@@ -56,16 +87,25 @@ export function Sidebar() {
                   const sel = id === ui.sampleId;
                   return (
                     <li key={id}>
+                      <input
+                        type="checkbox"
+                        checked={!ui.excluded[id]}
+                        aria-label={`Show ${names[id] ?? s.fileName} in Tiles, Ridge and Statistics`}
+                        title="Show in the Tiles, Ridge and Statistics views"
+                        onChange={(e) => {
+                          const excluded = { ...ui.excluded };
+                          if (e.target.checked) delete excluded[id];
+                          else excluded[id] = true;
+                          setUi({ excluded });
+                        }}
+                      />
                       <button
                         type="button"
                         className={sel ? 'on' : ''}
                         onClick={() => setUi({ sampleId: id })}
                         title={`${s.relativePath}${s.datasetIndex ? ` (dataset ${s.datasetIndex + 1})` : ''}\nSHA-256 ${s.sha256}`}
                       >
-                        <span className="name">
-                          {s.fileName}
-                          {s.datasetIndex > 0 ? ` #${s.datasetIndex + 1}` : ''}
-                        </span>
+                        <span className="name">{names[id] ?? s.fileName}</span>
                         <span className="badges">
                           {ui.missing[id] && (
                             <span

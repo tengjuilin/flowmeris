@@ -44,7 +44,7 @@ corepack pnpm fixtures:fetch   # large test files, SHA-256 verified
 ```
 
 ```bash
-corepack pnpm dev              # http://localhost:5173
+corepack pnpm dev              # docs at http://localhost:5173, app at /app/
 ```
 
 ```bash
@@ -60,7 +60,7 @@ corepack pnpm golden           # regenerate fixtures/golden from FlowKit (pinned
 ```
 
 ```bash
-corepack pnpm build:site && corepack pnpm preview   # app + docs, as deployed
+corepack pnpm build:site && corepack pnpm preview   # docs + app (at /app/), as deployed
 ```
 
 ### Layout

@@ -6,6 +6,10 @@ hero:
   tagline: Group-wide gating, statistics and publication plots — with every method documented and validated.
   actions:
     - theme: brand
+      text: Open the app
+      link: /app/
+      target: _self
+    - theme: alt
       text: Getting started
       link: /guide/getting-started
     - theme: alt
