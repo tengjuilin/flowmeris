@@ -1,6 +1,6 @@
 // Compares two golden directories structurally, allowing tiny float differences
 // (last-bit libm/BLAS variation between macOS and Linux). Usage: node compare.mjs <expected> <actual>
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const [expected, actual] = process.argv.slice(2);
@@ -43,7 +43,11 @@ if (fa.join() !== fb.join()) {
   process.exit(1);
 }
 for (const f of fa) {
-  cmp(JSON.parse(readFileSync(join(expected, f), 'utf8')), JSON.parse(readFileSync(join(actual, f), 'utf8')), f);
+  cmp(
+    JSON.parse(readFileSync(join(expected, f), 'utf8')),
+    JSON.parse(readFileSync(join(actual, f), 'utf8')),
+    f,
+  );
 }
 if (problems.length) {
   console.error(`Golden drift (rtol ${RTOL}):\n${problems.join('\n')}`);
