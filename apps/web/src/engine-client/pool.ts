@@ -164,10 +164,12 @@ class WorkerPool {
         this.pending.set(key, { job, promise });
         promise.then(
           (v) => {
-            this.pending.delete(key);
+            if (this.pending.get(key)?.job === job) this.pending.delete(key);
             this.results.set(key, v);
           },
-          () => this.pending.delete(key),
+          () => {
+            if (this.pending.get(key)?.job === job) this.pending.delete(key);
+          },
         );
       }
       this.queues[wi]!.push(job);
@@ -178,7 +180,12 @@ class WorkerPool {
     return new Promise<T>((resolve, reject) => {
       const onAbort = () => {
         job.waiters--;
-        if (job.waiters === 0 && !job.started) job.reject(abortError());
+        if (job.waiters === 0 && !job.started) {
+          // Forget the job now, not in a later microtask: a caller re-requesting the same key right
+          // away (e.g. an effect re-run) must get a fresh job, not join this rejected one.
+          if (key !== undefined && this.pending.get(key)?.job === job) this.pending.delete(key);
+          job.reject(abortError());
+        }
         reject(abortError());
       };
       signal.addEventListener('abort', onAbort, { once: true });
