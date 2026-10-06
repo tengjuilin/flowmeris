@@ -68,6 +68,10 @@ interface Props {
   compact?: boolean;
   /** Called when a population is double-clicked (drill-down). */
   onDrill?: (popId: string) => void;
+  /** Emphasise the gate producing this population and dim the plot's other gates. */
+  focusPopId?: string;
+  /** Overlay a descendant population's events in its colour (backgating). */
+  backgate?: { popId: string; color: string };
 }
 
 type Drag =
@@ -101,7 +105,19 @@ function translate(g: Geometry, dx: number, dy: number): Geometry {
 }
 
 export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
-  { ws, group, sampleId, plot, width, height, interactive = false, compact = false, onDrill },
+  {
+    ws,
+    group,
+    sampleId,
+    plot,
+    width,
+    height,
+    interactive = false,
+    compact = false,
+    onDrill,
+    focusPopId,
+    backgate,
+  },
   ref,
 ) {
   const ui = useStore((s) => s.ui);
@@ -114,9 +130,12 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   const yr = plot.y?.range ?? [0, 1];
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [raster, setRaster] = useState<RasterResponse | null>(null);
   const [hist, setHist] = useState<HistogramResponse | null>(null);
+  const [bgRaster, setBgRaster] = useState<RasterResponse | null>(null);
+  const [bgHist, setBgHist] = useState<{ sub: Float64Array; base: Float64Array } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -184,6 +203,63 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     if (!g) return;
     g.putImageData(new ImageData(new Uint8ClampedArray(raster.rgba), raster.width, raster.height), 0, 0);
   }, [raster, is1d]);
+
+  // --- backgating overlay ------------------------------------------------------
+  const bgPop = backgate && backgate.popId !== plot.population ? backgate : null;
+  const bgKey = useMemo(
+    () => (bgPop ? JSON.stringify([key, lineageKey(ws, group, sampleId, bgPop.popId), bgPop.color]) : ''),
+    [bgPop?.popId, bgPop?.color, key, ws, group, sampleId],
+  );
+  useEffect(() => {
+    setBgRaster(null);
+    setBgHist(null);
+    if (!bgPop || missing) return;
+    let live = true;
+    const run = async () => {
+      if (is1d) {
+        // Both in counts so the overlay can be put on the base histogram's normalisation:
+        // smoothing and every normalisation are linear, so one factor maps counts to heights.
+        const style = { ...plot.style, histNorm: 'count' as const };
+        const [base, sub] = await Promise.all([
+          pool.histogram(ctx, sampleId, plot.population, plot.x, style),
+          pool.histogram(ctx, sampleId, bgPop.popId, plot.x, style),
+        ]);
+        if (live) setBgHist({ sub: sub.heights, base: base.heights });
+      } else {
+        const r = await pool.raster(ctx, {
+          sampleId,
+          plot: {
+            ...plot,
+            population: bgPop.popId,
+            kind: 'dot',
+            style: { ...plot.style, pointPx: Math.min(4, Math.max(2, plot.style.pointPx)) },
+          },
+          width: Math.round(pw * dpr),
+          height: Math.round(ph * dpr),
+          dotColor: bgPop.color,
+        });
+        if (live) setBgRaster(r);
+      }
+    };
+    run().catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [bgKey, pw, ph, dpr, missing]);
+
+  useEffect(() => {
+    const c = bgCanvasRef.current;
+    if (!c || !bgRaster || is1d) return;
+    c.width = bgRaster.width;
+    c.height = bgRaster.height;
+    const g = c.getContext('2d');
+    if (!g) return;
+    g.putImageData(
+      new ImageData(new Uint8ClampedArray(bgRaster.rgba), bgRaster.width, bgRaster.height),
+      0,
+      0,
+    );
+  }, [bgRaster, is1d]);
 
   // --- gates on this plot ----------------------------------------------------
   const gates = useMemo(
@@ -593,6 +669,22 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     return { d: pts.join(''), top };
   }, [hist, is1d, X, ph]);
 
+  const bgHistPath = useMemo(() => {
+    if (!hist || !histPath || !bgHist || !is1d || bgHist.sub.length !== hist.centers.length) return null;
+    let shown = 0;
+    let counts = 0;
+    for (const v of hist.heights) shown += v;
+    for (const v of bgHist.base) counts += v;
+    const k = counts > 0 ? shown / counts : 0;
+    const c = hist.centers;
+    const half = c.length > 1 ? (c[1]! - c[0]!) / 2 : 0;
+    const pts: string[] = [`M${X(c[0]! - half)},${ph}`];
+    for (let i = 0; i < c.length; i++)
+      pts.push(`L${X(c[i]!)},${ph - ((bgHist.sub[i]! * k) / histPath.top) * ph}`);
+    pts.push(`L${X(c[c.length - 1]! + half)},${ph}Z`);
+    return pts.join('');
+  }, [hist, histPath, bgHist, is1d, X, ph]);
+
   const fmtPct = (popId: string, region: Region, gateId: string) => {
     if (preview && preview.gateId === gateId) {
       const c = preview.regions[region] ?? 0;
@@ -611,9 +703,11 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     const overridden = isOverridden(group, gate.id, sampleId);
     const pops = populationsOfGate(group.template, gate.id);
     const color = pops[0]?.color ?? '#2a78d6';
-    const cls = `gate${selected ? ' selected' : ''}${overridden ? ' overridden' : ''}`;
+    const focused = focusPopId !== undefined && pops.some((p) => p.id === focusPopId);
+    const dimmed = focusPopId !== undefined && !focused;
+    const cls = `gate${selected ? ' selected' : ''}${overridden ? ' overridden' : ''}${focused ? ' focus' : ''}`;
     const handles: { id: string; x: number; y: number; shape?: 'mid' }[] = [];
-    const labels: { text: string; x: number; y: number; anchor: 'start' | 'end' }[] = [];
+    const labels: { text: string; x: number; y: number; anchor: 'start' | 'end'; focus?: boolean }[] = [];
     let body: JSX.Element | null = null;
 
     if (is1d && geom.kind === 'rect') {
@@ -700,7 +794,14 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       };
       for (const p of pops) {
         const c = corner[p.region];
-        if (c) labels.push({ text: `${fmtPct(p.id, p.region, gate.id)}%`, x: c[0], y: c[1], anchor: c[2] });
+        if (c)
+          labels.push({
+            text: `${fmtPct(p.id, p.region, gate.id)}%`,
+            x: c[0],
+            y: c[1],
+            anchor: c[2],
+            focus: p.id === focusPopId,
+          });
       }
     } else {
       const pts = shapePx(gate, geom);
@@ -758,11 +859,17 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     }
 
     return (
-      <g key={gate.id} data-gate-id={gate.id}>
+      <g key={gate.id} data-gate-id={gate.id} className={dimmed ? 'gate-dim' : undefined}>
         <g className="gate-halo">{body}</g>
         {body}
         {labels.map((l, i) => (
-          <text key={i} x={l.x} y={l.y} textAnchor={l.anchor} className="gate-label">
+          <text
+            key={i}
+            x={l.x}
+            y={l.y}
+            textAnchor={l.anchor}
+            className={`gate-label${l.focus ? ' focus' : ''}`}
+          >
             {l.text}
           </text>
         ))}
@@ -855,6 +962,13 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       {!is1d && (
         <canvas
           ref={canvasRef}
+          className={`plot-raster${bgPop ? ' faded' : ''}`}
+          style={{ left: margin.l, top: margin.t, width: pw, height: ph }}
+        />
+      )}
+      {!is1d && bgPop && (
+        <canvas
+          ref={bgCanvasRef}
           className="plot-raster"
           style={{ left: margin.l, top: margin.t, width: pw, height: ph }}
         />
@@ -880,7 +994,14 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
           </defs>
           <rect x={0} y={0} width={pw} height={ph} className="plot-frame" />
           <g clipPath={`url(#${clipId})`}>
-            {histPath && <path d={histPath.d} className="hist" />}
+            {histPath && <path d={histPath.d} className={`hist${bgPop ? ' faded' : ''}`} />}
+            {bgHistPath && bgPop && (
+              <path
+                d={bgHistPath}
+                className="hist-backgate"
+                style={{ fill: bgPop.color, stroke: bgPop.color }}
+              />
+            )}
             {!is1d &&
               raster?.contours.map((c, i) => (
                 <path

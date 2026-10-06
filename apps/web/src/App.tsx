@@ -1,6 +1,7 @@
 import { loadWorkspace, newWorkspace } from '@flowmeris/model';
 import { useEffect, useRef, useState } from 'react';
 import { CompensationView, SamplesView } from './components/CompensationView.tsx';
+import { GatingPathView } from './components/GatingPathView.tsx';
 import { RidgeView, TilesView } from './components/GroupViews.tsx';
 import { Inspector } from './components/Inspector.tsx';
 import { PlotPanel, drill } from './components/PlotPanel.tsx';
@@ -17,6 +18,7 @@ const VIEWS: { id: View; label: string }[] = [
   { id: 'plot', label: 'Plot' },
   { id: 'tiles', label: 'Tiles' },
   { id: 'ridge', label: 'Ridge' },
+  { id: 'path', label: 'Gating path' },
   { id: 'stats', label: 'Statistics' },
   { id: 'compensation', label: 'Compensation' },
   { id: 'samples', label: 'Samples' },
@@ -295,6 +297,7 @@ export function App() {
               )}
               {ui.view === 'tiles' && <TilesView />}
               {ui.view === 'ridge' && <RidgeView />}
+              {ui.view === 'path' && <GatingPathView />}
               {ui.view === 'stats' && <StatsView />}
               {ui.view === 'compensation' && <CompensationView />}
               {ui.view === 'samples' && <SamplesView />}

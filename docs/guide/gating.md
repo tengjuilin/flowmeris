@@ -20,3 +20,24 @@
 Gates are defined in the scale of the axes they were drawn on. If you later change an axis scale, the
 gate is drawn mapped onto the new scale, and its membership does not change
 ([why](../methods/gating#m-gate-space-coordinates-of-a-gate)).
+
+## Gating path
+
+The **Gating path** tab shows, for one sample, how events move through the gating tree. Choose the
+sample and a population in its toolbar (they follow the current sample and population of the Plot view).
+
+- **Path** lays out one plot per step from *All events* to the chosen population. Each plot highlights the
+  gate that leads to the next step (other gates on that plot are dimmed; for quadrant and spider gates the
+  followed region's percentage is underlined), and the arrow between steps gives that population's event
+  count and percentage of its parent. The last card shows the chosen population's own plot if it has
+  one, otherwise its count and percentage of all events.
+- **Tree** shows every plot in the gating tree, branching where a population has several child gates;
+  populations without gates of their own appear as labelled chips. Gates on the way to the chosen
+  population are highlighted.
+- **Backgating** overlays the chosen population's events, in its colour, on every plot above it, with
+  the plotted population greyed out. On histograms the overlay is drawn in the same units as the
+  histogram (so its area is the fraction of the plotted population it represents).
+
+If a step's gate was drawn on axes other than the population's saved plot, the step is drawn on the
+gate's own channels using the group's default axes. Click a plot title to open that population in the
+Plot view.

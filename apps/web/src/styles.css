@@ -833,3 +833,151 @@ button.link {
 button.link:hover {
   text-decoration: underline;
 }
+
+/* Gating path view ----------------------------------------------------------- */
+.plot-raster.faded,
+.hist.faded {
+  filter: grayscale(1);
+  opacity: 0.4;
+}
+.hist-backgate {
+  fill-opacity: 0.55;
+  stroke-width: 1.25;
+}
+.gate.focus {
+  stroke-width: 3;
+}
+.gate-dim {
+  opacity: 0.3;
+}
+.path-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 0;
+}
+.path-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.path-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+}
+.path-card .tile-title .swatch,
+.path-arrow-label .swatch {
+  display: inline-block;
+  vertical-align: -1px;
+}
+.path-missing,
+.path-end {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  max-width: 220px;
+}
+.path-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 96px;
+  padding: 0 4px 0 0;
+  font-size: 11.5px;
+  text-align: center;
+}
+.path-arrow-head {
+  font-size: 28px;
+  line-height: 1;
+  color: var(--text-2);
+}
+.path-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.path-chip.on,
+.path-node.on > .path-node-plots .path-card {
+  border-color: var(--accent);
+}
+.path-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.path-node-plots {
+  display: flex;
+  gap: 8px;
+}
+/* Tree connectors: each child hangs from a horizontal bar under its parent. */
+.path-tree {
+  overflow: auto;
+}
+.path-tree ul {
+  display: flex;
+  justify-content: center;
+  list-style: none;
+  margin: 0;
+  padding: 16px 0 0;
+  position: relative;
+}
+.path-tree > ul {
+  padding-top: 0;
+  width: max-content;
+  min-width: 100%;
+}
+.path-tree li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 16px 6px 0;
+}
+.path-tree > ul > li {
+  padding-top: 0;
+}
+.path-tree li::before,
+.path-tree li::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 50%;
+  width: 50%;
+  height: 16px;
+  border-top: 1px solid var(--grid);
+}
+.path-tree li::after {
+  right: auto;
+  left: 50%;
+  border-left: 1px solid var(--grid);
+}
+.path-tree li:first-child::before,
+.path-tree li:last-child::after {
+  border-top: none;
+}
+.path-tree li:only-child::before {
+  display: none;
+}
+.path-tree > ul > li::before,
+.path-tree > ul > li::after {
+  display: none;
+}
+.path-tree ul ul::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 16px;
+  border-left: 1px solid var(--grid);
+}
+.gate-label.focus {
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: underline;
+}

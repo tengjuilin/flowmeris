@@ -61,6 +61,38 @@ test('ingest an FCS file, draw a gate, see statistics', async ({ page }) => {
   await expect(row).toContainText(expected.toLocaleString('en-US'));
 });
 
+test('gating path shows each step and backgating for one sample', async ({ page }) => {
+  await page.goto('/');
+  await page
+    .getByTestId('file-input')
+    .first()
+    .setInputFiles([fixture('flowkit/gate_ref/data1.fcs')]);
+  await expect(page.getByText('All events')).toBeVisible({ timeout: 20_000 });
+
+  await page.getByRole('button', { name: 'Rectangle' }).click();
+  const svg = page.locator('svg.plot-overlay');
+  const box = (await svg.boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.8);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.3, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.locator('.pop-row', { hasText: 'Gate 1' })).toBeVisible();
+  await page.locator('.pop-row', { hasText: 'Gate 1' }).getByRole('button', { name: 'Gate 1' }).click();
+
+  await page.getByRole('tab', { name: 'Gating path' }).click();
+  await expect(page.locator('.path-card')).toHaveCount(2);
+  await expect(page.locator('.path-arrow')).toContainText('Gate 1');
+  await expect(page.locator('.path-card').first().locator('.gate.focus').first()).toBeAttached();
+
+  await page.getByLabel('Backgating').check();
+  await expect(page.locator('.path-card').first().locator('canvas.plot-raster.faded')).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'Tree' }).click();
+  // Gate 1 has no gates of its own, so the tree shows one plot (All events) and Gate 1 as a chip.
+  await expect(page.locator('.path-tree .path-card')).toHaveCount(1);
+  await expect(page.locator('.path-tree .path-chip.on')).toContainText('Gate 1');
+});
+
 test('privacy: production build declares a restrictive CSP', async ({ page }) => {
   await page.goto('/');
   const csp = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
