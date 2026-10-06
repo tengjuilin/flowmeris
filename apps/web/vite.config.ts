@@ -1,5 +1,6 @@
-import { execSync } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { type Plugin, defineConfig } from 'vite';
 
@@ -44,9 +45,41 @@ function csp(): Plugin {
   };
 }
 
+const DOCS_DEV_PORT = 5175;
+
+/**
+ * Dev only: serve the VitePress docs at /docs/ (as in the built site) by
+ * starting `vitepress dev` alongside Vite and proxying to it. Without this the
+ * SPA fallback answers /docs/ with the app itself.
+ */
+function docsDev(): Plugin {
+  return {
+    name: 'flowmeris-docs-dev',
+    apply: 'serve',
+    config: () => ({
+      server: {
+        proxy: {
+          '/docs': { target: `http://localhost:${DOCS_DEV_PORT}`, ws: true, changeOrigin: true },
+        },
+      },
+    }),
+    configureServer(server) {
+      const root = fileURLToPath(new URL('../..', import.meta.url));
+      const child = spawn(
+        'corepack',
+        ['pnpm', 'exec', 'vitepress', 'dev', 'docs', '--port', String(DOCS_DEV_PORT), '--strictPort'],
+        { cwd: root, stdio: 'ignore', env: { ...process.env, DOCS_BASE: '/docs/' } },
+      );
+      const stop = () => child.kill();
+      server.httpServer?.once('close', stop);
+      process.once('exit', stop);
+    },
+  };
+}
+
 export default defineConfig({
   base: './',
-  plugins: [react(), csp()],
+  plugins: [react(), csp(), docsDev()],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __APP_COMMIT__: JSON.stringify(commit),

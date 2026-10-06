@@ -8,6 +8,8 @@ export default defineConfig({
   base: process.env.DOCS_BASE ?? '/docs/',
   cleanUrls: false,
   markdown: { config: (md) => md.use(mathjax3) },
+  // MathJax emits <mjx-*> elements; Vue must not treat them as components.
+  vue: { template: { compilerOptions: { isCustomElement: (tag) => tag.startsWith('mjx-') } } },
   themeConfig: {
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
