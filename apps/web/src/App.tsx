@@ -221,6 +221,9 @@ function Welcome() {
   );
 }
 
+/** Only OS file/folder drags count; in-app drags (e.g. reordering) carry text only. */
+const hasFiles = (dt: DataTransfer) => Array.from(dt.types).includes('Files');
+
 export function App() {
   const ui = useStore((s) => s.ui);
   const setUi = useStore((s) => s.setUi);
@@ -257,6 +260,7 @@ export function App() {
     <div
       className={`app${dragOver ? ' drag-over' : ''}`}
       onDragOver={(e) => {
+        if (!hasFiles(e.dataTransfer)) return;
         e.preventDefault();
         setDragOver(true);
       }}
@@ -264,6 +268,7 @@ export function App() {
         if (e.currentTarget === e.target) setDragOver(false);
       }}
       onDrop={async (e) => {
+        if (!hasFiles(e.dataTransfer)) return;
         e.preventDefault();
         setDragOver(false);
         void ingestFiles(await filesFromDrop(e.dataTransfer));
