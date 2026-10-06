@@ -56,9 +56,19 @@ export function forEachSet(b: Bitset, fn: (i: number) => void): void {
 export function toIndices(b: Bitset): Uint32Array {
   const out = new Uint32Array(popcount(b));
   let k = 0;
-  forEachSet(b, (i) => {
-    out[k++] = i;
-  });
+  for (let w = 0; w < b.length; w++) {
+    let v = b[w] as number;
+    if (v === 0) continue;
+    if (v === 0xffffffff) {
+      for (let j = 0, base = w << 5; j < 32; j++) out[k++] = base + j;
+      continue;
+    }
+    while (v !== 0) {
+      const t = v & -v;
+      out[k++] = (w << 5) + (31 - Math.clz32(t));
+      v ^= t;
+    }
+  }
   return out;
 }
 

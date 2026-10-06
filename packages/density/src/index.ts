@@ -162,29 +162,42 @@ export function smooth1d(v: Float64Array, sigma: number): Float64Array {
 export function smooth2d(g: Grid2D, sigma: number): Grid2D {
   if (!(sigma > 0)) return { ...g, values: Float64Array.from(g.values) };
   const { nx, ny } = g;
+  const v = g.values;
   const k = gaussianKernel(sigma);
   const r = (k.length - 1) / 2;
+  // Both passes scatter each non-zero source cell into the outputs it reaches, visiting
+  // sources in ascending order. Every output therefore accumulates exactly the terms of
+  // Σ_j v[i + j]·k[j + r] in the same order as the direct sum (skipped terms are +0), so
+  // the result is bit-identical while the cost scales with the occupied cells.
   const tmp = new Float64Array(nx * ny);
+  // Occupied column span of each row after the horizontal pass (lo > hi = empty row).
+  const rowLo = new Int32Array(ny).fill(nx);
+  const rowHi = new Int32Array(ny).fill(-1);
   for (let y = 0; y < ny; y++) {
     const row = y * nx;
-    for (let x = 0; x < nx; x++) {
-      let s = 0;
-      for (let j = -r; j <= r; j++) {
-        const t = x + j;
-        if (t >= 0 && t < nx) s += (g.values[row + t] as number) * (k[j + r] as number);
-      }
-      tmp[row + x] = s;
+    for (let t = 0; t < nx; t++) {
+      const val = v[row + t] as number;
+      if (val === 0) continue;
+      const lo = t - r > 0 ? t - r : 0;
+      const hi = t + r < nx - 1 ? t + r : nx - 1;
+      if (lo < (rowLo[y] as number)) rowLo[y] = lo;
+      rowHi[y] = hi;
+      for (let x = lo, kk = t - lo + r; x <= hi; x++, kk--)
+        tmp[row + x] = (tmp[row + x] as number) + val * (k[kk] as number);
     }
   }
   const out = new Float64Array(nx * ny);
-  for (let x = 0; x < nx; x++) {
-    for (let y = 0; y < ny; y++) {
-      let s = 0;
-      for (let j = -r; j <= r; j++) {
-        const t = y + j;
-        if (t >= 0 && t < ny) s += (tmp[t * nx + x] as number) * (k[j + r] as number);
-      }
-      out[y * nx + x] = s;
+  for (let t = 0; t < ny; t++) {
+    const lo = rowLo[t] as number;
+    const hi = rowHi[t] as number;
+    if (lo > hi) continue;
+    const src = t * nx;
+    const y0 = t - r > 0 ? t - r : 0;
+    const y1 = t + r < ny - 1 ? t + r : ny - 1;
+    for (let y = y0; y <= y1; y++) {
+      const kv = k[t - y + r] as number;
+      const dst = y * nx;
+      for (let x = lo; x <= hi; x++) out[dst + x] = (out[dst + x] as number) + (tmp[src + x] as number) * kv;
     }
   }
   return { ...g, values: out };

@@ -54,6 +54,7 @@ export class Engine {
   private cache: LruCache<Cached>;
   private samples: LruCache<SampleData>;
   private loading = new Map<string, Promise<SampleData>>();
+  private columnLoads = new WeakMap<SampleData, Map<number, Promise<void>>>();
 
   constructor(
     private storage: StorageAdapter,
@@ -61,7 +62,7 @@ export class Engine {
   ) {
     this.cache = new LruCache<Cached>(opts.cacheBytes ?? 512 * 2 ** 20, (v) => v.byteLength);
     this.samples = new LruCache<SampleData>(opts.sampleBytes ?? 512 * 2 ** 20, (s) =>
-      s.columns.reduce((a, c) => a + c.byteLength, 0),
+      s.columns.reduce((a, c) => a + (c?.byteLength ?? 0), 0),
     );
   }
 
@@ -90,6 +91,78 @@ export class Engine {
     return p;
   }
 
+  /**
+   * Make sure the stored columns a computation reads are in memory: the channels
+   * of every gate on the populations' lineages plus `dims`, and all matrix
+   * detectors when a compensated matrix channel is involved.
+   */
+  private async ensureColumns(
+    ctx: AnalysisContext,
+    s: SampleData,
+    popIds: (string | null | undefined)[],
+    dims: { channel: string; comp: CompRef }[] = [],
+  ): Promise<void> {
+    if (!s.columns.includes(null)) return;
+    const all = [...dims];
+    const { gates, populations } = ctx.group.template;
+    const seen = new Set<string>();
+    const walk = (popId: string | null | undefined) => {
+      if (!popId || seen.has(popId)) return;
+      seen.add(popId);
+      const gate = populations[popId]?.gate ? gates[populations[popId]!.gate!] : undefined;
+      if (!gate) return;
+      all.push(...gate.dims);
+      walk(gate.parentPop);
+    };
+    popIds.forEach(walk);
+    const need = new Set<number>();
+    let comp: number[] | null = null;
+    for (const d of all) {
+      const ci = this.channelIndex(s, d.channel);
+      need.add(ci);
+      if (d.comp !== 'group') continue;
+      if (comp === null) {
+        const m = this.resolveComp(ctx, s);
+        comp = m
+          ? makeCompensator(
+              m,
+              s.channels.map((c) => c.pnn),
+            ).channelIndex
+          : [];
+      }
+      if (comp.includes(ci)) for (const k of comp) need.add(k);
+    }
+    await this.loadColumns(s, [...need]);
+  }
+
+  private async loadColumns(s: SampleData, cis: number[]): Promise<void> {
+    const missing = cis.filter((ci) => s.columns[ci] === null);
+    if (missing.length === 0) return;
+    if (!s.loadColumn) throw new Error(`Sample ${s.sampleId} has unloaded columns but no loader`);
+    let pending = this.columnLoads.get(s);
+    if (!pending) {
+      pending = new Map();
+      this.columnLoads.set(s, pending);
+    }
+    const inflight = pending;
+    await Promise.all(
+      missing.map((ci) => {
+        let p = inflight.get(ci);
+        if (!p) {
+          p = s.loadColumn!(ci)
+            .then((col) => {
+              s.columns[ci] = col;
+            })
+            .finally(() => inflight.delete(ci));
+          inflight.set(ci, p);
+        }
+        return p;
+      }),
+    );
+    // Re-insert so the sample cache accounts for the columns now held.
+    if (this.samples.get(s.sampleId) === s) this.samples.set(s.sampleId, s);
+  }
+
   private memo<T extends Cached>(key: string, fn: () => T): T {
     const hit = this.cache.get(key) as T | undefined;
     if (hit) return hit;
@@ -113,9 +186,11 @@ export class Engine {
   }
 
   linear(s: SampleData, ci: number): Float64Array {
-    return this.memo(`lin|${this.sampleKey(s)}|${ci}`, () =>
-      linearize(s.columns[ci] as ArrayLike<number>, s.channels[ci]!.scaling),
-    );
+    return this.memo(`lin|${this.sampleKey(s)}|${ci}`, () => {
+      const stored = s.columns[ci];
+      if (!stored) throw new Error(`Channel ${s.channels[ci]?.pnn} of sample ${s.sampleId} is not loaded`);
+      return linearize(stored, s.channels[ci]!.scaling);
+    });
   }
 
   /** The spillover matrix the group's compensation setting resolves to for this sample (null = none). */
@@ -221,6 +296,7 @@ export class Engine {
   async counts(ctx: AnalysisContext, sampleId: string, popIds: string[]): Promise<PopulationCount[]> {
     const s = await this.sample(sampleId);
     const pops = ctx.group.template.populations;
+    await this.ensureColumns(ctx, s, popIds);
     const countOf = (id: string | null | undefined) => (id ? popcount(this.popBits(ctx, s, id)) : Number.NaN);
     return popIds.map((popId) => {
       const p = pops[popId];
@@ -242,6 +318,12 @@ export class Engine {
 
   async stats(ctx: AnalysisContext, sampleId: string, specs: StatSpec[]): Promise<StatResult[]> {
     const s = await this.sample(sampleId);
+    await this.ensureColumns(
+      ctx,
+      s,
+      specs.map((sp) => sp.population),
+      specs.flatMap((sp) => (sp.channel ? [{ channel: sp.channel, comp: 'group' as const }] : [])),
+    );
     const out: StatResult[] = [];
     // Group value statistics by (population, channel, space) so each column is gathered and sorted once.
     const groups = new Map<string, StatSpec[]>();
@@ -298,6 +380,7 @@ export class Engine {
     const s = await this.sample(req.sampleId);
     const plot = req.plot;
     if (plot.kind === 'histogram' || !plot.y) throw new Error('raster() needs a 2D plot');
+    await this.ensureColumns(ctx, s, [plot.population], [plot.x, plot.y]);
     const idx = toIndices(this.popBits(ctx, s, plot.population));
     const r = raster2d({
       kind: plot.kind,
@@ -331,6 +414,7 @@ export class Engine {
     style: Parameters<typeof histogram>[3],
   ): Promise<HistogramResponse> {
     const s = await this.sample(sampleId);
+    await this.ensureColumns(ctx, s, [popId], [axis]);
     const idx = toIndices(this.popBits(ctx, s, popId));
     const h = histogram(this.axisColumn(ctx, s, axis), idx, axis.range, style);
     return {
@@ -346,6 +430,7 @@ export class Engine {
   async preview(ctx: AnalysisContext, req: GatePreviewRequest): Promise<GatePreviewResponse> {
     const s = await this.sample(req.sampleId);
     const g: Gate = req.gate;
+    await this.ensureColumns(ctx, s, [g.parentPop], g.dims);
     const parent = this.popBits(ctx, s, g.parentPop);
     const dims = g.dims.map((d) => this.column(ctx, s, d));
     const res = evaluateGate(g.geometry, dims, s.eventCount, parent);
@@ -363,6 +448,11 @@ export class Engine {
     mode: 'raw' | 'compensated',
   ): Promise<{ channels: string[]; columns: Float64Array[]; count: number }> {
     const s = await this.sample(sampleId);
+    await this.ensureColumns(ctx, s, [popId]);
+    await this.loadColumns(
+      s,
+      s.channels.map((_, ci) => ci),
+    );
     const idx = toIndices(this.popBits(ctx, s, popId));
     const columns = s.channels.map((_, ci) => {
       const src = mode === 'compensated' ? this.compensated(ctx, s, ci) : this.linear(s, ci);
@@ -382,6 +472,7 @@ export class Engine {
     max = 200_000,
   ): Promise<Float64Array> {
     const s = await this.sample(sampleId);
+    await this.ensureColumns(ctx, s, [popId], [axis]);
     const col = this.column(ctx, s, { ...axis, transform: null });
     const idx = toIndices(this.popBits(ctx, s, popId));
     const step = Math.max(1, Math.floor(idx.length / max));

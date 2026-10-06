@@ -4,7 +4,8 @@ import type { SampleData, StorageAdapter } from '@flowmeris/engine';
  * Origin Private File System storage for decoded sample columns (browser only).
  *
  * Layout: /flowmeris/samples/<sampleId>/meta.json + col_<i>.bin, one file per
- * channel so a plot reads only the channels it needs. Column files hold the
+ * channel so a plot reads only the channels it needs: loadSample reads the
+ * metadata and each column is read on first use. Column files hold the
  * stored (pre-linearisation) values as little-endian Float32 or Float64.
  */
 
@@ -87,6 +88,7 @@ export class OpfsStorage implements StorageAdapter {
 
   async save(s: SampleData): Promise<void> {
     const dir = await (await samplesDir(true)).getDirectoryHandle(s.sampleId, { create: true });
+    if (s.columns.includes(null)) throw new Error(`Sample ${s.sampleId} must be fully loaded to be saved`);
     const dtypes = s.columns.map((c) => (c instanceof Float32Array ? 'f32' : 'f64')) as Meta['dtypes'];
     for (let i = 0; i < s.columns.length; i++) {
       const c = s.columns[i]!;
@@ -124,12 +126,10 @@ export class OpfsStorage implements StorageAdapter {
       throw new Error(`Sample data for ${sampleId} is not in browser storage; re-add the original FCS file.`);
     }
     const meta = JSON.parse(new TextDecoder().decode(await readFile(dir, 'meta.json'))) as Meta;
-    const columns = await Promise.all(
-      meta.dtypes.map(async (dt, i) => {
-        const buf = await readFile(dir, `col_${i}.bin`);
-        return dt === 'f32' ? new Float32Array(buf) : new Float64Array(buf);
-      }),
-    );
+    const loadColumn = async (i: number) => {
+      const buf = await readFile(dir, `col_${i}.bin`);
+      return meta.dtypes[i] === 'f32' ? new Float32Array(buf) : new Float64Array(buf);
+    };
     return {
       sampleId: meta.sampleId,
       sha256: meta.sha256,
@@ -137,7 +137,8 @@ export class OpfsStorage implements StorageAdapter {
       eventCount: meta.eventCount,
       channels: meta.channels,
       keywords: meta.keywords,
-      columns,
+      columns: meta.dtypes.map(() => null),
+      loadColumn,
     };
   }
 

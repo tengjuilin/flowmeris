@@ -131,7 +131,11 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   },
   ref,
 ) {
-  const ui = useStore((s) => s.ui);
+  // Narrow subscriptions: unrelated UI state (ingest progress, toasts, …) must not re-render every plot.
+  const uiTool = useStore((s) => s.ui.tool);
+  const editScope = useStore((s) => s.ui.editScope);
+  const selectedGateId = useStore((s) => s.ui.selectedGateId);
+  const missingSamples = useStore((s) => s.ui.missing);
   const setUi = useStore((s) => s.setUi);
   const margin: Margin = compact ? { l: 6, r: 4, t: 4, b: 6 } : { l: 66, r: 14, t: 14, b: 48 };
   const pw = Math.max(10, width - margin.l - margin.r);
@@ -166,6 +170,8 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     regions: Partial<Record<Region, number>>;
   } | null>(null);
   const reqId = useRef(0);
+  const dataQueue = useLatestQueue();
+  const previewQueue = useLatestQueue();
   const clipId = `clip${useId().replace(/:/g, '')}`;
 
   useImperativeHandle(ref, () => ({ svg: svgRef.current, raster, size: { width, height, margin } }), [
@@ -178,10 +184,10 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   const ctx = useMemo(() => contextFor(ws, group), [ws, group]);
   const key = useMemo(() => plotKey(ws, group, sampleId, plot), [ws, group, sampleId, plot]);
   const dpr = compact ? 1 : Math.min(2, window.devicePixelRatio || 1);
-  const missing = !!ui.missing[sampleId];
+  const missing = !!missingSamples[sampleId];
   const ovSamples = useMemo(
-    () => (overlay?.samples ?? []).filter((o) => o.sampleId !== sampleId && !ui.missing[o.sampleId]),
-    [overlay, sampleId, ui.missing],
+    () => (overlay?.samples ?? []).filter((o) => o.sampleId !== sampleId && !missingSamples[o.sampleId]),
+    [overlay, sampleId, missingSamples],
   );
   const ovColor = ovSamples.length ? overlay?.color : undefined;
 
@@ -191,21 +197,28 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     const id = ++reqId.current;
     setError(null);
     setLoading(true);
-    const run = async () => {
+    // Latest only: while one request is computing, newer ones (e.g. every step of a
+    // resize) replace each other instead of queueing up in the worker.
+    dataQueue(async () => {
+      if (id !== reqId.current) return;
       try {
         if (is1d) {
-          const h = await pool.histogram(ctx, sampleId, plot.population, plot.x, plot.style);
+          const h = await pool.histogram(ctx, sampleId, plot.population, plot.x, plot.style, key);
           if (id === reqId.current) setHist(h);
         } else {
-          const r = await pool.raster(ctx, {
-            sampleId,
-            plot: ovColor ? overlayDots(plot) : plot,
-            width: Math.round(pw * dpr),
-            height: Math.round(ph * dpr),
-            dotColor:
-              ovColor ??
-              (getComputedStyle(document.documentElement).getPropertyValue('--dot').trim() || '#333333'),
-          });
+          const r = await pool.raster(
+            ctx,
+            {
+              sampleId,
+              plot: ovColor ? overlayDots(plot) : plot,
+              width: Math.round(pw * dpr),
+              height: Math.round(ph * dpr),
+              dotColor:
+                ovColor ??
+                (getComputedStyle(document.documentElement).getPropertyValue('--dot').trim() || '#333333'),
+            },
+            key,
+          );
           if (id === reqId.current) setRaster(r);
         }
       } catch (e) {
@@ -213,8 +226,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       } finally {
         if (id === reqId.current) setLoading(false);
       }
-    };
-    void run();
+    });
   }, [key, pw, ph, dpr, missing, ovColor]);
 
   useEffect(() => {
@@ -224,7 +236,8 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     c.height = raster.height;
     const g = c.getContext('2d');
     if (!g) return;
-    g.putImageData(new ImageData(new Uint8ClampedArray(raster.rgba), raster.width, raster.height), 0, 0);
+    // Results are shared through the pool's cache; ImageData only wraps them and drawing copies.
+    g.putImageData(new ImageData(raster.rgba, raster.width, raster.height), 0, 0);
   }, [raster, is1d]);
 
   // --- backgating overlay ------------------------------------------------------
@@ -244,23 +257,27 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         // smoothing and every normalisation are linear, so one factor maps counts to heights.
         const style = { ...plot.style, histNorm: 'count' as const };
         const [base, sub] = await Promise.all([
-          pool.histogram(ctx, sampleId, plot.population, plot.x, style),
-          pool.histogram(ctx, sampleId, bgPop.popId, plot.x, style),
+          pool.histogram(ctx, sampleId, plot.population, plot.x, style, bgKey),
+          pool.histogram(ctx, sampleId, bgPop.popId, plot.x, style, bgKey),
         ]);
         if (live) setBgHist({ sub: sub.heights, base: base.heights });
       } else {
-        const r = await pool.raster(ctx, {
-          sampleId,
-          plot: {
-            ...plot,
-            population: bgPop.popId,
-            kind: 'dot',
-            style: { ...plot.style, pointPx: Math.min(4, Math.max(2, plot.style.pointPx)) },
+        const r = await pool.raster(
+          ctx,
+          {
+            sampleId,
+            plot: {
+              ...plot,
+              population: bgPop.popId,
+              kind: 'dot',
+              style: { ...plot.style, pointPx: Math.min(4, Math.max(2, plot.style.pointPx)) },
+            },
+            width: Math.round(pw * dpr),
+            height: Math.round(ph * dpr),
+            dotColor: bgPop.color,
           },
-          width: Math.round(pw * dpr),
-          height: Math.round(ph * dpr),
-          dotColor: bgPop.color,
-        });
+          bgKey,
+        );
         if (live) setBgRaster(r);
       }
     };
@@ -277,11 +294,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     c.height = bgRaster.height;
     const g = c.getContext('2d');
     if (!g) return;
-    g.putImageData(
-      new ImageData(new Uint8ClampedArray(bgRaster.rgba), bgRaster.width, bgRaster.height),
-      0,
-      0,
-    );
+    g.putImageData(new ImageData(bgRaster.rgba, bgRaster.width, bgRaster.height), 0, 0);
   }, [bgRaster, is1d]);
 
   // --- overlaid samples ----------------------------------------------------------
@@ -304,7 +317,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     const run = async () => {
       if (is1d) {
         const hs = await Promise.all(
-          ovSamples.map((o) => pool.histogram(ctx, o.sampleId, plot.population, plot.x, plot.style)),
+          ovSamples.map((o) => pool.histogram(ctx, o.sampleId, plot.population, plot.x, plot.style, ovKey)),
         );
         if (live) setOvHists(hs.map((h, i) => ({ color: ovSamples[i]!.color, heights: h.heights })));
         return;
@@ -313,13 +326,11 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       const h = Math.round(ph * dpr);
       const rs = await Promise.all(
         ovSamples.map((o) =>
-          pool.raster(ctx, {
-            sampleId: o.sampleId,
-            plot: overlayDots(plot),
-            width: w,
-            height: h,
-            dotColor: o.color,
-          }),
+          pool.raster(
+            ctx,
+            { sampleId: o.sampleId, plot: overlayDots(plot), width: w, height: h, dotColor: o.color },
+            ovKey,
+          ),
         ),
       );
       const c = ovCanvasRef.current;
@@ -333,7 +344,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       tmp.height = h;
       const tg = tmp.getContext('2d')!;
       for (const r of rs) {
-        tg.putImageData(new ImageData(new Uint8ClampedArray(r.rgba), r.width, r.height), 0, 0);
+        tg.putImageData(new ImageData(r.rgba, r.width, r.height), 0, 0);
         g.drawImage(tmp, 0, 0);
       }
     };
@@ -418,19 +429,21 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     draft?.gateId === gate.id ? draft.geom : effectiveGeometry(group, gate.id, sampleId);
 
   // --- preview counts while editing -----------------------------------------------
-  const previewTimer = useRef<number | null>(null);
+  // Latest only: a drag outpaces the worker on large samples, so intermediate geometries are
+  // dropped. The epoch discards results that arrive after the drag ended.
+  const previewEpoch = useRef(0);
   const schedulePreview = (gate: Gate, geom: Geometry) => {
-    if (previewTimer.current) cancelAnimationFrame(previewTimer.current);
-    previewTimer.current = requestAnimationFrame(() => {
-      pool
-        .preview(ctx, { sampleId, gate: { ...gate, geometry: geom } })
-        .then((r) => setPreview({ gateId: gate.id, parent: r.parentCount, regions: r.regions }))
-        .catch(() => {});
+    const epoch = previewEpoch.current;
+    previewQueue(async () => {
+      if (epoch !== previewEpoch.current) return;
+      const r = await pool.preview(ctx, { sampleId, gate: { ...gate, geometry: geom } });
+      if (epoch === previewEpoch.current)
+        setPreview({ gateId: gate.id, parent: r.parentCount, regions: r.regions });
     });
   };
 
   // --- editing --------------------------------------------------------------------
-  const tool = interactive ? ui.tool : 'select';
+  const tool = interactive ? uiTool : 'select';
   const canDraw = interactive && !missing;
 
   // the quadrant / spider gate that a click would place now
@@ -445,21 +458,22 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     setHoverCounts(null);
     if (!hoverKey || !hoverGeom) return;
     let live = true;
-    const raf = requestAnimationFrame(() => {
-      pool
-        .preview(ctx, { sampleId, gate: { ...newGateBase(), id: '__hover', geometry: hoverGeom } })
-        .then((r) => live && setHoverCounts({ parent: r.parentCount, regions: r.regions }))
-        .catch(() => {});
+    previewQueue(async () => {
+      if (!live) return;
+      const r = await pool.preview(ctx, {
+        sampleId,
+        gate: { ...newGateBase(), id: '__hover', geometry: hoverGeom },
+      });
+      if (live) setHoverCounts({ parent: r.parentCount, regions: r.regions });
     });
     return () => {
       live = false;
-      cancelAnimationFrame(raf);
     };
     // hoverKey captures hoverGeom; ctx/sample changes restart the preview
   }, [hoverKey, ctx, sampleId]);
 
   const commit = (gateId: string, geom: Geometry) => {
-    setGateGeometry(group.id, gateId, geom, ui.editScope, sampleId);
+    setGateGeometry(group.id, gateId, geom, editScope, sampleId);
   };
 
   const newGateBase = (): Omit<Gate, 'id' | 'geometry'> => ({
@@ -549,7 +563,11 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   const onPointerMove = (e: RPointerEvent<SVGSVGElement>) => {
     const [px, py] = evPt(e);
     const p = toData(px, py);
-    setHover(px >= 0 && py >= 0 && px <= pw && py <= ph ? p : null);
+    // The cursor position only drives the polygon draft and the quadrant / spider preview;
+    // tracking it otherwise would re-render the whole plot on every pointer move.
+    if (poly || ((tool === 'quadrant' || tool === 'spider') && !is1d && canDraw))
+      setHover(px >= 0 && py >= 0 && px <= pw && py <= ph ? p : null);
+    else if (hover) setHover(null);
     if (!drag) return;
     if (drag.kind === 'create') {
       setDrag({ ...drag, cur: p });
@@ -598,6 +616,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     } else if (draft && draft.gateId === drag.gateId) {
       commit(draft.gateId, draft.geom);
     }
+    previewEpoch.current++;
     setDrag(null);
     setDraft(null);
     setPreview(null);
@@ -630,7 +649,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         }
         return;
       }
-      const sel = ui.selectedGateId ? group.template.gates[ui.selectedGateId] : undefined;
+      const sel = selectedGateId ? group.template.gates[selectedGateId] : undefined;
       if (!sel || sel.parentPop !== plot.population) return;
       if (e.key.startsWith('Arrow') && maps(sel).every((m) => m.identity)) {
         e.preventDefault();
@@ -805,6 +824,16 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     };
   }, [hist, is1d, X, ph, ovHists, ovSamples.length]);
 
+  const contourPaths = useMemo(
+    () =>
+      is1d
+        ? null
+        : raster?.contours.map((c) =>
+            c.rings.map((r) => `M${r.map(([a, b]) => `${X(a)},${Y(b)}`).join('L')}Z`).join(''),
+          ),
+    [raster, is1d, X, Y],
+  );
+
   const bgHistPath = useMemo(() => {
     if (!hist || !histPath || !bgHist || !is1d || bgHist.sub.length !== hist.centers.length) return null;
     let shown = 0;
@@ -835,7 +864,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     const geom = geomOf(gate);
     const m = maps(gate);
     const editable = interactive && m.every((d) => d.identity);
-    const selected = interactive && ui.selectedGateId === gate.id;
+    const selected = interactive && selectedGateId === gate.id;
     const overridden = isOverridden(group, gate.id, sampleId);
     const pops = populationsOfGate(group.template, gate.id);
     const color = pops[0]?.color ?? '#2a78d6';
@@ -1190,14 +1219,9 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
                 style={{ fill: bgPop.color, stroke: bgPop.color }}
               />
             )}
-            {!is1d &&
-              raster?.contours.map((c, i) => (
-                <path
-                  key={i}
-                  className="contour"
-                  d={c.rings.map((r) => `M${r.map(([a, b]) => `${X(a)},${Y(b)}`).join('L')}Z`).join('')}
-                />
-              ))}
+            {contourPaths?.map((d, i) => (
+              <path key={i} className="contour" d={d} />
+            ))}
             {gateEls}
             {creating}
             {polyDraft}
@@ -1299,6 +1323,32 @@ function formatHistTick(v: number, norm: string): string {
   if (norm === 'mode') return `${Math.round(v * 100)}`;
   if (norm === 'area') return v.toPrecision(2);
   return v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(Math.round(v));
+}
+
+/**
+ * Runs async tasks one at a time, keeping only the newest task submitted while
+ * one is running (older waiting tasks are dropped). Errors are swallowed; tasks
+ * report their own.
+ */
+function useLatestQueue(): (task: () => Promise<void>) => void {
+  const state = useRef<{ running: boolean; next: (() => Promise<void>) | null }>({
+    running: false,
+    next: null,
+  });
+  return useCallback((task: () => Promise<void>) => {
+    const st = state.current;
+    st.next = task;
+    if (st.running) return;
+    st.running = true;
+    void (async () => {
+      while (st.next) {
+        const t = st.next;
+        st.next = null;
+        await t().catch(() => {});
+      }
+      st.running = false;
+    })();
+  }, []);
 }
 
 /** A plot drawn as dots of at least 2 px, for overlays where every sample needs its own flat colour. */
