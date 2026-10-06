@@ -6,6 +6,12 @@
       "runtimeExecutable": "corepack",
       "runtimeArgs": ["pnpm", "--filter", "@flowmeris/web", "dev", "--port", "5173", "--strictPort"],
       "port": 5173
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "corepack",
+      "runtimeArgs": ["pnpm", "--filter", "@flowmeris/web", "preview", "--port", "4174", "--strictPort"],
+      "port": 4174
     }
   ]
 }

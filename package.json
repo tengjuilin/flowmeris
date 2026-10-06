@@ -9,9 +9,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "pnpm --filter @flowmeris/web dev",
-    "build": "pnpm --filter @flowmeris/web build",
-    "preview": "pnpm --filter @flowmeris/web preview",
+    "dev": "corepack pnpm --filter @flowmeris/web dev",
+    "build": "corepack pnpm --filter @flowmeris/web build",
+    "preview": "corepack pnpm --filter @flowmeris/web preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "biome check .",
     "format": "biome format --write .",
@@ -20,13 +20,18 @@
     "test:golden": "vitest run --project golden",
     "e2e": "playwright test",
     "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs"
+    "docs:build": "vitepress build docs",
+    "build:site": "corepack pnpm build && DOCS_BASE=${DOCS_BASE:-/docs/} vitepress build docs && rm -rf apps/web/dist/docs && cp -R docs/.vitepress/dist apps/web/dist/docs",
+    "fixtures:fetch": "node tools/fetch-fixtures.mjs",
+    "golden": "uv run --project tools/golden/python python tools/golden/python/generate.py",
+    "check": "corepack pnpm lint && corepack pnpm typecheck && corepack pnpm test"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9",
     "@playwright/test": "^1.48",
     "@types/node": "^22",
     "fast-check": "^3.22",
+    "markdown-it-mathjax3": "^4",
     "typescript": "~5.6",
     "vitepress": "^1.4",
     "vitest": "^2.1"

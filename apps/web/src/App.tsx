@@ -168,6 +168,14 @@ function Header() {
       <a className="button" href="./docs/" target="_blank" rel="noreferrer">
         Docs
       </a>
+      {!pool.opfs && (
+        <span
+          className="badge warn"
+          title="The browser's private file storage (OPFS) is unavailable, e.g. in a private window: event data are kept in memory and must be re-added after a reload."
+        >
+          memory only
+        </span>
+      )}
       <span
         className="privacy"
         title="All parsing, gating and statistics run in this browser tab. Files are never uploaded."
@@ -335,11 +343,6 @@ export function App() {
             </button>
           )}
         </output>
-      )}
-      {!pool.opfs && ws.groups.length > 0 && (
-        <div className="storage-warning" title="Origin Private File System unavailable">
-          Browser storage unavailable (private mode?): data are kept in memory for this session only.
-        </div>
       )}
     </div>
   );
