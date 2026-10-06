@@ -26,7 +26,7 @@ import {
   useState,
 } from 'react';
 import { pool } from '../engine-client/pool.ts';
-import { createGate, lineageKey, plotKey, setGateGeometry } from '../lib/analysis.ts';
+import { createGate, deleteGate, lineageKey, plotKey, setGateGeometry } from '../lib/analysis.ts';
 import {
   type DimMap,
   type Pt,
@@ -706,6 +706,10 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
               ? -step * (yr[1] - yr[0])
               : 0;
         commit(sel.id, translate(effectiveGeometry(group, sel.id, sampleId), dx * (xr[1] - xr[0]), dy));
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        deleteGate(group.id, sel.id);
+        setUi({ selectedGateId: null });
       } else if (e.key === 'Escape') setUi({ selectedGateId: null });
     };
     window.addEventListener('keydown', onKey);
