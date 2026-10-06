@@ -18,6 +18,7 @@ import {
   drill,
   usePlotForPopulation,
 } from './PlotPanel.tsx';
+import { PopulationTree } from './PopulationTree.tsx';
 import { FONT_STACKS, ridgeColor, useRidge } from './RidgeInspector.tsx';
 import { useSize } from './hooks.ts';
 
@@ -60,9 +61,6 @@ function useSettled<T>(value: T, ms: number): T {
   }, [value, ms]);
   return settled;
 }
-
-/** Horizontal padding plus border of a .tile, in px. */
-const TILE_CHROME = 10;
 
 const Tile = memo(function Tile({
   group,
@@ -119,8 +117,6 @@ export function TilesView() {
   const plot = usePlotForPopulation();
   const names = useSampleNames(group);
   const shown = useSelectedSampleIds(group);
-  const box = useRef<HTMLDivElement>(null);
-  const { width } = useSize(box);
   const [tile, setTile] = useState(280);
   // Re-lay out and re-render the tiles once the slider settles, not on every step of a drag.
   const size = useSettled(tile, 150);
@@ -130,7 +126,7 @@ export function TilesView() {
     );
   const pop = group.template.populations[plot.population];
   return (
-    <div className="tiles-view" ref={box}>
+    <div className="tiles-view">
       <div className="toolbar">
         <strong>{pop?.name}</strong>
         <PlotKindSelect group={group} plot={plot} />
@@ -161,13 +157,11 @@ export function TilesView() {
         the sidebar.
       </p>
       {shown.length === 0 && <div className="empty">No samples selected: check some in the sidebar.</div>}
-      <div
-        className="tiles"
-        style={{
-          // A tile is its plot plus padding and border (TILE_CHROME) wide; columns must fit that.
-          gridTemplateColumns: `repeat(${Math.max(1, Math.floor((width + 12) / (size + TILE_CHROME + 12)))}, ${size + TILE_CHROME}px)`,
-        }}
-      >
+      {/* The population card floats top-right: tiles flow beside it, then use the full width below it. */}
+      <div className="tiles">
+        <div className="tiles-side">
+          <PopulationTree />
+        </div>
         {shown.map((id) => (
           <Tile key={id} group={group} sampleId={id} plot={plot} size={size} name={names[id] ?? id} />
         ))}
