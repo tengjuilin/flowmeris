@@ -12,8 +12,9 @@ import {
   type Gate,
   type GateDim,
   ROOT_POPULATION_ID,
+  canonicalJson,
   effectiveGeometry,
-  fingerprint,
+  sha256Hex,
 } from '@flowmeris/model';
 import { histogram, raster2d } from '@flowmeris/render';
 import { type ValueStat, summarize } from '@flowmeris/stats';
@@ -45,6 +46,31 @@ export interface EngineOptions {
 
 type Cached = Float64Array | Uint32Array;
 
+/** Resolved compensation: the spillover matrix (null = none) and its fingerprint. */
+interface ResolvedComp {
+  m: SpilloverMatrix | null;
+  key: string;
+}
+
+const NO_COMP: ResolvedComp = { m: null, key: 'none' };
+
+/** Per-request memo of population keys (a request never changes its context mid-way). */
+type KeyMemo = Map<string, string>;
+
+/** Small string-keyed memo that is simply cleared once it grows past `max` entries. */
+class BoundedMemo<V> {
+  private map = new Map<string, V>();
+  constructor(private max: number) {}
+  get(key: string, make: () => V): V {
+    const hit = this.map.get(key);
+    if (hit !== undefined) return hit;
+    const v = make();
+    if (this.map.size >= this.max) this.map.clear();
+    this.map.set(key, v);
+    return v;
+  }
+}
+
 /**
  * The analysis engine for the samples a worker owns. All results are derived
  * from content fingerprints of their inputs, so a cache hit is always valid
@@ -54,6 +80,9 @@ export class Engine {
   private cache: LruCache<Cached>;
   private samples: LruCache<SampleData>;
   private loading = new Map<string, Promise<SampleData>>();
+  /** Content-keyed memos for the inputs of cache keys (hashing dominates warm requests otherwise). */
+  private compMemo = new BoundedMemo<ResolvedComp>(256);
+  private fpMemo = new BoundedMemo<string>(4096);
 
   constructor(
     private storage: StorageAdapter,
@@ -118,26 +147,47 @@ export class Engine {
     );
   }
 
+  /** fingerprint(), memoised on the value's canonical JSON (which is cheap next to SHA-256). */
+  private fp(value: unknown): string {
+    const json = canonicalJson(value);
+    return this.fpMemo.get(json, () => sha256Hex(json).slice(0, 32));
+  }
+
+  /**
+   * The group's compensation resolved for a sample. Memoised by content: a
+   * keyword matrix depends only on the sample's (immutable, content-addressed)
+   * keywords, a workspace matrix only on its detectors and values.
+   */
+  private comp(ctx: AnalysisContext, s: SampleData): ResolvedComp {
+    const c = ctx.group.compensation;
+    if (c.mode === 'none') return NO_COMP;
+    if (c.mode === 'per-sample-keyword') {
+      return this.compMemo.get(`kw|${this.sampleKey(s)}`, () => {
+        const m = findSpillover(s.keywords)?.matrix ?? null;
+        return m ? { m, key: this.fp(m) } : NO_COMP;
+      });
+    }
+    const cm = ctx.compMatrices[c.matrixId];
+    if (!cm) throw new Error(`Compensation matrix ${c.matrixId} not found`);
+    return this.compMemo.get(`mx|${JSON.stringify([cm.detectors, cm.spill])}`, () => {
+      const m = { detectors: cm.detectors, spill: cm.spill };
+      return { m, key: this.fp(m) };
+    });
+  }
+
   /** The spillover matrix the group's compensation setting resolves to for this sample (null = none). */
   resolveComp(ctx: AnalysisContext, s: SampleData): SpilloverMatrix | null {
-    const c = ctx.group.compensation;
-    if (c.mode === 'none') return null;
-    if (c.mode === 'per-sample-keyword') return findSpillover(s.keywords)?.matrix ?? null;
-    const m = ctx.compMatrices[c.matrixId];
-    if (!m) throw new Error(`Compensation matrix ${c.matrixId} not found`);
-    return { detectors: m.detectors, spill: m.spill };
+    return this.comp(ctx, s).m;
   }
 
   compKey(ctx: AnalysisContext, s: SampleData): string {
-    const m = this.resolveComp(ctx, s);
-    return m ? fingerprint(m) : 'none';
+    return this.comp(ctx, s).key;
   }
 
   /** Linear values of a channel after the group's compensation (pass-through for non-matrix channels). */
   compensated(ctx: AnalysisContext, s: SampleData, ci: number): Float64Array {
-    const m = this.resolveComp(ctx, s);
+    const { m, key: ck } = this.comp(ctx, s);
     if (!m) return this.linear(s, ci);
-    const ck = fingerprint(m);
     return this.memo(`comp|${this.sampleKey(s)}|${ci}|${ck}`, () => {
       const comp = makeCompensator(
         m,
@@ -163,7 +213,7 @@ export class Engine {
     const def = ctx.transforms[dim.transform];
     if (!def) throw new Error(`Transform ${dim.transform} not found`);
     const ck = dim.comp === 'group' ? this.compKey(ctx, s) : 'raw';
-    return this.memo(`tr|${this.sampleKey(s)}|${ci}|${ck}|${fingerprint(def)}`, () =>
+    return this.memo(`tr|${this.sampleKey(s)}|${ci}|${ck}|${this.fp(def)}`, () =>
       makeScale(def).applyArray(base),
     );
   }
@@ -180,20 +230,31 @@ export class Engine {
     }));
   }
 
-  /** Cache key of a population's membership for a sample (ADR-0004). */
-  popKey(ctx: AnalysisContext, s: SampleData, popId: string): string {
+  /**
+   * Cache key of a population's membership for a sample (ADR-0004). `memo`
+   * shares the keys of common ancestors across the calls of one request, so a
+   * tree costs one hash per gate rather than one per gate per descendant.
+   */
+  popKey(ctx: AnalysisContext, s: SampleData, popId: string, memo?: KeyMemo): string {
+    const hit = memo?.get(popId);
+    if (hit !== undefined) return hit;
     const pop = ctx.group.template.populations[popId];
     if (!pop) throw new Error(`Unknown population ${popId}`);
-    if (popId === ROOT_POPULATION_ID || pop.gate === null) return `bits|${this.sampleKey(s)}|root`;
-    const gate = ctx.group.template.gates[pop.gate];
-    if (!gate) throw new Error(`Unknown gate ${pop.gate}`);
-    const parentKey = this.popKey(ctx, s, gate.parentPop);
-    const geom = effectiveGeometry(ctx.group, gate.id, s.sampleId);
-    return `bits|${fingerprint({ p: parentKey, g: geom, d: this.dimsKey(ctx, s, gate.dims), k: KERNEL_VERSION })}|${pop.region}`;
+    let key: string;
+    if (popId === ROOT_POPULATION_ID || pop.gate === null) key = `bits|${this.sampleKey(s)}|root`;
+    else {
+      const gate = ctx.group.template.gates[pop.gate];
+      if (!gate) throw new Error(`Unknown gate ${pop.gate}`);
+      const parentKey = this.popKey(ctx, s, gate.parentPop, memo);
+      const geom = effectiveGeometry(ctx.group, gate.id, s.sampleId);
+      key = `bits|${this.fp({ p: parentKey, g: geom, d: this.dimsKey(ctx, s, gate.dims), k: KERNEL_VERSION })}|${pop.region}`;
+    }
+    memo?.set(popId, key);
+    return key;
   }
 
-  popBits(ctx: AnalysisContext, s: SampleData, popId: string): Bitset {
-    const key = this.popKey(ctx, s, popId);
+  popBits(ctx: AnalysisContext, s: SampleData, popId: string, memo: KeyMemo = new Map()): Bitset {
+    const key = this.popKey(ctx, s, popId, memo);
     const hit = this.cache.get(key) as Bitset | undefined;
     if (hit) return hit;
     const pop = ctx.group.template.populations[popId]!;
@@ -203,7 +264,7 @@ export class Engine {
       return b;
     }
     const gate = ctx.group.template.gates[pop.gate]!;
-    const parent = this.popBits(ctx, s, gate.parentPop);
+    const parent = this.popBits(ctx, s, gate.parentPop, memo);
     const geom = effectiveGeometry(ctx.group, gate.id, s.sampleId);
     const dims = gate.dims.map((d) => this.column(ctx, s, d));
     const res = evaluateGate(geom, dims, s.eventCount, parent);
@@ -219,9 +280,21 @@ export class Engine {
   }
 
   async counts(ctx: AnalysisContext, sampleId: string, popIds: string[]): Promise<PopulationCount[]> {
-    const s = await this.sample(sampleId);
+    return this.countsOf(ctx, await this.sample(sampleId), popIds, new Map());
+  }
+
+  private countsOf(ctx: AnalysisContext, s: SampleData, popIds: string[], memo: KeyMemo): PopulationCount[] {
     const pops = ctx.group.template.populations;
-    const countOf = (id: string | null | undefined) => (id ? popcount(this.popBits(ctx, s, id)) : Number.NaN);
+    const n = new Map<string, number>();
+    const countOf = (id: string | null | undefined) => {
+      if (!id) return Number.NaN;
+      let c = n.get(id);
+      if (c === undefined) {
+        c = popcount(this.popBits(ctx, s, id, memo));
+        n.set(id, c);
+      }
+      return c;
+    };
     return popIds.map((popId) => {
       const p = pops[popId];
       if (!p) throw new Error(`Unknown population ${popId}`);
@@ -242,12 +315,13 @@ export class Engine {
 
   async stats(ctx: AnalysisContext, sampleId: string, specs: StatSpec[]): Promise<StatResult[]> {
     const s = await this.sample(sampleId);
+    const memo: KeyMemo = new Map();
     const out: StatResult[] = [];
     // Group value statistics by (population, channel, space) so each column is gathered and sorted once.
     const groups = new Map<string, StatSpec[]>();
     for (const spec of specs) {
       if (['count', 'pctParent', 'pctGrandparent', 'pctTotal'].includes(spec.stat)) {
-        const [c] = await this.counts(ctx, sampleId, [spec.population]);
+        const [c] = this.countsOf(ctx, s, [spec.population], memo);
         const pct = (a: number, b: number) => (b > 0 ? (100 * a) / b : Number.NaN);
         const value =
           spec.stat === 'count'
@@ -267,7 +341,7 @@ export class Engine {
     }
     for (const list of groups.values()) {
       const first = list[0]!;
-      const bits = this.popBits(ctx, s, first.population);
+      const bits = this.popBits(ctx, s, first.population, memo);
       const col = this.column(ctx, s, {
         channel: first.channel!,
         comp: 'group',
@@ -294,18 +368,29 @@ export class Engine {
     return this.column(ctx, s, { channel: a.channel, comp: a.comp, transform: a.transform });
   }
 
+  /** Events of a population to bin: null (= every event, no index list) when it holds all of them. */
+  private plotEvents(
+    ctx: AnalysisContext,
+    s: SampleData,
+    popId: string,
+  ): { indices: Uint32Array | null; count: number } {
+    const bits = this.popBits(ctx, s, popId);
+    const count = popcount(bits);
+    return { indices: count === s.eventCount ? null : toIndices(bits), count };
+  }
+
   async raster(ctx: AnalysisContext, req: RasterRequest): Promise<RasterResponse> {
     const s = await this.sample(req.sampleId);
     const plot = req.plot;
     if (plot.kind === 'histogram' || !plot.y) throw new Error('raster() needs a 2D plot');
-    const idx = toIndices(this.popBits(ctx, s, plot.population));
+    const ev = this.plotEvents(ctx, s, plot.population);
     const r = raster2d({
       kind: plot.kind,
       width: req.width,
       height: req.height,
       x: this.axisColumn(ctx, s, plot.x),
       y: this.axisColumn(ctx, s, plot.y),
-      indices: idx,
+      indices: ev.indices,
       xRange: plot.x.range,
       yRange: plot.y.range,
       style: plot.style,
@@ -316,7 +401,7 @@ export class Engine {
       height: r.height,
       rgba: r.rgba,
       contours: r.contours,
-      eventsPlotted: idx.length,
+      eventsPlotted: ev.count,
       offScale: r.stats.offScale,
       nan: r.stats.nan,
       sigmaPx: r.sigmaPx,
@@ -331,12 +416,12 @@ export class Engine {
     style: Parameters<typeof histogram>[3],
   ): Promise<HistogramResponse> {
     const s = await this.sample(sampleId);
-    const idx = toIndices(this.popBits(ctx, s, popId));
-    const h = histogram(this.axisColumn(ctx, s, axis), idx, axis.range, style);
+    const ev = this.plotEvents(ctx, s, popId);
+    const h = histogram(this.axisColumn(ctx, s, axis), ev.indices, axis.range, style);
     return {
       centers: h.centers,
       heights: h.heights,
-      eventsPlotted: idx.length,
+      eventsPlotted: ev.count,
       offScale: h.stats.offScale,
       nan: h.stats.nan,
     };

@@ -164,27 +164,38 @@ export function smooth2d(g: Grid2D, sigma: number): Grid2D {
   const { nx, ny } = g;
   const k = gaussianKernel(sigma);
   const r = (k.length - 1) / 2;
+  const src = g.values;
+  // Each output is Σ_j value[t + j]·k[j + r] over in-range taps, accumulated in
+  // ascending j from 0. Both passes keep exactly that order (so results are
+  // bit-identical to the direct form) but clip the tap range once per position
+  // instead of testing every tap, and the vertical pass streams whole rows.
   const tmp = new Float64Array(nx * ny);
   for (let y = 0; y < ny; y++) {
     const row = y * nx;
-    for (let x = 0; x < nx; x++) {
-      let s = 0;
-      for (let j = -r; j <= r; j++) {
-        const t = x + j;
-        if (t >= 0 && t < nx) s += (g.values[row + t] as number) * (k[j + r] as number);
+    let empty = true;
+    for (let x = 0; x < nx; x++)
+      if (src[row + x] !== 0) {
+        empty = false;
+        break;
       }
+    if (empty) continue; // every tap is 0, so the row's output is 0 as well
+    for (let x = 0; x < nx; x++) {
+      const j0 = x - r < 0 ? -x : -r;
+      const j1 = x + r >= nx ? nx - 1 - x : r;
+      let s = 0;
+      for (let j = j0; j <= j1; j++) s += (src[row + x + j] as number) * (k[j + r] as number);
       tmp[row + x] = s;
     }
   }
   const out = new Float64Array(nx * ny);
-  for (let x = 0; x < nx; x++) {
-    for (let y = 0; y < ny; y++) {
-      let s = 0;
-      for (let j = -r; j <= r; j++) {
-        const t = y + j;
-        if (t >= 0 && t < ny) s += (tmp[t * nx + x] as number) * (k[j + r] as number);
-      }
-      out[y * nx + x] = s;
+  for (let y = 0; y < ny; y++) {
+    const j0 = y - r < 0 ? -y : -r;
+    const j1 = y + r >= ny ? ny - 1 - y : r;
+    const o = y * nx;
+    for (let j = j0; j <= j1; j++) {
+      const kv = k[j + r] as number;
+      const t = (y + j) * nx;
+      for (let x = 0; x < nx; x++) out[o + x] = (out[o + x] as number) + (tmp[t + x] as number) * kv;
     }
   }
   return { ...g, values: out };

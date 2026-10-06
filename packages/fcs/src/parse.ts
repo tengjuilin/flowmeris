@@ -549,6 +549,28 @@ function decodeData(
       }
     };
 
+    // Fast paths for the common layouts (no byte permutation): same DataView reads
+    // as readRaw, without the per-value closure and type dispatch.
+    if (
+      !usePerm &&
+      (c.dataType === 'F' || c.dataType === 'D' || (c.dataType === 'I' && (w === 2 || w === 4)))
+    ) {
+      const range = c.dataType === 'I' ? nextPow2(Math.ceil(c.pnr)) : 0;
+      const mask = c.dataType === 'I' && range > 0 && range < 2 ** (w * 8);
+      let p = base;
+      if (c.dataType === 'F')
+        for (let e = 0; e < n; e++, p += bytesPerEvent) col[e] = dv.getFloat32(p, little);
+      else if (c.dataType === 'D')
+        for (let e = 0; e < n; e++, p += bytesPerEvent) col[e] = dv.getFloat64(p, little);
+      else if (w === 2) {
+        if (mask) for (let e = 0; e < n; e++, p += bytesPerEvent) col[e] = dv.getUint16(p, little) % range;
+        else for (let e = 0; e < n; e++, p += bytesPerEvent) col[e] = dv.getUint16(p, little);
+      } else if (mask)
+        for (let e = 0; e < n; e++, p += bytesPerEvent) col[e] = dv.getUint32(p, little) % range;
+      else for (let e = 0; e < n; e++, p += bytesPerEvent) col[e] = dv.getUint32(p, little);
+      continue;
+    }
+
     if (c.dataType === 'I') {
       // Bits above the next power of two ≥ $PnR are ignored (FCS 3.1 §3.2.20,
       // FlowIO convention): value mod nextPow2(PnR).
