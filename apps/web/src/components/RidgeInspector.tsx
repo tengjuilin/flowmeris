@@ -9,7 +9,7 @@ import {
 } from '@flowmeris/model';
 import { CATEGORICAL } from '@flowmeris/render';
 import { formatLinear } from '@flowmeris/transforms';
-import { useCallback, useMemo, useState } from 'react';
+import { type MouseEvent, useCallback, useMemo, useRef, useState } from 'react';
 import { defaultAxis } from '../lib/defaults.ts';
 import { useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
 import { NumInput } from './Inspector.tsx';
@@ -171,18 +171,43 @@ export function RidgeInspector() {
       },
       merge,
     );
-  const move = (id: string, dir: -1 | 1) =>
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const anchor = useRef<string | null>(null);
+  const [dragIds, setDragIds] = useState<string[] | null>(null);
+  const [drop, setDrop] = useState<{ id: string; after: boolean } | null>(null);
+
+  /** Click selects one row; ⌘/Ctrl toggles; Shift extends from the last clicked row. */
+  const select = (id: string, e: MouseEvent) => {
+    if (e.shiftKey && anchor.current && ordered.includes(anchor.current)) {
+      const a = ordered.indexOf(anchor.current);
+      const b = ordered.indexOf(id);
+      setSelected(new Set(ordered.slice(Math.min(a, b), Math.max(a, b) + 1)));
+      return;
+    }
+    anchor.current = id;
+    if (e.metaKey || e.ctrlKey) {
+      const next = new Set(selected);
+      if (!next.delete(id)) next.add(id);
+      setSelected(next);
+    } else setSelected(new Set([id]));
+  };
+  /** Rows a colour edit or reset applies to: the whole selection if this row is part of it. */
+  const targets = (id: string) => (selected.has(id) ? ordered.filter((x) => selected.has(x)) : [id]);
+
+  /** Move `ids` next to `target`; hidden samples keep their slots. */
+  const moveTo = (ids: string[], target: string, after: boolean) => {
+    const moving = new Set(ids);
+    if (moving.has(target)) return;
+    const rest = ordered.filter((x) => !moving.has(x));
+    const at = rest.indexOf(target) + (after ? 1 : 0);
+    const next = [...rest.slice(0, at), ...ordered.filter((x) => moving.has(x)), ...rest.slice(at)];
     update('Reorder ridges', (l) => {
       const full = orderedSampleIds(group, l.style);
-      const j = ordered.indexOf(id);
-      const other = ordered[j + dir];
-      if (other === undefined) return;
-      const a = full.indexOf(id);
-      const b = full.indexOf(other);
-      full[a] = other;
-      full[b] = id;
-      l.style.order = full;
+      const vis = new Set(ordered);
+      let k = 0;
+      l.style.order = full.map((id) => (vis.has(id) ? next[k++]! : id));
     });
+  };
 
   return (
     <aside className="inspector ridge-inspector" aria-label="Ridge plot settings">
@@ -318,46 +343,87 @@ export function RidgeInspector() {
             onCommit={(v) => set('labelWidth', clamp(v, 0, 1000), 'Ridge label width')}
           />
         </div>
-        <ol className="ridge-samples">
+        <ol className="ridge-samples" onDragLeave={() => setDrop(null)}>
           {ordered.map((id, i) => {
             const custom = style.sampleColors[id] !== undefined;
+            const isSel = selected.has(id);
             return (
-              <li key={id}>
-                <span className="ridge-move">
-                  <button
-                    type="button"
-                    className="icon"
-                    disabled={i === 0}
-                    aria-label={`Move ${names[id] ?? id} up`}
-                    onClick={() => move(id, -1)}
-                  >
-                    ▲
-                  </button>
-                  <button
-                    type="button"
-                    className="icon"
-                    disabled={i === ordered.length - 1}
-                    aria-label={`Move ${names[id] ?? id} down`}
-                    onClick={() => move(id, 1)}
-                  >
-                    ▼
-                  </button>
+              // biome-ignore lint/a11y/useKeyWithClickEvents: row selection is a pointer convenience; every control inside stays keyboard-operable
+              <li
+                key={id}
+                className={[
+                  isSel ? 'selected' : '',
+                  dragIds?.includes(id) ? 'dragging' : '',
+                  drop?.id === id ? (drop.after ? 'drop-after' : 'drop-before') : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                onClick={(e) => {
+                  const t = e.target as HTMLElement;
+                  if (t.closest('input, button')) return;
+                  select(id, e);
+                }}
+                onDragOver={(e) => {
+                  if (!dragIds) return;
+                  e.preventDefault();
+                  const r = e.currentTarget.getBoundingClientRect();
+                  const after = e.clientY > r.top + r.height / 2;
+                  if (drop?.id !== id || drop.after !== after) setDrop({ id, after });
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (dragIds && drop) moveTo(dragIds, drop.id, drop.after);
+                  setDragIds(null);
+                  setDrop(null);
+                }}
+              >
+                <span
+                  className="ridge-grip"
+                  draggable
+                  title="Drag to reorder; click to select (⌘/Ctrl-click to add, Shift-click for a range)"
+                  aria-label={`Drag ${names[id] ?? id} to reorder`}
+                  onDragStart={(e) => {
+                    const ids = isSel ? ordered.filter((x) => selected.has(x)) : [id];
+                    if (!isSel) {
+                      setSelected(new Set([id]));
+                      anchor.current = id;
+                    }
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', ids.join(','));
+                    const row = e.currentTarget.parentElement;
+                    if (row) e.dataTransfer.setDragImage(row, 8, 8);
+                    setDragIds(ids);
+                  }}
+                  onDragEnd={() => {
+                    setDragIds(null);
+                    setDrop(null);
+                  }}
+                >
+                  ⠿
                 </span>
                 <input
                   type="color"
                   className={custom ? 'custom' : ''}
                   value={ridgeColor(style, id, i)}
-                  title={custom ? 'Custom colour' : 'Colour from the ridge settings; pick to override'}
+                  title={
+                    isSel && selected.size > 1
+                      ? `Set colour of ${selected.size} selected samples`
+                      : custom
+                        ? 'Custom colour'
+                        : 'Colour from the ridge settings; pick to override'
+                  }
                   aria-label={`Colour of ${names[id] ?? id}`}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const ids = targets(id);
+                    const v = e.target.value;
                     update(
                       'Ridge sample colour',
                       (l) => {
-                        l.style.sampleColors[id] = e.target.value;
+                        for (const x of ids) l.style.sampleColors[x] = v;
                       },
-                      `color:${id}`,
-                    )
-                  }
+                      `color:${ids.join(',')}`,
+                    );
+                  }}
                 />
                 <input
                   type="text"
@@ -381,11 +447,12 @@ export function RidgeInspector() {
                     className="icon"
                     title="Reset colour"
                     aria-label={`Reset colour of ${names[id] ?? id}`}
-                    onClick={() =>
+                    onClick={() => {
+                      const ids = targets(id);
                       update('Reset ridge sample colour', (l) => {
-                        delete l.style.sampleColors[id];
-                      })
-                    }
+                        for (const x of ids) delete l.style.sampleColors[x];
+                      });
+                    }}
                   >
                     ×
                   </button>
@@ -394,6 +461,9 @@ export function RidgeInspector() {
             );
           })}
         </ol>
+        {selected.size > 1 && (
+          <p className="small muted">{selected.size} selected — a colour change applies to all of them.</p>
+        )}
         <div className="ridge-actions">
           <button
             type="button"
