@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RidgeStyleSchema, loadWorkspace, newGroup, newWorkspace } from './index.ts';
+import { RidgeStyleSchema, loadWorkspace, newGroup, newWorkspace, removeGateCascade } from './index.ts';
 
 describe('ridge layout style', () => {
   it('fills every default from an empty object', () => {
@@ -28,5 +28,33 @@ describe('ridge layout style', () => {
 
   it('rejects malformed colours', () => {
     expect(() => RidgeStyleSchema.parse({ color: 'blue' })).toThrow();
+  });
+});
+
+describe('reference plots', () => {
+  const axis = {
+    channel: 'FSC-A',
+    comp: 'group' as const,
+    transform: 't_1',
+    range: [0, 1] as [number, number],
+  };
+
+  it('loads groups saved before reference plots existed', () => {
+    const ws = newWorkspace('t', { version: '0', commit: 'x', kernels: 'ts-1' });
+    const { refPlots: _, ...old } = newGroup('g', [], ['FSC-A']);
+    ws.groups.push(old as never);
+    expect(loadWorkspace(JSON.parse(JSON.stringify(ws))).groups[0]!.refPlots).toEqual([]);
+  });
+
+  it('unpins reference plots whose population is removed', () => {
+    const g = newGroup('g', [], ['FSC-A']);
+    g.template.gates.gt_1 = { id: 'gt_1', parentPop: 'root' } as never;
+    g.template.populations.pop_1 = { id: 'pop_1', parent: 'root', gate: 'gt_1' } as never;
+    g.refPlots.push(
+      { id: 'ref_1', population: 'pop_1', kind: 'histogram', x: axis, style: {} as never, backgate: false },
+      { id: 'ref_2', population: 'root', kind: 'histogram', x: axis, style: {} as never, backgate: false },
+    );
+    removeGateCascade(g, 'gt_1');
+    expect(g.refPlots.map((r) => r.population)).toEqual([undefined, 'root']);
   });
 });

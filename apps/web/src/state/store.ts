@@ -29,6 +29,8 @@ interface UiState {
   /** Whether gate edits change the group template or only the current sample (override). */
   editScope: 'template' | 'sample';
   selectedGateId: string | null;
+  /** Active reference-plot tab of the Plot view. */
+  refPlotId: string | null;
   missing: Record<string, true>;
   /** Samples left out of the Tiles, Ridge and Statistics views (unchecked in the sidebar). */
   excluded: Record<string, true>;
@@ -71,6 +73,7 @@ export const useStore = create<Store>((set, get) => ({
     tool: 'select',
     editScope: 'template',
     selectedGateId: null,
+    refPlotId: null,
     missing: {},
     excluded: {},
     ingest: null,
@@ -126,6 +129,7 @@ export const useStore = create<Store>((set, get) => ({
         popId: 'root',
         plotId: null,
         selectedGateId: null,
+        refPlotId: null,
         excluded: {},
       },
     }));

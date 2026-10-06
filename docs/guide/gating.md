@@ -21,6 +21,19 @@ Gates are defined in the scale of the axes they were drawn on. If you later chan
 gate is drawn mapped onto the new scale, and its membership does not change
 ([why](../methods/gating#m-gate-space-coordinates-of-a-gate)).
 
+## Reference plots
+
+Under the population tree, **Reference plots** keep other views of the data in sight while you gate,
+e.g. a fluorescence pair while gating on scatter. Add one with **+**; each opens in its own tab, and
+**✕** closes it. Reference plots are saved with the group in the workspace.
+
+- Each has its own plot type and X/Y channels. Its axis scales are the group's defaults for those channels.
+- **Population** and **Sample** follow the Plot view by default. Pick one to pin it, e.g. the parent
+  population or an unstained control. A pinned population that is deleted goes back to following.
+- Gates drawn on matching axes are shown read-only. Edit gates in the main plot.
+- **Backgate** overlays the population being gated, in its colour, when the reference plot shows a
+  different population.
+
 ## Gating path
 
 The **Gating path** tab shows, for one sample, how events move through the gating tree. Choose the

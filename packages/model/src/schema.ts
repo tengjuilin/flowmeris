@@ -251,6 +251,22 @@ export const PlotSpecSchema = z.object({
 });
 export type PlotSpec = z.infer<typeof PlotSpecSchema>;
 
+/** A read-only reference plot shown beside the gating plot in the Plot view. */
+export const RefPlotSchema = z.object({
+  id: Id,
+  /** Population shown; omitted = follow the population being gated. */
+  population: Id.optional(),
+  /** Sample shown; omitted = follow the selected sample. */
+  sampleId: Id.optional(),
+  kind: PlotKindSchema,
+  x: AxisSpecSchema,
+  y: AxisSpecSchema.optional(),
+  style: PlotStyleSchema,
+  /** Overlay the population being gated, in its colour. */
+  backgate: z.boolean().default(false),
+});
+export type RefPlot = z.infer<typeof RefPlotSchema>;
+
 export const SampleOrderSchema = z.object({
   by: z.enum(['name', 'keyword', 'custom']),
   keyword: z.string().optional(),
@@ -356,6 +372,8 @@ export const GroupSchema = z.object({
   /** Default axis per channel ($PnN). */
   axisDefaults: z.record(AxisSpecSchema),
   plots: z.array(PlotSpecSchema),
+  /** Reference plots of the Plot view, one per tab. */
+  refPlots: z.array(RefPlotSchema).default([]),
   layouts: z.array(LayoutSchema),
   stats: z.array(StatSpecSchema),
 });

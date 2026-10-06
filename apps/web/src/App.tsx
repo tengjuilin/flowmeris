@@ -6,6 +6,7 @@ import { RidgeView, TilesView } from './components/GroupViews.tsx';
 import { Inspector } from './components/Inspector.tsx';
 import { PlotPanel, drill } from './components/PlotPanel.tsx';
 import { PopulationTree } from './components/PopulationTree.tsx';
+import { RefPlots } from './components/RefPlots.tsx';
 import { RidgeInspector } from './components/RidgeInspector.tsx';
 import { Sidebar } from './components/Sidebar.tsx';
 import { StatsView } from './components/StatsView.tsx';
@@ -293,7 +294,10 @@ export function App() {
               {ui.view === 'plot' && (
                 <div className="plot-layout">
                   <PlotPanel />
-                  <PopulationTree />
+                  <div className="plot-side">
+                    <PopulationTree />
+                    <RefPlots />
+                  </div>
                 </div>
               )}
               {ui.view === 'tiles' && <TilesView />}

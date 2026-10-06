@@ -90,6 +90,10 @@ export function drill(popId: string) {
   useStore.getState().setUi({ popId, plotId: id, selectedGateId: null });
 }
 
+/** The fields the plot-type and axis pickers edit; shared by saved plots and reference plots. */
+type PlotAxes = Pick<PlotSpec, 'kind' | 'x' | 'y'>;
+type EditAxes = (label: string, fn: (p: PlotAxes, g: Group, w: Workspace) => void) => void;
+
 function editPlot(
   groupId: string,
   plotId: string,
@@ -103,10 +107,11 @@ function editPlot(
   });
 }
 
-/** Plot type picker; edits the population's plot (shared by the Plot and Tiles views). */
-export function PlotKindSelect({ group, plot }: { group: Group; plot: PlotSpec }) {
+/** Plot type picker; edits the population's plot (shared by the Plot and Tiles views), or `edit`'s target. */
+export function PlotKindSelect({ group, plot, edit }: { group: Group; plot: PlotSpec; edit?: EditAxes }) {
+  const ed: EditAxes = edit ?? ((label, fn) => editPlot(group.id, plot.id, label, fn));
   const setKind = (k: PlotKind) =>
-    editPlot(group.id, plot.id, 'Change plot type', (p, g, w) => {
+    ed('Change plot type', (p, g, w) => {
       p.kind = k;
       if (k !== 'histogram' && !p.y) {
         const other = g.channels.find((c) => c !== p.x.channel) ?? p.x.channel;
@@ -127,16 +132,17 @@ export function PlotKindSelect({ group, plot }: { group: Group; plot: PlotSpec }
   );
 }
 
-/** X / Y channel pickers and axis swap for the population's plot. */
-export function AxisSelects({ group, plot }: { group: Group; plot: PlotSpec }) {
+/** X / Y channel pickers and axis swap for the population's plot, or `edit`'s target. */
+export function AxisSelects({ group, plot, edit }: { group: Group; plot: PlotSpec; edit?: EditAxes }) {
   const ws = useStore((s) => s.ws);
+  const ed: EditAxes = edit ?? ((label, fn) => editPlot(group.id, plot.id, label, fn));
   const sample = groupSample(ws, group);
   const chLabel = (c: string) => {
     const s = sample?.channels.find((x) => x.pnn === c)?.pns;
     return s ? `${c} (${s})` : c;
   };
   const setChannel = (axis: 'x' | 'y', ch: string) =>
-    editPlot(group.id, plot.id, 'Change axis channel', (p, g, w) => {
+    ed('Change axis channel', (p, g, w) => {
       p[axis] = { ...defaultAxis(w, g, ch) };
     });
   const is1d = plot.kind === 'histogram';
@@ -166,7 +172,7 @@ export function AxisSelects({ group, plot }: { group: Group; plot: PlotSpec }) {
           type="button"
           title="Swap axes"
           onClick={() =>
-            editPlot(group.id, plot.id, 'Swap axes', (p) => {
+            ed('Swap axes', (p) => {
               if (!p.y) return;
               const t = p.x;
               p.x = p.y;
