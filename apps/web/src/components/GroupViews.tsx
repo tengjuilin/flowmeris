@@ -10,7 +10,14 @@ import { standaloneSvg } from '../lib/exportPlot.ts';
 import { scaleFor } from '../lib/geometry.ts';
 import { contextFor, useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
 import { PlotCanvas } from './PlotCanvas.tsx';
-import { AxisSelects, PlotKindSelect, usePlotForPopulation } from './PlotPanel.tsx';
+import {
+  AxisSelects,
+  EditScopeToggle,
+  PlotKindSelect,
+  ToolButtons,
+  drill,
+  usePlotForPopulation,
+} from './PlotPanel.tsx';
 import { FONT_STACKS, ridgeColor, useRidge } from './RidgeInspector.tsx';
 import { useSize } from './hooks.ts';
 
@@ -54,6 +61,9 @@ function useSettled<T>(value: T, ms: number): T {
   return settled;
 }
 
+/** Horizontal padding plus border of a .tile, in px. */
+const TILE_CHROME = 10;
+
 const Tile = memo(function Tile({
   group,
   sampleId,
@@ -68,7 +78,14 @@ const Tile = memo(function Tile({
   const s = ws.samples[sampleId];
   const ov = group.overrides.some((o) => o.sampleId === sampleId);
   return (
-    <div className={`tile${current ? ' on' : ''}`} ref={ref}>
+    <div
+      className={`tile${current ? ' on' : ''}`}
+      ref={ref}
+      // Selecting a tile makes it the gated sample; the tools then act on it as in the Gate view.
+      onPointerDownCapture={() => {
+        if (!current) setUi({ sampleId, selectedGateId: null });
+      }}
+    >
       <button
         type="button"
         className="tile-title"
@@ -87,7 +104,9 @@ const Tile = memo(function Tile({
             plot={plot}
             width={size}
             height={size}
-            compact
+            hideOffScaleNote
+            interactive={current}
+            onDrill={drill}
           />
         )}
       </div>
@@ -102,7 +121,7 @@ export function TilesView() {
   const shown = useSelectedSampleIds(group);
   const box = useRef<HTMLDivElement>(null);
   const { width } = useSize(box);
-  const [tile, setTile] = useState(220);
+  const [tile, setTile] = useState(280);
   // Re-lay out and re-render the tiles once the slider settles, not on every step of a drag.
   const size = useSettled(tile, 150);
   if (!group || !plot)
@@ -116,6 +135,8 @@ export function TilesView() {
         <strong>{pop?.name}</strong>
         <PlotKindSelect group={group} plot={plot} />
         <AxisSelects group={group} plot={plot} />
+        <ToolButtons is1d={plot.kind === 'histogram'} />
+        <EditScopeToggle />
         <span className="muted">
           {shown.length === group.sampleIds.length
             ? `${shown.length} samples`
@@ -126,8 +147,8 @@ export function TilesView() {
           Tile size
           <input
             type="range"
-            min={140}
-            max={420}
+            min={200}
+            max={520}
             value={tile}
             onChange={(e) => setTile(Number(e.target.value))}
           />
@@ -135,14 +156,16 @@ export function TilesView() {
       </div>
       <p className="muted small">
         Gates are drawn from the group template; samples with overrides are flagged and drawn with their own
-        gate. Click a tile to edit that sample. Plot type and axes are shared with the Gate view; choose
-        samples with the checkboxes in the sidebar.
+        gate. Click a tile to select it, then gate on it with the tools above; click its title to open it in
+        the Gate view. Plot type and axes are shared with the Gate view; choose samples with the checkboxes in
+        the sidebar.
       </p>
       {shown.length === 0 && <div className="empty">No samples selected: check some in the sidebar.</div>}
       <div
         className="tiles"
         style={{
-          gridTemplateColumns: `repeat(${Math.max(1, Math.floor((width - 16) / (size + 12)))}, ${size}px)`,
+          // A tile is its plot plus padding and border (TILE_CHROME) wide; columns must fit that.
+          gridTemplateColumns: `repeat(${Math.max(1, Math.floor((width + 12) / (size + TILE_CHROME + 12)))}, ${size + TILE_CHROME}px)`,
         }}
       >
         {shown.map((id) => (
