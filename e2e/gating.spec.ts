@@ -25,10 +25,10 @@ test('ingest an FCS file, draw a gate, see statistics', async ({ page }) => {
   await expect(page.getByText('13,367').first()).toBeVisible();
 
   // Axes SSC-H × FL1-H (linear, T = $PnR = 1024), as in the ISAC "Rectangle1" compliance gate.
-  const pickers = page.locator('.axis-pickers select');
+  const pickers = page.locator('.axis-pickers select:not([aria-label$="axis scale"])');
   await pickers.nth(0).selectOption('SSC-H');
   await pickers.nth(1).selectOption('FL1-H');
-  await page.getByLabel('Scale').nth(1).selectOption('linear');
+  await page.getByLabel('Y axis scale').selectOption('linear');
 
   await page.getByRole('button', { name: 'Rectangle' }).click();
   const svg = page.locator('svg.plot-overlay');
