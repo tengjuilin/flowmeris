@@ -1177,7 +1177,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
           const st = is1d ? hist : raster;
           if (!st || (st.offScale === 0 && st.nan === 0)) return null;
           return (
-            <div className="plot-note" style={{ left: margin.l + 4, top: margin.t + ph - 18 }}>
+            <div className="plot-note" style={{ marginLeft: margin.l }}>
               {st.nan > 0 && `${st.nan.toLocaleString()} non-positive on log axis, `}
               {st.offScale > 0 && `${st.offScale.toLocaleString()} off-scale`} (piled on edges)
             </div>
