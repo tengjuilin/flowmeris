@@ -279,12 +279,15 @@ function FontSelect({
   value,
   onChange,
   inherit,
+  bare,
 }: {
   label: string;
   value: string | undefined;
   onChange: (v: string | undefined) => void;
   /** Offer "same as the figure" (value undefined), naming the figure's font. */
   inherit?: string;
+  /** No visible caption: `label` becomes the select's accessible name. */
+  bare?: boolean;
 }) {
   const custom = value !== undefined && !(value in FONT_STACKS);
   const [text, setText] = useState<string | null>(null);
@@ -297,16 +300,19 @@ function FontSelect({
   };
   return (
     <>
-      <label className="field">
-        {label}
+      <label className={bare ? 'tt-font' : 'field'}>
+        {!bare && label}
         <select
+          aria-label={bare ? label : undefined}
           value={custom ? CUSTOM_FONT : (value ?? '')}
           onChange={(e) => {
             const v = e.target.value;
             onChange(v === '' ? undefined : v === CUSTOM_FONT ? 'Helvetica Neue' : v);
           }}
         >
-          {inherit !== undefined && <option value="">Same as figure ({inherit})</option>}
+          {inherit !== undefined && (
+            <option value="">{bare ? inherit : `Same as figure (${inherit})`}</option>
+          )}
           {FONT_GROUPS.map((g) => (
             <optgroup key={g.label} label={g.label}>
               {g.fonts.map((f) => (
@@ -321,7 +327,7 @@ function FontSelect({
       </label>
       {custom && (
         <label
-          className="field"
+          className={bare ? 'field tt-wide' : 'field'}
           title="Used if the font is installed on the computer that views or exports the figure"
         >
           Font name
@@ -339,66 +345,152 @@ function FontSelect({
   );
 }
 
-/** Font, bold / italic / underline and colour of one kind of text. */
+const ALIGNS: { id: RidgeStyle['labelAlign']; name: string; lines: number[] }[] = [
+  { id: 'start', name: 'Align left', lines: [0, 0, 0, 0] },
+  { id: 'middle', name: 'Center', lines: [2, 0, 2, 0] },
+  { id: 'end', name: 'Align right', lines: [4, 0, 4, 0] },
+];
+
+/** Four text lines, long and short alternating, aligned left, centred or right. */
+function AlignIcon({ lines }: { lines: number[] }) {
+  return (
+    <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true">
+      {lines.map((x, i) => (
+        <rect key={i} x={x} y={i * 3} width={i % 2 ? 14 : 10} height="1.5" fill="currentColor" />
+      ))}
+    </svg>
+  );
+}
+
+/**
+ * A word-processor style toolbar for one kind of text: font and size on one row, then
+ * bold / italic / underline, colour and (for ridge labels) alignment on the next.
+ */
 function TextStyleEditor({
   label,
   value,
   base,
   onChange,
+  size,
+  onSize,
+  align,
+  onAlign,
 }: {
   label: string;
   value: TextStyle;
   base: string;
   onChange: (t: TextStyle) => void;
+  size: number;
+  onSize: (v: number) => void;
+  align?: RidgeStyle['labelAlign'];
+  onAlign?: (a: RidgeStyle['labelAlign']) => void;
 }) {
+  const [sizeText, setSizeText] = useState<string | null>(null);
   const toggle = (k: 'bold' | 'italic' | 'underline', glyph: string, name: string, css: CSSProperties) => (
     <button
       type="button"
       className={value[k] ? 'on' : ''}
       aria-pressed={value[k]}
       title={name}
+      aria-label={`${name} ${label.toLowerCase()}`}
       style={css}
       onClick={() => onChange({ ...value, [k]: !value[k] })}
     >
       {glyph}
     </button>
   );
+  const ink = value.color ?? 'var(--text)';
   return (
-    <div className="text-style">
-      <FontSelect
-        label="Font"
-        value={value.fontFamily}
-        inherit={FONT_GROUPS.flatMap((g) => g.fonts).find((f) => f.id === base)?.label ?? base}
-        onChange={(fontFamily) => onChange({ ...value, fontFamily })}
-      />
-      <div className="grid2">
-        <div className="field">
-          Style
-          <div className="seg">
-            {toggle('bold', 'B', 'Bold', { fontWeight: 700 })}
-            {toggle('italic', 'I', 'Italic', { fontStyle: 'italic' })}
-            {toggle('underline', 'U', 'Underline', { textDecoration: 'underline' })}
-          </div>
+    <div className="text-toolbar">
+      <div className="tt-row">
+        <FontSelect
+          bare
+          label={`${label} font`}
+          value={value.fontFamily}
+          inherit={FONT_GROUPS.flatMap((g) => g.fonts).find((f) => f.id === base)?.label ?? base}
+          onChange={(fontFamily) => onChange({ ...value, fontFamily })}
+        />
+        <input
+          type="number"
+          className="tt-size"
+          step={0.5}
+          title="Font size (px)"
+          aria-label={`${label} size (px)`}
+          value={sizeText ?? String(size)}
+          onChange={(e) => {
+            setSizeText(e.target.value);
+            const v = Number(e.target.value);
+            if (e.target.value.trim() !== '' && Number.isFinite(v)) onSize(clamp(v, 4, 48));
+          }}
+          onBlur={() => setSizeText(null)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+        />
+        <button
+          type="button"
+          className="tt-btn"
+          title="Larger"
+          aria-label={`Larger ${label.toLowerCase()}`}
+          onClick={() => onSize(clamp(Math.floor(size) + 1, 4, 48))}
+        >
+          A<sup>+</sup>
+        </button>
+        <button
+          type="button"
+          className="tt-btn small-a"
+          title="Smaller"
+          aria-label={`Smaller ${label.toLowerCase()}`}
+          onClick={() => onSize(clamp(Math.ceil(size) - 1, 4, 48))}
+        >
+          A<sup>−</sup>
+        </button>
+      </div>
+      <div className="tt-row">
+        <div className="seg">
+          {toggle('bold', 'B', 'Bold', { fontWeight: 700 })}
+          {toggle('italic', 'I', 'Italic', { fontStyle: 'italic', fontFamily: 'Georgia, serif' })}
+          {toggle('underline', 'U', 'Underline', { textDecoration: 'underline' })}
         </div>
-        <div className="field">
-          Colour
-          <div className="row" style={{ margin: 0, gap: 4, flexWrap: 'nowrap' }}>
-            <input
-              type="color"
-              aria-label={`${label} colour`}
-              value={value.color ?? '#444444'}
-              onChange={(e) => onChange({ ...value, color: e.target.value })}
-            />
-            <button
-              type="button"
-              title="Use the theme's text colour"
-              disabled={!value.color}
-              onClick={() => onChange({ ...value, color: undefined })}
-            >
-              Auto
-            </button>
-          </div>
-        </div>
+        <span className="tt-sep" aria-hidden="true" />
+        <label className="tt-btn tt-color" title="Text colour">
+          <span style={{ color: ink }}>A</span>
+          <span className="tt-bar" style={{ background: ink }} />
+          <input
+            type="color"
+            aria-label={`${label} colour`}
+            value={value.color ?? '#444444'}
+            onChange={(e) => onChange({ ...value, color: e.target.value })}
+          />
+        </label>
+        <button
+          type="button"
+          className="tt-btn tt-text"
+          title="Automatic colour (the theme's text colour)"
+          aria-label={`Automatic ${label.toLowerCase()} colour`}
+          disabled={!value.color}
+          onClick={() => onChange({ ...value, color: undefined })}
+        >
+          Auto
+        </button>
+        {align && onAlign && (
+          <>
+            <span className="tt-sep" aria-hidden="true" />
+            <div className="seg">
+              {ALIGNS.map((x) => (
+                <button
+                  key={x.id}
+                  type="button"
+                  className={align === x.id ? 'on' : ''}
+                  aria-pressed={align === x.id}
+                  title={x.name}
+                  aria-label={x.name}
+                  onClick={() => onAlign(x.id)}
+                >
+                  <AlignIcon lines={x.lines} />
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -433,6 +525,24 @@ const DEFAULT_OPEN: Partial<Record<SectionId, boolean>> = {
   layout: true,
 };
 
+const PANEL_KEY = 'flowmeris.ridgePanel';
+
+/** The last tab and open sections, remembered in this browser. */
+function loadPanel(): { tab: RidgeTab; open: Partial<Record<SectionId, boolean>> } {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PANEL_KEY) ?? 'null');
+    if (saved && RIDGE_TABS.some((t) => t.id === saved.tab))
+      return { tab: saved.tab, open: saved.open ?? {} };
+  } catch {}
+  return { tab: 'sample', open: DEFAULT_OPEN };
+}
+
+function savePanel(panel: { tab: RidgeTab; open: Partial<Record<SectionId, boolean>> }) {
+  try {
+    localStorage.setItem(PANEL_KEY, JSON.stringify(panel));
+  } catch {}
+}
+
 /** A collapsible group of settings within a tab. */
 function Section({
   id,
@@ -456,9 +566,9 @@ function Section({
         aria-controls={`ridge-section-${id}`}
         onClick={onToggle}
       >
-        <span className="chevron" aria-hidden="true">
-          ▸
-        </span>
+        <svg className="chevron" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+          <path d="M3.5 1.5 9 6l-5.5 4.5z" fill="currentColor" />
+        </svg>
         {title}
       </button>
       {open && (
@@ -481,9 +591,16 @@ export function RidgeInspector() {
   const anchor = useRef<string | null>(null);
   const [dragIds, setDragIds] = useState<string[] | null>(null);
   const [drop, setDrop] = useState<{ id: string; after: boolean } | null>(null);
-  const [tab, setTab] = useState<RidgeTab>('sample');
-  const [open, setOpen] = useState<Partial<Record<SectionId, boolean>>>(DEFAULT_OPEN);
-  const toggle = (id: SectionId) => setOpen((o) => ({ ...o, [id]: !o[id] }));
+  const [panel, setPanel] = useState(loadPanel);
+  const { tab, open } = panel;
+  const changePanel = (fn: (p: typeof panel) => typeof panel) =>
+    setPanel((p) => {
+      const next = fn(p);
+      savePanel(next);
+      return next;
+    });
+  const setTab = (t: RidgeTab) => changePanel((p) => ({ ...p, tab: t }));
+  const toggle = (id: SectionId) => changePanel((p) => ({ ...p, open: { ...p.open, [id]: !p.open[id] } }));
   if (!group) return null;
   const set = <K extends keyof RidgeStyle>(key: K, value: RidgeStyle[K], label: string, merge?: string) =>
     update(
@@ -577,7 +694,9 @@ export function RidgeInspector() {
           </label>
           <button
             type="button"
-            title="Reset every ridge plot setting to its default"
+            className="icon reset-all"
+            title="Reset all ridge plot settings to their defaults"
+            aria-label="Reset all settings"
             disabled={!layout}
             onClick={() =>
               update('Reset ridge settings', (l) => {
@@ -586,7 +705,7 @@ export function RidgeInspector() {
               })
             }
           >
-            Reset all
+            ↺
           </button>
         </div>
       </div>
@@ -799,10 +918,11 @@ export function RidgeInspector() {
                 </select>
               </label>
               {style.colorMode === 'single' && (
-                <label className="field">
+                <label className="field inline">
                   Fill colour
                   <input
                     type="color"
+                    className="swatch"
                     value={style.color}
                     onChange={(e) => set('color', e.target.value, 'Ridge colour', 'color')}
                   />
@@ -819,11 +939,25 @@ export function RidgeInspector() {
                   onChange={(e) => set('fillOpacity', Number(e.target.value), 'Ridge opacity', 'opacity')}
                 />
               </label>
+              <label className="field check">
+                <input
+                  type="checkbox"
+                  checked={style.strokeColor === undefined}
+                  onChange={(e) =>
+                    set('strokeColor', e.target.checked ? undefined : '#000000', 'Ridge outline colour')
+                  }
+                />
+                Outline matches background
+              </label>
               <div className="grid2">
-                <label className="field">
+                <label
+                  className="field inline"
+                  title={style.strokeColor === undefined ? 'Matches the background' : undefined}
+                >
                   Outline
                   <input
                     type="color"
+                    className="swatch"
                     value={style.strokeColor ?? '#ffffff'}
                     disabled={style.strokeColor === undefined}
                     onChange={(e) => set('strokeColor', e.target.value, 'Ridge outline colour', 'stroke')}
@@ -836,16 +970,6 @@ export function RidgeInspector() {
                   onCommit={(v) => set('strokeWidth', clamp(v, 0, 10), 'Ridge outline width')}
                 />
               </div>
-              <label className="field check">
-                <input
-                  type="checkbox"
-                  checked={style.strokeColor === undefined}
-                  onChange={(e) =>
-                    set('strokeColor', e.target.checked ? undefined : '#000000', 'Ridge outline colour')
-                  }
-                />
-                Outline matches background
-              </label>
             </Section>
           </>
         )}
@@ -916,13 +1040,17 @@ export function RidgeInspector() {
                 />
                 Event count on its own line
               </label>
+              <TextStyleEditor
+                label="Ridge labels"
+                value={style.labelText}
+                base={style.fontFamily}
+                onChange={(t) => set('labelText', t, 'Ridge label text')}
+                size={style.labelFontSize}
+                onSize={(v) => set('labelFontSize', v, 'Ridge label size')}
+                align={style.labelAlign}
+                onAlign={(a) => set('labelAlign', a, 'Ridge label alignment')}
+              />
               <div className="grid2">
-                <LiveNum
-                  label="Label size (px)"
-                  step={0.5}
-                  value={style.labelFontSize}
-                  onCommit={(v) => set('labelFontSize', clamp(v, 4, 48), 'Ridge label size')}
-                />
                 <LiveNum
                   label="Label width (px)"
                   step={10}
@@ -945,25 +1073,6 @@ export function RidgeInspector() {
                   <option value="widen">Widen the label column</option>
                 </select>
               </label>
-              <label className="field">
-                Label alignment
-                <select
-                  value={style.labelAlign}
-                  onChange={(e) =>
-                    set('labelAlign', e.target.value as RidgeStyle['labelAlign'], 'Ridge label alignment')
-                  }
-                >
-                  <option value="start">Left</option>
-                  <option value="middle">Center</option>
-                  <option value="end">Right</option>
-                </select>
-              </label>
-              <TextStyleEditor
-                label="Ridge labels"
-                value={style.labelText}
-                base={style.fontFamily}
-                onChange={(t) => set('labelText', t, 'Ridge label text')}
-              />
             </Section>
             <Section
               id="tickText"
@@ -971,17 +1080,13 @@ export function RidgeInspector() {
               open={!!open.tickText}
               onToggle={() => toggle('tickText')}
             >
-              <LiveNum
-                label="Tick label size (px)"
-                step={0.5}
-                value={style.tickFontSize}
-                onCommit={(v) => set('tickFontSize', clamp(v, 4, 48), 'Ridge tick label size')}
-              />
               <TextStyleEditor
                 label="Tick labels"
                 value={style.tickText}
                 base={style.fontFamily}
                 onChange={(t) => set('tickText', t, 'Ridge tick text')}
+                size={style.tickFontSize}
+                onSize={(v) => set('tickFontSize', v, 'Ridge tick label size')}
               />
             </Section>
             <Section
@@ -990,17 +1095,13 @@ export function RidgeInspector() {
               open={!!open.titleText}
               onToggle={() => toggle('titleText')}
             >
-              <LiveNum
-                label="Title size (px)"
-                step={0.5}
-                value={style.titleFontSize}
-                onCommit={(v) => set('titleFontSize', clamp(v, 4, 48), 'Ridge title size')}
-              />
               <TextStyleEditor
                 label="Axis title"
                 value={style.titleText}
                 base={style.fontFamily}
                 onChange={(t) => set('titleText', t, 'Ridge title text')}
+                size={style.titleFontSize}
+                onSize={(v) => set('titleFontSize', v, 'Ridge title size')}
               />
             </Section>
           </>

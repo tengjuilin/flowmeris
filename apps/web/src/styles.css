@@ -1964,10 +1964,88 @@ table.stats.import-map td {
   background: transparent;
 }
 
-.text-style {
-  margin: 6px 0 4px;
-  padding-top: 6px;
-  border-top: 1px dashed var(--border);
+/* Word-processor style text toolbar: font + size, then style, colour and alignment. */
+.text-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+}
+.tt-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.tt-font {
+  flex: 1;
+  min-width: 0;
+}
+.tt-wide {
+  flex-basis: 100%;
+}
+.inspector input.tt-size {
+  width: 54px;
+  flex: none;
+}
+.tt-btn {
+  position: relative;
+  min-width: 26px;
+  height: 24px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.tt-btn sup {
+  font-size: 9px;
+}
+.tt-btn.small-a {
+  font-size: 11px;
+}
+.tt-btn.tt-text {
+  font-size: 11.5px;
+}
+.tt-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 0 2px;
+  background: var(--border);
+}
+.tt-color {
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1;
+}
+.tt-color .tt-bar {
+  width: 16px;
+  height: 3px;
+  border-radius: 1px;
+}
+.inspector .tt-color input[type="color"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.text-toolbar .seg button {
+  min-width: 26px;
+  height: 24px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Ridge settings: tabs and global controls pinned above collapsible sections. */
@@ -1990,6 +2068,8 @@ table.stats.import-map td {
 .ridge-tabs button {
   flex: 1;
   padding: 6px 4px;
+  text-align: center;
+  justify-content: center;
 }
 .ridge-inspector-global {
   display: flex;
@@ -2000,6 +2080,31 @@ table.stats.import-map td {
 }
 .ridge-inspector-global .field.check {
   margin: 0;
+  white-space: nowrap;
+  min-width: 0;
+}
+.ridge-inspector-global .reset-all {
+  flex: none;
+  font-size: 15px;
+}
+.inspector .field.inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.inspector input[type="color"].swatch {
+  width: 26px;
+  height: 22px;
+  padding: 0 1px;
+  flex: none;
+}
+.inspector input[type="color"]:disabled {
+  opacity: 0.3;
+  filter: grayscale(1);
+  cursor: not-allowed;
+}
+.inspector .field:has(> input:disabled) {
+  color: var(--text-2);
 }
 .ridge-section {
   border: 1px solid var(--border);
@@ -2023,8 +2128,7 @@ table.stats.import-map td {
   background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
 .ridge-section-head .chevron {
-  display: inline-block;
-  width: 1em;
+  flex: none;
   color: var(--text-2);
   transition: transform 0.12s;
 }
