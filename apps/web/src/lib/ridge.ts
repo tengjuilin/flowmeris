@@ -169,7 +169,11 @@ export function wrapText(text: string, maxW: number, measure: (s: string) => num
 let measureCtx: CanvasRenderingContext2D | null | undefined;
 
 /** Width in px of a string at `fontSize` in `family`; estimated from the length where no canvas exists. */
-export function textMeasure(fontSize: number, family: string): (s: string) => number {
+export function textMeasure(
+  fontSize: number,
+  family: string,
+  { bold = false, italic = false } = {},
+): (s: string) => number {
   if (measureCtx === undefined) {
     try {
       measureCtx = document.createElement('canvas').getContext('2d');
@@ -180,7 +184,7 @@ export function textMeasure(fontSize: number, family: string): (s: string) => nu
   const ctx = measureCtx;
   if (!ctx) return (s) => s.length * fontSize * 0.55;
   return (s) => {
-    ctx.font = `${fontSize}px ${family}`;
+    ctx.font = `${italic ? 'italic ' : ''}${bold ? 'bold ' : ''}${fontSize}px ${family}`;
     return ctx.measureText(s).width;
   };
 }

@@ -21,6 +21,8 @@ const STYLE_PROPS = [
   'font-family',
   'font-size',
   'font-weight',
+  'font-style',
+  'text-decoration',
   'paint-order',
 ];
 

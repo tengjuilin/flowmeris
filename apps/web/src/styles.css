@@ -1963,3 +1963,11 @@ table.stats.import-map td {
 .meta-table.selecting input::selection {
   background: transparent;
 }
+
+.text-style {
+  margin-bottom: 8px;
+}
+.text-style-title {
+  font-weight: 600;
+  margin-top: 6px;
+}

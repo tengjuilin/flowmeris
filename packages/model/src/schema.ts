@@ -306,6 +306,18 @@ export const SampleOrderSchema = z.object({
 const HexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
 /** Appearance of a ridge plot. Every member has a default, so `RidgeStyleSchema.parse({})` is the default style. */
+/** Appearance of one kind of text in a figure. */
+export const TextStyleSchema = z.object({
+  /** Omitted = the figure's font. */
+  fontFamily: z.string().min(1).max(80).optional(),
+  bold: z.boolean().default(false),
+  italic: z.boolean().default(false),
+  underline: z.boolean().default(false),
+  /** Omitted = the theme's text colour. */
+  color: HexColor.optional(),
+});
+export type TextStyle = z.infer<typeof TextStyleSchema>;
+
 export const RidgeStyleSchema = z.object({
   /** 'single': every ridge uses `color`; 'palette': ridges cycle the categorical palette. */
   colorMode: z.enum(['single', 'palette']).default('single'),
@@ -322,7 +334,8 @@ export const RidgeStyleSchema = z.object({
   width: Num.min(300).max(10000).optional(),
   /** Figure width ÷ height; omitted = free. When set, the row pitch is derived to fit the height (overrides `rowHeight`). */
   aspect: Num.min(0.2).max(10).optional(),
-  fontFamily: z.enum(['sans', 'serif', 'mono']).default('sans'),
+  /** A key of the app's font list, or the name of any installed font. */
+  fontFamily: z.string().min(1).max(80).default('sans'),
   /**
    * Display order of ridges; ridges not listed follow in default order. A ridge id is a sample id, or
    * `combo:<JSON of the grouping variables' values>` for combined replicates (see `RidgeCombineSchema`).
@@ -348,6 +361,10 @@ export const RidgeStyleSchema = z.object({
   /** Axis title; omitted = "<marker> :: <channel>". */
   axisTitle: z.string().optional(),
   titleFontSize: Num.min(4).max(48).default(12),
+  /** Appearance of the ridge labels, the x tick labels and the axis title. */
+  labelText: TextStyleSchema.default({}),
+  tickText: TextStyleSchema.default({}),
+  titleText: TextStyleSchema.default({ bold: true }),
   /** Histogram bins across the x range. */
   bins: z.number().int().min(16).max(1024).default(256),
   /** Gaussian smoothing of each histogram, in bins (σ); 0 = none. */

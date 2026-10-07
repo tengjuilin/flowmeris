@@ -6,12 +6,21 @@ import {
   type RidgeLayout,
   type RidgeStyle,
   RidgeStyleSchema,
+  type TextStyle,
   type Workspace,
   newId,
 } from '@flowmeris/model';
 import { CATEGORICAL } from '@flowmeris/render';
 import { formatLinear, makeScale } from '@flowmeris/transforms';
-import { type ComponentProps, type MouseEvent, useCallback, useMemo, useRef, useState } from 'react';
+import {
+  type CSSProperties,
+  type ComponentProps,
+  type MouseEvent,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { defaultChannels, factoryAxis } from '../lib/defaults.ts';
 import { type RidgeRow, applyOrder, comboRows, selectRidges } from '../lib/ridge.ts';
 import { useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
@@ -32,11 +41,58 @@ const copyCombine = (c: RidgeCombine): RidgeCombine => ({
 });
 export const DEFAULT_OVERLAP = 0.6;
 
-export const FONT_STACKS: Record<RidgeStyle['fontFamily'], string> = {
-  sans: 'Inter, Helvetica, Arial, sans-serif',
-  serif: 'Georgia, "Times New Roman", serif',
-  mono: 'Menlo, Consolas, "DejaVu Sans Mono", monospace',
-};
+export const FONT_GROUPS: { label: string; fonts: { id: string; label: string; stack: string }[] }[] = [
+  {
+    label: 'Sans-serif',
+    fonts: [
+      { id: 'sans', label: 'Sans-serif (default)', stack: 'Inter, Helvetica, Arial, sans-serif' },
+      { id: 'arial', label: 'Arial', stack: 'Arial, "Liberation Sans", Helvetica, sans-serif' },
+      { id: 'helvetica', label: 'Helvetica', stack: '"Helvetica Neue", Helvetica, Arial, sans-serif' },
+      { id: 'calibri', label: 'Calibri', stack: 'Calibri, Carlito, "Segoe UI", sans-serif' },
+      { id: 'verdana', label: 'Verdana', stack: 'Verdana, "DejaVu Sans", sans-serif' },
+      { id: 'tahoma', label: 'Tahoma', stack: 'Tahoma, Geneva, sans-serif' },
+      { id: 'trebuchet', label: 'Trebuchet MS', stack: '"Trebuchet MS", "Lucida Grande", sans-serif' },
+    ],
+  },
+  {
+    label: 'Serif',
+    fonts: [
+      { id: 'serif', label: 'Serif (default)', stack: 'Georgia, "Times New Roman", serif' },
+      { id: 'times', label: 'Times New Roman', stack: '"Times New Roman", Times, "Liberation Serif", serif' },
+      { id: 'georgia', label: 'Georgia', stack: 'Georgia, "DejaVu Serif", serif' },
+      { id: 'palatino', label: 'Palatino', stack: '"Palatino Linotype", Palatino, "Book Antiqua", serif' },
+      { id: 'garamond', label: 'Garamond', stack: 'Garamond, "EB Garamond", "Times New Roman", serif' },
+    ],
+  },
+  {
+    label: 'Monospace',
+    fonts: [
+      { id: 'mono', label: 'Monospace (default)', stack: 'Menlo, Consolas, "DejaVu Sans Mono", monospace' },
+      { id: 'courier', label: 'Courier New', stack: '"Courier New", Courier, "Liberation Mono", monospace' },
+      { id: 'consolas', label: 'Consolas', stack: 'Consolas, Menlo, "DejaVu Sans Mono", monospace' },
+    ],
+  },
+];
+
+export const FONT_STACKS: Record<string, string> = Object.fromEntries(
+  FONT_GROUPS.flatMap((g) => g.fonts.map((f) => [f.id, f.stack])),
+);
+
+/** CSS font-family for a font key, or for the name of any installed font. */
+export function fontStack(family: string): string {
+  return FONT_STACKS[family] ?? `"${family.replace(/["\\;<>{}]/g, '')}", sans-serif`;
+}
+
+/** SVG text styling for `t`, falling back to the figure's font family. */
+export function textCss(t: TextStyle, base: RidgeStyle['fontFamily']): CSSProperties {
+  return {
+    fontFamily: fontStack(t.fontFamily ?? base),
+    fontWeight: t.bold ? 700 : 400,
+    fontStyle: t.italic ? 'italic' : 'normal',
+    textDecoration: t.underline ? 'underline' : 'none',
+    ...(t.color ? { fill: t.color } : {}),
+  };
+}
 
 export function ridgeColor(style: RidgeStyle, ridgeId: string, index: number): string {
   return (
@@ -183,6 +239,140 @@ export function TicksEditor({
         </span>
       )}
     </label>
+  );
+}
+
+const CUSTOM_FONT = '__custom';
+
+/** A font picker: the app's font list, or the name of any font installed on this computer. */
+function FontSelect({
+  label,
+  value,
+  onChange,
+  inherit,
+}: {
+  label: string;
+  value: string | undefined;
+  onChange: (v: string | undefined) => void;
+  /** Offer "same as the figure" (value undefined), naming the figure's font. */
+  inherit?: string;
+}) {
+  const custom = value !== undefined && !(value in FONT_STACKS);
+  const [text, setText] = useState<string | null>(null);
+  const commit = () => {
+    if (text !== null) {
+      const t = text.trim();
+      if (t) onChange(t);
+      setText(null);
+    }
+  };
+  return (
+    <>
+      <label className="field">
+        {label}
+        <select
+          value={custom ? CUSTOM_FONT : (value ?? '')}
+          onChange={(e) => {
+            const v = e.target.value;
+            onChange(v === '' ? undefined : v === CUSTOM_FONT ? 'Helvetica Neue' : v);
+          }}
+        >
+          {inherit !== undefined && <option value="">Same as figure ({inherit})</option>}
+          {FONT_GROUPS.map((g) => (
+            <optgroup key={g.label} label={g.label}>
+              {g.fonts.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+          <option value={CUSTOM_FONT}>Other installed font…</option>
+        </select>
+      </label>
+      {custom && (
+        <label
+          className="field"
+          title="Used if the font is installed on the computer that views or exports the figure"
+        >
+          Font name
+          <input
+            type="text"
+            value={text ?? value}
+            placeholder="e.g. Futura"
+            onChange={(e) => setText(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+          />
+        </label>
+      )}
+    </>
+  );
+}
+
+/** Font, bold / italic / underline and colour of one kind of text. */
+function TextStyleEditor({
+  label,
+  value,
+  base,
+  onChange,
+}: {
+  label: string;
+  value: TextStyle;
+  base: string;
+  onChange: (t: TextStyle) => void;
+}) {
+  const toggle = (k: 'bold' | 'italic' | 'underline', glyph: string, name: string, css: CSSProperties) => (
+    <button
+      type="button"
+      className={value[k] ? 'on' : ''}
+      aria-pressed={value[k]}
+      title={name}
+      style={css}
+      onClick={() => onChange({ ...value, [k]: !value[k] })}
+    >
+      {glyph}
+    </button>
+  );
+  return (
+    <div className="text-style">
+      <div className="text-style-title">{label}</div>
+      <FontSelect
+        label="Font"
+        value={value.fontFamily}
+        inherit={FONT_GROUPS.flatMap((g) => g.fonts).find((f) => f.id === base)?.label ?? base}
+        onChange={(fontFamily) => onChange({ ...value, fontFamily })}
+      />
+      <div className="grid2">
+        <div className="field">
+          Style
+          <div className="seg">
+            {toggle('bold', 'B', 'Bold', { fontWeight: 700 })}
+            {toggle('italic', 'I', 'Italic', { fontStyle: 'italic' })}
+            {toggle('underline', 'U', 'Underline', { textDecoration: 'underline' })}
+          </div>
+        </div>
+        <div className="field">
+          Colour
+          <div className="row" style={{ margin: 0, gap: 4, flexWrap: 'nowrap' }}>
+            <input
+              type="color"
+              aria-label={`${label} colour`}
+              value={value.color ?? '#444444'}
+              onChange={(e) => onChange({ ...value, color: e.target.value })}
+            />
+            <button
+              type="button"
+              title="Use the theme's text colour"
+              disabled={!value.color}
+              onClick={() => onChange({ ...value, color: undefined })}
+            >
+              Auto
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -648,18 +838,34 @@ export function RidgeInspector() {
       </fieldset>
 
       <fieldset>
+        <legend>Text appearance</legend>
+        <TextStyleEditor
+          label="Ridge labels"
+          value={style.labelText}
+          base={style.fontFamily}
+          onChange={(t) => set('labelText', t, 'Ridge label text')}
+        />
+        <TextStyleEditor
+          label="Tick labels"
+          value={style.tickText}
+          base={style.fontFamily}
+          onChange={(t) => set('tickText', t, 'Ridge tick text')}
+        />
+        <TextStyleEditor
+          label="Axis title"
+          value={style.titleText}
+          base={style.fontFamily}
+          onChange={(t) => set('titleText', t, 'Ridge title text')}
+        />
+      </fieldset>
+
+      <fieldset>
         <legend>Figure</legend>
-        <label className="field">
-          Font
-          <select
-            value={style.fontFamily}
-            onChange={(e) => set('fontFamily', e.target.value as RidgeStyle['fontFamily'], 'Ridge font')}
-          >
-            <option value="sans">Sans-serif</option>
-            <option value="serif">Serif</option>
-            <option value="mono">Monospace</option>
-          </select>
-        </label>
+        <FontSelect
+          label="Base font"
+          value={style.fontFamily}
+          onChange={(v) => set('fontFamily', v ?? 'sans', 'Ridge font')}
+        />
         <div className="grid2">
           <label className="field check">
             <input

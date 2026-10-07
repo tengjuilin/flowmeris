@@ -29,7 +29,7 @@ import {
   usePlotForPopulation,
 } from './PlotPanel.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
-import { FONT_STACKS, ridgeColor, useRidge } from './RidgeInspector.tsx';
+import { fontStack, ridgeColor, textCss, useRidge } from './RidgeInspector.tsx';
 import { useSize } from './hooks.ts';
 
 // One observer shared by every tile (hundreds of tiles would otherwise each own one).
@@ -271,7 +271,11 @@ export function RidgeView() {
   if (!group || !axis) return <div className="empty">Select a group.</div>;
   const n = Math.max(1, rows.length);
   // Label text per ridge: the name (custom or sample name) plus the event count, on one line or two.
-  const measure = textMeasure(style.labelFontSize, FONT_STACKS[style.fontFamily]);
+  const measure = textMeasure(
+    style.labelFontSize,
+    fontStack(style.labelText.fontFamily ?? style.fontFamily),
+    style.labelText,
+  );
   const labelText = rows.map((r) => {
     const h = curves[r.id];
     const missing = r.sampleIds.every((id) => ui.missing[id]);
@@ -363,33 +367,35 @@ export function RidgeView() {
             ` · replicates combined (${combine.method === 'mean' ? 'average of curves' : 'pooled events'})`}
         </span>
         <div className="spacer" />
-        <button
-          type="button"
-          onClick={() => {
-            if (!svgRef.current) return;
-            download(
-              `${safeName(`${group.name}_${pop?.name}_${ch}_ridge`)}.svg`,
-              standaloneSvg(svgRef.current),
-              'image/svg+xml',
-            );
-          }}
-        >
-          SVG
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            if (!svgRef.current) return;
-            svgToPng(svgRef.current, 300)
-              .then((png) =>
-                download(`${safeName(`${group.name}_${pop?.name}_${ch}_ridge`)}.png`, png, 'image/png'),
-              )
-              .catch((e) => toast(`PNG export failed: ${e instanceof Error ? e.message : String(e)}`));
-          }}
-          title="PNG at 300 dpi"
-        >
-          PNG
-        </button>
+        <div className="seg">
+          <button
+            type="button"
+            onClick={() => {
+              if (!svgRef.current) return;
+              download(
+                `${safeName(`${group.name}_${pop?.name}_${ch}_ridge`)}.svg`,
+                standaloneSvg(svgRef.current),
+                'image/svg+xml',
+              );
+            }}
+          >
+            SVG
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (!svgRef.current) return;
+              svgToPng(svgRef.current, 300)
+                .then((png) =>
+                  download(`${safeName(`${group.name}_${pop?.name}_${ch}_ridge`)}.png`, png, 'image/png'),
+                )
+                .catch((e) => toast(`PNG export failed: ${e instanceof Error ? e.message : String(e)}`));
+            }}
+            title="PNG at 300 dpi"
+          >
+            PNG
+          </button>
+        </div>
       </div>
       <svg
         ref={svgRef}
@@ -398,7 +404,7 @@ export function RidgeView() {
         className="ridge"
         role="img"
         aria-label={`Ridge plot of ${ch} for ${pop?.name}`}
-        style={{ fontFamily: FONT_STACKS[style.fontFamily] }}
+        style={{ fontFamily: fontStack(style.fontFamily) }}
       >
         <rect width={W} height={H} fill="var(--surface)" />
         {rows.map((r, i) => {
@@ -431,7 +437,7 @@ export function RidgeView() {
                   y={base - 3 - (lines.length - 1) * lineH}
                   textAnchor={style.labelAlign}
                   className="ridge-label"
-                  style={{ fontSize: style.labelFontSize }}
+                  style={{ fontSize: style.labelFontSize, ...textCss(style.labelText, style.fontFamily) }}
                 >
                   <title>{r.sampleIds.map((id) => ws.samples[id]?.relativePath).join('\n')}</title>
                   {lines.map((line, k) => (
@@ -460,7 +466,11 @@ export function RidgeView() {
             <g key={i} transform={`translate(${X(t.pos)},0)`}>
               <line y2={t.major ? 6 : 3} />
               {style.showTickLabels && t.label && (
-                <text y={tickLabelY} textAnchor="middle" style={{ fontSize: style.tickFontSize }}>
+                <text
+                  y={tickLabelY}
+                  textAnchor="middle"
+                  style={{ fontSize: style.tickFontSize, ...textCss(style.tickText, style.fontFamily) }}
+                >
                   {t.label}
                 </text>
               )}
@@ -472,7 +482,7 @@ export function RidgeView() {
               y={titleY}
               textAnchor="middle"
               className="axis-title pickable"
-              style={{ fontSize: style.titleFontSize }}
+              style={{ fontSize: style.titleFontSize, ...textCss(style.titleText, style.fontFamily) }}
               {...pickerTrigger(`X axis: ${title}. Change channel`, setChMenu)}
             >
               {title}
