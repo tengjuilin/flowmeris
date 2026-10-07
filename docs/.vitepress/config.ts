@@ -31,6 +31,8 @@ export default defineConfig({
             { text: 'Groups and overrides', link: '/guide/groups' },
             { text: 'Gating', link: '/guide/gating' },
             { text: 'Axes and scales', link: '/guide/axes' },
+            { text: 'Sample variables and plate maps', link: '/guide/metadata' },
+            { text: 'Statistics tables and charts', link: '/guide/charts' },
             { text: 'Exports and reporting', link: '/guide/exports' },
             { text: 'Privacy and storage', link: '/guide/privacy' },
           ],

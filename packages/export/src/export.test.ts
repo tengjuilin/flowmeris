@@ -185,4 +185,21 @@ describe('M-EXPORT-STATS', () => {
     const wide = wideRows(ws, g, cells);
     expect(wide[1]![2]).toBe(12.5);
   });
+  it('includes sample variables after the sample identity columns', () => {
+    const { ws, g, sampleId } = setup();
+    ws.variables.push({ id: 'v1', name: 'Dose', unit: 'nM', type: 'numeric', levels: [] });
+    ws.variables.push({ id: 'v2', name: 'value', type: 'categorical', levels: [] });
+    ws.samples[sampleId]!.meta = { v1: 10, v2: 'ctl' };
+    const cells: StatCell[] = [
+      { sampleId, population: 'root', statistic: 'count', space: 'n/a', value: 5, n: 5, nExcluded: 0 },
+    ];
+    const tidy = tidyRows(ws, g, cells, '0.1.0');
+    const h = tidy[0] as string[];
+    expect(h.slice(h.indexOf('dataset') + 1, h.indexOf('dataset') + 3)).toEqual(['Dose (nM)', 'value (2)']);
+    expect(tidy[1]![h.indexOf('Dose (nM)')]).toBe(10);
+    expect(tidy[1]![h.indexOf('value')]).toBe(5);
+    const wide = wideRows(ws, g, cells);
+    expect(wide[0]!.slice(0, 4)).toEqual(['sample_file', 'sample_sha256', 'Dose (nM)', 'value']);
+    expect(wide[1]!.slice(2)).toEqual([10, 'ctl', 5]);
+  });
 });

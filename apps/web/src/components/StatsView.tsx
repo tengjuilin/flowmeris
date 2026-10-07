@@ -1,28 +1,21 @@
-import type { PopulationCount, StatResult } from '@flowmeris/engine';
-import { type StatCell, exportGatingML, statLabel, tidyRows, toCsv, wideRows } from '@flowmeris/export';
+import { exportGatingML, tidyRows, toCsv, wideRows } from '@flowmeris/export';
 import {
-  type CompMatrix,
+  type AggFunc,
+  type DerivedColumn,
   type Group,
-  type Population,
   type StatKind,
   type StatSpec,
-  type Transform,
+  type Variable,
+  dropColumns,
   newId,
   populationPath,
-  populationsDepthFirst,
 } from '@flowmeris/model';
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { type Cell, type ColumnDef, EXPR_FUNCTIONS, type Table, tableRows } from '@flowmeris/table';
+import { useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { download, safeName } from '../lib/download.ts';
-import {
-  APP_INFO,
-  contextFor,
-  toast,
-  useGroup,
-  useSampleNames,
-  useSelectedSampleIds,
-  useStore,
-} from '../state/store.ts';
+import { type StatColumn, useAnalysisTable } from '../lib/statsTable.ts';
+import { APP_INFO, contextFor, toast, useGroup, useStore } from '../state/store.ts';
 
 const VALUE_STATS: { id: StatKind; label: string }[] = [
   { id: 'median', label: 'Median' },
@@ -37,201 +30,553 @@ const VALUE_STATS: { id: StatKind; label: string }[] = [
   { id: 'max', label: 'Max' },
 ];
 
-const FREQUENCY_STATS = new Set(['count', 'pctParent', 'pctGrandparent', 'pctTotal']);
+export const AGG_FUNCS: { id: AggFunc; label: string; title: string }[] = [
+  { id: 'mean', label: 'Mean', title: 'Arithmetic mean' },
+  { id: 'sd', label: 'SD', title: 'Sample standard deviation (n − 1)' },
+  { id: 'sem', label: 'SEM', title: 'Standard error of the mean, SD / √n' },
+  {
+    id: 'ci95',
+    label: '95% CI',
+    title: 'Half-width of the 95% confidence interval of the mean, t(0.975, n − 1) · SEM',
+  },
+  { id: 'median', label: 'Median', title: 'Median' },
+  { id: 'cv', label: 'CV', title: 'Coefficient of variation, 100 · SD / mean (%)' },
+  { id: 'min', label: 'Min', title: 'Minimum' },
+  { id: 'max', label: 'Max', title: 'Maximum' },
+  { id: 'n', label: 'n', title: 'Number of rows in each group' },
+];
 
 const COUNT_FORMAT = new Intl.NumberFormat();
 
 /** Display formatting only; exports carry full double precision. */
-function fmt(v: number | undefined, stat: string): string {
+function fmt(v: Cell, stat: string | undefined): string {
   if (v === undefined) return '';
+  if (typeof v === 'string') return v;
   if (Number.isNaN(v)) return 'NaN';
-  if (stat === 'count') return COUNT_FORMAT.format(v);
-  if (stat.startsWith('pct') || stat === 'cv' || stat === 'rcv') return v.toFixed(2);
+  if (stat === 'count' || stat === 'n') return COUNT_FORMAT.format(v);
+  if (stat?.startsWith('pct') || stat === 'cv' || stat === 'rcv') return v.toFixed(2);
   const a = Math.abs(v);
   return a !== 0 && (a < 1e-3 || a >= 1e7) ? v.toExponential(4) : String(Number(v.toPrecision(5)));
 }
 
-// ---------------------------------------------------------------------------
-// Per-sample results
-// ---------------------------------------------------------------------------
+/** Header section of a column: a population, or one of the fixed sections. */
+function sectionOf(c: ColumnDef, byKey: Map<string, ColumnDef>): string {
+  if (c.pop) return `pop:${c.pop}`;
+  if (c.key === 'group:n') return 'group';
+  const src = c.source ? byKey.get(c.source) : undefined;
+  const kind = src?.kind ?? c.kind;
+  return kind === 'variable' ? 'variables' : kind === 'derived' ? 'derived' : kind;
+}
 
-/** One sample's row: values by column key (`pop|count`, `pop|pctParent`, or a StatSpec id) and export cells. */
-interface SampleTable {
-  values: Map<string, number>;
-  cells: StatCell[];
+function useGroupMutate(groupId: string) {
+  const mutate = useStore((s) => s.mutate);
+  return (label: string, fn: (g: Group) => void, merge?: string) =>
+    mutate(label, (w) => fn(w.groups.find((x) => x.id === groupId)!), merge);
 }
 
 /**
- * Results by per-sample dependency key, kept across renders and view switches
- * so an edit only recomputes the samples it affects, and returning to the
- * view is instant. Bounded; oldest entries go first.
+ * Columns of `display` a "CSV (table)" export includes. `selected` lists
+ * per-sample column keys (undefined = all); a grouped table keeps its grouping
+ * columns and n, and the summaries of the selected columns.
  */
-const tableCache = new Map<string, SampleTable>();
-const inflight = new Map<string, Promise<SampleTable>>();
-const MAX_CACHED_TABLES = 4000;
-
-function remember(key: string, t: SampleTable) {
-  tableCache.set(key, t);
-  for (const k of tableCache.keys()) {
-    if (tableCache.size <= MAX_CACHED_TABLES) break;
-    tableCache.delete(k);
-  }
+function exportKeys(display: Table, grouped: boolean, selected: string[] | undefined): string[] {
+  const on = selected ? new Set(selected) : undefined;
+  return display.columns
+    .filter(
+      (c) => !on || on.has(c.source ?? c.key) || (grouped && (c.key === 'group:n' || c.kind === 'variable')),
+    )
+    .map((c) => c.key);
 }
 
-/**
- * Dependency key of each sample's row: the gating structure and geometry
- * (with the sample's own overrides), compensation, transforms and requested
- * statistics. Population names and colours are left out — they do not change
- * any value. The shared part is serialised once, not once per sample.
- */
-function sampleKeys(
-  g: Group,
-  pops: Population[],
-  transforms: Record<string, Transform>,
-  compMatrices: Record<string, CompMatrix>,
-  sampleIds: string[],
-): Map<string, string> {
-  const comp = g.compensation.mode === 'matrix' ? compMatrices[g.compensation.matrixId] : g.compensation;
-  const shared = JSON.stringify([
-    pops.map((p) => [p.id, p.parent, p.gate, p.region]),
-    g.template.gates,
-    comp,
-    transforms,
-    g.stats,
-  ]);
-  const overrides = new Map<string, unknown[]>();
-  for (const o of g.overrides) {
-    let list = overrides.get(o.sampleId);
-    if (!list) overrides.set(o.sampleId, (list = []));
-    list.push([o.gateId, o.geometry]);
-  }
-  return new Map(
-    sampleIds.map((sid) => [sid, `${sid}\u0000${JSON.stringify(overrides.get(sid) ?? [])}\u0000${shared}`]),
-  );
-}
+// ---------------------------------------------------------------------------
+// Derived columns
+// ---------------------------------------------------------------------------
 
-function toTable(
-  sid: string,
-  counts: PopulationCount[],
-  stats: StatResult[],
-  specs: StatSpec[],
-): SampleTable {
-  const values = new Map<string, number>();
-  const cells: StatCell[] = [];
-  for (const c of counts) {
-    values.set(`${c.popId}|count`, c.count);
-    cells.push({
-      sampleId: sid,
-      population: c.popId,
-      statistic: 'count',
-      space: 'n/a',
-      value: c.count,
-      n: c.count,
-      nExcluded: 0,
-    });
-    if (c.popId !== 'root') {
-      const pct = c.parentCount > 0 ? (100 * c.count) / c.parentCount : Number.NaN;
-      values.set(`${c.popId}|pctParent`, pct);
-      cells.push({
-        sampleId: sid,
-        population: c.popId,
-        statistic: 'pctParent',
-        space: 'n/a',
-        value: pct,
-        n: c.count,
-        nExcluded: 0,
-      });
-    }
-  }
-  const specById = new Map(specs.map((s) => [s.id, s]));
-  for (const r of stats) {
-    const spec = specById.get(r.statId)!;
-    values.set(spec.id, r.value);
-    cells.push({
-      sampleId: sid,
-      population: spec.population,
-      statistic: spec.stat,
-      ...(spec.channel ? { channel: spec.channel } : {}),
-      space: FREQUENCY_STATS.has(spec.stat) ? 'n/a' : spec.space,
-      ...(spec.transform ? { transform: spec.transform } : {}),
-      ...(spec.p !== undefined ? { p: spec.p } : {}),
-      value: r.value,
-      n: r.n,
-      nExcluded: r.nExcluded,
-    });
-  }
-  return { values, cells };
-}
-
-function fetchTable(
-  key: string,
-  ctx: ReturnType<typeof contextFor>,
-  sid: string,
-  popIds: string[],
-): Promise<SampleTable> {
-  let p = inflight.get(key);
-  if (!p) {
-    const specs = ctx.group.stats;
-    p = pool
-      .table(ctx, sid, popIds, specs)
-      .then(({ counts, stats }) => {
-        const t = toTable(sid, counts, stats, specs);
-        remember(key, t);
-        return t;
-      })
-      .finally(() => inflight.delete(key));
-    inflight.set(key, p);
-  }
-  return p;
-}
-
-interface Column {
-  key: string;
-  label: string;
-  pop: string;
-  stat: string;
-  specId?: string;
-}
-
-/** One sample's row; re-renders only when its values, columns or flags change. */
-const StatsRow = memo(function StatsRow(props: {
-  label: string;
-  title: string | undefined;
-  override: boolean;
-  missing: boolean;
-  selected: boolean;
-  stale: boolean;
-  columns: Column[];
-  values: Map<string, number> | undefined;
+function FormulaForm(props: {
+  initial?: Extract<DerivedColumn, { kind: 'formula' }>;
+  columns: ColumnDef[];
+  onSave: (d: Extract<DerivedColumn, { kind: 'formula' }>) => void;
+  onCancel: () => void;
 }) {
-  const { columns, values } = props;
-  const cls = [props.selected ? 'on' : '', props.stale ? 'stale' : ''].filter(Boolean).join(' ');
+  const [name, setName] = useState(props.initial?.name ?? 'Formula');
+  const [expr, setExpr] = useState(props.initial?.expr ?? '');
+  const ref = useRef<HTMLInputElement>(null);
+  const insert = (text: string) => {
+    const el = ref.current;
+    const at = el?.selectionStart ?? expr.length;
+    const end = el?.selectionEnd ?? at;
+    setExpr(expr.slice(0, at) + text + expr.slice(end));
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(at + text.length, at + text.length);
+    });
+  };
   return (
-    <tr className={cls || undefined}>
-      <th scope="row" title={props.title}>
-        {props.label}
-        {props.override && <span className="badge warn">override</span>}
-        {props.missing && <span className="badge danger">missing</span>}
-      </th>
-      {columns.map((c) => (
-        <td key={c.key}>{fmt(values?.get(c.key), c.stat)}</td>
-      ))}
-    </tr>
+    <div className="derived-form">
+      <label className="field">
+        Name
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
+      </label>
+      <label className="field grow">
+        Formula
+        <input
+          ref={ref}
+          type="text"
+          className="mono"
+          value={expr}
+          placeholder="[CD4+ | Median PE-A (PE-A)] / [CD4+ | Median FITC-A (FITC-A)]"
+          onChange={(e) => setExpr(e.target.value)}
+        />
+      </label>
+      <label className="field">
+        Insert column
+        <select value="" onChange={(e) => e.target.value && insert(`[${e.target.value}]`)}>
+          <option value="">—</option>
+          {props.columns
+            .filter((c) => c.type === 'numeric')
+            .map((c) => (
+              <option key={c.key} value={c.label}>
+                {c.label}
+              </option>
+            ))}
+        </select>
+      </label>
+      <span className="muted small" title="Operators: + − * / ^ and parentheses">
+        Functions: {EXPR_FUNCTIONS.join(', ')}
+      </span>
+      <button
+        type="button"
+        className="primary"
+        disabled={!expr.trim()}
+        onClick={() =>
+          props.onSave({
+            id: props.initial?.id ?? newId('dc_'),
+            name: name.trim() || 'Formula',
+            kind: 'formula',
+            expr,
+          })
+        }
+      >
+        {props.initial ? 'Save' : 'Add'}
+      </button>
+      <button type="button" onClick={props.onCancel}>
+        Cancel
+      </button>
+    </div>
   );
-});
+}
+
+type Normalize = Extract<DerivedColumn, { kind: 'normalize' }>;
+
+function NormalizeForm(props: {
+  initial?: Normalize;
+  columns: ColumnDef[];
+  variables: Variable[];
+  /** Values present in the table, by variable id. */
+  valuesOf: (variableId: string) => Cell[];
+  onSave: (d: Normalize) => void;
+  onCancel: () => void;
+}) {
+  const { variables } = props;
+  const [draft, setD] = useState<Normalize>(
+    props.initial ?? {
+      id: newId('dc_'),
+      name: '',
+      kind: 'normalize',
+      // The most recently added value statistic (median, mean…), else a frequency.
+      source:
+        [...props.columns]
+          .reverse()
+          .find((c) => (c.kind === 'stat' && !/\|(count|pctParent)$/.test(c.key)) || c.kind === 'derived')
+          ?.key ??
+        [...props.columns].reverse().find((c) => c.kind === 'stat')?.key ??
+        '',
+      refVariable: variables[0]?.id ?? '',
+      refValue: '',
+      within: [],
+      mode: 'ratio',
+    },
+  );
+  // The reference variable may have been deleted (or none existed) since the form opened.
+  const d = variables.some((v) => v.id === draft.refVariable)
+    ? draft
+    : { ...draft, refVariable: variables[0]?.id ?? '', refValue: '' };
+  if (variables.length === 0)
+    return (
+      <div className="derived-form">
+        <span className="muted">
+          Normalisation needs a sample variable (Metadata tab) to pick reference samples.
+        </span>
+        <button type="button" onClick={props.onCancel}>
+          Close
+        </button>
+      </div>
+    );
+  const refValues = props.valuesOf(d.refVariable);
+  const src = props.columns.find((c) => c.key === d.source);
+  const refVar = variables.find((v) => v.id === d.refVariable);
+  const srcName = src ? (src.label.split(' | ').pop() ?? src.label) : '?';
+  const ref = `${refVar?.name ?? '?'} ${d.refValue}`;
+  const autoName =
+    d.mode === 'ratio'
+      ? `${srcName} / ${ref}`
+      : d.mode === 'percent'
+        ? `${srcName} % of ${ref}`
+        : `${srcName} − ${ref}`;
+  return (
+    <div className="derived-form">
+      <label className="field">
+        Name
+        <input
+          type="text"
+          value={d.name}
+          placeholder={autoName}
+          onChange={(e) => setD({ ...d, name: e.target.value })}
+        />
+      </label>
+      <label className="field">
+        Column
+        <select value={d.source} onChange={(e) => setD({ ...d, source: e.target.value })}>
+          {props.columns
+            .filter((c) => c.type === 'numeric' && c.kind !== 'variable')
+            .map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.label}
+              </option>
+            ))}
+        </select>
+      </label>
+      <label className="field">
+        Relative to samples with
+        <span className="row">
+          <select
+            value={d.refVariable}
+            onChange={(e) => setD({ ...d, refVariable: e.target.value, refValue: '' })}
+          >
+            {variables.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+          =
+          <select
+            value={JSON.stringify(d.refValue)}
+            onChange={(e) => setD({ ...d, refValue: JSON.parse(e.target.value) })}
+          >
+            <option value={JSON.stringify('')}>—</option>
+            {refValues.map((v) => (
+              <option key={JSON.stringify(v)} value={JSON.stringify(v)}>
+                {String(v)}
+              </option>
+            ))}
+          </select>
+        </span>
+      </label>
+      <fieldset className="field">
+        <legend title="The reference is the mean over reference samples that share these variables with the row (e.g. per replicate or per group)">
+          Within the same
+        </legend>
+        <span className="row">
+          {variables
+            .filter((v) => v.id !== d.refVariable)
+            .map((v) => (
+              <label key={v.id} className="field check">
+                <input
+                  type="checkbox"
+                  checked={d.within.includes(v.id)}
+                  onChange={(e) =>
+                    setD({
+                      ...d,
+                      within: e.target.checked ? [...d.within, v.id] : d.within.filter((x) => x !== v.id),
+                    })
+                  }
+                />
+                {v.name}
+              </label>
+            ))}
+        </span>
+      </fieldset>
+      <label className="field">
+        As
+        <select value={d.mode} onChange={(e) => setD({ ...d, mode: e.target.value as Normalize['mode'] })}>
+          <option value="ratio">ratio (x / ref)</option>
+          <option value="percent">percent (100 · x / ref)</option>
+          <option value="difference">difference (x − ref)</option>
+        </select>
+      </label>
+      <button
+        type="button"
+        className="primary"
+        disabled={!d.source || d.refValue === ''}
+        onClick={() => props.onSave({ ...d, name: d.name.trim() || autoName })}
+      >
+        {props.initial ? 'Save' : 'Add'}
+      </button>
+      <button type="button" onClick={props.onCancel}>
+        Cancel
+      </button>
+    </div>
+  );
+}
+
+function DerivedPanel(props: {
+  group: Group;
+  columns: ColumnDef[];
+  errors: Record<string, string>;
+  valuesOf: (variableId: string) => Cell[];
+}) {
+  const { group } = props;
+  const variables = useStore((s) => s.ws.variables);
+  const edit = useGroupMutate(group.id);
+  const [form, setForm] = useState<{ kind: 'formula' | 'normalize'; id?: string } | null>(null);
+  const derived = group.analysis.derived;
+  const editing = form?.id ? derived.find((d) => d.id === form.id) : undefined;
+  // Columns a derived column may use: everything before it.
+  const before = (id?: string) => {
+    const idx = id ? props.columns.findIndex((c) => c.key === `derived:${id}`) : -1;
+    return idx < 0 ? props.columns : props.columns.slice(0, idx);
+  };
+  const save = (d: DerivedColumn) => {
+    edit(editing ? 'Edit derived column' : 'Add derived column', (g) => {
+      const i = g.analysis.derived.findIndex((x) => x.id === d.id);
+      if (i >= 0) g.analysis.derived[i] = d;
+      else g.analysis.derived.push(d);
+    });
+    setForm(null);
+  };
+  return (
+    <section className="analysis-section">
+      <h4>Derived columns</h4>
+      {derived.length > 0 && (
+        <ul className="derived-list">
+          {derived.map((d) => (
+            <li key={d.id}>
+              <strong>{d.name}</strong>{' '}
+              <span className="muted small mono">
+                {d.kind === 'formula'
+                  ? `= ${d.expr}`
+                  : `${d.mode} to ${variables.find((v) => v.id === d.refVariable)?.name ?? '?'} = ${d.refValue}${d.within.length ? ` within ${d.within.map((w) => variables.find((v) => v.id === w)?.name ?? '?').join(', ')}` : ''}`}
+              </span>
+              {props.errors[d.id] && <span className="badge danger">{props.errors[d.id]}</span>}
+              <button
+                type="button"
+                className="icon"
+                title="Edit"
+                onClick={() => setForm({ kind: d.kind, id: d.id })}
+              >
+                ✎
+              </button>
+              <button
+                type="button"
+                className="icon"
+                title="Remove derived column"
+                onClick={() =>
+                  edit('Remove derived column', (g) => dropColumns(g, new Set([`derived:${d.id}`])))
+                }
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {form?.kind === 'formula' ? (
+        <FormulaForm
+          key={form.id ?? 'new'}
+          initial={editing?.kind === 'formula' ? editing : undefined}
+          columns={before(form.id)}
+          onSave={save}
+          onCancel={() => setForm(null)}
+        />
+      ) : form?.kind === 'normalize' ? (
+        <NormalizeForm
+          key={form.id ?? 'new'}
+          initial={editing?.kind === 'normalize' ? editing : undefined}
+          columns={before(form.id)}
+          variables={variables}
+          valuesOf={props.valuesOf}
+          onSave={save}
+          onCancel={() => setForm(null)}
+        />
+      ) : (
+        <div className="row">
+          <button
+            type="button"
+            onClick={() => setForm({ kind: 'formula' })}
+            title="A new column computed from others, e.g. a ratio"
+          >
+            + Formula
+          </button>
+          <button
+            type="button"
+            onClick={() => setForm({ kind: 'normalize' })}
+            title="Fold change or percent of a reference condition (e.g. untreated, dose 0)"
+          >
+            + Normalisation
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function GroupByPanel({ group }: { group: Group }) {
+  const variables = useStore((s) => s.ws.variables);
+  const edit = useGroupMutate(group.id);
+  const agg = group.analysis.aggregate;
+  return (
+    <section className="analysis-section">
+      <h4>
+        <label className="field check">
+          <input
+            type="checkbox"
+            checked={agg.enabled}
+            onChange={(e) =>
+              edit('Toggle grouping', (g) => void (g.analysis.aggregate.enabled = e.target.checked))
+            }
+          />
+          Combine replicates
+        </label>
+      </h4>
+      {variables.length === 0 ? (
+        <span className="muted small">Add sample variables in the Metadata tab to group by them.</span>
+      ) : (
+        <>
+          <div className="row wrap">
+            <span className="muted small">Group by</span>
+            {variables.map((v) => (
+              <label key={v.id} className="field check">
+                <input
+                  type="checkbox"
+                  checked={agg.by.includes(v.id)}
+                  onChange={(e) =>
+                    edit('Change grouping', (g) => {
+                      const a = g.analysis.aggregate;
+                      a.by = e.target.checked ? [...a.by, v.id] : a.by.filter((x) => x !== v.id);
+                      a.enabled = true;
+                    })
+                  }
+                />
+                {v.name}
+              </label>
+            ))}
+          </div>
+          <div className="row wrap">
+            <span className="muted small">Summaries</span>
+            {AGG_FUNCS.map((f) => (
+              <label key={f.id} className="field check" title={f.title}>
+                <input
+                  type="checkbox"
+                  checked={agg.funcs.includes(f.id)}
+                  onChange={(e) =>
+                    edit('Change summaries', (g) => {
+                      const a = g.analysis.aggregate;
+                      const on = new Set(
+                        e.target.checked ? [...a.funcs, f.id] : a.funcs.filter((x) => x !== f.id),
+                      );
+                      a.funcs = AGG_FUNCS.map((x) => x.id).filter((x) => on.has(x));
+                    })
+                  }
+                />
+                {f.label}
+              </label>
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function ColumnsPicker({ group, table }: { group: Group; table: Table }) {
+  const edit = useGroupMutate(group.id);
+  const selected = group.analysis.exportColumns;
+  const on = new Set(selected ?? table.columns.map((c) => c.key));
+  const set = (keys: string[] | undefined) =>
+    edit('Choose export columns', (g) => void (g.analysis.exportColumns = keys));
+  const toggle = (keys: string[], value: boolean) => {
+    const next = new Set(on);
+    for (const k of keys) value ? next.add(k) : next.delete(k);
+    const list = table.columns.map((c) => c.key).filter((k) => next.has(k));
+    set(list.length === table.columns.length ? undefined : list);
+  };
+  const sections: { title: string; cols: ColumnDef[] }[] = [];
+  for (const c of table.columns) {
+    const title =
+      c.kind === 'sample'
+        ? 'Sample'
+        : c.kind === 'variable'
+          ? 'Variables'
+          : c.kind === 'derived'
+            ? 'Derived'
+            : (group.template.populations[c.pop ?? '']?.name ?? 'Statistics');
+    const last = sections[sections.length - 1];
+    if (last?.title === title) last.cols.push(c);
+    else sections.push({ title, cols: [c] });
+  }
+  const n = table.columns.filter((c) => on.has(c.key)).length;
+  return (
+    <details className="overlay-picker">
+      <summary title="Columns included in the CSV (table) export">
+        Columns ({n}/{table.columns.length})
+      </summary>
+      <div className="overlay-menu columns-menu">
+        <div className="row">
+          <button type="button" className="link" onClick={() => set(undefined)}>
+            all
+          </button>
+          <button type="button" className="link" onClick={() => set(['sample:name'])}>
+            none
+          </button>
+        </div>
+        {sections.map((s) => (
+          <fieldset key={s.title + s.cols[0]!.key}>
+            <legend>
+              <label className="field check">
+                <input
+                  type="checkbox"
+                  checked={s.cols.every((c) => on.has(c.key))}
+                  onChange={(e) =>
+                    toggle(
+                      s.cols.map((c) => c.key),
+                      e.target.checked,
+                    )
+                  }
+                />
+                {s.title}
+              </label>
+            </legend>
+            {s.cols.map((c) => (
+              <label key={c.key} className="field check">
+                <input
+                  type="checkbox"
+                  checked={on.has(c.key)}
+                  onChange={(e) => toggle([c.key], e.target.checked)}
+                />
+                {c.pop ? c.label.slice(c.label.indexOf(' | ') + 3) : c.label}
+              </label>
+            ))}
+          </fieldset>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// View
+// ---------------------------------------------------------------------------
 
 export function StatsView() {
   const samples = useStore((s) => s.ws.samples);
-  const transforms = useStore((s) => s.ws.transforms);
-  const compMatrices = useStore((s) => s.ws.compMatrices);
   const popId = useStore((s) => s.ui.popId);
   const selectedSample = useStore((s) => s.ui.sampleId);
   const missing = useStore((s) => s.ui.missing);
-  const mutate = useStore((s) => s.mutate);
   const group = useGroup();
-  const shown = useSelectedSampleIds(group);
-  const names = useSampleNames(group);
-  const [, setTick] = useState(0);
+  const { stats, perSample, aggregated, errors } = useAnalysisTable(group);
+  const { pops, columns: statCols, rows, busy, complete, marker, shown } = stats;
+  const edit = useGroupMutate(group?.id ?? '');
   const [form, setForm] = useState<{ pop: string; stat: StatKind; channel: string; p: number }>({
     pop: popId,
     stat: 'median',
@@ -239,105 +584,56 @@ export function StatsView() {
     p: 50,
   });
 
-  const pops = useMemo(() => (group ? populationsDepthFirst(group.template) : []), [group]);
-  const keys = useMemo(
-    () => (group ? sampleKeys(group, pops, transforms, compMatrices, shown) : new Map<string, string>()),
-    [group, pops, transforms, compMatrices, shown],
-  );
-
-  // Fetch the rows that are not cached yet; re-render (at most once per frame) as they arrive.
-  useEffect(() => {
-    if (!group) return;
-    let live = true;
-    let frame = 0;
-    const ctx = { group, transforms, compMatrices };
-    const popIds = pops.map((p) => p.id);
-    let failed = false;
-    for (const [sid, key] of keys) {
-      if (missing[sid] || tableCache.has(key)) continue;
-      fetchTable(key, ctx, sid, popIds).then(
-        () => {
-          if (live && !frame)
-            frame = requestAnimationFrame(() => {
-              frame = 0;
-              setTick((t) => t + 1);
-            });
-        },
-        (e) => {
-          if (live && !failed) {
-            failed = true;
-            toast(`Statistics failed: ${e instanceof Error ? e.message : String(e)}`);
-          }
-        },
-      );
-    }
-    return () => {
-      live = false;
-      cancelAnimationFrame(frame);
-    };
-  }, [keys, missing]);
-
-  // Last row shown per sample: kept (dimmed) while its recomputation is pending, so edits don't blank the table.
-  const lastShown = useRef<{ groupId: string; rows: Map<string, SampleTable> }>({
-    groupId: '',
-    rows: new Map(),
-  });
-  if (group && lastShown.current.groupId !== group.id)
-    lastShown.current = { groupId: group.id, rows: new Map() };
-
-  const marker = useMemo(() => {
-    const sample0 = group ? samples[group.sampleIds[0] ?? ''] : undefined;
-    const pns = new Map(sample0?.channels.map((c) => [c.pnn, c.pns]) ?? []);
-    return (c?: string) => (c ? pns.get(c) : undefined);
-  }, [group, samples]);
-
-  const columns = useMemo(() => {
-    const out: Column[] = [];
-    if (!group) return out;
-    const byPop = new Map<string, StatSpec[]>();
-    for (const s of group.stats) {
-      const list = byPop.get(s.population);
-      if (list) list.push(s);
-      else byPop.set(s.population, [s]);
-    }
-    for (const p of pops) {
-      out.push({ key: `${p.id}|count`, label: 'Count', pop: p.id, stat: 'count' });
-      if (p.id !== 'root')
-        out.push({ key: `${p.id}|pctParent`, label: '% Parent', pop: p.id, stat: 'pctParent' });
-      for (const s of byPop.get(p.id) ?? [])
-        out.push({
-          key: s.id,
-          label: statLabel(s, marker(s.channel)),
-          pop: p.id,
-          stat: s.stat,
-          specId: s.id,
-        });
-    }
-    return out;
-  }, [group, pops, marker]);
-
-  const span = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const c of columns) m.set(c.pop, (m.get(c.pop) ?? 0) + 1);
-    return m;
-  }, [columns]);
-
+  const display = aggregated ?? perSample;
+  const byKey = useMemo(() => new Map(perSample.columns.map((c) => [c.key, c])), [perSample]);
+  const statByKey = useMemo(() => new Map<string, StatColumn>(statCols.map((c) => [c.key, c])), [statCols]);
   const overridden = useMemo(() => new Set(group?.overrides.map((o) => o.sampleId)), [group]);
+  const rowInfo = useMemo(() => new Map(rows.map((r) => [r.sid, r])), [rows]);
+
+  const valuesOf = (variableId: string): Cell[] => {
+    const seen = new Map<string, Cell>();
+    for (const r of perSample.rows) {
+      const v = r.values[`var:${variableId}`];
+      if (v !== undefined && v !== '') seen.set(JSON.stringify(v), v);
+    }
+    return [...seen.values()].sort((a, b) =>
+      typeof a === 'number' && typeof b === 'number'
+        ? a - b
+        : String(a).localeCompare(String(b), undefined, { numeric: true }),
+    );
+  };
 
   if (!group) return <div className="empty">Select a group.</div>;
 
-  let busy = 0;
-  const rows = shown.map((sid) => {
-    const fresh = tableCache.get(keys.get(sid) ?? '');
-    if (fresh) lastShown.current.rows.set(sid, fresh);
-    else if (!missing[sid]) busy++;
-    return {
-      sid,
-      table: missing[sid] ? undefined : (fresh ?? lastShown.current.rows.get(sid)),
-      stale: !fresh,
-    };
-  });
-  const complete = busy === 0 && rows.some((r) => r.table);
+  // Header: sections (sample, variables, each population, derived) over short column labels.
+  const sections: { id: string; span: number }[] = [];
+  for (const c of display.columns) {
+    const id = sectionOf(c, byKey);
+    const last = sections[sections.length - 1];
+    if (last?.id === id) last.span++;
+    else sections.push({ id, span: 1 });
+  }
+  const sectionHead = (id: string) => {
+    if (id.startsWith('pop:')) {
+      const p = group.template.populations[id.slice(4)];
+      return (
+        <>
+          <span className="swatch" style={{ background: p?.color }} /> {p?.name}
+        </>
+      );
+    }
+    return { sample: '', variables: 'Variables', derived: 'Derived', group: '' }[id] ?? '';
+  };
+  const shortLabel = (c: ColumnDef): string => {
+    if (c.kind === 'aggregate' && c.source) {
+      const src = byKey.get(c.source);
+      const f = AGG_FUNCS.find((x) => x.id === c.func)?.label ?? c.func;
+      return `${src ? shortLabel(src) : c.source} · ${f}`;
+    }
+    return statByKey.get(c.key)?.label ?? c.label;
+  };
+  const statOf = (c: ColumnDef): string | undefined =>
+    c.func === 'n' ? 'n' : c.func === 'cv' ? 'cv' : statByKey.get(c.source ?? c.key)?.stat;
 
   const addStat = () => {
     if (!form.channel) {
@@ -352,14 +648,24 @@ export function StatsView() {
       space: 'linear',
       ...(form.stat === 'percentile' ? { p: form.p } : {}),
     };
-    mutate('Add statistic', (w) => void w.groups.find((x) => x.id === group.id)!.stats.push(spec));
+    edit('Add statistic', (g) => void g.stats.push(spec));
+  };
+
+  const exportTable = () => {
+    const keys = exportKeys(display, !!aggregated, group.analysis.exportColumns);
+    const kind = aggregated ? 'grouped' : 'samples';
+    download(
+      `${safeName(`${group.name}_statistics_${kind}`)}.csv`,
+      toCsv(tableRows(display, keys)),
+      'text/csv',
+    );
   };
 
   const exportStats = (kind: 'tidy' | 'wide') => {
     const ws = useStore.getState().ws;
     // Only the samples checked in the sidebar (cells are computed for those alone).
     const g = { ...group, sampleIds: shown };
-    const cells = rows.flatMap((r) => (r.stale ? [] : r.table!.cells));
+    const cells = rows.flatMap((r) => (r.stale || !r.table ? [] : r.table.cells));
     const out = kind === 'tidy' ? tidyRows(ws, g, cells, APP_INFO.version) : wideRows(ws, g, cells);
     download(`${safeName(`${group.name}_statistics_${kind}`)}.csv`, toCsv(out), 'text/csv');
   };
@@ -410,6 +716,19 @@ export function StatsView() {
         )}
         {busy > 0 && <span className="muted">computing… {busy} sample(s) left</span>}
         <div className="spacer" />
+        <ColumnsPicker group={group} table={perSample} />
+        <button
+          type="button"
+          onClick={exportTable}
+          disabled={!complete}
+          title={
+            aggregated
+              ? 'The grouped table, with the chosen columns'
+              : 'The table as shown, with the chosen columns'
+          }
+        >
+          CSV (table)
+        </button>
         <button
           type="button"
           onClick={() => exportStats('tidy')}
@@ -482,59 +801,82 @@ export function StatsView() {
           Values in linear (compensated) units. Definitions: docs → Methods → Statistics.
         </span>
       </div>
+      <div className="analysis-bar">
+        <DerivedPanel group={group} columns={perSample.columns} errors={errors} valuesOf={valuesOf} />
+        <GroupByPanel group={group} />
+      </div>
       <div className="table-wrap">
         <table className="stats">
           <thead>
             <tr>
-              <th rowSpan={2}>Sample</th>
-              {pops.map((p) => (
+              {sections.map((s, i) => (
                 <th
-                  key={p.id}
-                  colSpan={span.get(p.id) ?? 1}
-                  className="pop-head"
-                  title={populationPath(group.template, p.id)}
+                  key={`${s.id}${i}`}
+                  colSpan={s.span}
+                  className={s.id.startsWith('pop:') ? 'pop-head' : undefined}
+                  title={s.id.startsWith('pop:') ? populationPath(group.template, s.id.slice(4)) : undefined}
                 >
-                  <span className="swatch" style={{ background: p.color }} /> {p.name}
+                  {sectionHead(s.id)}
                 </th>
               ))}
             </tr>
             <tr>
-              {columns.map((c) => (
-                <th key={c.key}>
-                  {c.label}
-                  {c.specId && (
-                    <button
-                      type="button"
-                      className="icon"
-                      title="Remove statistic"
-                      onClick={() =>
-                        mutate('Remove statistic', (w) => {
-                          const g = w.groups.find((x) => x.id === group.id)!;
-                          g.stats = g.stats.filter((s) => s.id !== c.specId);
-                        })
-                      }
-                    >
-                      ✕
-                    </button>
-                  )}
-                </th>
-              ))}
+              {display.columns.map((c) => {
+                const specId = !aggregated ? statByKey.get(c.key)?.specId : undefined;
+                return (
+                  <th key={c.key} title={c.label}>
+                    {shortLabel(c)}
+                    {specId && (
+                      <button
+                        type="button"
+                        className="icon"
+                        title="Remove statistic"
+                        onClick={() =>
+                          edit('Remove statistic', (g) => {
+                            g.stats = g.stats.filter((s) => s.id !== specId);
+                            dropColumns(g, new Set([specId]));
+                          })
+                        }
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ sid, table, stale }) => (
-              <StatsRow
-                key={sid}
-                label={names[sid] ?? samples[sid]?.fileName ?? sid}
-                title={samples[sid]?.relativePath}
-                override={overridden.has(sid)}
-                missing={!!missing[sid]}
-                selected={selectedSample === sid}
-                stale={stale && !!table}
-                columns={columns}
-                values={table?.values}
-              />
-            ))}
+            {display.rows.map((r) => {
+              const info = aggregated ? undefined : rowInfo.get(r.id);
+              const cls = [
+                !aggregated && selectedSample === r.id ? 'on' : '',
+                info?.stale && info.table ? 'stale' : '',
+              ]
+                .filter(Boolean)
+                .join(' ');
+              return (
+                <tr key={r.id} className={cls || undefined}>
+                  {display.columns.map((c, i) =>
+                    i === 0 ? (
+                      <th
+                        key={c.key}
+                        scope="row"
+                        title={aggregated ? undefined : samples[r.id]?.relativePath}
+                      >
+                        {fmt(r.values[c.key], statOf(c))}
+                        {!aggregated && overridden.has(r.id) && <span className="badge warn">override</span>}
+                        {!aggregated && missing[r.id] && <span className="badge danger">missing</span>}
+                      </th>
+                    ) : (
+                      <td key={c.key} className={c.type === 'categorical' ? 'text-cell' : undefined}>
+                        {fmt(r.values[c.key], statOf(c))}
+                      </td>
+                    ),
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

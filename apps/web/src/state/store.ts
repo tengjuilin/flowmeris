@@ -10,7 +10,17 @@ enablePatches();
 export const APP_INFO = { version: __APP_VERSION__, commit: __APP_COMMIT__, kernels: 'ts-1' };
 
 export type Tool = 'select' | 'rect' | 'range' | 'ellipse' | 'polygon' | 'quadrant' | 'spider';
-export type View = 'gate' | 'plot' | 'tiles' | 'ridge' | 'path' | 'stats' | 'compensation' | 'samples';
+export type View =
+  | 'gate'
+  | 'plot'
+  | 'tiles'
+  | 'ridge'
+  | 'path'
+  | 'metadata'
+  | 'stats'
+  | 'charts'
+  | 'compensation'
+  | 'samples';
 
 export interface IngestProgress {
   total: number;

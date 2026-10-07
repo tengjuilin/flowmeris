@@ -222,3 +222,30 @@ function erf(x: number): number {
       );
   return x >= 0 ? y : -y;
 }
+
+describe('replicate summaries', () => {
+  it('t quantiles match published tables', async () => {
+    const { tQuantile } = await import('./index.ts');
+    // scipy.stats.t.ppf(0.975, df)
+    const table: [number, number][] = [
+      [1, 12.706204736174698],
+      [2, 4.302652729749464],
+      [3, 3.182446305284263],
+      [5, 2.5705818356363146],
+      [10, 2.2281388519862744],
+      [30, 2.0422724563012373],
+      [1000, 1.9623390808264078],
+    ];
+    for (const [df, q] of table) expect(tQuantile(0.975, df)).toBeCloseTo(q, 9);
+    expect(tQuantile(0.025, 4)).toBeCloseTo(-2.7764451051977987, 9);
+  });
+
+  it('SEM and 95% CI half-width', async () => {
+    const { sem, ci95HalfWidth } = await import('./index.ts');
+    const x = [1, 2, 3, 4];
+    // sd = 1.2909944487358056
+    expect(sem(x)).toBeCloseTo(1.2909944487358056 / 2, 12);
+    expect(ci95HalfWidth(x)).toBeCloseTo(3.182446305284263 * (1.2909944487358056 / 2), 9);
+    expect(ci95HalfWidth([1])).toBeNaN();
+  });
+});

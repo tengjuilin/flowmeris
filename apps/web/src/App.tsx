@@ -1,9 +1,11 @@
 import { loadWorkspace, newWorkspace } from '@flowmeris/model';
 import { useEffect, useRef, useState } from 'react';
+import { ChartsView } from './components/ChartsView.tsx';
 import { CompensationView, SamplesView } from './components/CompensationView.tsx';
 import { GatingPathView } from './components/GatingPathView.tsx';
 import { RidgeView, TilesView } from './components/GroupViews.tsx';
 import { Inspector } from './components/Inspector.tsx';
+import { MetadataView } from './components/MetadataView.tsx';
 import { PlotGridView } from './components/PlotGridView.tsx';
 import { PlotPanel, drill } from './components/PlotPanel.tsx';
 import { PopulationTree } from './components/PopulationTree.tsx';
@@ -23,7 +25,9 @@ const VIEWS: { id: View; label: string }[] = [
   { id: 'tiles', label: 'Tiles' },
   { id: 'ridge', label: 'Ridge' },
   { id: 'path', label: 'Gating path' },
+  { id: 'metadata', label: 'Metadata' },
   { id: 'stats', label: 'Statistics' },
+  { id: 'charts', label: 'Charts' },
   { id: 'compensation', label: 'Compensation' },
   { id: 'samples', label: 'Samples' },
 ];
@@ -319,7 +323,9 @@ export function App() {
                 </div>
               )}
               {ui.view === 'path' && <GatingPathView />}
+              {ui.view === 'metadata' && <MetadataView />}
               {ui.view === 'stats' && <StatsView />}
+              {ui.view === 'charts' && <ChartsView />}
               {ui.view === 'compensation' && <CompensationView />}
               {ui.view === 'samples' && <SamplesView />}
             </div>

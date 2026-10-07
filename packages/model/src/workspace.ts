@@ -45,6 +45,7 @@ export function newWorkspace(name: string, app: AppInfo): Workspace {
     transforms: {},
     compMatrices: {},
     samples: {},
+    variables: [],
     groups: [],
   };
 }
@@ -64,6 +65,8 @@ export function newGroup(name: string, sampleIds: string[], channels: string[]):
     grid: { columns: 3, cells: [] },
     layouts: [],
     stats: [],
+    analysis: { derived: [], aggregate: { enabled: false, by: [], funcs: ['mean', 'sd', 'n'] } },
+    statPlots: [],
   };
 }
 
@@ -154,8 +157,49 @@ export function removeGateCascade(group: Group, gateId: string): void {
   for (const r of group.refPlots) if (r.population && doomedPops.has(r.population)) r.population = undefined;
   // Grid cells showing a removed population go back to the removed gate's parent population.
   for (const c of group.grid.cells) if (c && doomedPops.has(c.population)) c.population = parentPop;
+  const doomedStats = group.stats.filter((s) => doomedPops.has(s.population)).map((s) => s.id);
   group.stats = group.stats.filter((s) => !doomedPops.has(s.population));
+  dropColumns(
+    group,
+    new Set([...doomedStats, ...[...doomedPops].flatMap((p) => [`${p}|count`, `${p}|pctParent`])]),
+  );
   group.layouts = group.layouts.filter((l) => l.kind !== 'ridge' || !doomedPops.has(l.population));
+}
+
+/**
+ * Remove references to deleted statistics-table columns: normalisations and
+ * charts built on them go, export lists forget them. Formulas keep their text
+ * (they refer to columns by label) and evaluate to NaN until fixed.
+ */
+export function dropColumns(group: Group, keys: Set<string>): void {
+  if (keys.size === 0) return;
+  const a = group.analysis;
+  const gone = new Set(keys);
+  // A normalisation of a removed column is removed too, and so on down the chain.
+  for (const d of a.derived) if (d.kind === 'normalize' && gone.has(d.source)) gone.add(`derived:${d.id}`);
+  a.derived = a.derived.filter((d) => !gone.has(`derived:${d.id}`));
+  if (a.exportColumns) a.exportColumns = a.exportColumns.filter((k) => !gone.has(k));
+  group.statPlots = group.statPlots.filter((p) => !gone.has(p.x) && !gone.has(p.y));
+}
+
+/** Delete a sample variable, its values and everything in the groups that uses it. */
+export function removeVariable(ws: Workspace, variableId: string): void {
+  ws.variables = ws.variables.filter((v) => v.id !== variableId);
+  for (const s of Object.values(ws.samples)) delete s.meta[variableId];
+  for (const g of ws.groups) {
+    const a = g.analysis;
+    const doomed = new Set(
+      a.derived
+        .filter((d) => d.kind === 'normalize' && d.refVariable === variableId)
+        .map((d) => `derived:${d.id}`),
+    );
+    doomed.add(`var:${variableId}`);
+    for (const d of a.derived)
+      if (d.kind === 'normalize') d.within = d.within.filter((v) => v !== variableId);
+    a.aggregate.by = a.aggregate.by.filter((v) => v !== variableId);
+    for (const p of g.statPlots) if (p.series === variableId) p.series = undefined;
+    dropColumns(g, doomed);
+  }
 }
 
 export class WorkspaceVersionError extends Error {}

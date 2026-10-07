@@ -26,12 +26,14 @@
     "@flowmeris/render": "workspace:^",
     "@flowmeris/stats": "workspace:^",
     "@flowmeris/storage": "workspace:^",
+    "@flowmeris/table": "workspace:^",
     "@flowmeris/transforms": "workspace:^",
     "comlink": "^4.4",
     "idb": "^8",
     "immer": "^10.1",
     "react": "^18.3",
     "react-dom": "^18.3",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zustand": "^4.5"
   }
 }

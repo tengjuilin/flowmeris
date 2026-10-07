@@ -40,6 +40,43 @@ For compensated data with many non-positive values, prefer the median.
 "MFI" is not a single statistic; report which one (median recommended) and in which units. Exports state
 the statistic, channel, marker (`$PnS`), units ("linear" or a transform definition) and compensation used.
 
+## Derived columns
+
+Implementation: `packages/table`. Tests: `packages/table/src/table.test.ts`.
+
+**M-STAT-EXPR — formulas.** A formula is evaluated per row by a recursive-descent parser (no code
+evaluation): numbers, `+ − * / ^` (`^` binds tighter than unary minus and associates to the right, so
+`-2^2 = −4` and `2^3^2 = 512`), parentheses, `log10 ln log2 exp sqrt abs min max`, and column references
+`[header]`. A missing or non-numeric input gives NaN; division by zero follows IEEE 754 (±Inf, NaN).
+
+**M-STAT-NORM — normalisation.** For a row $i$ and source column $x$, the reference is
+
+$$r_i = \frac{1}{|R_i|}\sum_{j \in R_i} x_j,$$
+
+where $R_i$ are the rows whose reference variable equals the reference value and whose *within*
+variables equal row $i$'s, keeping only finite $x_j$. Ratio $x_i / r_i$, percent $100\,x_i / r_i$,
+difference $x_i - r_i$. With no reference rows the result is NaN.
+
+## Combining replicates (M-STAT-AGG)
+
+Rows are grouped by the values of the chosen variables; an empty value forms its own group. For each
+numeric column, over the group's $k$ finite values:
+
+| Summary | Definition |
+|---|---|
+| Mean | $\bar x$ (compensated summation) |
+| SD | $s = \sqrt{\frac{1}{k-1}\sum (x_i - \bar x)^2}$; NaN for $k < 2$ |
+| SEM | $s / \sqrt{k}$ |
+| 95% CI | half-width $t_{0.975,\,k-1} \cdot s / \sqrt{k}$ (Student's *t*; the interval is mean ± half-width) |
+| CV | $100\, s / \bar x$ (%) |
+| Median, min, max | as for event statistics |
+| n | rows in the group |
+
+Student's *t* quantiles are computed by bisection on the upper tail $\tfrac12 I_{\nu/(\nu+t^2)}(\nu/2, \tfrac12)$,
+with the regularised incomplete beta function evaluated by its continued fraction; they agree with
+`scipy.stats.t.ppf` to 10⁻⁹. Chart error bars use the same definitions over the samples that share an
+x value and series.
+
 ## Validation
 
 On every channel of the Gating-ML reference file `data1.fcs` the mean, SD, median, min, max, geometric

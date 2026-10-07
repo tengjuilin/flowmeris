@@ -10,6 +10,7 @@ Implementation: `packages/export`. Tests: `packages/export/src/export.test.ts`.
 |---|---|
 | `workspace`, `group` | names |
 | `sample_file`, `sample_path`, `sample_sha256`, `dataset` | file identity (SHA-256 of the whole file; dataset index for multi-dataset files) |
+| *sample variables* | one column per workspace variable, headed by its name (and unit) |
 | `population_path`, `population_id` | e.g. `All events/Lymphocytes/Q2: CD4+ CD8+` |
 | `statistic`, `percentile`, `channel`, `marker`, `space`, `transform` | what was computed, on which channel (`$PnN`, `$PnS`) and in which units |
 | `value`, `n_events`, `n_excluded` | result, number of values used, values excluded (NaN; ≤ 0 for geometric mean) |
@@ -18,7 +19,9 @@ Implementation: `packages/export`. Tests: `packages/export/src/export.test.ts`.
 | `app_version` | flowmeris version |
 
 Numbers are written with JavaScript's shortest round-trip formatting, so no precision is lost.
-**Wide CSV** has one row per sample and one column per population × statistic, for spreadsheets.
+**Wide CSV** has one row per sample (file, hash, sample variables) and one column per population ×
+statistic, for spreadsheets. **Table CSV** is the statistics table as shown, with the chosen columns: one
+row per sample, or one per group of replicates ([M-STAT-AGG](./statistics#combining-replicates-m-stat-agg)).
 Both use RFC 4180 quoting.
 
 ## M-EXPORT-GML — Gating-ML 2.0

@@ -1,4 +1,5 @@
 import { type Sample, newGroup } from '@flowmeris/model';
+import { wellFromSample } from '@flowmeris/table';
 import { pool } from '../engine-client/pool.ts';
 import { toast, useStore } from '../state/store.ts';
 import { newPlot } from './defaults.ts';
@@ -91,9 +92,10 @@ export async function ingestFiles(files: InputFile[]): Promise<void> {
           relinked.push(s.id);
           continue;
         }
-        ws.samples[s.id] = s;
+        const well = wellFromSample(s);
+        ws.samples[s.id] = well ? { ...s, well } : s;
         if (!byFolder.has(r.folder)) byFolder.set(r.folder, []);
-        byFolder.get(r.folder)!.push(s);
+        byFolder.get(r.folder)!.push(ws.samples[s.id]!);
       }
     }
     for (const [folder, samples] of byFolder) {

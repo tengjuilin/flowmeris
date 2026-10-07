@@ -45,5 +45,6 @@ export function sampleMetaFromDataset(
       kind: c.kind,
     })),
     parseWarnings: ds.warnings,
+    meta: {},
   };
 }

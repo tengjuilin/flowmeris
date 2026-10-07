@@ -124,6 +124,10 @@ export const SampleSchema = z.object({
   keywords: z.record(z.string()),
   channels: z.array(ChannelSpecSchema),
   parseWarnings: z.array(ParseWarningSchema),
+  /** Plate well, normalised "A01"–"H12"; from $WELLID or the file name, or assigned on the plate map. */
+  well: z.string().optional(),
+  /** Values of the workspace's sample variables, by variable id. */
+  meta: z.record(z.union([Num, z.string()])).default({}),
 });
 export type Sample = z.infer<typeof SampleSchema>;
 
@@ -381,6 +385,86 @@ export const StatSpecSchema = z.object({
 export type StatSpec = z.infer<typeof StatSpecSchema>;
 
 // ---------------------------------------------------------------------------
+// Sample variables and the statistics table
+// ---------------------------------------------------------------------------
+
+/** An experimental-design variable (dose, replicate, condition…) with one value per sample. */
+export const VariableSchema = z.object({
+  id: Id,
+  name: z.string(),
+  type: z.enum(['numeric', 'categorical']),
+  unit: z.string().optional(),
+  /** Display order of categorical values; values not listed follow in natural order. */
+  levels: z.array(z.string()).default([]),
+});
+export type Variable = z.infer<typeof VariableSchema>;
+
+/**
+ * Key of a statistics-table column: `sample:name`, `sample:well`, `var:<variableId>`,
+ * `<popId>|count`, `<popId>|pctParent`, `<statSpecId>` or `derived:<derivedId>`.
+ */
+export type ColumnKey = string;
+
+export const DerivedColumnSchema = z.discriminatedUnion('kind', [
+  /** Per-row arithmetic over other columns, e.g. `[Median PE] / [Median FITC]`. */
+  z.object({ id: Id, name: z.string(), kind: z.literal('formula'), expr: z.string() }),
+  /**
+   * `source` relative to the mean of `source` over the reference rows
+   * (`refVariable` = `refValue`) that share the row's `within` variable values.
+   */
+  z.object({
+    id: Id,
+    name: z.string(),
+    kind: z.literal('normalize'),
+    source: z.string(),
+    refVariable: Id,
+    refValue: z.union([Num, z.string()]),
+    within: z.array(Id).default([]),
+    mode: z.enum(['ratio', 'percent', 'difference']),
+  }),
+]);
+export type DerivedColumn = z.infer<typeof DerivedColumnSchema>;
+
+export const AggFuncSchema = z.enum(['mean', 'sd', 'sem', 'ci95', 'median', 'n', 'cv', 'min', 'max']);
+export type AggFunc = z.infer<typeof AggFuncSchema>;
+
+export const StatAnalysisSchema = z.object({
+  /** Evaluated in order; a column may refer to earlier ones. */
+  derived: z.array(DerivedColumnSchema).default([]),
+  aggregate: z
+    .object({
+      enabled: z.boolean().default(false),
+      /** Variable ids to group rows by. */
+      by: z.array(Id).default([]),
+      funcs: z.array(AggFuncSchema).default(['mean', 'sd', 'n']),
+    })
+    .default({}),
+  /** Columns of the table export, in table order; omitted = all. */
+  exportColumns: z.array(z.string()).optional(),
+});
+export type StatAnalysis = z.infer<typeof StatAnalysisSchema>;
+
+/** A chart of the statistics table (Charts view). */
+export const StatPlotSchema = z.object({
+  id: Id,
+  name: z.string(),
+  kind: z.enum(['scatter', 'line', 'bar', 'dot']),
+  x: z.string(),
+  y: z.string(),
+  /** Categorical variable id: one colour per value. */
+  series: Id.optional(),
+  xScale: z.enum(['linear', 'log10']).default('linear'),
+  yScale: z.enum(['linear', 'log10']).default('linear'),
+  /** Error bars over the rows sharing x (and series). */
+  error: z.enum(['none', 'sd', 'sem', 'ci95']).default('sem'),
+  /** Overlay the individual rows (replicates). */
+  showPoints: z.boolean().default(true),
+  xLabel: z.string().optional(),
+  yLabel: z.string().optional(),
+});
+export type StatPlot = z.infer<typeof StatPlotSchema>;
+
+// ---------------------------------------------------------------------------
 // Groups and workspace
 // ---------------------------------------------------------------------------
 
@@ -402,6 +486,10 @@ export const GroupSchema = z.object({
   grid: PlotGridSchema.default({}),
   layouts: z.array(LayoutSchema),
   stats: z.array(StatSpecSchema),
+  /** Derived columns, grouping and export columns of the statistics table. */
+  analysis: StatAnalysisSchema.default({}),
+  /** Charts of the statistics table. */
+  statPlots: z.array(StatPlotSchema).default([]),
 });
 export type Group = z.infer<typeof GroupSchema>;
 
@@ -416,6 +504,8 @@ export const WorkspaceSchema = z.object({
   transforms: z.record(TransformSchema),
   compMatrices: z.record(CompMatrixSchema),
   samples: z.record(SampleSchema),
+  /** Sample variables, shared by all groups. */
+  variables: z.array(VariableSchema).default([]),
   groups: z.array(GroupSchema),
 });
 export type Workspace = z.infer<typeof WorkspaceSchema>;

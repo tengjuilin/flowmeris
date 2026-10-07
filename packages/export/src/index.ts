@@ -80,8 +80,29 @@ function compensationLabel(ws: Workspace, g: Group): string {
   return `matrix:${ws.compMatrices[c.matrixId]?.name ?? c.matrixId}`;
 }
 
+/**
+ * Headers of the sample-variable columns: the variable names (with unit),
+ * suffixed " (2)", " (3)"… where they would collide with another column.
+ */
+function variableHeaders(ws: Workspace, fixed: readonly string[]): string[] {
+  const taken = new Set<string>(fixed);
+  return ws.variables.map((v) => {
+    const base = v.unit ? `${v.name} (${v.unit})` : v.name;
+    let h = base;
+    for (let k = 2; taken.has(h); k++) h = `${base} (${k})`;
+    taken.add(h);
+    return h;
+  });
+}
+
+const variableValues = (ws: Workspace, sampleId: string): unknown[] =>
+  ws.variables.map((v) => ws.samples[sampleId]?.meta[v.id] ?? '');
+
+/** Tidy rows; the workspace's sample variables follow the sample identity columns (after `dataset`). */
 export function tidyRows(ws: Workspace, g: Group, cells: StatCell[], appVersion: string): unknown[][] {
-  const rows: unknown[][] = [TIDY_COLUMNS as unknown as string[]];
+  const at = TIDY_COLUMNS.indexOf('dataset') + 1;
+  const vars = variableHeaders(ws, TIDY_COLUMNS);
+  const rows: unknown[][] = [[...TIDY_COLUMNS.slice(0, at), ...vars, ...TIDY_COLUMNS.slice(at)]];
   for (const c of cells) {
     const s = ws.samples[c.sampleId];
     if (!s) continue;
@@ -98,6 +119,7 @@ export function tidyRows(ws: Workspace, g: Group, cells: StatCell[], appVersion:
       s.relativePath,
       s.sha256,
       s.datasetIndex,
+      ...variableValues(ws, c.sampleId),
       populationPath(g.template, c.population),
       c.population,
       c.statistic,
@@ -143,7 +165,7 @@ export function statLabel(spec: Pick<StatSpec, 'stat' | 'p' | 'channel' | 'space
   return `${name}${ch}${spec.space === 'transformed' ? ' [transformed]' : ''}`;
 }
 
-/** Wide table: one row per sample, one column per (population, statistic). */
+/** Wide table: one row per sample (file, hash, sample variables), one column per (population, statistic). */
 export function wideRows(ws: Workspace, g: Group, cells: StatCell[]): unknown[][] {
   const colKey = (c: StatCell) =>
     JSON.stringify([c.population, c.statistic, c.channel ?? '', c.space, c.p ?? '']);
@@ -156,6 +178,7 @@ export function wideRows(ws: Workspace, g: Group, cells: StatCell[]): unknown[][
   const header = [
     'sample_file',
     'sample_sha256',
+    ...variableHeaders(ws, ['sample_file', 'sample_sha256']),
     ...ordered.map(([, c]) => {
       const marker = c.channel
         ? ws.samples[c.sampleId]?.channels.find((ch) => ch.pnn === c.channel)?.pns
@@ -168,7 +191,7 @@ export function wideRows(ws: Workspace, g: Group, cells: StatCell[]): unknown[][
     const s = ws.samples[sid];
     if (!s) continue;
     const mine = new Map(cells.filter((c) => c.sampleId === sid).map((c) => [colKey(c), c.value]));
-    rows.push([s.fileName, s.sha256, ...ordered.map(([k]) => mine.get(k) ?? '')]);
+    rows.push([s.fileName, s.sha256, ...variableValues(ws, sid), ...ordered.map(([k]) => mine.get(k) ?? '')]);
   }
   return rows;
 }

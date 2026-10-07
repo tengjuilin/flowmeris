@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { RidgeStyleSchema, loadWorkspace, newGroup, newWorkspace, removeGateCascade } from './index.ts';
+import {
+  RidgeStyleSchema,
+  loadWorkspace,
+  newGroup,
+  newWorkspace,
+  removeGateCascade,
+  removeVariable,
+} from './index.ts';
 
 describe('ridge layout style', () => {
   it('fills every default from an empty object', () => {
@@ -91,5 +98,89 @@ describe('plot grid', () => {
     g.grid.cells.push(cell('c_1', 'pop_2'), null, cell('c_2', 'pop_1'));
     removeGateCascade(g, 'gt_2');
     expect(g.grid.cells.map((c) => c?.population)).toEqual(['pop_1', undefined, 'pop_1']);
+  });
+});
+
+describe('sample variables and statistics table', () => {
+  const app = { version: '0', commit: 'x', kernels: 'ts-1' };
+
+  it('loads workspaces saved before variables existed', () => {
+    const ws = newWorkspace('t', app);
+    const g = newGroup('g', [], ['FSC-A']);
+    ws.groups.push(g);
+    const json = JSON.parse(JSON.stringify(ws));
+    Reflect.deleteProperty(json, 'variables');
+    Reflect.deleteProperty(json.groups[0], 'analysis');
+    Reflect.deleteProperty(json.groups[0], 'statPlots');
+    const loaded = loadWorkspace(json);
+    expect(loaded.variables).toEqual([]);
+    expect(loaded.groups[0]!.analysis).toEqual({
+      derived: [],
+      aggregate: { enabled: false, by: [], funcs: ['mean', 'sd', 'n'] },
+    });
+    expect(loaded.groups[0]!.statPlots).toEqual([]);
+  });
+
+  it('removing a variable cleans up values, grouping, normalisations and charts', () => {
+    const ws = newWorkspace('t', app);
+    ws.variables.push({ id: 'v1', name: 'Dose', type: 'numeric', levels: [] });
+    ws.variables.push({ id: 'v2', name: 'Group', type: 'categorical', levels: [] });
+    const g = newGroup('g', [], ['FSC-A']);
+    g.analysis.aggregate.by = ['v1', 'v2'];
+    g.analysis.derived.push(
+      {
+        id: 'n',
+        name: 'Fold',
+        kind: 'normalize',
+        source: 'root|count',
+        refVariable: 'v1',
+        refValue: 0,
+        within: [],
+        mode: 'ratio',
+      },
+      {
+        id: 'm',
+        name: 'Fold2',
+        kind: 'normalize',
+        source: 'derived:n',
+        refVariable: 'v2',
+        refValue: 'a',
+        within: ['v1'],
+        mode: 'ratio',
+      },
+    );
+    g.analysis.exportColumns = ['var:v1', 'var:v2', 'root|count', 'derived:n'];
+    g.statPlots.push(
+      {
+        id: 'p1',
+        name: 'a',
+        kind: 'scatter',
+        x: 'var:v1',
+        y: 'root|count',
+        xScale: 'linear',
+        yScale: 'linear',
+        error: 'sem',
+        showPoints: true,
+      },
+      {
+        id: 'p2',
+        name: 'b',
+        kind: 'bar',
+        x: 'var:v2',
+        y: 'root|count',
+        series: 'v1',
+        xScale: 'linear',
+        yScale: 'linear',
+        error: 'sem',
+        showPoints: true,
+      },
+    );
+    ws.groups.push(g);
+    removeVariable(ws, 'v1');
+    expect(ws.variables.map((v) => v.id)).toEqual(['v2']);
+    expect(g.analysis.aggregate.by).toEqual(['v2']);
+    expect(g.analysis.derived).toEqual([]);
+    expect(g.analysis.exportColumns).toEqual(['var:v2', 'root|count']);
+    expect(g.statPlots.map((p) => [p.id, p.series])).toEqual([['p2', undefined]]);
   });
 });
