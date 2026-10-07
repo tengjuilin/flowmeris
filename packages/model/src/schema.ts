@@ -332,7 +332,11 @@ export const RidgeStyleSchema = z.object({
   sampleLabels: z.record(z.string()).default({}),
   showLabels: z.boolean().default(true),
   showCounts: z.boolean().default(true),
+  /** Put the event count on its own line below the label instead of after it. */
+  countOnNewLine: z.boolean().default(false),
   labelFontSize: Num.min(4).max(48).default(11.5),
+  /** Long labels: 'wrap' onto several lines within `labelWidth`, or 'widen' the label column to fit. */
+  labelOverflow: z.enum(['wrap', 'widen']).default('wrap'),
   /** Alignment of the ridge labels within the label column. */
   labelAlign: z.enum(['start', 'middle', 'end']).default('end'),
   /** Width of the label column in px. */

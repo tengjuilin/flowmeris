@@ -360,6 +360,15 @@ export function RidgeInspector() {
           />
           Show event counts (n)
         </label>
+        <label className="field check">
+          <input
+            type="checkbox"
+            checked={style.countOnNewLine}
+            disabled={!style.showLabels || !style.showCounts}
+            onChange={(e) => set('countOnNewLine', e.target.checked, 'Ridge count on new line')}
+          />
+          Event count on its own line
+        </label>
         <div className="grid2">
           <LiveNum
             label="Label size (px)"
@@ -370,10 +379,23 @@ export function RidgeInspector() {
           <LiveNum
             label="Label width (px)"
             step={10}
+            title={style.labelOverflow === 'widen' ? 'Set automatically to fit the longest label' : undefined}
             value={style.labelWidth}
             onCommit={(v) => set('labelWidth', clamp(v, 0, 1000), 'Ridge label width')}
           />
         </div>
+        <label className="field" title="What to do with a label wider than the label column">
+          Long labels
+          <select
+            value={style.labelOverflow}
+            onChange={(e) =>
+              set('labelOverflow', e.target.value as RidgeStyle['labelOverflow'], 'Ridge long labels')
+            }
+          >
+            <option value="wrap">Wrap onto more lines</option>
+            <option value="widen">Widen the label column</option>
+          </select>
+        </label>
         <label className="field">
           Label alignment
           <select

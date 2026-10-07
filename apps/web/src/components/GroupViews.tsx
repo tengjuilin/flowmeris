@@ -8,7 +8,7 @@ import { factoryAxis } from '../lib/defaults.ts';
 import { download, safeName } from '../lib/download.ts';
 import { standaloneSvg, svgToPng } from '../lib/exportPlot.ts';
 import { scaleFor } from '../lib/geometry.ts';
-import { type RidgeCurve, combineCounts } from '../lib/ridge.ts';
+import { type RidgeCurve, combineCounts, textMeasure, wrapText } from '../lib/ridge.ts';
 import {
   contextFor,
   toast,
@@ -31,10 +31,6 @@ import {
 import { PopulationTree } from './PopulationTree.tsx';
 import { FONT_STACKS, ridgeColor, useRidge } from './RidgeInspector.tsx';
 import { useSize } from './hooks.ts';
-
-function truncate(s: string, n: number): string {
-  return s.length <= n ? s : `…${s.slice(s.length - n + 1)}`;
-}
 
 // One observer shared by every tile (hundreds of tiles would otherwise each own one).
 const visibility = new Map<Element, (visible: boolean) => void>();
@@ -274,7 +270,41 @@ export function RidgeView() {
 
   if (!group || !axis) return <div className="empty">Select a group.</div>;
   const n = Math.max(1, rows.length);
-  const labelW = style.showLabels ? style.labelWidth : 20;
+  // Label text per ridge: the name (custom or sample name) plus the event count, on one line or two.
+  const measure = textMeasure(style.labelFontSize, FONT_STACKS[style.fontFamily]);
+  const labelText = rows.map((r) => {
+    const h = curves[r.id];
+    const missing = r.sampleIds.every((id) => ui.missing[id]);
+    const reps = r.sampleIds.length > 1 || combine.enabled ? `${r.sampleIds.length}×, ` : '';
+    const count = !style.showCounts
+      ? ''
+      : h
+        ? ` (${reps}n=${h.events.toLocaleString()})`
+        : missing
+          ? ' (missing)'
+          : '';
+    const split = style.countOnNewLine && count !== '';
+    const name = style.sampleLabels[r.id] ?? r.label;
+    return { name: split ? name : name + count, count: split ? count.trim() : '' };
+  });
+  const labelW = !style.showLabels
+    ? 20
+    : style.labelOverflow === 'widen'
+      ? Math.ceil(Math.max(0, ...labelText.flatMap((t) => [measure(t.name), measure(t.count)]))) + 16
+      : style.labelWidth;
+  const labelLines = labelText.map((t) =>
+    !style.showLabels
+      ? []
+      : style.labelOverflow === 'widen'
+        ? [t.name, t.count].filter(Boolean)
+        : [
+            ...wrapText(t.name, labelW - 16, measure),
+            ...(t.count ? wrapText(t.count, labelW - 16, measure) : []),
+          ],
+  );
+  const lineH = style.labelFontSize * 1.15;
+  // Room above the first ridge for a label that runs up from its baseline.
+  const topPad = Math.max(0, (labelLines[0]?.length ?? 0) * lineH - 23);
   const W = style.width ?? Math.max(400, width - 24);
   const pw = Math.max(50, W - labelW - 20);
   const tickLabelY = style.tickFontSize + 7;
@@ -286,10 +316,10 @@ export function RidgeView() {
   const belowAxis = (title ? titleY : style.showTickLabels ? tickLabelY : 6) + 6;
   // With a fixed aspect ratio the figure height is set and the row pitch is derived to fill it.
   const rowH = style.aspect
-    ? Math.max(4, (W / style.aspect - 26 - belowAxis) / (n - 1 + 1 / (1 - overlap)))
+    ? Math.max(4, (W / style.aspect - 26 - topPad - belowAxis) / (n - 1 + 1 / (1 - overlap)))
     : (style.rowHeight ?? Math.max(18, Math.min(60, 600 / n)));
   const amp = rowH / (1 - overlap);
-  const axisY = 20 + rowH * (n - 1) + amp + 6;
+  const axisY = 20 + topPad + rowH * (n - 1) + amp + 6;
   const H = axisY + belowAxis;
   const X = (v: number) => labelW + ((v - axis.range[0]) / (axis.range[1] - axis.range[0])) * pw;
   let ticks: { pos: number; label: string; major: boolean }[] = [];
@@ -304,7 +334,6 @@ export function RidgeView() {
   } catch {
     /* ignore */
   }
-  const labelChars = Math.max(4, Math.floor((labelW - 8) / (style.labelFontSize * 0.55)));
   const setChannel = (c: string) =>
     update('Ridge channel', (l, w, g) => {
       l.axis = factoryAxis(w, g, c);
@@ -374,7 +403,7 @@ export function RidgeView() {
         <rect width={W} height={H} fill="var(--surface)" />
         {rows.map((r, i) => {
           const h = curves[r.id];
-          const base = 20 + rowH * i + amp;
+          const base = 20 + topPad + rowH * i + amp;
           const Y = (v: number) => base - v * amp;
           let d = '';
           let band = '';
@@ -390,33 +419,26 @@ export function RidgeView() {
               band += 'Z';
             }
           }
-          const missing = r.sampleIds.every((id) => ui.missing[id]);
-          const reps = r.sampleIds.length > 1 || combine.enabled ? `${r.sampleIds.length}×, ` : '';
-          const count = !style.showCounts
-            ? ''
-            : h
-              ? ` (${reps}n=${h.events.toLocaleString()})`
-              : missing
-                ? ' (missing)'
-                : '';
-          const custom = style.sampleLabels[r.id];
-          const name = custom ?? truncate(r.label, Math.max(4, labelChars - count.length));
+          const lines = labelLines[i] ?? [];
+          const lx =
+            style.labelAlign === 'start' ? 8 : style.labelAlign === 'middle' ? labelW / 2 : labelW - 8;
           const color = ridgeColor(style, r.id, i);
           return (
             <g key={r.id}>
               {style.showLabels && (
                 <text
-                  x={
-                    style.labelAlign === 'start' ? 8 : style.labelAlign === 'middle' ? labelW / 2 : labelW - 8
-                  }
-                  y={base - 3}
+                  x={lx}
+                  y={base - 3 - (lines.length - 1) * lineH}
                   textAnchor={style.labelAlign}
                   className="ridge-label"
                   style={{ fontSize: style.labelFontSize }}
                 >
                   <title>{r.sampleIds.map((id) => ws.samples[id]?.relativePath).join('\n')}</title>
-                  {name}
-                  {count}
+                  {lines.map((line, k) => (
+                    <tspan key={k} x={lx} dy={k === 0 ? 0 : lineH}>
+                      {line}
+                    </tspan>
+                  ))}
                 </text>
               )}
               {band && <path d={band} fill={color} fillOpacity={style.fillOpacity * 0.45} stroke="none" />}
