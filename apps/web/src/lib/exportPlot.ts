@@ -41,6 +41,28 @@ export function standaloneSvg(svg: SVGSVGElement): string {
   return new XMLSerializer().serializeToString(clone);
 }
 
+/** Rasterise an on-screen SVG to a PNG at `dpi` (the SVG's px are 96 dpi). */
+export async function svgToPng(svg: SVGSVGElement, dpi: number): Promise<Uint8Array> {
+  const w = Number(svg.getAttribute('width'));
+  const h = Number(svg.getAttribute('height'));
+  const scale = dpi / 96;
+  const url = URL.createObjectURL(new Blob([standaloneSvg(svg)], { type: 'image/svg+xml' }));
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    return encodePngCompressed(data, canvas.width, canvas.height, dpi);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 function bytesToBase64(b: Uint8Array): string {
   let s = '';
   for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000));

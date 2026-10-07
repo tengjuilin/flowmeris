@@ -2,15 +2,17 @@ import { ellipseAxes, ellipseFromAxes } from '@flowmeris/gating';
 import {
   type AxisSpec,
   type Geometry,
+  type Group,
   type PlotSpec,
   type Transform,
+  type Workspace,
   effectiveGeometry,
   isOverridden,
   populationsOfGate,
 } from '@flowmeris/model';
 import { COLORMAPS } from '@flowmeris/render';
 import { asinhCofactor, asinhDefFromCofactor, makeScale, suggestLogicleW } from '@flowmeris/transforms';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { deleteGate, promoteOverride, revertOverride, setGateGeometry } from '../lib/analysis.ts';
 import {
@@ -31,7 +33,16 @@ export function NumInput({
   step,
   label,
   title,
-}: { value: number; onCommit: (v: number) => void; step?: number; label: string; title?: string }) {
+  live,
+}: {
+  value: number;
+  onCommit: (v: number) => void;
+  step?: number;
+  label: string;
+  title?: string;
+  /** Also commit while typing, so what the input drives updates live. */
+  live?: boolean;
+}) {
   const [text, setText] = useState<string | null>(null);
   return (
     <label className="field" title={title}>
@@ -40,7 +51,11 @@ export function NumInput({
         type="number"
         step={step ?? 'any'}
         value={text ?? String(Number(value.toPrecision(8)))}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          setText(e.target.value);
+          const v = Number(e.target.value);
+          if (live && e.target.value.trim() !== '' && Number.isFinite(v)) onCommit(v);
+        }}
         onBlur={() => {
           if (text !== null) {
             const v = Number(text);
@@ -54,12 +69,53 @@ export function NumInput({
   );
 }
 
+/** Edits an axis. `apply` runs `fn` on the axis being edited; `shared` edits also become the group's default for the channel. */
+export type ApplyAxis = (
+  label: string,
+  fn: (a: AxisSpec, w: Workspace, g: Group) => void,
+  shared?: boolean,
+) => void;
+
 function AxisEditor({ which, plot }: { which: 'x' | 'y'; plot: PlotSpec }) {
+  const group = useGroup()!;
+  const mutate = useStore((s) => s.mutate);
+  const apply: ApplyAxis = (label, fn, shared) =>
+    mutate(label, (w) => {
+      const g = w.groups.find((x) => x.id === group.id)!;
+      const a = g.plots.find((x) => x.id === plot.id)![which]!;
+      fn(a, w, g);
+      if (shared) g.axisDefaults[a.channel] = { ...a };
+    });
+  return (
+    <AxisFields
+      axis={plot[which] as AxisSpec}
+      legend={`${which.toUpperCase()} axis · ${plot[which]!.channel}`}
+      population={plot.population}
+      apply={apply}
+      note={<>Existing gates keep the scale they were drawn on.</>}
+    />
+  );
+}
+
+/** Scale and range fields for one axis; shared by the Gate view and the ridge plot, each with its own storage. */
+export function AxisFields({
+  axis,
+  legend,
+  population,
+  apply,
+  note,
+  live,
+}: {
+  axis: AxisSpec;
+  legend: string;
+  population: string;
+  apply: ApplyAxis;
+  note?: ReactNode;
+  live?: boolean;
+}) {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
-  const mutate = useStore((s) => s.mutate);
   const group = useGroup()!;
-  const axis = plot[which] as AxisSpec;
   const def = ws.transforms[axis.transform];
   if (!def) return null;
   const top = 'T' in def ? def.T : 262144;
@@ -71,26 +127,25 @@ function AxisEditor({ which, plot }: { which: 'x' | 'y'; plot: PlotSpec }) {
       toast(e instanceof Error ? e.message : String(e));
       return;
     }
-    mutate('Change axis scale', (w) => {
-      const g = w.groups.find((x) => x.id === group.id)!;
-      const p = g.plots.find((x) => x.id === plot.id)!;
-      const id = registerTransform(w, t);
-      const a = p[which]!;
-      a.transform = id;
-      if (!keepRange) a.range = [0, 1];
-      g.axisDefaults[a.channel] = { ...a };
-    });
+    apply(
+      'Change axis scale',
+      (a, w) => {
+        a.transform = registerTransform(w, t);
+        if (!keepRange) a.range = [0, 1];
+      },
+      true,
+    );
   };
   const reset = () =>
-    mutate('Reset axis', (w) => {
-      const g = w.groups.find((x) => x.id === group.id)!;
-      const p = g.plots.find((x) => x.id === plot.id)!;
-      const a = p[which]!;
-      const f = factoryAxis(w, g, a.channel);
-      a.transform = f.transform;
-      a.range = [...f.range];
-      g.axisDefaults[a.channel] = { ...a };
-    });
+    apply(
+      'Reset axis',
+      (a, w, g) => {
+        const f = factoryAxis(w, g, a.channel);
+        a.transform = f.transform;
+        a.range = [...f.range];
+      },
+      true,
+    );
   const setKind = (k: ScaleKind) => setDef(transformOfKind(k, top));
   const scale = makeScale(def);
   const setRange = (i: 0 | 1, dataValue: number) => {
@@ -99,19 +154,16 @@ function AxisEditor({ which, plot }: { which: 'x' | 'y'; plot: PlotSpec }) {
       toast('That value is not representable on this scale (e.g. ≤ 0 on a log axis).');
       return;
     }
-    mutate('Change axis range', (w) => {
-      const p = w.groups.find((x) => x.id === group.id)!.plots.find((x) => x.id === plot.id)!;
-      const r = [...p[which]!.range] as [number, number];
+    apply('Change axis range', (a) => {
+      const r = [...a.range] as [number, number];
       r[i] = v;
-      if (r[0] < r[1]) p[which]!.range = r;
+      if (r[0] < r[1]) a.range = r;
     });
   };
 
   return (
     <fieldset className="axis-editor">
-      <legend>
-        {which.toUpperCase()} axis · {axis.channel}
-      </legend>
+      <legend>{legend}</legend>
       <div className="row">
         <button type="button" onClick={reset} title="Return the scale and range to the channel's defaults">
           Reset to auto
@@ -131,12 +183,14 @@ function AxisEditor({ which, plot }: { which: 'x' | 'y'; plot: PlotSpec }) {
         {def.kind === 'flin' && (
           <>
             <NumInput
+              live={live}
               label="Top T"
               value={def.T}
               onCommit={(T) => setDef({ ...def, T })}
               title="Data value at the top of scale"
             />
             <NumInput
+              live={live}
               label="Negative A"
               value={def.A}
               onCommit={(A) => setDef({ ...def, A })}
@@ -146,32 +200,40 @@ function AxisEditor({ which, plot }: { which: 'x' | 'y'; plot: PlotSpec }) {
         )}
         {def.kind === 'flog' && (
           <>
-            <NumInput label="Top T" value={def.T} onCommit={(T) => setDef({ ...def, T })} />
-            <NumInput label="Decades M" value={def.M} onCommit={(M) => setDef({ ...def, M })} />
+            <NumInput live={live} label="Top T" value={def.T} onCommit={(T) => setDef({ ...def, T })} />
+            <NumInput live={live} label="Decades M" value={def.M} onCommit={(M) => setDef({ ...def, M })} />
           </>
         )}
         {def.kind === 'logicle' && (
           <>
-            <NumInput label="Top T" value={def.T} onCommit={(T) => setDef({ ...def, T })} />
+            <NumInput live={live} label="Top T" value={def.T} onCommit={(T) => setDef({ ...def, T })} />
             <NumInput
+              live={live}
               label="Width W"
               value={def.W}
               onCommit={(W) => setDef({ ...def, W })}
               title="Linearisation width in decades"
             />
-            <NumInput label="Decades M" value={def.M} onCommit={(M) => setDef({ ...def, M })} />
-            <NumInput label="Extra neg. A" value={def.A} onCommit={(A) => setDef({ ...def, A })} />
+            <NumInput live={live} label="Decades M" value={def.M} onCommit={(M) => setDef({ ...def, M })} />
+            <NumInput
+              live={live}
+              label="Extra neg. A"
+              value={def.A}
+              onCommit={(A) => setDef({ ...def, A })}
+            />
           </>
         )}
         {def.kind === 'fasinh' && (
           <>
             <NumInput
+              live={live}
               label="Cofactor"
               value={asinhCofactor(def)}
               onCommit={(c) => c > 0 && setDef(asinhDefFromCofactor(c, def.T, def.A))}
               title="asinh(x / cofactor); stored as Gating-ML fasinh (T, M, A)"
             />
             <NumInput
+              live={live}
               label="Top T"
               value={def.T}
               onCommit={(T) => setDef(asinhDefFromCofactor(asinhCofactor(def), T, def.A))}
@@ -188,7 +250,7 @@ function AxisEditor({ which, plot }: { which: 'x' | 'y'; plot: PlotSpec }) {
               contextFor(ws, group),
               sid,
               { channel: axis.channel, comp: axis.comp },
-              plot.population,
+              population,
             );
             const W = Number(suggestLogicleW(vals, def.T, def.M).toFixed(3));
             setDef({ ...def, W, A: Math.min(def.A, def.M - 2 * W) });
@@ -199,11 +261,21 @@ function AxisEditor({ which, plot }: { which: 'x' | 'y'; plot: PlotSpec }) {
         </button>
       )}
       <div className="grid2">
-        <NumInput label="Min (data)" value={scale.inverse(axis.range[0])} onCommit={(v) => setRange(0, v)} />
-        <NumInput label="Max (data)" value={scale.inverse(axis.range[1])} onCommit={(v) => setRange(1, v)} />
+        <NumInput
+          live={live}
+          label="Min (data)"
+          value={scale.inverse(axis.range[0])}
+          onCommit={(v) => setRange(0, v)}
+        />
+        <NumInput
+          live={live}
+          label="Max (data)"
+          value={scale.inverse(axis.range[1])}
+          onCommit={(v) => setRange(1, v)}
+        />
       </div>
       <p className="muted small">
-        Stored as Gating-ML <code>{def.kind}</code>. Existing gates keep the scale they were drawn on.
+        Stored as Gating-ML <code>{def.kind}</code>. {note}
       </p>
     </fieldset>
   );

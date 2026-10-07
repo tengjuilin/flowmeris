@@ -4,12 +4,19 @@ import { axisTicks, formatLinear } from '@flowmeris/transforms';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { lineageKey } from '../lib/analysis.ts';
-import { defaultAxis } from '../lib/defaults.ts';
+import { factoryAxis } from '../lib/defaults.ts';
 import { download, safeName } from '../lib/download.ts';
-import { standaloneSvg } from '../lib/exportPlot.ts';
+import { standaloneSvg, svgToPng } from '../lib/exportPlot.ts';
 import { scaleFor } from '../lib/geometry.ts';
 import { type RidgeCurve, combineCounts } from '../lib/ridge.ts';
-import { contextFor, useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
+import {
+  contextFor,
+  toast,
+  useGroup,
+  useSampleNames,
+  useSelectedSampleIds,
+  useStore,
+} from '../state/store.ts';
 import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './PickerMenu.tsx';
 import { PlotCanvas } from './PlotCanvas.tsx';
 import {
@@ -203,7 +210,7 @@ export function RidgeView() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
   const mutate = useStore((s) => s.mutate);
-  const { group, plot, style, combine, overlap, ch, axis, rows, update } = useRidge();
+  const { group, style, combine, overlap, ch, axis, rows, update } = useRidge();
   const sampleIds = useMemo(() => rows.flatMap((r) => r.sampleIds), [rows]);
   const box = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -213,11 +220,9 @@ export function RidgeView() {
   const closeChMenu = useCallback(() => setChMenu(null), []);
 
   useEffect(() => {
-    if (group && !axis && ch)
-      mutate('Default axis', (w) => {
-        defaultAxis(w, w.groups.find((x) => x.id === group.id)!, ch);
-      });
-  }, [group, axis, ch, mutate]);
+    // Give the ridge plot its own axis, seeded from the channel's built-in default.
+    if (group && !axis && ch) update('Default ridge axis', () => {});
+  }, [group, axis, ch, update]);
 
   const key = useMemo(
     () =>
@@ -226,6 +231,7 @@ export function RidgeView() {
             [...sampleIds].sort().map((s) => lineageKey(ws, group, s, ui.popId)),
             axis,
             ws.transforms[axis.transform],
+            [style.bins, style.smoothing],
           ])
         : '',
     [group, sampleIds, axis, ws, ui.popId],
@@ -235,17 +241,17 @@ export function RidgeView() {
     let live = true;
     const ctx = contextFor(ws, group);
     // Counts, so replicates can be combined; each ridge is scaled to its mode below.
-    const style = {
-      ...(plot?.style ?? { histBins: 256, histNorm: 'count' as const, histSmooth: true }),
-      histBins: 256,
+    const hist = {
+      histBins: style.bins,
       histNorm: 'count' as const,
-      histSmooth: true,
+      histSmooth: style.smoothing > 0,
+      histSigmaBins: style.smoothing,
     };
     setData({});
     for (const sid of sampleIds) {
       if (ui.missing[sid]) continue;
       pool
-        .histogram(ctx, sid, ui.popId, axis, style as PlotSpec['style'])
+        .histogram(ctx, sid, ui.popId, axis, hist as unknown as PlotSpec['style'])
         .then((h) => live && setData((d) => ({ ...d, [sid]: h })))
         .catch(() => {});
     }
@@ -271,16 +277,20 @@ export function RidgeView() {
   const labelW = style.showLabels ? style.labelWidth : 20;
   const W = style.width ?? Math.max(400, width - 24);
   const pw = Math.max(50, W - labelW - 20);
-  const rowH = style.rowHeight ?? Math.max(18, Math.min(60, 600 / n));
-  const amp = rowH / (1 - overlap);
-  const axisY = 20 + rowH * (n - 1) + amp + 6;
   const tickLabelY = style.tickFontSize + 7;
   const pop = group.template.populations[ui.popId];
   const sample0 = ws.samples[group.sampleIds[0] ?? ''];
   const marker = sample0?.channels.find((c) => c.pnn === ch)?.pns;
   const title = (style.axisTitle ?? (marker ? `${marker} :: ${ch}` : ch)).trim();
   const titleY = (style.showTickLabels ? tickLabelY : 6) + style.titleFontSize + 2;
-  const H = axisY + (title ? titleY : style.showTickLabels ? tickLabelY : 6) + 6;
+  const belowAxis = (title ? titleY : style.showTickLabels ? tickLabelY : 6) + 6;
+  // With a fixed aspect ratio the figure height is set and the row pitch is derived to fill it.
+  const rowH = style.aspect
+    ? Math.max(4, (W / style.aspect - 26 - belowAxis) / (n - 1 + 1 / (1 - overlap)))
+    : (style.rowHeight ?? Math.max(18, Math.min(60, 600 / n)));
+  const amp = rowH / (1 - overlap);
+  const axisY = 20 + rowH * (n - 1) + amp + 6;
+  const H = axisY + belowAxis;
   const X = (v: number) => labelW + ((v - axis.range[0]) / (axis.range[1] - axis.range[0])) * pw;
   let ticks: { pos: number; label: string; major: boolean }[] = [];
   try {
@@ -297,7 +307,7 @@ export function RidgeView() {
   const labelChars = Math.max(4, Math.floor((labelW - 8) / (style.labelFontSize * 0.55)));
   const setChannel = (c: string) =>
     update('Ridge channel', (l, w, g) => {
-      l.axis = { ...defaultAxis(w, g, c) };
+      l.axis = factoryAxis(w, g, c);
     });
 
   return (
@@ -336,6 +346,20 @@ export function RidgeView() {
           }}
         >
           SVG
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (!svgRef.current) return;
+            svgToPng(svgRef.current, 300)
+              .then((png) =>
+                download(`${safeName(`${group.name}_${pop?.name}_${ch}_ridge`)}.png`, png, 'image/png'),
+              )
+              .catch((e) => toast(`PNG export failed: ${e instanceof Error ? e.message : String(e)}`));
+          }}
+          title="PNG at 300 dpi"
+        >
+          PNG
         </button>
       </div>
       <svg
@@ -382,9 +406,11 @@ export function RidgeView() {
             <g key={r.id}>
               {style.showLabels && (
                 <text
-                  x={labelW - 8}
+                  x={
+                    style.labelAlign === 'start' ? 8 : style.labelAlign === 'middle' ? labelW / 2 : labelW - 8
+                  }
                   y={base - 3}
-                  textAnchor="end"
+                  textAnchor={style.labelAlign}
                   className="ridge-label"
                   style={{ fontSize: style.labelFontSize }}
                 >
@@ -443,8 +469,8 @@ export function RidgeView() {
         />
       )}
       <p className="muted small">
-        Each curve is a histogram normalised to its own mode (smoothed, σ = 1.5 bins); n is the number of
-        events in the population.{' '}
+        Each curve is a histogram normalised to its own mode (smoothed, σ = {style.smoothing} bins); n is the
+        number of events in the population.{' '}
         {combine.enabled &&
           `Combined ridges ${
             combine.method === 'mean'

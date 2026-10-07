@@ -11,13 +11,15 @@ import {
 } from '@flowmeris/model';
 import { CATEGORICAL } from '@flowmeris/render';
 import { formatLinear, makeScale } from '@flowmeris/transforms';
-import { type MouseEvent, useCallback, useMemo, useRef, useState } from 'react';
-import { defaultAxis } from '../lib/defaults.ts';
+import { type ComponentProps, type MouseEvent, useCallback, useMemo, useRef, useState } from 'react';
+import { defaultChannels, factoryAxis } from '../lib/defaults.ts';
 import { type RidgeRow, applyOrder, comboRows, selectRidges } from '../lib/ridge.ts';
-import { toast, useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
+import { useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
 import { GroupPicker, toggleIds } from './GroupPicker.tsx';
-import { NumInput } from './Inspector.tsx';
-import { usePlotForPopulation } from './PlotPanel.tsx';
+import { AxisFields, NumInput } from './Inspector.tsx';
+
+/** A number input that updates the plot as you type. */
+const LiveNum = (p: ComponentProps<typeof NumInput>) => <NumInput live {...p} />;
 
 export const DEFAULT_RIDGE_STYLE: RidgeStyle = RidgeStyleSchema.parse({});
 export const DEFAULT_RIDGE_COMBINE: RidgeCombine = RidgeCombineSchema.parse({});
@@ -48,7 +50,6 @@ export function useRidge() {
   const popId = useStore((s) => s.ui.popId);
   const mutate = useStore((s) => s.mutate);
   const group = useGroup();
-  const plot = usePlotForPopulation();
   const names = useSampleNames(group);
   const shown = useSelectedSampleIds(group);
   const layout = group?.layouts.find((l): l is RidgeLayout => l.kind === 'ridge' && l.population === popId);
@@ -59,19 +60,11 @@ export function useRidge() {
     (follow ? group?.ridgeCombine : layout?.combine) ?? group?.ridgeCombine ?? DEFAULT_RIDGE_COMBINE;
   const ws = useStore((s) => s.ws);
   const overlap = layout?.overlap ?? DEFAULT_OVERLAP;
-  const ch = layout?.axis.channel ?? plot?.x.channel ?? group?.channels[0] ?? '';
+  const ch = layout?.axis.channel ?? (group ? defaultChannels(ws, group)[0] : '');
 
-  // The displayed axis follows the Gate view's axis for this channel, so scale edits there carry over.
-  const axis: AxisSpec | null = useMemo(() => {
-    if (!group) return null;
-    const base =
-      plot && plot.x.channel === ch
-        ? plot.x
-        : plot?.y && plot.y.channel === ch
-          ? plot.y
-          : (group.axisDefaults[ch] ?? null);
-    return base && style.xRange ? { ...base, range: style.xRange } : base;
-  }, [group, plot, ch, style.xRange]);
+  // The ridge plot owns its axis (channel, scale and range): it is seeded from the channel's
+  // built-in default when the layout is created and never follows the Gate view afterwards.
+  const axis: AxisSpec | null = layout?.axis ?? null;
 
   // Ridges of the checked samples, in display order. `allIds` also covers unchecked samples, so a
   // reorder keeps the slots of ridges hidden by the sidebar selection. `groups` are the combined
@@ -115,7 +108,7 @@ export function useRidge() {
             kind: 'ridge',
             id: newId('lay_'),
             population: popId,
-            axis: { ...defaultAxis(w, g, ch) },
+            axis: factoryAxis(w, g, ch),
             overlap: DEFAULT_OVERLAP,
             norm: 'mode',
             style: structuredClone(DEFAULT_RIDGE_STYLE),
@@ -130,7 +123,7 @@ export function useRidge() {
     [group, popId, ch, mutate],
   );
 
-  return { group, plot, layout, style, combine, follow, overlap, ch, axis, rows, allIds, groups, update };
+  return { group, layout, style, combine, follow, overlap, ch, axis, rows, allIds, groups, update };
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -194,20 +187,8 @@ export function TicksEditor({
 }
 
 export function RidgeInspector() {
+  const popId = useStore((s) => s.ui.popId);
   const { group, layout, style, combine, overlap, axis, rows, allIds, update } = useRidge();
-  const ws = useStore((s) => s.ws);
-  const scale = axis ? makeScale(ws.transforms[axis.transform]!) : null;
-  const setRange = (i: 0 | 1, dataValue: number) => {
-    if (!axis || !scale) return;
-    const v = scale.apply(dataValue);
-    if (!Number.isFinite(v)) {
-      toast('That value is not representable on this scale (e.g. ≤ 0 on a log axis).');
-      return;
-    }
-    const r: [number, number] = [...axis.range];
-    r[i] = v;
-    if (r[0] < r[1]) update('Ridge x range', (l) => void (l.style.xRange = r), 'xrange');
-  };
   const ordered = rows.map((r) => r.id);
   const labels = Object.fromEntries(rows.map((r) => [r.id, r.label]));
   const current = new Set(allIds);
@@ -219,7 +200,7 @@ export function RidgeInspector() {
         if (value === undefined) delete l.style[key];
         else l.style[key] = value;
       },
-      merge,
+      merge ?? `style:${key}`,
     );
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const anchor = useRef<string | null>(null);
@@ -304,7 +285,7 @@ export function RidgeInspector() {
               onChange={(e) => set('strokeColor', e.target.value, 'Ridge outline colour', 'stroke')}
             />
           </label>
-          <NumInput
+          <LiveNum
             label="Outline width"
             step={0.25}
             value={style.strokeWidth}
@@ -350,7 +331,7 @@ export function RidgeInspector() {
             Auto row height
           </label>
           {style.rowHeight !== undefined && (
-            <NumInput
+            <LiveNum
               label="Row height (px)"
               step={1}
               value={style.rowHeight}
@@ -380,19 +361,32 @@ export function RidgeInspector() {
           Show event counts (n)
         </label>
         <div className="grid2">
-          <NumInput
+          <LiveNum
             label="Label size (px)"
             step={0.5}
             value={style.labelFontSize}
             onCommit={(v) => set('labelFontSize', clamp(v, 4, 48), 'Ridge label size')}
           />
-          <NumInput
+          <LiveNum
             label="Label width (px)"
             step={10}
             value={style.labelWidth}
             onCommit={(v) => set('labelWidth', clamp(v, 0, 1000), 'Ridge label width')}
           />
         </div>
+        <label className="field">
+          Label alignment
+          <select
+            value={style.labelAlign}
+            onChange={(e) =>
+              set('labelAlign', e.target.value as RidgeStyle['labelAlign'], 'Ridge label alignment')
+            }
+          >
+            <option value="start">Left</option>
+            <option value="middle">Center</option>
+            <option value="end">Right</option>
+          </select>
+        </label>
         <ol className="ridge-samples" onDragLeave={() => setDrop(null)}>
           {ordered.map((id, i) => {
             const custom = style.sampleColors[id] !== undefined;
@@ -569,6 +563,16 @@ export function RidgeInspector() {
 
       <fieldset>
         <legend>X axis</legend>
+        {axis && group && (
+          <AxisFields
+            live
+            axis={axis}
+            legend={`Scale and range · ${axis.channel}`}
+            population={popId}
+            note="Applies to this ridge plot only."
+            apply={(label, fn) => update(label, (l, w, g) => fn(l.axis, w, g), `axis:${label}`)}
+          />
+        )}
         <label className="field check">
           <input
             type="checkbox"
@@ -577,37 +581,12 @@ export function RidgeInspector() {
           />
           Show tick labels
         </label>
-        <NumInput
+        <LiveNum
           label="Tick label size (px)"
           step={0.5}
           value={style.tickFontSize}
           onCommit={(v) => set('tickFontSize', clamp(v, 4, 48), 'Ridge tick label size')}
         />
-        {axis && scale && (
-          <div className="grid2">
-            <NumInput
-              label="Min (data)"
-              value={scale.inverse(axis.range[0])}
-              onCommit={(v) => setRange(0, v)}
-            />
-            <NumInput
-              label="Max (data)"
-              value={scale.inverse(axis.range[1])}
-              onCommit={(v) => setRange(1, v)}
-            />
-          </div>
-        )}
-        {style.xRange && (
-          <div className="row">
-            <button
-              type="button"
-              onClick={() => set('xRange', undefined, 'Reset ridge x range')}
-              title="Follow the Gate view's range again"
-            >
-              Reset range
-            </button>
-          </div>
-        )}
         <TicksEditor ticks={style.ticks} onCommit={(t) => set('ticks', t, 'Ridge ticks')} />
         <label className="field" title="Leave empty for the default; type a space for no title">
           Axis title
@@ -618,12 +597,32 @@ export function RidgeInspector() {
             onChange={(e) => set('axisTitle', e.target.value || undefined, 'Ridge axis title', 'title')}
           />
         </label>
-        <NumInput
+        <LiveNum
           label="Title size (px)"
           step={0.5}
           value={style.titleFontSize}
           onCommit={(v) => set('titleFontSize', clamp(v, 4, 48), 'Ridge title size')}
         />
+      </fieldset>
+
+      <fieldset>
+        <legend>Histogram</legend>
+        <div className="grid2">
+          <LiveNum
+            label="Bins"
+            step={16}
+            title="Histogram bins across the x range"
+            value={style.bins}
+            onCommit={(v) => set('bins', clamp(Math.round(v), 16, 1024), 'Ridge bins')}
+          />
+          <LiveNum
+            label="Smoothing σ (bins)"
+            step={0.5}
+            title="Gaussian smoothing of each curve; 0 for none"
+            value={style.smoothing}
+            onCommit={(v) => set('smoothing', clamp(v, 0, 20), 'Ridge smoothing')}
+          />
+        </div>
       </fieldset>
 
       <fieldset>
@@ -649,11 +648,30 @@ export function RidgeInspector() {
             Fit width
           </label>
           {style.width !== undefined && (
-            <NumInput
+            <LiveNum
               label="Width (px)"
               step={10}
               value={style.width}
               onCommit={(v) => set('width', clamp(v, 300, 10000), 'Ridge plot width')}
+            />
+          )}
+        </div>
+        <div className="grid2">
+          <label className="field check">
+            <input
+              type="checkbox"
+              checked={style.aspect === undefined}
+              onChange={(e) => set('aspect', e.target.checked ? undefined : 1.5, 'Ridge aspect ratio')}
+            />
+            Free aspect ratio
+          </label>
+          {style.aspect !== undefined && (
+            <LiveNum
+              label="Width ÷ height"
+              step={0.1}
+              title="Fixes the figure's shape; row height is derived to fit"
+              value={style.aspect}
+              onCommit={(v) => set('aspect', clamp(v, 0.2, 10), 'Ridge aspect ratio')}
             />
           )}
         </div>

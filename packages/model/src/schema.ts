@@ -320,6 +320,8 @@ export const RidgeStyleSchema = z.object({
   rowHeight: Num.min(8).max(400).optional(),
   /** Plot width in px; omitted = fit the view. */
   width: Num.min(300).max(10000).optional(),
+  /** Figure width ÷ height; omitted = free. When set, the row pitch is derived to fit the height (overrides `rowHeight`). */
+  aspect: Num.min(0.2).max(10).optional(),
   fontFamily: z.enum(['sans', 'serif', 'mono']).default('sans'),
   /**
    * Display order of ridges; ridges not listed follow in default order. A ridge id is a sample id, or
@@ -331,6 +333,8 @@ export const RidgeStyleSchema = z.object({
   showLabels: z.boolean().default(true),
   showCounts: z.boolean().default(true),
   labelFontSize: Num.min(4).max(48).default(11.5),
+  /** Alignment of the ridge labels within the label column. */
+  labelAlign: z.enum(['start', 'middle', 'end']).default('end'),
   /** Width of the label column in px. */
   labelWidth: Num.min(0).max(1000).default(240),
   showTickLabels: z.boolean().default(true),
@@ -340,8 +344,10 @@ export const RidgeStyleSchema = z.object({
   /** Axis title; omitted = "<marker> :: <channel>". */
   axisTitle: z.string().optional(),
   titleFontSize: Num.min(4).max(48).default(12),
-  /** X range in transformed units, overriding the shared axis range for this ridge plot only; omitted = follow the Gate view. */
-  xRange: z.tuple([Num, Num]).optional(),
+  /** Histogram bins across the x range. */
+  bins: z.number().int().min(16).max(1024).default(256),
+  /** Gaussian smoothing of each histogram, in bins (σ); 0 = none. */
+  smoothing: Num.min(0).max(20).default(1.5),
 });
 export type RidgeStyle = z.infer<typeof RidgeStyleSchema>;
 

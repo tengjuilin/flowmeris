@@ -284,11 +284,11 @@ export function histogram(
   x: ArrayLike<number>,
   indices: ArrayLike<number> | null,
   range: [number, number],
-  style: Pick<PlotStyle, 'histBins' | 'histNorm' | 'histSmooth'>,
+  style: Pick<PlotStyle, 'histBins' | 'histNorm' | 'histSmooth'> & { histSigmaBins?: number },
 ): HistogramOutput {
   const h = bin1d(x, indices, range, style.histBins);
   let counts = h.counts;
-  if (style.histSmooth) counts = smooth1d(counts, 1.5);
+  if (style.histSmooth) counts = smooth1d(counts, style.histSigmaBins ?? 1.5);
   const heights = Float64Array.from(counts);
   if (style.histNorm === 'mode') {
     let m = 0;
