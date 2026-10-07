@@ -17,7 +17,7 @@ import { pool } from './engine-client/pool.ts';
 import { download, safeName } from './lib/download.ts';
 import { checkMissing, filesFromDrop, filesFromInput, ingestFiles } from './lib/ingest.ts';
 import { workspaceToFile } from './state/persist.ts';
-import { APP_INFO, type Tool, type View, toast, useGroup, useStore } from './state/store.ts';
+import { APP_INFO, type Tool, type View, timestampName, toast, useGroup, useStore } from './state/store.ts';
 
 const VIEWS: { id: View; label: string }[] = [
   { id: 'gate', label: 'Gate' },
@@ -170,7 +170,7 @@ function Header() {
               'Start a new, empty workspace? The current one stays in your browser history only until replaced; save it first if needed.',
             )
           )
-            setWorkspace(newWorkspace('Untitled workspace', APP_INFO));
+            setWorkspace(newWorkspace(timestampName(), APP_INFO));
         }}
       >
         New

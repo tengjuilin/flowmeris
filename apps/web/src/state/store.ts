@@ -74,6 +74,12 @@ interface Store {
   setUi: (patch: Partial<UiState>) => void;
 }
 
+/** Default workspace name: the local date and time it was opened, ISO 8601 (YYYY-MM-DDTHH:mm:ss). */
+export function timestampName(d = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
 const VIEW_KEY = 'flowmeris.view';
 const VIEWS: readonly View[] = [
   'gate',
@@ -99,7 +105,7 @@ function savedView(): View {
 }
 
 export const useStore = create<Store>((set, get) => ({
-  ws: newWorkspace('Untitled workspace', APP_INFO),
+  ws: newWorkspace(timestampName(), APP_INFO),
   ui: {
     groupId: null,
     sampleId: null,
