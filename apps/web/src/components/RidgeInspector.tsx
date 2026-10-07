@@ -10,11 +10,11 @@ import {
   newId,
 } from '@flowmeris/model';
 import { CATEGORICAL } from '@flowmeris/render';
-import { formatLinear } from '@flowmeris/transforms';
+import { formatLinear, makeScale } from '@flowmeris/transforms';
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from 'react';
 import { defaultAxis } from '../lib/defaults.ts';
 import { type RidgeRow, applyOrder, comboRows, selectRidges } from '../lib/ridge.ts';
-import { useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
+import { toast, useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
 import { GroupPicker, toggleIds } from './GroupPicker.tsx';
 import { NumInput } from './Inspector.tsx';
 import { usePlotForPopulation } from './PlotPanel.tsx';
@@ -64,10 +64,14 @@ export function useRidge() {
   // The displayed axis follows the Gate view's axis for this channel, so scale edits there carry over.
   const axis: AxisSpec | null = useMemo(() => {
     if (!group) return null;
-    if (plot && plot.x.channel === ch) return plot.x;
-    if (plot?.y && plot.y.channel === ch) return plot.y;
-    return group.axisDefaults[ch] ?? null;
-  }, [group, plot, ch]);
+    const base =
+      plot && plot.x.channel === ch
+        ? plot.x
+        : plot?.y && plot.y.channel === ch
+          ? plot.y
+          : (group.axisDefaults[ch] ?? null);
+    return base && style.xRange ? { ...base, range: style.xRange } : base;
+  }, [group, plot, ch, style.xRange]);
 
   // Ridges of the checked samples, in display order. `allIds` also covers unchecked samples, so a
   // reorder keeps the slots of ridges hidden by the sidebar selection. `groups` are the combined
@@ -190,7 +194,20 @@ export function TicksEditor({
 }
 
 export function RidgeInspector() {
-  const { group, layout, style, combine, overlap, rows, allIds, update } = useRidge();
+  const { group, layout, style, combine, overlap, axis, rows, allIds, update } = useRidge();
+  const ws = useStore((s) => s.ws);
+  const scale = axis ? makeScale(ws.transforms[axis.transform]!) : null;
+  const setRange = (i: 0 | 1, dataValue: number) => {
+    if (!axis || !scale) return;
+    const v = scale.apply(dataValue);
+    if (!Number.isFinite(v)) {
+      toast('That value is not representable on this scale (e.g. ≤ 0 on a log axis).');
+      return;
+    }
+    const r: [number, number] = [...axis.range];
+    r[i] = v;
+    if (r[0] < r[1]) update('Ridge x range', (l) => void (l.style.xRange = r), 'xrange');
+  };
   const ordered = rows.map((r) => r.id);
   const labels = Object.fromEntries(rows.map((r) => [r.id, r.label]));
   const current = new Set(allIds);
@@ -566,6 +583,31 @@ export function RidgeInspector() {
           value={style.tickFontSize}
           onCommit={(v) => set('tickFontSize', clamp(v, 4, 48), 'Ridge tick label size')}
         />
+        {axis && scale && (
+          <div className="grid2">
+            <NumInput
+              label="Min (data)"
+              value={scale.inverse(axis.range[0])}
+              onCommit={(v) => setRange(0, v)}
+            />
+            <NumInput
+              label="Max (data)"
+              value={scale.inverse(axis.range[1])}
+              onCommit={(v) => setRange(1, v)}
+            />
+          </div>
+        )}
+        {style.xRange && (
+          <div className="row">
+            <button
+              type="button"
+              onClick={() => set('xRange', undefined, 'Reset ridge x range')}
+              title="Follow the Gate view's range again"
+            >
+              Reset range
+            </button>
+          </div>
+        )}
         <TicksEditor ticks={style.ticks} onCommit={(t) => set('ticks', t, 'Ridge ticks')} />
         <label className="field" title="Leave empty for the default; type a space for no title">
           Axis title

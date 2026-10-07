@@ -340,6 +340,8 @@ export const RidgeStyleSchema = z.object({
   /** Axis title; omitted = "<marker> :: <channel>". */
   axisTitle: z.string().optional(),
   titleFontSize: Num.min(4).max(48).default(12),
+  /** X range in transformed units, overriding the shared axis range for this ridge plot only; omitted = follow the Gate view. */
+  xRange: z.tuple([Num, Num]).optional(),
 });
 export type RidgeStyle = z.infer<typeof RidgeStyleSchema>;
 
