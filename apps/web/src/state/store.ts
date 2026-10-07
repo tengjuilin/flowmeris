@@ -74,6 +74,30 @@ interface Store {
   setUi: (patch: Partial<UiState>) => void;
 }
 
+const VIEW_KEY = 'flowmeris.view';
+const VIEWS: readonly View[] = [
+  'gate',
+  'plot',
+  'tiles',
+  'ridge',
+  'path',
+  'metadata',
+  'stats',
+  'charts',
+  'compensation',
+  'samples',
+];
+
+/** The view open before the last page reload, so a refresh stays on the same tab. */
+function savedView(): View {
+  try {
+    const v = sessionStorage.getItem(VIEW_KEY) as View | null;
+    return v && VIEWS.includes(v) ? v : 'gate';
+  } catch {
+    return 'gate';
+  }
+}
+
 export const useStore = create<Store>((set, get) => ({
   ws: newWorkspace('Untitled workspace', APP_INFO),
   ui: {
@@ -81,7 +105,7 @@ export const useStore = create<Store>((set, get) => ({
     sampleId: null,
     popId: 'root',
     plotId: null,
-    view: 'gate',
+    view: savedView(),
     tool: 'select',
     editScope: 'template',
     selectedGateId: null,
@@ -152,6 +176,13 @@ export const useStore = create<Store>((set, get) => ({
     set((s) => ({ ui: { ...s.ui, ...patch } }));
   },
 }));
+
+useStore.subscribe((s, prev) => {
+  if (s.ui.view === prev.ui.view) return;
+  try {
+    sessionStorage.setItem(VIEW_KEY, s.ui.view);
+  } catch {}
+});
 
 export function useGroup(): Group | undefined {
   return useStore((s) => s.ws.groups.find((g) => g.id === s.ui.groupId));
