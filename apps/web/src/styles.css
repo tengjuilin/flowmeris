@@ -2149,3 +2149,7 @@ table.stats.import-map td {
   font-size: 11.5px;
   color: var(--text-2);
 }
+.ridge-pane-title {
+  font-weight: 600;
+  margin: 2px 0 6px;
+}
