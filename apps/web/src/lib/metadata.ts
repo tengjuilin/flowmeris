@@ -99,3 +99,52 @@ export function inkOn(bg: string): string {
   const [r = 0, g = 0, b = 0] = m;
   return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#111' : '#fff';
 }
+
+/** A block of table cells, rows r0…r1 and columns c0…c1 (inclusive, any corner order). */
+export interface CellRect {
+  r0: number;
+  c0: number;
+  r1: number;
+  c1: number;
+}
+
+export function normRect(s: CellRect): CellRect {
+  return {
+    r0: Math.min(s.r0, s.r1),
+    c0: Math.min(s.c0, s.c1),
+    r1: Math.max(s.r0, s.r1),
+    c1: Math.max(s.c0, s.c1),
+  };
+}
+
+/**
+ * Where pasted cells go, as spreadsheets do it: a single value fills the whole
+ * selection; a block that fits the selection a whole number of times is
+ * repeated across it; otherwise the block is placed at the selection's top-left
+ * corner. Cells beyond the table (`nrow` × `ncol`) are dropped.
+ */
+export function pasteTargets(
+  grid: string[][],
+  sel: CellRect,
+  nrow: number,
+  ncol: number,
+): { r: number; c: number; raw: string }[] {
+  const s = normRect(sel);
+  const h = grid.length;
+  const w = Math.max(0, ...grid.map((row) => row.length));
+  if (h === 0 || w === 0) return [];
+  const sh = s.r1 - s.r0 + 1;
+  const sw = s.c1 - s.c0 + 1;
+  const tile = sh % h === 0 && sw % w === 0;
+  const rows = tile ? sh : h;
+  const cols = tile ? sw : w;
+  const out: { r: number; c: number; raw: string }[] = [];
+  for (let i = 0; i < rows; i++)
+    for (let j = 0; j < cols; j++) {
+      const r = s.r0 + i;
+      const c = s.c0 + j;
+      const raw = grid[i % h]?.[j % w];
+      if (r < nrow && c < ncol && raw !== undefined) out.push({ r, c, raw });
+    }
+  return out;
+}

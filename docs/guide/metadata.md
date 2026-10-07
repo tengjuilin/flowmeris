@@ -14,9 +14,19 @@ variable from categorical to numeric clears values that are not numbers; undo re
 ## The table
 
 One row per sample of the current group, with its **well** and one column per variable. Type a value and
-press Enter (or ↓) to move down. To fill many cells at once, copy a block from a spreadsheet and paste it
-into the first cell: rows go down the samples, columns go across the variables (the Well column first).
-Values that do not fit a numeric column are skipped and reported.
+press Enter (or ↓) to move down.
+
+To work on many cells at once, **drag across them** (or click one and shift-click another) to select a
+block, then:
+
+- **paste** a single value to fill every selected cell, or a block copied from a spreadsheet — it is
+  repeated across the selection when the selection is a whole multiple of it (paste two rows into eight
+  to repeat them four times), and otherwise placed at the selection's top-left corner;
+- **⌘C / Ctrl+C** to copy the block (tab-separated, ready for a spreadsheet);
+- **Delete** to clear it.
+
+Pasting a copied block into a single cell fills the cells down and to the right of it. Values that do not
+fit a numeric (or Well) column are skipped and reported; every paste is one undo step.
 
 ## The plate map
 

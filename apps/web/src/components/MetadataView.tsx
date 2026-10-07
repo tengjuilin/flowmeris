@@ -1,9 +1,18 @@
 import { toCsv } from '@flowmeris/export';
-import { type Group, type Variable, removeVariable } from '@flowmeris/model';
+import { type Group, type Variable, type Workspace, removeVariable } from '@flowmeris/model';
 import { normalizeWell, parseDelimited, wellFromSample } from '@flowmeris/table';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { download, safeName } from '../lib/download.ts';
-import { addVariable, coerce, distinctValues, retype, setValue } from '../lib/metadata.ts';
+import {
+  type CellRect,
+  addVariable,
+  coerce,
+  distinctValues,
+  normRect,
+  pasteTargets,
+  retype,
+  setValue,
+} from '../lib/metadata.ts';
 import { type Sheet, TABLE_ACCEPT, readTableFile } from '../lib/sheets.ts';
 import { toast, useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { ImportDialog } from './ImportDialog.tsx';
@@ -124,7 +133,11 @@ function VariableEditor({ v, group, onClose }: { v: Variable; group: Group; onCl
   );
 }
 
-/** Spreadsheet-like table: one row per sample, a Well column, one column per variable. Paste from a spreadsheet fills a block. */
+/**
+ * Spreadsheet-like table: one row per sample, a Well column, one column per
+ * variable. Drag across cells (or shift-click) to select a block; a paste then
+ * fills the block, ⌘C copies it and Delete clears it.
+ */
 function MetaTable({ group }: { group: Group }) {
   const ws = useStore((s) => s.ws);
   const mutate = useStore((s) => s.mutate);
@@ -133,61 +146,101 @@ function MetaTable({ group }: { group: Group }) {
   const vars = ws.variables;
   // Column 0 is the well; 1… are the variables.
   const ncol = vars.length + 1;
+  const [sel, setSel] = useState<CellRect | null>(null);
+  const dragging = useRef(false);
+  /** Cell to focus after the next render: changed cells re-mount, and the selection needs a focused cell. */
+  const refocus = useRef<[number, number] | null>(null);
 
-  const commit = (row: number, col: number, raw: string): boolean => {
-    const id = ids[row];
-    if (!id) return true;
+  useEffect(() => {
+    if (!refocus.current) return;
+    const [r, c] = refocus.current;
+    refocus.current = null;
+    focusCell(r, c);
+  });
+
+  useEffect(() => {
+    const up = () => {
+      dragging.current = false;
+    };
+    window.addEventListener('pointerup', up);
+    return () => window.removeEventListener('pointerup', up);
+  }, []);
+
+  const rect = sel ? normRect(sel) : null;
+  const multi = !!rect && (rect.r0 !== rect.r1 || rect.c0 !== rect.c1);
+  const inRect = (r: number, c: number) =>
+    !!rect && r >= rect.r0 && r <= rect.r1 && c >= rect.c0 && c <= rect.c1;
+
+  /** Write one cell's text into the draft workspace; false if it does not fit the column. */
+  const write = (x: Workspace, row: number, col: number, raw: string): boolean => {
+    const s = x.samples[ids[row] ?? ''];
+    if (!s) return true;
     if (col === 0) {
       const w = raw.trim() === '' ? undefined : normalizeWell(raw);
-      if (raw.trim() && !w) {
-        toast(`“${raw}” is not a well of a 96-well plate (A01–H12).`);
-        return false;
-      }
-      if (w === ws.samples[id]?.well) return true;
-      mutate('Set well', (x) => {
-        const s = x.samples[id]!;
-        if (w) s.well = w;
-        else s.well = undefined;
-      });
+      if (raw.trim() && !w) return false;
+      s.well = w;
       return true;
     }
     const v = vars[col - 1]!;
     const value = coerce(v, raw);
-    if (value === undefined) {
-      toast(`“${raw}” is not a number (${v.name} is numeric).`);
-      return false;
-    }
-    if ((value ?? undefined) === ws.samples[id]?.meta[v.id]) return true;
-    mutate(`Set ${v.name}`, (x) => setValue(x, id, v.id, value));
+    if (value === undefined) return false;
+    setValue(x, s.id, v.id, value);
     return true;
   };
 
+  const cellText = (row: number, col: number): string => {
+    const s = ws.samples[ids[row] ?? ''];
+    return display(col === 0 ? s?.well : s?.meta[vars[col - 1]!.id]);
+  };
+
+  const commit = (row: number, col: number, raw: string): boolean => {
+    if (raw.trim() === cellText(row, col).trim()) return true;
+    const label = col === 0 ? 'Set well' : `Set ${vars[col - 1]!.name}`;
+    let ok = true;
+    mutate(label, (x) => void (ok = write(x, row, col, raw)));
+    if (!ok)
+      toast(
+        col === 0
+          ? `“${raw}” is not a well of a 96-well plate (A01–H12).`
+          : `“${raw}” is not a number (${vars[col - 1]!.name} is numeric).`,
+      );
+    return ok;
+  };
+
+  /** Paste into the selection (when the cell is in it) or from the cell; false = let the input paste. */
   const paste = (row: number, col: number, text: string): boolean => {
-    if (!/[\t\n]/.test(text.trim())) return false;
-    const grid = parseDelimited(text.replace(/\r?\n$/, ''));
+    const inSel = multi && inRect(row, col);
+    const t = text.replace(/\r?\n$/, '');
+    const single = !/[\t\n]/.test(t);
+    if (single && !inSel) return false;
+    const target = inSel ? rect! : { r0: row, c0: col, r1: row, c1: col };
+    const grid = single ? [[t]] : parseDelimited(t);
     let bad = 0;
     mutate('Paste values', (x) => {
-      grid.forEach((cells, i) => {
-        const id = ids[row + i];
-        if (!id) return;
-        cells.forEach((raw, j) => {
-          const c = col + j;
-          if (c >= ncol) return;
-          if (c === 0) {
-            const w = normalizeWell(raw);
-            if (w) x.samples[id]!.well = w;
-            else if (raw.trim()) bad++;
-            return;
-          }
-          const v = vars[c - 1]!;
-          const value = coerce(v, raw);
-          if (value === undefined) bad++;
-          else setValue(x, id, v.id, value);
-        });
-      });
+      for (const p of pasteTargets(grid, target, ids.length, ncol)) if (!write(x, p.r, p.c, p.raw)) bad++;
     });
+    refocus.current = [row, col];
     if (bad) toast(`${bad} pasted value(s) did not fit their column and were skipped.`);
     return true;
+  };
+
+  const clear = (row: number, col: number) => {
+    if (!rect) return;
+    mutate('Clear values', (x) => {
+      for (let r = rect.r0; r <= rect.r1; r++) for (let c = rect.c0; c <= rect.c1; c++) write(x, r, c, '');
+    });
+    refocus.current = [row, col];
+  };
+
+  const copyText = () => {
+    if (!rect) return '';
+    const lines: string[] = [];
+    for (let r = rect.r0; r <= rect.r1; r++) {
+      const cells: string[] = [];
+      for (let c = rect.c0; c <= rect.c1; c++) cells.push(cellText(r, c));
+      lines.push(cells.join('\t'));
+    }
+    return lines.join('\n');
   };
 
   const focusCell = (row: number, col: number) =>
@@ -195,7 +248,7 @@ function MetaTable({ group }: { group: Group }) {
 
   return (
     <div className="table-wrap">
-      <table className="stats meta-table">
+      <table className={`stats meta-table${multi ? ' selecting' : ''}`}>
         <thead>
           <tr>
             <th>Sample</th>
@@ -220,7 +273,31 @@ function MetaTable({ group }: { group: Group }) {
                   {names[id] ?? s.fileName}
                 </th>
                 {values.map((x, c) => (
-                  <td key={c === 0 ? 'well' : vars[c - 1]!.id}>
+                  <td
+                    key={c === 0 ? 'well' : vars[c - 1]!.id}
+                    className={multi && inRect(r, c) ? 'sel' : undefined}
+                    onPointerDown={(e) => {
+                      if (e.button !== 0) return;
+                      if (e.shiftKey && sel) {
+                        e.preventDefault();
+                        setSel({ ...sel, r1: r, c1: c });
+                        return;
+                      }
+                      dragging.current = true;
+                      setSel({ r0: r, c0: c, r1: r, c1: c });
+                    }}
+                    onPointerEnter={() => {
+                      if (!dragging.current || !sel) return;
+                      if (sel.r1 === r && sel.c1 === c) return;
+                      setSel({ ...sel, r1: r, c1: c });
+                      // Keep the focus (for paste/copy) on the anchor cell, without a text selection in it.
+                      const anchor = document.querySelector<HTMLInputElement>(
+                        `[data-cell="${sel.r0}:${sel.c0}"]`,
+                      );
+                      anchor?.focus();
+                      anchor?.setSelectionRange(anchor.value.length, anchor.value.length);
+                    }}
+                  >
                     <input
                       key={display(x)}
                       type="text"
@@ -235,16 +312,26 @@ function MetaTable({ group }: { group: Group }) {
                         if (!commit(r, c, e.target.value)) e.target.value = display(x);
                       }}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                        if (multi && inRect(r, c) && (e.key === 'Delete' || e.key === 'Backspace')) {
                           e.preventDefault();
+                          clear(r, c);
+                        } else if (e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          setSel(null);
                           focusCell(
                             r + (e.key === 'ArrowUp' || (e.key === 'Enter' && e.shiftKey) ? -1 : 1),
                             c,
                           );
                         } else if (e.key === 'Escape') {
                           e.currentTarget.value = display(x);
+                          setSel(null);
                           e.currentTarget.blur();
                         }
+                      }}
+                      onCopy={(e) => {
+                        if (!multi || !inRect(r, c)) return;
+                        e.preventDefault();
+                        e.clipboardData.setData('text/plain', copyText());
                       }}
                       onPaste={(e) => {
                         if (paste(r, c, e.clipboardData.getData('text/plain'))) e.preventDefault();
@@ -267,7 +354,8 @@ function MetaTable({ group }: { group: Group }) {
           </datalist>
         ))}
       <p className="muted small">
-        Enter / ↓ moves down. Paste a block copied from a spreadsheet to fill several cells at once.
+        Enter / ↓ moves down. Drag across cells (or shift-click) to select a block, then paste: one value
+        fills the block, a copied block is repeated across it. ⌘C copies the block, Delete clears it.
       </p>
     </div>
   );

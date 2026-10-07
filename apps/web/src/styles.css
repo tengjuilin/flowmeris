@@ -1744,3 +1744,13 @@ table.stats.import-map td {
 .chart-data td {
   text-align: right;
 }
+.meta-table td.sel {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.meta-table.selecting input {
+  user-select: none;
+}
+.meta-table.selecting input::selection {
+  background: transparent;
+}
