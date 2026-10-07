@@ -21,6 +21,13 @@ import { usePlotForPopulation } from './PlotPanel.tsx';
 
 export const DEFAULT_RIDGE_STYLE: RidgeStyle = RidgeStyleSchema.parse({});
 export const DEFAULT_RIDGE_COMBINE: RidgeCombine = RidgeCombineSchema.parse({});
+/** A copy of `c` that is safe to take of an Immer draft (`structuredClone` cannot clone one). */
+const copyCombine = (c: RidgeCombine): RidgeCombine => ({
+  ...c,
+  by: [...c.by],
+  hidden: [...c.hidden],
+  exclude: [...c.exclude],
+});
 export const DEFAULT_OVERLAP = 0.6;
 
 export const FONT_STACKS: Record<RidgeStyle['fontFamily'], string> = {
@@ -46,7 +53,10 @@ export function useRidge() {
   const shown = useSelectedSampleIds(group);
   const layout = group?.layouts.find((l): l is RidgeLayout => l.kind === 'ridge' && l.population === popId);
   const style = layout?.style ?? DEFAULT_RIDGE_STYLE;
-  const combine = layout?.combine ?? DEFAULT_RIDGE_COMBINE;
+  // While following, the group's shared replicate settings apply to every population.
+  const follow = group?.ridgeFollow ?? true;
+  const combine =
+    (follow ? group?.ridgeCombine : layout?.combine) ?? group?.ridgeCombine ?? DEFAULT_RIDGE_COMBINE;
   const ws = useStore((s) => s.ws);
   const overlap = layout?.overlap ?? DEFAULT_OVERLAP;
   const ch = layout?.axis.channel ?? plot?.x.channel ?? group?.channels[0] ?? '';
@@ -105,7 +115,7 @@ export function useRidge() {
             overlap: DEFAULT_OVERLAP,
             norm: 'mode',
             style: structuredClone(DEFAULT_RIDGE_STYLE),
-            combine: structuredClone(DEFAULT_RIDGE_COMBINE),
+            combine: copyCombine(g.ridgeCombine),
           };
           fn(l, w, g);
           g.layouts.push(l);
@@ -116,7 +126,7 @@ export function useRidge() {
     [group, popId, ch, mutate],
   );
 
-  return { group, plot, layout, style, combine, overlap, ch, axis, rows, allIds, groups, update };
+  return { group, plot, layout, style, combine, follow, overlap, ch, axis, rows, allIds, groups, update };
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -625,14 +635,32 @@ export function RidgeInspector() {
 /** Card below the population tree: combine replicate samples into one ridge per combination of variables. */
 export function RidgeCombinePanel() {
   const variables = useStore((s) => s.ws.variables);
-  const { group, combine, groups, update } = useRidge();
+  const { group, combine, follow, groups, update } = useRidge();
   const names = useSampleNames(group);
   if (!group) return null;
-  const edit = (label: string, fn: (c: RidgeCombine) => void) => update(label, (l) => fn(l.combine));
+  const edit = (label: string, fn: (c: RidgeCombine) => void) =>
+    update(label, (l, _w, g) => fn(g.ridgeFollow ? g.ridgeCombine : l.combine));
+  // Following adopts the current population's settings for all; unfollowing gives each its own copy.
+  const setFollow = (on: boolean) =>
+    update(
+      on ? 'Replicate settings follow the population' : 'Replicate settings per population',
+      (l, _w, g) => {
+        g.ridgeFollow = on;
+        if (on) g.ridgeCombine = copyCombine(l.combine);
+        else for (const x of g.layouts) if (x.kind === 'ridge') x.combine = copyCombine(g.ridgeCombine);
+      },
+    );
   const singles = groups.filter((r) => r.sampleIds.length === 1).length;
   return (
     <section className="ridge-combine" aria-label="Replicates">
       <div className="pane-title">Replicates</div>
+      <label
+        className="field check"
+        title="Keep the same replicate settings when you switch to another population"
+      >
+        <input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} />
+        Same settings for all populations
+      </label>
       <label className="field check">
         <input
           type="checkbox"

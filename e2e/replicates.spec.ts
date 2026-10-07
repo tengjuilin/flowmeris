@@ -90,3 +90,60 @@ test('choosing which grouped replicates the ridge plot and charts show', async (
     .click({ modifiers: ['Shift'] });
   await expect(groups).toContainText('2 hidden');
 });
+
+test('ridge replicate settings follow the population unless switched off', async ({ page }) => {
+  await page.goto('/');
+  const medians: Record<string, number> = { A01: 100, A02: 200, B01: 110, B02: 220 };
+  await page
+    .getByTestId('file-input')
+    .first()
+    .setInputFiles(
+      Object.entries(medians).map(([well, m]) => ({
+        name: `Specimen_001_${well}.fcs`,
+        mimeType: 'application/octet-stream',
+        buffer: fcs(m),
+      })),
+    );
+  await expect(page.getByText('All events')).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('tab', { name: 'Metadata' }).click();
+  await page.getByTestId('meta-input').setInputFiles({
+    name: 'design.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('Well,Dose\nA1,1\nA2,10\nB1,1\nB2,10\n'),
+  });
+  await page.getByRole('button', { name: 'Import 1 variable(s)' }).click();
+  await page.getByRole('tab', { name: 'Gate' }).click();
+
+  // A gate that keeps every event, so Gate 1 is a second population to switch to.
+  await page.getByRole('button', { name: 'Rectangle' }).click();
+  const box = (await page.locator('svg.plot-overlay').boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.8);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.2, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.locator('.pop-row', { hasText: 'Gate 1' })).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Ridge' }).click();
+  const card = page.getByRole('region', { name: 'Replicates' });
+  const follow = card.getByRole('checkbox', { name: 'Same settings for all populations' });
+  await expect(follow).toBeChecked();
+  await card.getByRole('checkbox', { name: 'Dose' }).check();
+  await card.getByRole('checkbox', { name: '10', exact: true }).uncheck();
+  await expect(page.locator('svg.ridge .ridge-label')).toHaveCount(1);
+
+  // Following: the other population keeps the grouping and the hidden ridge.
+  await page.locator('.pop-row', { hasText: 'Gate 1' }).getByRole('button', { name: 'Gate 1' }).click();
+  await expect(page.locator('svg.ridge .ridge-label')).toHaveCount(1);
+  await expect(card.getByRole('checkbox', { name: 'Dose' })).toBeChecked();
+
+  // Not following: Gate 1 starts from a copy, and edits there no longer reach All events.
+  await follow.uncheck();
+  await expect(page.locator('svg.ridge .ridge-label')).toHaveCount(1);
+  await card.getByRole('button', { name: 'Show all' }).click();
+  await expect(page.locator('svg.ridge .ridge-label')).toHaveCount(2);
+  await page
+    .locator('.pop-row', { hasText: 'All events' })
+    .getByRole('button', { name: 'All events' })
+    .click();
+  await expect(page.locator('svg.ridge .ridge-label')).toHaveCount(1);
+});

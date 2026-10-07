@@ -42,6 +42,16 @@ describe('ridge layout style', () => {
     });
   });
 
+  it('loads groups saved before shared replicate settings as following', () => {
+    const ws = newWorkspace('t', { version: '0', commit: 'x', kernels: 'ts-1' });
+    ws.groups.push(newGroup('g', [], ['FSC-A']));
+    const { ridgeFollow: _f, ridgeCombine: _c, ...old } = ws.groups[0]!;
+    const saved = JSON.parse(JSON.stringify({ ...ws, groups: [old] }));
+    const g = loadWorkspace(saved).groups[0]!;
+    expect(g.ridgeFollow).toBe(true);
+    expect(g.ridgeCombine.enabled).toBe(false);
+  });
+
   it('rejects malformed colours', () => {
     expect(() => RidgeStyleSchema.parse({ color: 'blue' })).toThrow();
   });

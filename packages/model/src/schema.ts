@@ -566,6 +566,12 @@ export const GroupSchema = z.object({
   /** Grid of plots of the Plot view. */
   grid: PlotGridSchema.default({}),
   layouts: z.array(LayoutSchema),
+  /**
+   * Replicate settings of the ridge plot shared by all the group's populations while `ridgeFollow` is on.
+   * With it off, each ridge layout keeps its own `combine`.
+   */
+  ridgeCombine: RidgeCombineSchema.default({}),
+  ridgeFollow: z.boolean().default(true),
   stats: z.array(StatSpecSchema),
   /** Derived columns, grouping and export columns of the statistics table. */
   analysis: StatAnalysisSchema.default({}),

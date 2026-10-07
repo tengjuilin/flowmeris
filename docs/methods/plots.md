@@ -68,8 +68,10 @@ validated for colour-vision-deficiency separation, and populations are always al
   replicate weighs the same; an optional band shows ±SD or ±SEM (n − 1 denominator) per bin.
   *Pooled events* adds the replicates' counts, so replicates with more events weigh more. Either way
   the combined curve is then scaled to its own mode and n is the replicates' total event count.
-  Replicates without events in range are left out of the average. The setting is saved with the ridge
-  layout (`combine`); combined ridges keep their own order, colours and labels. The card lists the
+  Replicates without events in range are left out of the average. By default the settings are shared by
+  all populations of the group (`ridgeCombine`), so switching the gate keeps the same grouping, hidden
+  ridges and excluded replicates; untick *Same settings for all populations* (`ridgeFollow`) to give each
+  population its own copy, saved with its ridge layout (`combine`). Combined ridges keep their own order, colours and labels. The card lists the
   combined ridges: untick one to hide it (`combine.hidden`), or open it with ▸ and untick single
   replicates to leave them out of that ridge's curve, band and n (`combine.exclude`). Shift-click sets a range of rows.
 
