@@ -1,6 +1,8 @@
 import {
   type AxisSpec,
   type Group,
+  type RidgeCombine,
+  RidgeCombineSchema,
   type RidgeLayout,
   type RidgeStyle,
   RidgeStyleSchema,
@@ -11,11 +13,13 @@ import { CATEGORICAL } from '@flowmeris/render';
 import { formatLinear } from '@flowmeris/transforms';
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from 'react';
 import { defaultAxis } from '../lib/defaults.ts';
+import { type RidgeRow, applyOrder, comboRows } from '../lib/ridge.ts';
 import { useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
 import { NumInput } from './Inspector.tsx';
 import { usePlotForPopulation } from './PlotPanel.tsx';
 
 export const DEFAULT_RIDGE_STYLE: RidgeStyle = RidgeStyleSchema.parse({});
+export const DEFAULT_RIDGE_COMBINE: RidgeCombine = RidgeCombineSchema.parse({});
 export const DEFAULT_OVERLAP = 0.6;
 
 export const FONT_STACKS: Record<RidgeStyle['fontFamily'], string> = {
@@ -24,17 +28,9 @@ export const FONT_STACKS: Record<RidgeStyle['fontFamily'], string> = {
   mono: 'Menlo, Consolas, "DejaVu Sans Mono", monospace',
 };
 
-/** All of the group's samples in ridge order: `style.order` first, the rest in group order. */
-function orderedSampleIds(g: Group, style: RidgeStyle): string[] {
-  const inGroup = new Set(g.sampleIds);
-  const head = style.order.filter((id) => inGroup.has(id));
-  const seen = new Set(head);
-  return [...head, ...g.sampleIds.filter((id) => !seen.has(id))];
-}
-
-export function ridgeColor(style: RidgeStyle, sampleId: string, index: number): string {
+export function ridgeColor(style: RidgeStyle, ridgeId: string, index: number): string {
   return (
-    style.sampleColors[sampleId] ??
+    style.sampleColors[ridgeId] ??
     (style.colorMode === 'palette' ? CATEGORICAL[index % CATEGORICAL.length]! : style.color)
   );
 }
@@ -49,6 +45,8 @@ export function useRidge() {
   const shown = useSelectedSampleIds(group);
   const layout = group?.layouts.find((l): l is RidgeLayout => l.kind === 'ridge' && l.population === popId);
   const style = layout?.style ?? DEFAULT_RIDGE_STYLE;
+  const combine = layout?.combine ?? DEFAULT_RIDGE_COMBINE;
+  const ws = useStore((s) => s.ws);
   const overlap = layout?.overlap ?? DEFAULT_OVERLAP;
   const ch = layout?.axis.channel ?? plot?.x.channel ?? group?.channels[0] ?? '';
 
@@ -60,11 +58,26 @@ export function useRidge() {
     return group.axisDefaults[ch] ?? null;
   }, [group, plot, ch]);
 
-  const ordered = useMemo(() => {
-    if (!group) return [];
+  // Ridges of the checked samples, in display order. `allIds` also covers unchecked samples, so a
+  // reorder keeps the slots of ridges hidden by the sidebar selection.
+  const { rows, allIds } = useMemo(() => {
+    if (!group) return { rows: [] as RidgeRow[], allIds: [] as string[] };
+    const all: RidgeRow[] = combine.enabled
+      ? comboRows(ws, group.sampleIds, combine.by)
+      : group.sampleIds.map((id) => ({
+          id,
+          label: names[id] ?? ws.samples[id]?.fileName ?? id,
+          sampleIds: [id],
+        }));
+    const allIds = applyOrder(
+      all.map((r) => r.id),
+      style.order,
+    );
     const vis = new Set(shown);
-    return orderedSampleIds(group, style).filter((id) => vis.has(id));
-  }, [group, style, shown]);
+    const shownRows = combine.enabled ? comboRows(ws, shown, combine.by) : all.filter((r) => vis.has(r.id));
+    const byId = new Map(shownRows.map((r) => [r.id, r]));
+    return { rows: allIds.flatMap((id) => byId.get(id) ?? []), allIds };
+  }, [group, combine, style.order, shown, names, ws]);
 
   /** Edit the saved layout, creating it on first edit. Edits sharing `merge` coalesce into one undo step. */
   const update = useCallback(
@@ -86,6 +99,7 @@ export function useRidge() {
             overlap: DEFAULT_OVERLAP,
             norm: 'mode',
             style: structuredClone(DEFAULT_RIDGE_STYLE),
+            combine: structuredClone(DEFAULT_RIDGE_COMBINE),
           };
           fn(l, w, g);
           g.layouts.push(l);
@@ -96,7 +110,7 @@ export function useRidge() {
     [group, popId, ch, mutate],
   );
 
-  return { group, plot, layout, style, overlap, ch, axis, ordered, names, update };
+  return { group, plot, layout, style, combine, overlap, ch, axis, rows, allIds, update };
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -160,7 +174,10 @@ export function TicksEditor({
 }
 
 export function RidgeInspector() {
-  const { group, layout, style, overlap, ordered, names, update } = useRidge();
+  const { group, layout, style, combine, overlap, rows, allIds, update } = useRidge();
+  const ordered = rows.map((r) => r.id);
+  const labels = Object.fromEntries(rows.map((r) => [r.id, r.label]));
+  const current = new Set(allIds);
   if (!group) return null;
   const set = <K extends keyof RidgeStyle>(key: K, value: RidgeStyle[K], label: string, merge?: string) =>
     update(
@@ -201,11 +218,11 @@ export function RidgeInspector() {
     const rest = ordered.filter((x) => !moving.has(x));
     const at = rest.indexOf(target) + (after ? 1 : 0);
     const next = [...rest.slice(0, at), ...ordered.filter((x) => moving.has(x)), ...rest.slice(at)];
+    const vis = new Set(ordered);
+    let k = 0;
+    const full = allIds.map((id) => (vis.has(id) ? next[k++]! : id));
     update('Reorder ridges', (l) => {
-      const full = orderedSampleIds(group, l.style);
-      const vis = new Set(ordered);
-      let k = 0;
-      l.style.order = full.map((id) => (vis.has(id) ? next[k++]! : id));
+      l.style.order = [...full, ...l.style.order.filter((id) => !current.has(id))];
     });
   };
 
@@ -311,7 +328,7 @@ export function RidgeInspector() {
       </fieldset>
 
       <fieldset>
-        <legend>Samples</legend>
+        <legend>{combine.enabled ? 'Combined ridges' : 'Samples'}</legend>
         <label className="field check">
           <input
             type="checkbox"
@@ -381,7 +398,7 @@ export function RidgeInspector() {
                   className="ridge-grip"
                   draggable
                   title="Drag to reorder; click to select (⌘/Ctrl-click to add, Shift-click for a range)"
-                  aria-label={`Drag ${names[id] ?? id} to reorder`}
+                  aria-label={`Drag ${labels[id] ?? id} to reorder`}
                   onDragStart={(e) => {
                     const ids = isSel ? ordered.filter((x) => selected.has(x)) : [id];
                     if (!isSel) {
@@ -407,17 +424,17 @@ export function RidgeInspector() {
                   value={ridgeColor(style, id, i)}
                   title={
                     isSel && selected.size > 1
-                      ? `Set colour of ${selected.size} selected samples`
+                      ? `Set colour of ${selected.size} selected ridges`
                       : custom
                         ? 'Custom colour'
                         : 'Colour from the ridge settings; pick to override'
                   }
-                  aria-label={`Colour of ${names[id] ?? id}`}
+                  aria-label={`Colour of ${labels[id] ?? id}`}
                   onChange={(e) => {
                     const ids = targets(id);
                     const v = e.target.value;
                     update(
-                      'Ridge sample colour',
+                      'Ridge colour',
                       (l) => {
                         for (const x of ids) l.style.sampleColors[x] = v;
                       },
@@ -428,11 +445,11 @@ export function RidgeInspector() {
                 <input
                   type="text"
                   value={style.sampleLabels[id] ?? ''}
-                  placeholder={names[id] ?? id}
-                  aria-label={`Label of ${names[id] ?? id}`}
+                  placeholder={labels[id] ?? id}
+                  aria-label={`Label of ${labels[id] ?? id}`}
                   onChange={(e) =>
                     update(
-                      'Ridge sample label',
+                      'Ridge label',
                       (l) => {
                         if (e.target.value) l.style.sampleLabels[id] = e.target.value;
                         else delete l.style.sampleLabels[id];
@@ -446,10 +463,10 @@ export function RidgeInspector() {
                     type="button"
                     className="icon"
                     title="Reset colour"
-                    aria-label={`Reset colour of ${names[id] ?? id}`}
+                    aria-label={`Reset colour of ${labels[id] ?? id}`}
                     onClick={() => {
                       const ids = targets(id);
-                      update('Reset ridge sample colour', (l) => {
+                      update('Reset ridge colour', (l) => {
                         for (const x of ids) delete l.style.sampleColors[x];
                       });
                     }}
@@ -469,7 +486,7 @@ export function RidgeInspector() {
             type="button"
             onClick={() =>
               update('Reverse ridge order', (l) => {
-                l.style.order = orderedSampleIds(group, l.style).reverse();
+                l.style.order = [...allIds].reverse().concat(l.style.order.filter((id) => !current.has(id)));
               })
             }
           >
@@ -477,22 +494,40 @@ export function RidgeInspector() {
           </button>
           <button
             type="button"
-            disabled={!style.order.length}
-            onClick={() => set('order', [], 'Reset ridge order')}
+            disabled={!style.order.some((id) => current.has(id))}
+            onClick={() =>
+              set(
+                'order',
+                style.order.filter((id) => !current.has(id)),
+                'Reset ridge order',
+              )
+            }
           >
             Reset order
           </button>
           <button
             type="button"
-            disabled={!Object.keys(style.sampleColors).length}
-            onClick={() => set('sampleColors', {}, 'Reset ridge colours')}
+            disabled={!Object.keys(style.sampleColors).some((id) => current.has(id))}
+            onClick={() =>
+              set(
+                'sampleColors',
+                Object.fromEntries(Object.entries(style.sampleColors).filter(([id]) => !current.has(id))),
+                'Reset ridge colours',
+              )
+            }
           >
             Reset colours
           </button>
           <button
             type="button"
-            disabled={!Object.keys(style.sampleLabels).length}
-            onClick={() => set('sampleLabels', {}, 'Reset ridge labels')}
+            disabled={!Object.keys(style.sampleLabels).some((id) => current.has(id))}
+            onClick={() =>
+              set(
+                'sampleLabels',
+                Object.fromEntries(Object.entries(style.sampleLabels).filter(([id]) => !current.has(id))),
+                'Reset ridge labels',
+              )
+            }
           >
             Reset labels
           </button>
@@ -578,5 +613,109 @@ export function RidgeInspector() {
         </button>
       </fieldset>
     </aside>
+  );
+}
+
+/** Card below the population tree: combine replicate samples into one ridge per combination of variables. */
+export function RidgeCombinePanel() {
+  const variables = useStore((s) => s.ws.variables);
+  const { group, combine, rows, update } = useRidge();
+  const names = useSampleNames(group);
+  if (!group) return null;
+  const edit = (label: string, fn: (c: RidgeCombine) => void) => update(label, (l) => fn(l.combine));
+  const singles = rows.filter((r) => r.sampleIds.length === 1).length;
+  return (
+    <section className="ridge-combine" aria-label="Replicates">
+      <div className="pane-title">Replicates</div>
+      <label className="field check">
+        <input
+          type="checkbox"
+          checked={combine.enabled}
+          onChange={(e) => edit('Toggle combined replicates', (c) => void (c.enabled = e.target.checked))}
+        />
+        Combine replicates
+      </label>
+      {variables.length === 0 ? (
+        <p className="muted small">
+          Add sample variables (condition, dose…) in the Metadata tab; samples sharing their values are
+          combined into one ridge.
+        </p>
+      ) : (
+        <div className="ridge-combine-by">
+          <span className="muted small">Samples sharing</span>
+          {variables.map((v) => (
+            <label key={v.id} className="field check">
+              <input
+                type="checkbox"
+                checked={combine.by.includes(v.id)}
+                onChange={(e) =>
+                  edit('Change replicate grouping', (c) => {
+                    c.by = e.target.checked
+                      ? variables.map((x) => x.id).filter((id) => id === v.id || c.by.includes(id))
+                      : c.by.filter((x) => x !== v.id);
+                    c.enabled = true;
+                  })
+                }
+              />
+              {v.name}
+            </label>
+          ))}
+        </div>
+      )}
+      <label className="field">
+        Combine by
+        <select
+          value={combine.method}
+          disabled={!combine.enabled}
+          onChange={(e) =>
+            edit(
+              'Replicate combining method',
+              (c) => void (c.method = e.target.value as RidgeCombine['method']),
+            )
+          }
+        >
+          <option value="mean">Average of replicate curves</option>
+          <option value="pool">Pooled events</option>
+        </select>
+      </label>
+      <p className="muted small">
+        {combine.method === 'mean'
+          ? 'Each replicate is normalised to unit area and the curves averaged: every replicate weighs the same.'
+          : 'All replicates’ events are counted together: replicates with more events weigh more.'}
+      </p>
+      {combine.method === 'mean' && (
+        <label className="field">
+          Spread band
+          <select
+            value={combine.band}
+            disabled={!combine.enabled}
+            onChange={(e) =>
+              edit('Replicate spread band', (c) => void (c.band = e.target.value as RidgeCombine['band']))
+            }
+          >
+            <option value="none">None</option>
+            <option value="sd">± SD</option>
+            <option value="sem">± SEM</option>
+          </select>
+        </label>
+      )}
+      {combine.enabled && (
+        <>
+          <ul className="ridge-combine-list small">
+            {rows.map((r) => (
+              <li key={r.id} title={r.sampleIds.map((id) => names[id] ?? id).join('\n')}>
+                <span>{r.label}</span>
+                <span className="muted">
+                  {r.sampleIds.length} {r.sampleIds.length === 1 ? 'sample' : 'samples'}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {singles > 0 && singles === rows.length && (
+            <p className="muted small">No two checked samples share these values, so nothing is combined.</p>
+          )}
+        </>
+      )}
+    </section>
   );
 }

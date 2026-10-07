@@ -308,7 +308,7 @@ export const RidgeStyleSchema = z.object({
   /** 'single': every ridge uses `color`; 'palette': ridges cycle the categorical palette. */
   colorMode: z.enum(['single', 'palette']).default('single'),
   color: HexColor.default('#2a78d6'),
-  /** Per-sample fill colours, overriding `colorMode`. */
+  /** Per-ridge fill colours, overriding `colorMode`. Keyed by ridge id (see `order`). */
   sampleColors: z.record(HexColor).default({}),
   fillOpacity: Num.min(0).max(1).default(0.55),
   /** Outline colour; omitted = the plot background. */
@@ -319,9 +319,12 @@ export const RidgeStyleSchema = z.object({
   /** Plot width in px; omitted = fit the view. */
   width: Num.min(300).max(10000).optional(),
   fontFamily: z.enum(['sans', 'serif', 'mono']).default('sans'),
-  /** Display order of samples; samples not listed follow in group order. */
+  /**
+   * Display order of ridges; ridges not listed follow in default order. A ridge id is a sample id, or
+   * `combo:<JSON of the grouping variables' values>` for combined replicates (see `RidgeCombineSchema`).
+   */
   order: z.array(Id).default([]),
-  /** Per-sample label text, overriding the short sample name. */
+  /** Per-ridge label text, overriding the short sample name or the combined values. Keyed by ridge id. */
   sampleLabels: z.record(z.string()).default({}),
   showLabels: z.boolean().default(true),
   showCounts: z.boolean().default(true),
@@ -338,6 +341,21 @@ export const RidgeStyleSchema = z.object({
 });
 export type RidgeStyle = z.infer<typeof RidgeStyleSchema>;
 
+/** Combining replicate samples into one ridge per combination of sample-variable values. */
+export const RidgeCombineSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** Variable ids; samples sharing all their values form one ridge. Empty = every sample in one ridge. */
+  by: z.array(Id).default([]),
+  /**
+   * 'mean': each replicate's histogram is normalised to unit area and the curves are averaged, so every
+   * replicate weighs the same. 'pool': the replicates' events are counted together.
+   */
+  method: z.enum(['mean', 'pool']).default('mean'),
+  /** Spread band around the mean curve (method 'mean' only). */
+  band: z.enum(['none', 'sd', 'sem']).default('none'),
+});
+export type RidgeCombine = z.infer<typeof RidgeCombineSchema>;
+
 export const LayoutSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('tiles'), id: Id, plotId: Id, columns: z.number().int().min(1).max(16) }),
   z.object({
@@ -348,6 +366,7 @@ export const LayoutSchema = z.discriminatedUnion('kind', [
     overlap: Num.min(0).max(0.95),
     norm: z.enum(['mode', 'area']),
     style: RidgeStyleSchema.default({}),
+    combine: RidgeCombineSchema.default({}),
   }),
 ]);
 export type Layout = z.infer<typeof LayoutSchema>;

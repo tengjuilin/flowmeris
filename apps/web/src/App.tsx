@@ -10,7 +10,7 @@ import { PlotGridView } from './components/PlotGridView.tsx';
 import { PlotPanel, drill } from './components/PlotPanel.tsx';
 import { PopulationTree } from './components/PopulationTree.tsx';
 import { RefPlots } from './components/RefPlots.tsx';
-import { RidgeInspector } from './components/RidgeInspector.tsx';
+import { RidgeCombinePanel, RidgeInspector } from './components/RidgeInspector.tsx';
 import { Sidebar } from './components/Sidebar.tsx';
 import { StatsView } from './components/StatsView.tsx';
 import { pool } from './engine-client/pool.ts';
@@ -23,10 +23,10 @@ const VIEWS: { id: View; label: string }[] = [
   { id: 'gate', label: 'Gate' },
   { id: 'plot', label: 'Plot' },
   { id: 'tiles', label: 'Tiles' },
-  { id: 'ridge', label: 'Ridge' },
   { id: 'path', label: 'Gating path' },
   { id: 'metadata', label: 'Metadata' },
   { id: 'stats', label: 'Statistics' },
+  { id: 'ridge', label: 'Ridge' },
   { id: 'charts', label: 'Charts' },
   { id: 'compensation', label: 'Compensation' },
   { id: 'samples', label: 'Samples' },
@@ -319,6 +319,7 @@ export function App() {
                   <RidgeView />
                   <div className="plot-side">
                     <PopulationTree />
+                    <RidgeCombinePanel />
                   </div>
                 </div>
               )}

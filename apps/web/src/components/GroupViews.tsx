@@ -8,6 +8,7 @@ import { defaultAxis } from '../lib/defaults.ts';
 import { download, safeName } from '../lib/download.ts';
 import { standaloneSvg } from '../lib/exportPlot.ts';
 import { scaleFor } from '../lib/geometry.ts';
+import { type RidgeCurve, combineCounts } from '../lib/ridge.ts';
 import { contextFor, useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
 import { PlotCanvas } from './PlotCanvas.tsx';
 import {
@@ -191,14 +192,16 @@ export function TilesView() {
 }
 
 // ---------------------------------------------------------------------------
-// Ridge plot: one mode-normalised histogram per sample on a shared x axis.
+// Ridge plot: one mode-normalised histogram per sample, or per set of combined replicates, on a
+// shared x axis.
 // ---------------------------------------------------------------------------
 
 export function RidgeView() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
   const mutate = useStore((s) => s.mutate);
-  const { group, plot, style, overlap, ch, axis, ordered, names, update } = useRidge();
+  const { group, plot, style, combine, overlap, ch, axis, rows, update } = useRidge();
+  const sampleIds = useMemo(() => rows.flatMap((r) => r.sampleIds), [rows]);
   const box = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const { width } = useSize(box);
@@ -215,25 +218,26 @@ export function RidgeView() {
     () =>
       group && axis
         ? JSON.stringify([
-            [...ordered].sort().map((s) => lineageKey(ws, group, s, ui.popId)),
+            [...sampleIds].sort().map((s) => lineageKey(ws, group, s, ui.popId)),
             axis,
             ws.transforms[axis.transform],
           ])
         : '',
-    [group, ordered, axis, ws, ui.popId],
+    [group, sampleIds, axis, ws, ui.popId],
   );
   useEffect(() => {
     if (!group || !axis) return;
     let live = true;
     const ctx = contextFor(ws, group);
+    // Counts, so replicates can be combined; each ridge is scaled to its mode below.
     const style = {
-      ...(plot?.style ?? { histBins: 256, histNorm: 'mode' as const, histSmooth: true }),
+      ...(plot?.style ?? { histBins: 256, histNorm: 'count' as const, histSmooth: true }),
       histBins: 256,
-      histNorm: 'mode' as const,
+      histNorm: 'count' as const,
       histSmooth: true,
     };
     setData({});
-    for (const sid of ordered) {
+    for (const sid of sampleIds) {
       if (ui.missing[sid]) continue;
       pool
         .histogram(ctx, sid, ui.popId, axis, style as PlotSpec['style'])
@@ -245,8 +249,20 @@ export function RidgeView() {
     };
   }, [key]);
 
+  // A combined ridge is drawn once all its replicates (other than missing files) have loaded.
+  const curves = useMemo(() => {
+    const out: Record<string, RidgeCurve | null> = {};
+    for (const r of rows) {
+      const ids = r.sampleIds.filter((id) => !ui.missing[id]);
+      const hs = ids.flatMap((id) => data[id] ?? []);
+      out[r.id] =
+        hs.length && hs.length === ids.length ? combineCounts(hs, combine.method, combine.band) : null;
+    }
+    return out;
+  }, [rows, data, ui.missing, combine.method, combine.band]);
+
   if (!group || !axis) return <div className="empty">Select a group.</div>;
-  const n = Math.max(1, ordered.length);
+  const n = Math.max(1, rows.length);
   const labelW = style.showLabels ? style.labelWidth : 20;
   const W = style.width ?? Math.max(400, width - 24);
   const pw = Math.max(50, W - labelW - 20);
@@ -301,8 +317,10 @@ export function RidgeView() {
         </label>
         <span className="muted">
           Population: {pop?.name}
-          {ordered.length < group.sampleIds.length &&
-            ` · ${ordered.length} of ${group.sampleIds.length} samples (sidebar selection)`}
+          {sampleIds.length < group.sampleIds.length &&
+            ` · ${sampleIds.length} of ${group.sampleIds.length} samples (sidebar selection)`}
+          {combine.enabled &&
+            ` · replicates combined (${combine.method === 'mean' ? 'average of curves' : 'pooled events'})`}
         </span>
         <div className="spacer" />
         <button
@@ -329,29 +347,38 @@ export function RidgeView() {
         style={{ fontFamily: FONT_STACKS[style.fontFamily] }}
       >
         <rect width={W} height={H} fill="var(--surface)" />
-        {ordered.map((sid, i) => {
-          const h = data[sid];
+        {rows.map((r, i) => {
+          const h = curves[r.id];
           const base = 20 + rowH * i + amp;
-          const s = ws.samples[sid];
+          const Y = (v: number) => base - v * amp;
           let d = '';
+          let band = '';
           if (h) {
+            const last = h.centers.length - 1;
             d = `M${X(h.centers[0]!)},${base}`;
-            for (let k = 0; k < h.centers.length; k++)
-              d += `L${X(h.centers[k]!)},${base - h.heights[k]! * amp}`;
-            d += `L${X(h.centers[h.centers.length - 1]!)},${base}Z`;
+            for (let k = 0; k <= last; k++) d += `L${X(h.centers[k]!)},${Y(h.heights[k]!)}`;
+            d += `L${X(h.centers[last]!)},${base}Z`;
+            if (h.band) {
+              band = `M${X(h.centers[0]!)},${Y(h.band.hi[0]!)}`;
+              for (let k = 1; k <= last; k++) band += `L${X(h.centers[k]!)},${Y(h.band.hi[k]!)}`;
+              for (let k = last; k >= 0; k--) band += `L${X(h.centers[k]!)},${Y(h.band.lo[k]!)}`;
+              band += 'Z';
+            }
           }
+          const missing = r.sampleIds.every((id) => ui.missing[id]);
+          const reps = r.sampleIds.length > 1 || combine.enabled ? `${r.sampleIds.length}×, ` : '';
           const count = !style.showCounts
             ? ''
             : h
-              ? ` (n=${h.eventsPlotted.toLocaleString()})`
-              : ui.missing[sid]
+              ? ` (${reps}n=${h.events.toLocaleString()})`
+              : missing
                 ? ' (missing)'
                 : '';
-          const custom = style.sampleLabels[sid];
-          const name =
-            custom ?? truncate(names[sid] ?? s?.fileName ?? '', Math.max(4, labelChars - count.length));
+          const custom = style.sampleLabels[r.id];
+          const name = custom ?? truncate(r.label, Math.max(4, labelChars - count.length));
+          const color = ridgeColor(style, r.id, i);
           return (
-            <g key={sid}>
+            <g key={r.id}>
               {style.showLabels && (
                 <text
                   x={labelW - 8}
@@ -360,15 +387,16 @@ export function RidgeView() {
                   className="ridge-label"
                   style={{ fontSize: style.labelFontSize }}
                 >
-                  <title>{s?.relativePath}</title>
+                  <title>{r.sampleIds.map((id) => ws.samples[id]?.relativePath).join('\n')}</title>
                   {name}
                   {count}
                 </text>
               )}
+              {band && <path d={band} fill={color} fillOpacity={style.fillOpacity * 0.45} stroke="none" />}
               {h && (
                 <path
                   d={d}
-                  fill={ridgeColor(style, sid, i)}
+                  fill={color}
                   fillOpacity={style.fillOpacity}
                   stroke={style.strokeColor ?? 'var(--surface)'}
                   strokeWidth={style.strokeWidth}
@@ -404,7 +432,19 @@ export function RidgeView() {
       </svg>
       <p className="muted small">
         Each curve is a histogram normalised to its own mode (smoothed, σ = 1.5 bins); n is the number of
-        events in the population. Customise colours, labels, order and axes in the panel on the right.
+        events in the population.{' '}
+        {combine.enabled &&
+          `Combined ridges ${
+            combine.method === 'mean'
+              ? 'average the replicates’ unit-area histograms'
+              : 'pool the replicates’ events'
+          }; n sums the replicates${
+            combine.method === 'mean' && combine.band !== 'none'
+              ? `; the band is ±${combine.band.toUpperCase()} per bin`
+              : ''
+          }. `}
+        Combine replicates in the panel below the populations; customise colours, labels, order and axes in
+        the panel on the right.
       </p>
     </div>
   );

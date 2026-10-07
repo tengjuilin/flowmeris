@@ -61,6 +61,15 @@ validated for colour-vision-deficiency separation, and populations are always al
   row height, sample order and labels, tick positions and labels, axis title, font and width. These are
   saved per group and population in the workspace (`layouts`, kind `ridge`); the SVG export inlines
   them.
+- **Ridge, combined replicates (M-PLOT-RIDGE-COMBINE):** the *Replicates* card below the population
+  tree combines the checked samples sharing the values of the chosen sample variables (e.g. condition
+  and dose) into one ridge, sorted by those values. *Average of replicate curves* normalises each
+  replicate's smoothed histogram to unit area over the displayed range and averages them, so every
+  replicate weighs the same; an optional band shows ±SD or ±SEM (n − 1 denominator) per bin.
+  *Pooled events* adds the replicates' counts, so replicates with more events weigh more. Either way
+  the combined curve is then scaled to its own mode and n is the replicates' total event count.
+  Replicates without events in range are left out of the average. The setting is saved with the ridge
+  layout (`combine`); combined ridges keep their own order, colours and labels.
 
 ## Export (M-EXPORT-PLOT)
 

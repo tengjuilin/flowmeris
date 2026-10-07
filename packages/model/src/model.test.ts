@@ -32,6 +32,7 @@ describe('ridge layout style', () => {
     const loaded = loadWorkspace(JSON.parse(JSON.stringify(ws)));
     const l = loaded.groups[0]!.layouts[0]!;
     expect(l.kind === 'ridge' && l.style.fillOpacity).toBe(0.55);
+    expect(l.kind === 'ridge' && l.combine).toEqual({ enabled: false, by: [], method: 'mean', band: 'none' });
   });
 
   it('rejects malformed colours', () => {
