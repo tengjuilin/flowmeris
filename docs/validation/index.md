@@ -1,6 +1,6 @@
 # Validation
 
-flowmeris is tested against independent reference implementations. All tests run in CI on every change
+Flowmeris is tested against independent reference implementations. All tests run in CI on every change
 (`pnpm test`).
 
 ## Reference implementations
@@ -51,7 +51,7 @@ $|a-b| \le \text{abs} + \text{rel}\cdot\max(|a|,|b|)$.
   round differently for some inputs. An event lying within 10⁻¹⁶ of a gate boundary could in principle be
   classified differently; none is in the compliance data.
 - **FlowJo biexponential** is not Gating-ML logicle ([Transforms](../methods/transforms)).
-- **FlowJo geometric mean** is computed in display space; flowmeris uses positive values only
+- **FlowJo geometric mean** is computed in display space; Flowmeris uses positive values only
   ([Statistics](../methods/statistics)).
 - **Spider gates** exported to Gating-ML are approximated by polygons that agree everywhere except
   exactly on the rays.

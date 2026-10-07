@@ -1,6 +1,6 @@
 # Methods
 
-Every computation in flowmeris has a stable **method ID** (e.g. `M-TR-LOGICLE`). Method IDs appear in
+Every computation in Flowmeris has a stable **method ID** (e.g. `M-TR-LOGICLE`). Method IDs appear in
 source comments, tests and exports, so a number in a results table can be traced to the exact
 definition used.
 

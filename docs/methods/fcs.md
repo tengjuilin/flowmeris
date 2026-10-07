@@ -2,7 +2,7 @@
 
 Implementation: `packages/fcs` (`parse.ts`, `linearize.ts`, `write.ts`). Tests: `packages/fcs/src/fcs.test.ts`.
 
-flowmeris reads FCS 2.0, 3.0, 3.1 and 3.2 files (Spidlen et al. 2010, 2021), including files with
+Flowmeris reads FCS 2.0, 3.0, 3.1 and 3.2 files (Spidlen et al. 2010, 2021), including files with
 several datasets chained by `$NEXTDATA`. Each dataset becomes one *sample*.
 
 ## M-FCS-HEADER — HEADER segment
@@ -65,7 +65,7 @@ with $R$ = `$PnR`, $G$ = `$PnG` (1 if absent, and forced to 1 for the time chann
 $\tau$ = `$TIMESTEP`. If $f_1 > 0$ and $f_2 = 0$, $f_2 = 1$ is used (`Q-PNE-ZERO-F2`).
 
 The operation order and float64 arithmetic match FlowKit's `Sample` pre-processing. FCS 3.2 forbids
-`$PnG` on non-integer data and the combination of gain with log amplification is unusual; flowmeris
+`$PnG` on non-integer data and the combination of gain with log amplification is unusual; Flowmeris
 applies the gain as FlowKit does and records `Q-PNG-NONINT-32` / `Q-PNG-WITH-LOG` so the decision is
 visible.
 

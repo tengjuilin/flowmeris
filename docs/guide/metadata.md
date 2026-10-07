@@ -53,7 +53,7 @@ Two layouts are understood:
 
 **One row per sample.** A header row, then one row per sample. Choose the column that identifies the
 sample and what it holds — file name, file name without extension, the sample's display name, or the
-well — flowmeris suggests the column and kind that match the most samples and shows how many matched.
+well — Flowmeris suggests the column and kind that match the most samples and shows how many matched.
 Every other column becomes a new variable (type guessed from its values) or fills an existing one.
 
 | well | dose | condition | replicate |

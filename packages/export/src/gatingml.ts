@@ -16,7 +16,7 @@ import {
  * Population ids become Gating-ML gate/quadrant ids, so parent references
  * follow the population tree. Spider gates have no Gating-ML equivalent and
  * are written as four PolygonGates (one per region; the outer vertices lie far
- * outside any plausible data range) plus a flowmeris extension element that
+ * outside any plausible data range) plus a Flowmeris extension element that
  * preserves the exact definition for re-import.
  */
 
@@ -178,6 +178,6 @@ export function exportGatingML(ws: Workspace, g: Group, opts: GmlExportOptions):
       head += '  </transforms:spectrumMatrix>\n';
     }
   }
-  const info = `  <data-type:custom_info>Exported by flowmeris ${esc(opts.appVersion)}; group "${esc(g.name)}"${opts.sampleId ? `; effective gates for sample ${esc(ws.samples[opts.sampleId]?.fileName ?? opts.sampleId)} (sha256 ${ws.samples[opts.sampleId]?.sha256 ?? ''})` : '; group template'}.</data-type:custom_info>\n`;
+  const info = `  <data-type:custom_info>Exported by Flowmeris ${esc(opts.appVersion)}; group "${esc(g.name)}"${opts.sampleId ? `; effective gates for sample ${esc(ws.samples[opts.sampleId]?.fileName ?? opts.sampleId)} (sha256 ${ws.samples[opts.sampleId]?.sha256 ?? ''})` : '; group template'}.</data-type:custom_info>\n`;
   return `<?xml version="1.0" encoding="UTF-8"?>\n<gating:Gating-ML ${NS}>\n${info}${head}${body}</gating:Gating-ML>\n`;
 }

@@ -1,7 +1,7 @@
 ---
 layout: home
 hero:
-  name: flowmeris
+  name: Flowmeris
   text: Flow cytometry analysis in your browser
   tagline: Group-wide gating, statistics and publication plots — with every method documented and validated.
   actions:

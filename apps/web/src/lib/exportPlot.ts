@@ -96,7 +96,7 @@ async function buildSvg(h: PlotHandle, plot: PlotSpec, dpi: number): Promise<str
   const meta = document.createElementNS('http://www.w3.org/2000/svg', 'metadata');
   const st = useStore.getState();
   meta.textContent = JSON.stringify({
-    generator: `flowmeris ${APP_INFO.version} (${APP_INFO.commit})`,
+    generator: `Flowmeris ${APP_INFO.version} (${APP_INFO.commit})`,
     sample: st.ws.samples[st.ui.sampleId ?? '']?.sha256,
     plot,
     transforms: {

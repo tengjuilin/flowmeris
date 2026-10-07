@@ -16,7 +16,7 @@ Implementation: `packages/export`. Tests: `packages/export/src/export.test.ts`.
 | `value`, `n_events`, `n_excluded` | result, number of values used, values excluded (NaN; ≤ 0 for geometric mean) |
 | `gate_overridden_on_path`, `overridden_gate_ids` | whether this sample used an overridden gate anywhere on the population's path |
 | `compensation` | `none`, `FCS $SPILLOVER (per sample)` or the matrix name |
-| `app_version` | flowmeris version |
+| `app_version` | Flowmeris version |
 
 Numbers are written with JavaScript's shortest round-trip formatting, so no precision is lost.
 **Wide CSV** has one row per sample (file, hash, sample variables) and one column per population ×

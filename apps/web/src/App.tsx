@@ -102,7 +102,7 @@ function Header() {
         <span className="logo" aria-hidden="true">
           ●
         </span>
-        flowmeris
+        Flowmeris
       </div>
       <input
         className="ws-name"
@@ -218,7 +218,7 @@ function Welcome() {
         <FolderButtons />
       </div>
       <p className="muted small">
-        flowmeris {APP_INFO.version} ({APP_INFO.commit}). Methods are documented with references and validated
+        Flowmeris {APP_INFO.version} ({APP_INFO.commit}). Methods are documented with references and validated
         against FlowKit and the ISAC Gating-ML 2.0 compliance suite.
       </p>
     </div>

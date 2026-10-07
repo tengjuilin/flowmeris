@@ -1,6 +1,6 @@
 # Getting started
 
-1. **[Open flowmeris](../app/){target="_self"}** in a current Chromium-based browser, Firefox or Safari. Nothing is installed or uploaded.
+1. **[Open Flowmeris](../app/){target="_self"}** in a current Chromium-based browser, Firefox or Safari. Nothing is installed or uploaded.
 2. **Add a folder** of `.fcs` (or `.lmd`) files with *Add folder…*, or drag the folder onto the page.
    Each folder becomes a **group**. Files are hashed (SHA-256), parsed and stored in the browser's private
    storage. Files with several datasets give one sample per dataset.

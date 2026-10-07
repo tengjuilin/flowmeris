@@ -211,11 +211,11 @@ export class WorkspaceVersionError extends Error {}
 export function loadWorkspace(json: unknown): Workspace {
   if (typeof json !== 'object' || json === null) throw new WorkspaceVersionError('Not a workspace object');
   const doc = json as { schema?: unknown; schemaVersion?: unknown };
-  if (doc.schema !== 'flowmeris.workspace') throw new WorkspaceVersionError('Not a flowmeris workspace file');
+  if (doc.schema !== 'flowmeris.workspace') throw new WorkspaceVersionError('Not a Flowmeris workspace file');
   if (typeof doc.schemaVersion !== 'number') throw new WorkspaceVersionError('Missing schemaVersion');
   if (doc.schemaVersion > SCHEMA_VERSION) {
     throw new WorkspaceVersionError(
-      `This workspace uses schema v${doc.schemaVersion}; this build of flowmeris understands up to v${SCHEMA_VERSION}. Please update flowmeris.`,
+      `This workspace uses schema v${doc.schemaVersion}; this build of Flowmeris understands up to v${SCHEMA_VERSION}. Please update Flowmeris.`,
     );
   }
   // Migrations v(n) → v(n+1) are chained here as the schema evolves.

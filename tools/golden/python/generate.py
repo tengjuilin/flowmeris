@@ -1,5 +1,5 @@
 """
-Generate golden reference fixtures for flowmeris from FlowKit (Gating-ML 2.0 compliant) and NumPy.
+Generate golden reference fixtures for Flowmeris from FlowKit (Gating-ML 2.0 compliant) and NumPy.
 
 Usage (from repo root):
     uv run --project tools/golden/python python tools/golden/python/generate.py

@@ -1,4 +1,4 @@
-# flowmeris
+# Flowmeris
 
 Flow cytometry analysis that runs entirely in the browser. You load a folder of FCS files as a group,
 gate them with one shared hierarchy (with per-sample adjustments), plot them, and export statistics,

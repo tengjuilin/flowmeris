@@ -4,7 +4,7 @@ import { defineConfig } from 'vitepress';
 // The docs are the site's landing page; the app is served beside them at <base>app/.
 // DOCS_BASE overrides the base, e.g. "/flowmeris/" on GitHub Pages.
 export default defineConfig({
-  title: 'flowmeris',
+  title: 'Flowmeris',
   description: 'Client-side flow cytometry analysis — user guide, methods and validation',
   base: process.env.DOCS_BASE ?? '/',
   cleanUrls: false,

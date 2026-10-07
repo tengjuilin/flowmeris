@@ -33,7 +33,7 @@ and is insensitive to outliers.
 
 ::: warning Geometric mean differs between tools
 FlowJo computes the geometric mean "in graph space" so that it is defined for zero and negative values.
-flowmeris uses the textbook definition on positive values and reports how many values were excluded.
+Flowmeris uses the textbook definition on positive values and reports how many values were excluded.
 For compensated data with many non-positive values, prefer the median.
 :::
 

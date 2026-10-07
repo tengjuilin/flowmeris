@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /**
- * flowmeris workspace document, schema version 1.
+ * Flowmeris workspace document, schema version 1.
  *
  * The workspace is plain JSON. Every analysis decision (compensation,
  * transforms, gates, per-sample overrides, plots, statistics) is stored here so
