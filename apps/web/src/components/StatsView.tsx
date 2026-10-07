@@ -11,7 +11,7 @@ import {
   populationPath,
 } from '@flowmeris/model';
 import { type Cell, type ColumnDef, EXPR_FUNCTIONS, type Table, tableRows } from '@flowmeris/table';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { download, safeName } from '../lib/download.ts';
 import { type StatColumn, useAnalysisTable } from '../lib/statsTable.ts';
@@ -491,6 +491,17 @@ function GroupByPanel({ group }: { group: Group }) {
 
 function ColumnsPicker({ group, table }: { group: Group; table: Table }) {
   const edit = useGroupMutate(group.id);
+  const menu = useRef<HTMLDetailsElement>(null);
+  const [open, setOpen] = useState(false);
+  // Close when clicking anywhere outside the card.
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => {
+      if (menu.current && !menu.current.contains(e.target as Node)) menu.current.open = false;
+    };
+    document.addEventListener('pointerdown', away, true);
+    return () => document.removeEventListener('pointerdown', away, true);
+  }, [open]);
   const selected = group.analysis.exportColumns;
   const on = new Set(selected ?? table.columns.map((c) => c.key));
   const set = (keys: string[] | undefined) =>
@@ -517,7 +528,11 @@ function ColumnsPicker({ group, table }: { group: Group; table: Table }) {
   }
   const n = table.columns.filter((c) => on.has(c.key)).length;
   return (
-    <details className="overlay-picker">
+    <details
+      ref={menu}
+      className="overlay-picker"
+      onToggle={(e) => setOpen(e.currentTarget.open)}
+    >
       <summary title="Columns included in the CSV (table) export">
         Columns ({n}/{table.columns.length})
       </summary>
