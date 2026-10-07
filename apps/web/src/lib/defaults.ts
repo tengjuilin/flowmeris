@@ -38,7 +38,7 @@ export function groupSample(ws: Workspace, g: Group): Sample | undefined {
 
 /**
  * Default axis for a channel (docs/guide/axes.md): scatter channels linear over
- * [0, $PnR] and time channels over [0, $PnR · $TIMESTEP]; fluorescence channels logicle with T = $PnR (min
+ * [0, $PnR] and time channels over [0, largest time in the data]; fluorescence channels logicle with T = $PnR (min
  * 1024), W = 0.5, M = 4.5, A = 0. All map to display range [0, 1].
  */
 export type ScaleKind = 'linear' | 'log' | 'logicle' | 'arcsinh';
@@ -68,22 +68,34 @@ export function transformOfKind(k: ScaleKind, top: number): Transform {
   return asinhDefFromCofactor(150, top);
 }
 
-export function defaultAxis(ws: Workspace, g: Group, channel: string): AxisSpec {
-  const existing = g.axisDefaults[channel];
-  if (existing && ws.transforms[existing.transform]) return existing;
+/** The built-in axis for a channel, ignoring any scale the user has since set as the group's default. */
+export function factoryAxis(ws: Workspace, g: Group, channel: string): AxisSpec {
   const s = groupSample(ws, g);
   const ch = s?.channels.find((c) => c.pnn === channel);
   let top = Math.max(ch?.pnr ?? 262144, 1);
   if (ch?.kind === 'time') {
-    // Time values are loaded as counts × $TIMESTEP (seconds), so $PnR must be scaled too.
+    // Time values are seconds (counts × $TIMESTEP): fit the largest time in the group's samples,
+    // else scale $PnR the same way.
+    let max = 0;
+    for (const id of g.sampleIds) {
+      const m = ws.samples[id]?.channels.find((c) => c.pnn === channel)?.dataMax;
+      if (m !== undefined && m > max) max = m;
+    }
     const step = Number(s?.keywords.$TIMESTEP?.trim());
-    if (Number.isFinite(step) && step > 0) top = Math.max(top * step, Number.MIN_VALUE);
+    if (max > 0) top = max;
+    else if (Number.isFinite(step) && step > 0) top = Math.max(top * step, Number.MIN_VALUE);
   }
   let t: Transform;
   if (!ch || ch.kind === 'scatter' || ch.kind === 'time' || ch.kind === 'other')
     t = { kind: 'flin', T: top, A: 0 };
   else t = { kind: 'logicle', T: Math.max(top, 1024), W: 0.5, M: 4.5, A: 0 };
-  const axis: AxisSpec = { channel, comp: 'group', transform: registerTransform(ws, t), range: [0, 1] };
+  return { channel, comp: 'group', transform: registerTransform(ws, t), range: [0, 1] };
+}
+
+export function defaultAxis(ws: Workspace, g: Group, channel: string): AxisSpec {
+  const existing = g.axisDefaults[channel];
+  if (existing && ws.transforms[existing.transform]) return existing;
+  const axis = factoryAxis(ws, g, channel);
   g.axisDefaults[channel] = axis;
   return axis;
 }

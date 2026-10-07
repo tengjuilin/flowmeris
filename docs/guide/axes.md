@@ -1,6 +1,6 @@
 # Axes and scales
 
-Default scales are linear for scatter channels ($T$ = `$PnR`) and time channels ($T$ = `$PnR` · `$TIMESTEP`, i.e. seconds) and **logicle** ($W = 0.5$, $M = 4.5$, $A = 0$,
+Default scales are linear for scatter channels ($T$ = `$PnR`) and time channels ($T$ = the largest time in the group's samples, in seconds) and **logicle** ($W = 0.5$, $M = 4.5$, $A = 0$,
 $T$ = `$PnR`) for fluorescence channels. In the inspector each axis offers:
 
 - **Linear**: top $T$ and negative range $A$.

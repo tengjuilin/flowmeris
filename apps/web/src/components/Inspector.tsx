@@ -14,8 +14,10 @@ import { useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { deleteGate, promoteOverride, revertOverride, setGateGeometry } from '../lib/analysis.ts';
 import {
+  DEFAULT_STYLE,
   SCALE_KINDS,
   type ScaleKind,
+  factoryAxis,
   registerTransform,
   scaleKindOf,
   transformOfKind,
@@ -79,6 +81,16 @@ function AxisEditor({ which, plot }: { which: 'x' | 'y'; plot: PlotSpec }) {
       g.axisDefaults[a.channel] = { ...a };
     });
   };
+  const reset = () =>
+    mutate('Reset axis', (w) => {
+      const g = w.groups.find((x) => x.id === group.id)!;
+      const p = g.plots.find((x) => x.id === plot.id)!;
+      const a = p[which]!;
+      const f = factoryAxis(w, g, a.channel);
+      a.transform = f.transform;
+      a.range = [...f.range];
+      g.axisDefaults[a.channel] = { ...a };
+    });
   const setKind = (k: ScaleKind) => setDef(transformOfKind(k, top));
   const scale = makeScale(def);
   const setRange = (i: 0 | 1, dataValue: number) => {
@@ -100,6 +112,11 @@ function AxisEditor({ which, plot }: { which: 'x' | 'y'; plot: PlotSpec }) {
       <legend>
         {which.toUpperCase()} axis · {axis.channel}
       </legend>
+      <div className="row">
+        <button type="button" onClick={reset} title="Return the scale and range to the channel's defaults">
+          Reset to auto
+        </button>
+      </div>
       <label className="field">
         Scale
         <select value={scaleKindOf(def)} onChange={(e) => setKind(e.target.value as ScaleKind)}>
@@ -204,6 +221,15 @@ function StyleEditor({ plot }: { plot: PlotSpec }) {
   return (
     <fieldset>
       <legend>Display</legend>
+      <div className="row">
+        <button
+          type="button"
+          onClick={() => set((s) => Object.assign(s, structuredClone(DEFAULT_STYLE)))}
+          title="Return the display options to their defaults"
+        >
+          Reset to default
+        </button>
+      </div>
       {plot.kind !== 'histogram' && (
         <div className="grid2">
           {plot.kind !== 'dot' && (

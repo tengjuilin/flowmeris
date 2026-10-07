@@ -19,6 +19,21 @@ export function sampleDataFromDataset(ds: FcsDataset, sha256: string): SampleDat
   };
 }
 
+/** Largest linearised value of column `ci` (time channels are monotone in the stored counts). */
+function columnMax(ds: FcsDataset, ci: number): number | undefined {
+  const col = ds.columns[ci];
+  if (!col || col.length === 0) return undefined;
+  let m = Number.NEGATIVE_INFINITY;
+  for (let i = 0; i < col.length; i++) if ((col[i] as number) > m) m = col[i] as number;
+  const { timestep, gain } = ds.channels[ci]!.scaling;
+  const v = (m * timestep) / gain;
+  return Number.isFinite(v) ? v : undefined;
+}
+
+function dataMaxField(v: number | undefined): { dataMax?: number } {
+  return v !== undefined && v > 0 ? { dataMax: v } : {};
+}
+
 export function sampleMetaFromDataset(
   ds: FcsDataset,
   file: { name: string; relativePath: string; size: number; sha256: string },
@@ -33,7 +48,7 @@ export function sampleMetaFromDataset(
     fcsVersion: ds.header.version,
     eventCount: ds.eventCount,
     keywords: ds.keywords,
-    channels: ds.channels.map((c) => ({
+    channels: ds.channels.map((c, ci) => ({
       n: c.n,
       pnn: c.pnn,
       ...(c.pns !== undefined ? { pns: c.pns } : {}),
@@ -43,6 +58,7 @@ export function sampleMetaFromDataset(
       pnr: c.pnr,
       dataType: c.dataType,
       kind: c.kind,
+      ...(c.kind === 'time' ? dataMaxField(columnMax(ds, ci)) : {}),
     })),
     parseWarnings: ds.warnings,
     meta: {},

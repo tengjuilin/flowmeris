@@ -104,6 +104,8 @@ export const ChannelSpecSchema = z.object({
   pnr: Num,
   dataType: z.enum(['I', 'F', 'D', 'A']),
   kind: z.enum(['scatter', 'fluor', 'time', 'other']),
+  /** Largest linearised value of a time channel (seconds); sets the default time axis. */
+  dataMax: Num.optional(),
 });
 export type ChannelSpec = z.infer<typeof ChannelSpecSchema>;
 
