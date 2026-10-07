@@ -1495,6 +1495,21 @@ button.link:hover {
   text-decoration: underline;
   font-weight: 600;
 }
+.cell-title > button.cell-sample {
+  display: block;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-2);
+  font-weight: normal;
+  text-decoration: underline dotted;
+}
+.cell-title > button.cell-sample:hover,
+.cell-title > button.cell-sample:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+}
 
 /* ---------------------------------------------------------------------------
    Statistics: derived columns, grouping, export columns

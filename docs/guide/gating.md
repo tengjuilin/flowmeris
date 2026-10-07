@@ -51,7 +51,8 @@ grid is saved with the group in the workspace.
 - **Overlay** draws other samples on the same plot, each in its own colour with a legend: dots on 2D plots,
   outlines on histograms. Gates and their percentages are those of the plotted sample.
 - **Double-click inside a gate** to show its population in the next empty cell, with the same axes.
-- **Click the population in a plot's title** to show another population in that cell.
+- **Click the population or sample in a plot's title** to show another population or sample in that cell
+  (or set the sample back to *Follow selected*).
 - **Open in Gate view** opens the selected plot's population, sample and pair of axes in the Gate view.
 - Deleting a gate moves plots of its populations back to the gate's parent population.
 

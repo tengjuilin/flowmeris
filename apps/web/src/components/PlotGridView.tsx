@@ -135,6 +135,33 @@ function setCellPopulation(groupId: string, cellId: string, popId: string) {
   editCell(groupId, cellId, 'Change grid plot population', (c) => void (c.population = popId));
 }
 
+/** Pin a cell to `sampleId`, or let it follow the sidebar selection when there is none. */
+function setCellSample(groupId: string, cellId: string, sampleId: string | undefined) {
+  editCell(groupId, cellId, 'Change grid plot sample', (c) => {
+    if (sampleId) c.sampleId = sampleId;
+    else c.sampleId = undefined;
+  });
+}
+
+/** Sample choices of a cell: following the sidebar selection, then each of the group's samples. */
+function sampleOptions(group: Group, sampleName: (id: string) => string, followName: string): PickOption[] {
+  return [
+    { value: '', label: `Follow selected (${followName})` },
+    ...group.sampleIds.map((id) => ({ value: id, label: sampleName(id) })),
+  ];
+}
+
+/**
+ * Open a cell title's picker on press: pressing an unselected cell selects it and shows its controls
+ * above the grid, which moves the title away before the click would land. Keyboard clicks still open it.
+ */
+function openOnPress(open: (el: HTMLElement) => void) {
+  return {
+    onPointerDown: (e: React.PointerEvent<HTMLElement>) => e.button === 0 && open(e.currentTarget),
+    onClick: (e: React.MouseEvent<HTMLElement>) => e.detail === 0 && open(e.currentTarget),
+  };
+}
+
 function plotOf(cell: PlotCell): PlotSpec {
   return {
     id: cell.id,
@@ -321,12 +348,7 @@ function CellControls({
         </button>
         <select
           value={cell.sampleId ?? ''}
-          onChange={(e) =>
-            edit('Change grid plot sample', (c) => {
-              if (e.target.value) c.sampleId = e.target.value;
-              else c.sampleId = undefined;
-            })
-          }
+          onChange={(e) => setCellSample(group.id, cell.id, e.target.value || undefined)}
         >
           <option value="">Follow selected ({followName})</option>
           {ids.map((id) => (
@@ -432,8 +454,10 @@ function GridCell({
   handle: React.RefObject<PlotHandle> | undefined;
 }) {
   const pop = group.template.populations[cell.population];
-  const [popMenu, setPopMenu] = useState<Anchor | null>(null);
-  const closePopMenu = useCallback(() => setPopMenu(null), []);
+  const selected = useStore((s) => s.ui.sampleId);
+  const [menu, setMenu] = useState<{ kind: 'population' | 'sample'; anchor: Anchor } | null>(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
+  const followName = selected && group.sampleIds.includes(selected) ? sampleName(selected) : '–';
   const overlay = sampleId ? overlayColors(cell, sampleId, group) : null;
   const overlaying = !!overlay && overlay.samples.length > 0;
   const titleH = overlaying ? 44 : 26;
@@ -450,22 +474,46 @@ function GridCell({
           className="link"
           title="Change the population this plot shows"
           aria-haspopup="dialog"
-          aria-expanded={!!popMenu}
-          onClick={(e) => setPopMenu(e.currentTarget.getBoundingClientRect())}
+          aria-expanded={menu?.kind === 'population'}
+          {...openOnPress((el) => setMenu({ kind: 'population', anchor: el }))}
         >
           {pop?.name ?? 'All events'}
         </button>
-        {popMenu && (
+        <span className="muted"> – </span>
+        {sampleId ? (
+          <button
+            type="button"
+            className="link cell-sample"
+            title="Change the sample this plot shows"
+            aria-haspopup="dialog"
+            aria-expanded={menu?.kind === 'sample'}
+            {...openOnPress((el) => setMenu({ kind: 'sample', anchor: el }))}
+          >
+            {sampleName(sampleId)}
+          </button>
+        ) : (
+          <span className="muted">no samples</span>
+        )}
+        {menu?.kind === 'population' && (
           <PickerMenu
-            anchor={popMenu}
+            anchor={menu.anchor}
             title="Population"
             options={populationOptions(group)}
             value={cell.population}
             onPick={(id) => setCellPopulation(group.id, cell.id, id)}
-            onClose={closePopMenu}
+            onClose={closeMenu}
           />
         )}
-        <span className="muted"> – {sampleId ? sampleName(sampleId) : 'no samples'}</span>
+        {menu?.kind === 'sample' && (
+          <PickerMenu
+            anchor={menu.anchor}
+            title="Sample"
+            options={sampleOptions(group, sampleName, followName)}
+            value={cell.sampleId ?? ''}
+            onPick={(id) => setCellSample(group.id, cell.id, id || undefined)}
+            onClose={closeMenu}
+          />
+        )}
         {!cell.sampleId && (
           <span className="badge" title="Follows the sample selected in the sidebar">
             follows

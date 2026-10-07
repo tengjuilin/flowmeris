@@ -14,8 +14,11 @@ export interface PickOption {
   swatch?: string;
 }
 
-/** Where a picker opens: below (or above) an element's on-screen box. */
-export type Anchor = Pick<DOMRect, 'left' | 'top' | 'right' | 'bottom' | 'width' | 'height'>;
+/**
+ * The element a picker opens next to. It is measured once the picker renders, so the picker lands in
+ * the right place even when opening it moves the element (e.g. selecting a grid cell shows its controls).
+ */
+export type Anchor = Element;
 
 /** Show a filter box once a list is longer than this. */
 const FILTER_ABOVE = 8;
@@ -66,20 +69,21 @@ export function PickerMenu({
     const el = box.current;
     if (!el) return;
     const { width, height } = el.getBoundingClientRect();
+    const a = anchor.getBoundingClientRect();
     const fit = (v: number, size: number, max: number) => Math.min(Math.max(8, v), max - size - 8);
-    if (anchor.height > anchor.width) {
-      const right = anchor.right + 4;
-      const left = right + width > window.innerWidth - 8 ? anchor.left - width - 4 : right;
+    if (a.height > a.width) {
+      const right = a.right + 4;
+      const left = right + width > window.innerWidth - 8 ? a.left - width - 4 : right;
       setPos({
         left: fit(left, width, window.innerWidth),
-        top: fit(anchor.top + anchor.height / 2 - height / 2, height, window.innerHeight),
+        top: fit(a.top + a.height / 2 - height / 2, height, window.innerHeight),
       });
       return;
     }
-    const below = anchor.bottom + 4;
-    const top = below + height > window.innerHeight - 8 ? anchor.top - height - 4 : below;
+    const below = a.bottom + 4;
+    const top = below + height > window.innerHeight - 8 ? a.top - height - 4 : below;
     setPos({
-      left: fit(anchor.left + anchor.width / 2 - width / 2, width, window.innerWidth),
+      left: fit(a.left + a.width / 2 - width / 2, width, window.innerWidth),
       top: fit(top, height, window.innerHeight),
     });
   }, [anchor]);
@@ -87,7 +91,10 @@ export function PickerMenu({
   useEffect(() => {
     if (!filter) box.current?.focus();
     const away = (e: PointerEvent) => {
-      if (!box.current?.contains(e.target as Node)) onClose();
+      if (box.current?.contains(e.target as Node)) return;
+      onClose();
+      // Pressing the element that opened the picker closes it rather than opening it again.
+      if (anchor.contains(e.target as Node)) e.stopPropagation();
     };
     const close = () => onClose();
     document.addEventListener('pointerdown', away, true);
@@ -96,7 +103,7 @@ export function PickerMenu({
       document.removeEventListener('pointerdown', away, true);
       window.removeEventListener('resize', close);
     };
-  }, [onClose, filter]);
+  }, [onClose, filter, anchor]);
 
   useEffect(() => {
     box.current?.querySelector(`[data-i="${cur}"]`)?.scrollIntoView({ block: 'nearest' });
@@ -211,16 +218,17 @@ export function pickerTrigger(label: string, open: (anchor: Anchor) => void) {
     tabIndex: 0,
     'aria-label': label,
     'aria-haspopup': 'dialog' as const,
-    // Keep the click from starting a gate or other drag on the plot underneath.
-    onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
-    onClick: (e: React.MouseEvent<Element>) => {
+    // Opens on press, not click: pressing may re-lay out the page (e.g. select a grid cell), and the
+    // release would then miss the title. Also keeps the press from starting a gate on the plot.
+    onPointerDown: (e: React.PointerEvent<Element>) => {
       e.stopPropagation();
-      open(e.currentTarget.getBoundingClientRect());
+      if (e.button === 0) open(e.currentTarget);
     },
+    onClick: (e: React.MouseEvent) => e.stopPropagation(),
     onKeyDown: (e: React.KeyboardEvent<Element>) => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
       e.preventDefault();
-      open(e.currentTarget.getBoundingClientRect());
+      open(e.currentTarget);
     },
   };
 }
