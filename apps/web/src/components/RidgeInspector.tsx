@@ -22,7 +22,14 @@ import {
   useState,
 } from 'react';
 import { defaultChannels, factoryAxis } from '../lib/defaults.ts';
-import { type RidgeRow, applyOrder, comboRows, selectRidges } from '../lib/ridge.ts';
+import {
+  PER_POPULATION,
+  type RidgeRow,
+  applyOrder,
+  comboRows,
+  selectRidges,
+  sharedView,
+} from '../lib/ridge.ts';
 import { useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
 import { GroupPicker, toggleIds } from './GroupPicker.tsx';
 import { AxisFields, NumInput } from './Inspector.tsx';
@@ -109,13 +116,20 @@ export function useRidge() {
   const names = useSampleNames(group);
   const shown = useSelectedSampleIds(group);
   const layout = group?.layouts.find((l): l is RidgeLayout => l.kind === 'ridge' && l.population === popId);
-  const style = layout?.style ?? DEFAULT_RIDGE_STYLE;
+  const styleFollow = group?.ridgeStyleFollow ?? false;
+  const ownStyle = layout?.style ?? DEFAULT_RIDGE_STYLE;
+  const style: RidgeStyle = useMemo(() => {
+    if (!styleFollow || !group) return ownStyle;
+    const shared = { ...group.ridgeStyle };
+    for (const k of PER_POPULATION) delete (shared as Record<PropertyKey, unknown>)[k];
+    return { ...ownStyle, ...shared };
+  }, [styleFollow, group, ownStyle]);
   // While following, the group's shared replicate settings apply to every population.
   const follow = group?.ridgeFollow ?? true;
   const combine =
     (follow ? group?.ridgeCombine : layout?.combine) ?? group?.ridgeCombine ?? DEFAULT_RIDGE_COMBINE;
   const ws = useStore((s) => s.ws);
-  const overlap = layout?.overlap ?? DEFAULT_OVERLAP;
+  const overlap = (styleFollow ? group?.ridgeOverlap : layout?.overlap) ?? DEFAULT_OVERLAP;
   const ch = layout?.axis.channel ?? (group ? defaultChannels(ws, group)[0] : '');
 
   // The ridge plot owns its axis (channel, scale and range): it is seeded from the channel's
@@ -159,7 +173,7 @@ export function useRidge() {
           const existing = g.layouts.find(
             (l): l is RidgeLayout => l.kind === 'ridge' && l.population === popId,
           );
-          if (existing) return fn(existing, w, g);
+          if (existing) return fn(g.ridgeStyleFollow ? sharedView(existing, g) : existing, w, g);
           const l: RidgeLayout = {
             kind: 'ridge',
             id: newId('lay_'),
@@ -170,7 +184,7 @@ export function useRidge() {
             style: structuredClone(DEFAULT_RIDGE_STYLE),
             combine: copyCombine(g.ridgeCombine),
           };
-          fn(l, w, g);
+          fn(g.ridgeStyleFollow ? sharedView(l, g) : l, w, g);
           g.layouts.push(l);
         },
         merge && `ridge:${group.id}:${popId}:${merge}`,
@@ -179,7 +193,21 @@ export function useRidge() {
     [group, popId, ch, mutate],
   );
 
-  return { group, layout, style, combine, follow, overlap, ch, axis, rows, allIds, groups, update };
+  return {
+    group,
+    layout,
+    style,
+    styleFollow,
+    combine,
+    follow,
+    overlap,
+    ch,
+    axis,
+    rows,
+    allIds,
+    groups,
+    update,
+  };
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -378,7 +406,8 @@ function TextStyleEditor({
 
 export function RidgeInspector() {
   const popId = useStore((s) => s.ui.popId);
-  const { group, layout, style, combine, overlap, axis, rows, allIds, update } = useRidge();
+  const { group, layout, style, styleFollow, combine, overlap, axis, rows, allIds, update } = useRidge();
+  const mutate = useStore((s) => s.mutate);
   const ordered = rows.map((r) => r.id);
   const labels = Object.fromEntries(rows.map((r) => [r.id, r.label]));
   const current = new Set(allIds);
@@ -430,8 +459,35 @@ export function RidgeInspector() {
     });
   };
 
+  // Sharing adopts this population's appearance for all; unsharing gives each population a copy of it.
+  const setStyleFollow = (on: boolean) =>
+    mutate(on ? 'Share ridge plot settings' : 'Ridge plot settings per population', (w) => {
+      if (!group) return;
+      const g = w.groups.find((x) => x.id === group.id)!;
+      if (on) {
+        g.ridgeStyle = structuredClone(style);
+        g.ridgeOverlap = overlap;
+      } else {
+        const shared = JSON.parse(JSON.stringify(g.ridgeStyle)) as Record<string, unknown>;
+        for (const k of PER_POPULATION) delete shared[k as string];
+        for (const x of g.layouts) {
+          if (x.kind !== 'ridge') continue;
+          x.style = { ...x.style, ...structuredClone(shared) } as RidgeStyle;
+          x.overlap = g.ridgeOverlap;
+        }
+      }
+      g.ridgeStyleFollow = on;
+    });
+
   return (
     <aside className="inspector ridge-inspector" aria-label="Ridge plot settings">
+      <label
+        className="field check"
+        title="Colours, labels, text, size, overlap and histogram settings. Each population keeps its own channel, scale, ticks and axis title."
+      >
+        <input type="checkbox" checked={styleFollow} onChange={(e) => setStyleFollow(e.target.checked)} />
+        Same plot settings for all populations
+      </label>
       <fieldset>
         <legend>Ridges</legend>
         <label className="field">

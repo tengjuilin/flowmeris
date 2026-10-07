@@ -1,6 +1,6 @@
 import { newWorkspace } from '@flowmeris/model';
 import { describe, expect, it } from 'vitest';
-import { applyOrder, combineCounts, comboRows, selectRidges, wrapText } from './ridge.ts';
+import { applyOrder, combineCounts, comboRows, selectRidges, sharedView, wrapText } from './ridge.ts';
 
 const h = (counts: number[]) => ({
   centers: Float64Array.from(counts, (_, i) => i),
@@ -107,5 +107,38 @@ describe('wrapping ridge labels', () => {
   });
   it('breaks a word wider than the column between characters', () => {
     expect(wrapText('abcdefghijkl', 50, m)).toEqual(['abcde', 'fghij', 'kl']);
+  });
+});
+
+describe('sharing ridge appearance across populations', () => {
+  const fixture = () => {
+    const l = { style: { color: '#111111', ticks: [{ value: 1 }], order: [] as string[] }, overlap: 0.3 };
+    const g = {
+      ridgeStyle: { color: '#222222', ticks: undefined, order: [] as string[] },
+      ridgeOverlap: 0.6,
+    };
+    return { l: l as never, g: g as never, raw: { l, g } };
+  };
+  it('reads and writes appearance on the group, but ticks on the layout', () => {
+    const { l, g, raw } = fixture();
+    const v = sharedView(l, g) as unknown as typeof raw.l;
+    expect(v.style.color).toBe('#222222');
+    expect(v.overlap).toBe(0.6);
+    v.style.color = '#333333';
+    v.style.ticks = [{ value: 5 }];
+    v.overlap = 0.4;
+    expect(raw.g.ridgeStyle.color).toBe('#333333');
+    expect(raw.l.style.color).toBe('#111111');
+    expect(raw.l.style.ticks).toEqual([{ value: 5 }]);
+    expect(raw.g.ridgeOverlap).toBe(0.4);
+    expect(raw.l.overlap).toBe(0.3);
+  });
+  it('routes a whole-style reset to both places', () => {
+    const { l, g, raw } = fixture();
+    const v = sharedView(l, g) as unknown as { style: unknown };
+    v.style = { color: '#abcdef', order: [] };
+    expect(raw.g.ridgeStyle.color).toBe('#abcdef');
+    expect(raw.l.style.ticks).toBeUndefined();
+    expect(raw.l.style.color).toBe('#111111');
   });
 });

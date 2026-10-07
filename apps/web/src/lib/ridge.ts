@@ -1,4 +1,4 @@
-import type { RidgeCombine, Workspace } from '@flowmeris/model';
+import type { Group, RidgeCombine, RidgeLayout, RidgeStyle, Workspace } from '@flowmeris/model';
 import { type Cell, compareCells } from '@flowmeris/table';
 
 /** One ridge: a single sample, or replicates combined. `id` keys the ridge's order, colour and label. */
@@ -187,4 +187,43 @@ export function textMeasure(
     ctx.font = `${italic ? 'italic ' : ''}${bold ? 'bold ' : ''}${fontSize}px ${family}`;
     return ctx.measureText(s).width;
   };
+}
+
+/** Style keys that belong to one population even while appearance is shared: they depend on its axis. */
+export const PER_POPULATION: ReadonlySet<PropertyKey> = new Set(['ticks', 'axisTitle']);
+
+/**
+ * `l` as the ridge settings see it while appearance is shared: `style` and `overlap` live on the
+ * group, except the per-population style keys, so every edit written against a layout lands in the
+ * right place.
+ */
+export function sharedView(l: RidgeLayout, g: Group): RidgeLayout {
+  const owner = (k: PropertyKey): Record<PropertyKey, unknown> =>
+    (PER_POPULATION.has(k) ? l.style : g.ridgeStyle) as Record<PropertyKey, unknown>;
+  const style = new Proxy({} as RidgeStyle, {
+    get: (_, k) => owner(k)[k],
+    set: (_, k, v) => {
+      owner(k)[k] = v;
+      return true;
+    },
+    deleteProperty: (_, k) => {
+      delete owner(k)[k];
+      return true;
+    },
+    has: (_, k) => k in owner(k),
+  });
+  return new Proxy(l, {
+    get: (t, k) => (k === 'style' ? style : k === 'overlap' ? g.ridgeOverlap : Reflect.get(t, k)),
+    set: (t, k, v) => {
+      if (k === 'overlap') g.ridgeOverlap = v;
+      else if (k === 'style') {
+        const next = v as Record<string, unknown>;
+        for (const key of Object.keys({ ...g.ridgeStyle, ...l.style, ...next })) {
+          if (key in next) (owner(key) as Record<string, unknown>)[key] = next[key];
+          else delete (owner(key) as Record<string, unknown>)[key];
+        }
+      } else Reflect.set(t, k, v);
+      return true;
+    },
+  });
 }

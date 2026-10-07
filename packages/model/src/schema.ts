@@ -601,6 +601,13 @@ export const GroupSchema = z.object({
    */
   ridgeCombine: RidgeCombineSchema.default({}),
   ridgeFollow: z.boolean().default(true),
+  /**
+   * Appearance of the ridge plot shared by all the group's populations while `ridgeStyleFollow` is on
+   * (the axis, ticks and axis title stay per population). Off for files saved before this existed.
+   */
+  ridgeStyle: RidgeStyleSchema.default({}),
+  ridgeOverlap: Num.min(0).max(0.95).default(0.6),
+  ridgeStyleFollow: z.boolean().default(false),
   stats: z.array(StatSpecSchema),
   /** Derived columns, grouping and export columns of the statistics table. */
   analysis: StatAnalysisSchema.default({}),
