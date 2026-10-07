@@ -510,8 +510,8 @@ type SectionId =
   | 'baseFont';
 
 const RIDGE_TABS: { id: RidgeTab; label: string }[] = [
-  { id: 'sample', label: 'Sample' },
   { id: 'figure', label: 'Figure' },
+  { id: 'sample', label: 'Sample' },
   { id: 'axis', label: 'Axis' },
   { id: 'text', label: 'Text' },
 ];
@@ -523,6 +523,53 @@ const DEFAULT_OPEN: Partial<Record<SectionId, boolean>> = {
   labels: true,
 };
 
+/** A slider for a 0–`max` fraction, with a percentage box beside it for typing an exact value. */
+function PercentSlider({
+  label,
+  value,
+  max,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  onChange: (v: number) => void;
+}) {
+  const [text, setText] = useState<string | null>(null);
+  return (
+    <div className="field slider-field">
+      <span>{label}</span>
+      <input
+        type="range"
+        min={0}
+        max={max}
+        step={0.05}
+        value={value}
+        aria-label={label}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+      <span className="unit-input">
+        <input
+          type="number"
+          min={0}
+          max={Math.round(max * 100)}
+          step={5}
+          aria-label={`${label} (%)`}
+          value={text ?? String(Math.round(value * 100))}
+          onChange={(e) => {
+            setText(e.target.value);
+            const v = Number(e.target.value);
+            if (e.target.value.trim() !== '' && Number.isFinite(v)) onChange(clamp(v / 100, 0, max));
+          }}
+          onBlur={() => setText(null)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+        />
+        %
+      </span>
+    </div>
+  );
+}
+
 const PANEL_KEY = 'flowmeris.ridgePanel';
 
 /** The last tab and open sections, remembered in this browser. */
@@ -532,7 +579,7 @@ function loadPanel(): { tab: RidgeTab; open: Partial<Record<SectionId, boolean>>
     if (saved && RIDGE_TABS.some((t) => t.id === saved.tab))
       return { tab: saved.tab, open: saved.open ?? {} };
   } catch {}
-  return { tab: 'sample', open: DEFAULT_OPEN };
+  return { tab: 'figure', open: DEFAULT_OPEN };
 }
 
 function savePanel(panel: { tab: RidgeTab; open: Partial<Record<SectionId, boolean>> }) {
@@ -1053,17 +1100,12 @@ export function RidgeInspector() {
                   />
                 </label>
               )}
-              <label className="field">
-                Fill opacity · {Math.round(style.fillOpacity * 100)}%
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={style.fillOpacity}
-                  onChange={(e) => set('fillOpacity', Number(e.target.value), 'Ridge opacity', 'opacity')}
-                />
-              </label>
+              <PercentSlider
+                label="Fill opacity"
+                value={style.fillOpacity}
+                max={1}
+                onChange={(v) => set('fillOpacity', v, 'Ridge opacity', 'opacity')}
+              />
               <label className="field check">
                 <input
                   type="checkbox"
@@ -1097,25 +1139,20 @@ export function RidgeInspector() {
               </div>
             </Section>
             <Section id="layout" title="Layout" open={!!open.layout} onToggle={() => toggle('layout')}>
-              <label className="field">
-                Overlap · {Math.round(overlap * 100)}%
-                <input
-                  type="range"
-                  min={0}
-                  max={0.9}
-                  step={0.05}
-                  value={overlap}
-                  onChange={(e) =>
-                    update(
-                      'Ridge overlap',
-                      (l) => {
-                        l.overlap = Number(e.target.value);
-                      },
-                      'overlap',
-                    )
-                  }
-                />
-              </label>
+              <PercentSlider
+                label="Overlap"
+                value={overlap}
+                max={0.9}
+                onChange={(v) =>
+                  update(
+                    'Ridge overlap',
+                    (l) => {
+                      l.overlap = v;
+                    },
+                    'overlap',
+                  )
+                }
+              />
               <div className="grid2">
                 <label className="field check">
                   <input

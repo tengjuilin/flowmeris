@@ -1969,11 +1969,7 @@ table.stats.import-map td {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin: 6px 0;
-  padding: 6px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--text) 3%, transparent);
+  margin: 8px 0;
 }
 .tt-row {
   display: flex;
@@ -2160,4 +2156,52 @@ table.stats.import-map td {
 }
 .ridge-inspector .ridge-actions {
   margin-bottom: 4px;
+}
+
+/* Ridge settings read like an Office format pane: one setting per line, label left, control right. */
+.ridge-inspector .grid2 {
+  grid-template-columns: 1fr;
+}
+.ridge-inspector .field:not(.check):not(.tt-wide):not(:has(textarea)) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 26px;
+  white-space: nowrap;
+}
+.ridge-inspector .field:not(.check) > select {
+  width: auto;
+  min-width: 0;
+  max-width: 62%;
+  flex: 0 1 auto;
+}
+.ridge-inspector .field:not(.check) > input[type="number"] {
+  width: 76px;
+  flex: none;
+}
+.ridge-inspector .field:not(.check):not(.tt-wide) > input[type="text"] {
+  width: auto;
+  min-width: 0;
+  flex: 1;
+}
+.ridge-inspector .field.check {
+  white-space: nowrap;
+}
+.ridge-inspector .field.tt-wide > input {
+  width: 100%;
+}
+.ridge-inspector .slider-field input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+.ridge-inspector .unit-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+.inspector .unit-input input[type="number"] {
+  width: 52px;
 }
