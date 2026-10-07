@@ -528,11 +528,7 @@ function ColumnsPicker({ group, table }: { group: Group; table: Table }) {
   }
   const n = table.columns.filter((c) => on.has(c.key)).length;
   return (
-    <details
-      ref={menu}
-      className="overlay-picker"
-      onToggle={(e) => setOpen(e.currentTarget.open)}
-    >
+    <details ref={menu} className="overlay-picker" onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary title="Columns included in the CSV (table) export">
         Columns ({n}/{table.columns.length})
       </summary>
