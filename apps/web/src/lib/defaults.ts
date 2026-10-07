@@ -37,8 +37,8 @@ export function groupSample(ws: Workspace, g: Group): Sample | undefined {
 }
 
 /**
- * Default axis for a channel (docs/guide/axes.md): scatter and time channels
- * linear over [0, $PnR]; fluorescence channels logicle with T = $PnR (min
+ * Default axis for a channel (docs/guide/axes.md): scatter channels linear over
+ * [0, $PnR] and time channels over [0, $PnR · $TIMESTEP]; fluorescence channels logicle with T = $PnR (min
  * 1024), W = 0.5, M = 4.5, A = 0. All map to display range [0, 1].
  */
 export type ScaleKind = 'linear' | 'log' | 'logicle' | 'arcsinh';
@@ -73,7 +73,12 @@ export function defaultAxis(ws: Workspace, g: Group, channel: string): AxisSpec 
   if (existing && ws.transforms[existing.transform]) return existing;
   const s = groupSample(ws, g);
   const ch = s?.channels.find((c) => c.pnn === channel);
-  const top = Math.max(ch?.pnr ?? 262144, 1);
+  let top = Math.max(ch?.pnr ?? 262144, 1);
+  if (ch?.kind === 'time') {
+    // Time values are loaded as counts × $TIMESTEP (seconds), so $PnR must be scaled too.
+    const step = Number(s?.keywords.$TIMESTEP?.trim());
+    if (Number.isFinite(step) && step > 0) top = Math.max(top * step, Number.MIN_VALUE);
+  }
   let t: Transform;
   if (!ch || ch.kind === 'scatter' || ch.kind === 'time' || ch.kind === 'other')
     t = { kind: 'flin', T: top, A: 0 };
