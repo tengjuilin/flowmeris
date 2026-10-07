@@ -38,6 +38,7 @@ import {
   scaleFor,
 } from '../lib/geometry.ts';
 import { contextFor, useStore } from '../state/store.ts';
+import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './PickerMenu.tsx';
 
 /** Where each quadrant / spider region's percentage label sits in a pw × ph plot. */
 const QUAD_CORNERS: Partial<Record<Region, (pw: number, ph: number) => [number, number, 'start' | 'end']>> = {
@@ -82,6 +83,8 @@ interface Props {
    * outline (histogram) in `color`. Gates and their percentages stay those of `sampleId`.
    */
   overlay?: { color: string; samples: { sampleId: string; color: string }[] };
+  /** Makes the axis titles clickable, to pick another channel for that axis. */
+  onPickChannel?: (axis: 'x' | 'y', channel: string) => void;
 }
 
 type Drag =
@@ -129,6 +132,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     focusPopId,
     backgate,
     overlay,
+    onPickChannel,
   },
   ref,
 ) {
@@ -847,6 +851,17 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     const ch = s?.channels.find((c) => c.pnn === a.channel);
     return ch?.pns ? `${ch.pns} :: ${a.channel}` : a.channel;
   };
+  const [axisMenu, setAxisMenu] = useState<{ axis: 'x' | 'y'; anchor: Anchor } | null>(null);
+  const closeAxisMenu = useCallback(() => setAxisMenu(null), []);
+  const axisTitle = (axis: 'x' | 'y') =>
+    onPickChannel
+      ? {
+          className: 'axis-title pickable',
+          ...pickerTrigger(`${axis.toUpperCase()} axis: ${label(plot[axis]!)}. Change channel`, (anchor) =>
+            setAxisMenu({ axis, anchor }),
+          ),
+        }
+      : { className: 'axis-title' };
 
   const histPath = useMemo(() => {
     if (!hist || !is1d) return null;
@@ -1287,7 +1302,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
                     )}
                   </g>
                 ))}
-                <text className="axis-title" x={pw / 2} y={40} textAnchor="middle">
+                <text {...axisTitle('x')} x={pw / 2} y={40} textAnchor="middle">
                   {label(plot.x)}
                 </text>
               </g>
@@ -1312,7 +1327,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
                       </g>
                     ))}
                 <text
-                  className="axis-title"
+                  {...(is1d ? { className: 'axis-title' } : axisTitle('y'))}
                   transform={`translate(${-52},${ph / 2}) rotate(-90)`}
                   textAnchor="middle"
                 >
@@ -1352,6 +1367,16 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         </div>
       )}
       {nonIdentityWarning && !compact && <div className="plot-warning">{nonIdentityWarning}</div>}
+      {axisMenu && onPickChannel && (
+        <PickerMenu
+          anchor={axisMenu.anchor}
+          title={`${axisMenu.axis.toUpperCase()} axis channel`}
+          options={channelOptions(group, ws.samples[sampleId])}
+          value={plot[axisMenu.axis]?.channel}
+          onPick={(ch) => onPickChannel(axisMenu.axis, ch)}
+          onClose={closeAxisMenu}
+        />
+      )}
     </div>
   );
 });

@@ -1,12 +1,19 @@
 import type { Group, PlotCell, PlotKind, PlotSpec, Workspace } from '@flowmeris/model';
 import { newId, populationLineage, populationsDepthFirst } from '@flowmeris/model';
 import { CATEGORICAL } from '@flowmeris/render';
-import { useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { DEFAULT_STYLE, defaultAxis, defaultChannels } from '../lib/defaults.ts';
 import { exportPlot } from '../lib/exportPlot.ts';
 import { useGroup, useSampleNames, useStore } from '../state/store.ts';
+import { type Anchor, type PickOption, PickerMenu } from './PickerMenu.tsx';
 import { PlotCanvas, type PlotHandle } from './PlotCanvas.tsx';
-import { AxisSelects, EditScopeToggle, PlotKindSelect, ToolButtons } from './PlotPanel.tsx';
+import {
+  AxisSelects,
+  EditScopeToggle,
+  PlotKindSelect,
+  ToolButtons,
+  axisChannelSetter,
+} from './PlotPanel.tsx';
 import { useSize } from './hooks.ts';
 
 const KINDS: { id: PlotKind; label: string }[] = [
@@ -114,6 +121,20 @@ function overlayColors(cell: PlotCell, sampleId: string, group: Group) {
   return { color: color(0), samples: others.map((id, i) => ({ sampleId: id, color: color(i + 1) })) };
 }
 
+/** The group's populations, depth first and indented, with their colours. */
+function populationOptions(group: Group): PickOption[] {
+  return populationsDepthFirst(group.template).map((p) => ({
+    value: p.id,
+    label: p.name,
+    depth: populationLineage(group.template, p.id).length - 1,
+    swatch: p.color,
+  }));
+}
+
+function setCellPopulation(groupId: string, cellId: string, popId: string) {
+  editCell(groupId, cellId, 'Change grid plot population', (c) => void (c.population = popId));
+}
+
 function plotOf(cell: PlotCell): PlotSpec {
   return {
     id: cell.id,
@@ -201,7 +222,8 @@ export function PlotGridView() {
         ) : (
           <p className="muted small grid-hint">
             Add a plot to an empty cell, then click a plot to select it: gate on it with the tools above and
-            change its population, sample, overlays, type and axes here.
+            change its population, sample, overlays, type and axes here. Click a plot's population or axis
+            titles to change them in place.
           </p>
         )}
       </div>
@@ -282,7 +304,7 @@ function CellControls({
         Population
         <select
           value={cell.population}
-          onChange={(e) => edit('Change grid plot population', (c) => void (c.population = e.target.value))}
+          onChange={(e) => setCellPopulation(group.id, cell.id, e.target.value)}
         >
           {populationsDepthFirst(group.template).map((p) => (
             <option key={p.id} value={p.id}>
@@ -410,6 +432,8 @@ function GridCell({
   handle: React.RefObject<PlotHandle> | undefined;
 }) {
   const pop = group.template.populations[cell.population];
+  const [popMenu, setPopMenu] = useState<Anchor | null>(null);
+  const closePopMenu = useCallback(() => setPopMenu(null), []);
   const overlay = sampleId ? overlayColors(cell, sampleId, group) : null;
   const overlaying = !!overlay && overlay.samples.length > 0;
   const titleH = overlaying ? 44 : 26;
@@ -424,11 +448,23 @@ function GridCell({
         <button
           type="button"
           className="link"
-          title="Open this plot in the Gate view"
-          onClick={() => openInGateView(group, cell, cell.sampleId)}
+          title="Change the population this plot shows"
+          aria-haspopup="dialog"
+          aria-expanded={!!popMenu}
+          onClick={(e) => setPopMenu(e.currentTarget.getBoundingClientRect())}
         >
           {pop?.name ?? 'All events'}
         </button>
+        {popMenu && (
+          <PickerMenu
+            anchor={popMenu}
+            title="Population"
+            options={populationOptions(group)}
+            value={cell.population}
+            onPick={(id) => setCellPopulation(group.id, cell.id, id)}
+            onClose={closePopMenu}
+          />
+        )}
         <span className="muted"> – {sampleId ? sampleName(sampleId) : 'no samples'}</span>
         {!cell.sampleId && (
           <span className="badge" title="Follows the sample selected in the sidebar">
@@ -464,6 +500,9 @@ function GridCell({
               hideOffScaleNote
               interactive={active}
               onDrill={onDrill}
+              onPickChannel={axisChannelSetter(group, plotOf(cell), (label, fn) =>
+                editCell(group.id, cell.id, label, fn),
+              )}
               {...(overlaying && overlay ? { overlay } : {})}
             />
           )

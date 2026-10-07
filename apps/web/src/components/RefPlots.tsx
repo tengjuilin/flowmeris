@@ -4,7 +4,7 @@ import { useRef } from 'react';
 import { DEFAULT_STYLE, defaultAxis, defaultChannels, groupSample } from '../lib/defaults.ts';
 import { useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { PlotCanvas } from './PlotCanvas.tsx';
-import { AxisSelects, PlotKindSelect } from './PlotPanel.tsx';
+import { AxisSelects, PlotKindSelect, axisChannelSetter } from './PlotPanel.tsx';
 import { useSize } from './hooks.ts';
 
 function editRef(
@@ -204,7 +204,14 @@ export function RefPlots() {
       ) : ui.missing[sampleId] ? (
         <div className="empty">Data not loaded for this sample: re-add its FCS file to view it.</div>
       ) : (
-        <RefCanvas ws={ws} group={group} sampleId={sampleId} plot={plot} backgate={backgate} />
+        <RefCanvas
+          ws={ws}
+          group={group}
+          sampleId={sampleId}
+          plot={plot}
+          backgate={backgate}
+          onPickChannel={axisChannelSetter(group, plot, edit)}
+        />
       )}
     </div>
   );
@@ -218,12 +225,14 @@ function RefCanvas({
   sampleId,
   plot,
   backgate,
+  onPickChannel,
 }: {
   ws: Workspace;
   group: Group;
   sampleId: string;
   plot: PlotSpec;
   backgate: { popId: string; color: string } | undefined;
+  onPickChannel: (axis: 'x' | 'y', channel: string) => void;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const size = useSize(box);
@@ -238,6 +247,7 @@ function RefCanvas({
           plot={plot}
           width={size.width}
           height={height}
+          onPickChannel={onPickChannel}
           {...(backgate ? { backgate } : {})}
         />
       )}

@@ -34,7 +34,8 @@ The **Charts** tab plots the statistics table. Each group can have several chart
 
 - **Type:** scatter, line, bar or dot. Bar and dot charts place x values as categories; scatter and line
   charts use a numeric axis when x is numeric.
-- **X / Y:** any variable or statistic column (Y: numeric columns), including derived columns.
+- **X / Y:** any variable or statistic column (Y: numeric columns), including derived columns. Clicking
+  an axis title on the chart also picks its column.
 - **Colour by:** a categorical variable; one series per value, in the category order of the variable.
 - **Scales:** linear or log for x (numeric) and y. Values ≤ 0 cannot be shown on a log axis and are
   counted in a note under the chart.

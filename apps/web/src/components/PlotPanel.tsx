@@ -116,6 +116,19 @@ function editPlot(
   });
 }
 
+/** Put `channel` on a plot's axis with that channel's default scale. */
+export function setAxisChannel(edit: EditAxes, axis: 'x' | 'y', channel: string) {
+  edit('Change axis channel', (p, g, w) => {
+    p[axis] = { ...defaultAxis(w, g, channel) };
+  });
+}
+
+/** Changes the axis channel of the population's plot, or of `edit`'s target (for clickable axis titles). */
+export function axisChannelSetter(group: Group, plot: PlotSpec, edit?: EditAxes) {
+  const ed: EditAxes = edit ?? ((label, fn) => editPlot(group.id, plot.id, label, fn));
+  return (axis: 'x' | 'y', channel: string) => setAxisChannel(ed, axis, channel);
+}
+
 /** Plot type picker; edits the population's plot (shared by the Plot and Tiles views), or `edit`'s target. */
 export function PlotKindSelect({ group, plot, edit }: { group: Group; plot: PlotSpec; edit?: EditAxes }) {
   const ed: EditAxes = edit ?? ((label, fn) => editPlot(group.id, plot.id, label, fn));
@@ -150,10 +163,7 @@ export function AxisSelects({ group, plot, edit }: { group: Group; plot: PlotSpe
     const s = sample?.channels.find((x) => x.pnn === c)?.pns;
     return s ? `${c} (${s})` : c;
   };
-  const setChannel = (axis: 'x' | 'y', ch: string) =>
-    ed('Change axis channel', (p, g, w) => {
-      p[axis] = { ...defaultAxis(w, g, ch) };
-    });
+  const setChannel = (axis: 'x' | 'y', ch: string) => setAxisChannel(ed, axis, ch);
   const setScale = (axis: 'x' | 'y', k: ScaleKind) =>
     ed('Change axis scale', (p, g, w) => {
       const a = p[axis];
@@ -340,6 +350,7 @@ export function PlotPanel() {
             height={Math.min(size.height, size.width)}
             interactive
             onDrill={drill}
+            onPickChannel={axisChannelSetter(group, plot)}
           />
         )}
       </div>

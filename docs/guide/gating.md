@@ -13,6 +13,9 @@
 - Labels show the percentage of the parent population for the current sample, updated live while dragging.
 - **Double-click inside a gate** (or a quadrant/spider region) to open that population. Its plot starts
   with the parent's axes.
+- **Click an axis title** to pick another channel for that axis; it takes the channel's default scale. This
+  works on every plot with axis titles: the Gate view, Plot grid, Tiles, reference plots and the Ridge
+  view. Arrow keys and Enter pick from the list; long lists can be filtered by typing.
 - Quadrant and spider gates create four populations, Q1 (top-left) to Q4 (bottom-left) clockwise, named
   by marker sign (e.g. `CD4+ CD8−`). Rename any population by double-clicking it in the population tree.
 - Deleting a gate removes its populations and everything below them. Undo restores them.
@@ -48,8 +51,8 @@ grid is saved with the group in the workspace.
 - **Overlay** draws other samples on the same plot, each in its own colour with a legend: dots on 2D plots,
   outlines on histograms. Gates and their percentages are those of the plotted sample.
 - **Double-click inside a gate** to show its population in the next empty cell, with the same axes.
-- **Open in Gate view** (or the population link in a plot's title) opens that population, sample and pair
-  of axes in the Gate view.
+- **Click the population in a plot's title** to show another population in that cell.
+- **Open in Gate view** opens the selected plot's population, sample and pair of axes in the Gate view.
 - Deleting a gate moves plots of its populations back to the gate's parent population.
 
 ## Gating path

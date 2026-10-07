@@ -1,7 +1,7 @@
 import type { HistogramResponse } from '@flowmeris/engine';
 import type { Group, PlotSpec } from '@flowmeris/model';
 import { axisTicks, formatLinear } from '@flowmeris/transforms';
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { lineageKey } from '../lib/analysis.ts';
 import { defaultAxis } from '../lib/defaults.ts';
@@ -10,12 +10,14 @@ import { standaloneSvg } from '../lib/exportPlot.ts';
 import { scaleFor } from '../lib/geometry.ts';
 import { type RidgeCurve, combineCounts } from '../lib/ridge.ts';
 import { contextFor, useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
+import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './PickerMenu.tsx';
 import { PlotCanvas } from './PlotCanvas.tsx';
 import {
   AxisSelects,
   EditScopeToggle,
   PlotKindSelect,
   ToolButtons,
+  axisChannelSetter,
   drill,
   usePlotForPopulation,
 } from './PlotPanel.tsx';
@@ -116,6 +118,7 @@ const Tile = memo(function Tile({
               hideOffScaleNote
               interactive={current}
               onDrill={drill}
+              onPickChannel={axisChannelSetter(group, plot)}
             />
           </div>
         )}
@@ -206,6 +209,8 @@ export function RidgeView() {
   const svgRef = useRef<SVGSVGElement>(null);
   const { width } = useSize(box);
   const [data, setData] = useState<Record<string, HistogramResponse>>({});
+  const [chMenu, setChMenu] = useState<Anchor | null>(null);
+  const closeChMenu = useCallback(() => setChMenu(null), []);
 
   useEffect(() => {
     if (group && !axis && ch)
@@ -290,21 +295,17 @@ export function RidgeView() {
     /* ignore */
   }
   const labelChars = Math.max(4, Math.floor((labelW - 8) / (style.labelFontSize * 0.55)));
+  const setChannel = (c: string) =>
+    update('Ridge channel', (l, w, g) => {
+      l.axis = { ...defaultAxis(w, g, c) };
+    });
 
   return (
     <div className="ridge-view" ref={box}>
       <div className="toolbar">
         <label className="field">
           Channel
-          <select
-            value={ch}
-            onChange={(e) => {
-              const c = e.target.value;
-              update('Ridge channel', (l, w, g) => {
-                l.axis = { ...defaultAxis(w, g, c) };
-              });
-            }}
-          >
+          <select value={ch} onChange={(e) => setChannel(e.target.value)}>
             {group.channels.map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -422,14 +423,25 @@ export function RidgeView() {
               x={labelW + pw / 2}
               y={titleY}
               textAnchor="middle"
-              className="axis-title"
+              className="axis-title pickable"
               style={{ fontSize: style.titleFontSize }}
+              {...pickerTrigger(`X axis: ${title}. Change channel`, setChMenu)}
             >
               {title}
             </text>
           )}
         </g>
       </svg>
+      {chMenu && (
+        <PickerMenu
+          anchor={chMenu}
+          title="Channel"
+          options={channelOptions(group, sample0)}
+          value={ch}
+          onPick={setChannel}
+          onClose={closeChMenu}
+        />
+      )}
       <p className="muted small">
         Each curve is a histogram normalised to its own mode (smoothed, σ = 1.5 bins); n is the number of
         events in the population.{' '}

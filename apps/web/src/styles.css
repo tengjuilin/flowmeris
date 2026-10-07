@@ -1186,6 +1186,94 @@ button.link:hover {
 .overlay-menu .field {
   white-space: nowrap;
 }
+
+/* Clickable axis titles open a picker for that axis's channel or column. */
+.axis-title.pickable {
+  cursor: pointer;
+}
+.axis-title.pickable:hover,
+.axis-title.pickable:focus-visible {
+  fill: var(--accent);
+  text-decoration: underline;
+  outline: none;
+}
+.picker-menu {
+  position: fixed;
+  right: auto;
+  bottom: auto;
+  margin: 0;
+  z-index: 50;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+  max-width: min(360px, calc(100vw - 16px));
+  max-height: min(380px, calc(100vh - 16px));
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  font-size: 13px;
+  font-weight: normal;
+  text-align: left;
+}
+.picker-menu:focus {
+  outline: none;
+}
+.picker-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.picker-list {
+  overflow: auto;
+  min-height: 0;
+}
+.picker-group {
+  padding: 6px 8px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.picker-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.picker-item.active {
+  background: var(--surface-2);
+}
+.picker-item.selected {
+  color: var(--accent);
+  font-weight: 600;
+}
+.picker-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.picker-detail {
+  margin-left: auto;
+  padding-left: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.picker-empty {
+  padding: 4px 8px;
+}
 .swatch {
   display: inline-block;
   width: 10px;

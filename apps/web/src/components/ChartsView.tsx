@@ -10,7 +10,7 @@ import {
   summaryForPlot,
 } from '@flowmeris/table';
 import { formatLinear, formatPow10, niceLinearTicks } from '@flowmeris/transforms';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { download, safeName } from '../lib/download.ts';
 import { standaloneSvg } from '../lib/exportPlot.ts';
 import { useAnalysisTable } from '../lib/statsTable.ts';
@@ -22,6 +22,7 @@ import {
   seriesColor,
   seriesKey,
 } from './ChartInspector.tsx';
+import { type Anchor, type PickOption, PickerMenu, pickerTrigger } from './PickerMenu.tsx';
 import { FONT_STACKS } from './RidgeInspector.tsx';
 
 const ERRORS: { id: StatPlot['error']; label: string }[] = [
@@ -208,8 +209,14 @@ function Chart(props: {
   width: number;
   height: number;
   svgRef: React.RefObject<SVGSVGElement>;
+  /** Clicking an axis title opens a picker for that axis's column here. */
+  onPickAxis: (axis: 'x' | 'y', anchor: Anchor) => void;
 }) {
   const { plot, series, xCol, yCol, width } = props;
+  const axisTitle = (axis: 'x' | 'y', text: string) => ({
+    className: 'axis-title pickable',
+    ...pickerTrigger(`${axis.toUpperCase()} axis: ${text}. Change column`, (a) => props.onPickAxis(axis, a)),
+  });
   const st = plot.style;
   const [hover, setHover] = useState<Hover | null>(null);
   const clipId = `chart-clip-${useId().replace(/:/g, '')}`;
@@ -385,7 +392,7 @@ function Chart(props: {
               ))}
           {xTitle && (
             <text
-              className="axis-title"
+              {...axisTitle('x', xTitle)}
               x={m.l + pw / 2}
               y={H - 8}
               textAnchor="middle"
@@ -396,7 +403,7 @@ function Chart(props: {
           )}
           {yTitle && (
             <text
-              className="axis-title"
+              {...axisTitle('y', yTitle)}
               x={6 + ts * 0.8}
               y={m.t + ph / 2}
               textAnchor="middle"
@@ -622,17 +629,28 @@ function svgToPng(svg: string, w: number, h: number, scale: number): Promise<Blo
   });
 }
 
+/** Columns under the headings the axis pickers list them by. */
+function columnGroups(columns: ColumnDef[]): { title: string; cols: ColumnDef[] }[] {
+  return [
+    { title: 'Variables', cols: columns.filter((c) => c.kind === 'variable' || c.kind === 'sample') },
+    { title: 'Statistics', cols: columns.filter((c) => c.kind === 'stat') },
+    { title: 'Derived', cols: columns.filter((c) => c.kind === 'derived') },
+  ].filter((g) => g.cols.length);
+}
+
+function columnOptions(columns: ColumnDef[]): PickOption[] {
+  return columnGroups(columns).flatMap((g) =>
+    g.cols.map((c) => ({ value: c.key, label: c.label, group: g.title })),
+  );
+}
+
 function ColumnSelect(props: {
   label: string;
   value: string;
   columns: ColumnDef[];
   onChange: (key: string) => void;
 }) {
-  const groups: { title: string; cols: ColumnDef[] }[] = [
-    { title: 'Variables', cols: props.columns.filter((c) => c.kind === 'variable' || c.kind === 'sample') },
-    { title: 'Statistics', cols: props.columns.filter((c) => c.kind === 'stat') },
-    { title: 'Derived', cols: props.columns.filter((c) => c.kind === 'derived') },
-  ].filter((g) => g.cols.length);
+  const groups = columnGroups(props.columns);
   const known = props.columns.some((c) => c.key === props.value);
   return (
     <label className="field">
@@ -677,6 +695,8 @@ export function ChartsView() {
   const [chartId, setChartId] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [boxRef, fitWidth] = useWidth();
+  const [axisMenu, setAxisMenu] = useState<{ axis: 'x' | 'y'; anchor: Anchor } | null>(null);
+  const closeAxisMenu = useCallback(() => setAxisMenu(null), []);
 
   const plot = group?.statPlots.find((p) => p.id === chartId) ?? group?.statPlots[0];
   const seriesCol = plot?.series ? `var:${plot.series}` : undefined;
@@ -945,6 +965,21 @@ export function ChartsView() {
               width={width}
               height={height}
               svgRef={svgRef}
+              onPickAxis={(axis, anchor) => setAxisMenu({ axis, anchor })}
+            />
+          )}
+          {axisMenu && (
+            <PickerMenu
+              anchor={axisMenu.anchor}
+              title={`${axisMenu.axis.toUpperCase()} axis`}
+              options={columnOptions(axisMenu.axis === 'x' ? perSample.columns : yOptions)}
+              value={plot[axisMenu.axis]}
+              onPick={(k) =>
+                axisMenu.axis === 'x'
+                  ? edit('Change chart x', (p) => void (p.x = k))
+                  : edit('Change chart y', (p) => void (p.y = k))
+              }
+              onClose={closeAxisMenu}
             />
           )}
         </div>
