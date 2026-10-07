@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ChartStyleSchema,
   RidgeStyleSchema,
   loadWorkspace,
   newGroup,
@@ -35,6 +36,29 @@ describe('ridge layout style', () => {
 
   it('rejects malformed colours', () => {
     expect(() => RidgeStyleSchema.parse({ color: 'blue' })).toThrow();
+  });
+});
+
+describe('chart style', () => {
+  it('loads charts saved without a style', () => {
+    const ws = newWorkspace('t', { version: '0', commit: 'x', kernels: 'ts-1' });
+    const g = newGroup('g', [], ['FSC-A']);
+    g.statPlots.push({
+      id: 'sp_1',
+      name: 'c',
+      kind: 'bar',
+      x: 'sample:name',
+      y: 'root|count',
+      xScale: 'linear',
+      yScale: 'linear',
+      error: 'sem',
+      showPoints: true,
+    } as never);
+    ws.groups.push(g);
+    const p = loadWorkspace(JSON.parse(JSON.stringify(ws))).groups[0]!.statPlots[0]!;
+    expect(p.style).toEqual(ChartStyleSchema.parse({}));
+    expect(p.style.legend).toBe('top');
+    expect(p.style.yMin).toBeUndefined();
   });
 });
 
@@ -161,6 +185,7 @@ describe('sample variables and statistics table', () => {
         yScale: 'linear',
         error: 'sem',
         showPoints: true,
+        style: ChartStyleSchema.parse({}),
       },
       {
         id: 'p2',
@@ -173,6 +198,7 @@ describe('sample variables and statistics table', () => {
         yScale: 'linear',
         error: 'sem',
         showPoints: true,
+        style: ChartStyleSchema.parse({}),
       },
     );
     ws.groups.push(g);

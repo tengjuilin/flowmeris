@@ -43,3 +43,20 @@ The **Charts** tab plots the statistics table. Each group can have several chart
 
 Hover a point or bar for its mean, error and *n*; **Data** lists the plotted values. Export as **SVG**
 (vector), **PNG** (300 dpi) or **CSV** of the plotted means.
+
+### Chart settings
+
+The panel on the right styles the chart; settings are saved with each chart, and **Duplicate** copies
+them.
+
+- **Series:** categorical palette or a single colour; per-series colour and legend label (also used in
+  the tooltip, the Data table and the CSV export). Drag ⠿ to reorder series, or **Reverse**. Changing
+  **Colour by** clears these.
+- **Marks:** bar or marker opacity, marker size, line width, bar width (as a share of each category),
+  error-bar width and cap width, replicate point size and opacity.
+- **X / Y axis:** title (type a space for none), **Min** / **Max** in data units (empty = fit the data;
+  marks outside a fixed range are clipped), and custom ticks — one per line, `1000` or `1000 = 1k`.
+  Categorical x axes keep the variable's level order.
+- **Text & legend:** font, tick label and title sizes, tick labels and gridlines on or off, and legend
+  on top, at the right, or hidden.
+- **Figure:** width (fit the view, or fixed in px) and height. Exports use this size.

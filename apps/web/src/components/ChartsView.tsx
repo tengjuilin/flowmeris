@@ -1,6 +1,5 @@
 import { toCsv } from '@flowmeris/export';
-import { type Group, type StatPlot, newId } from '@flowmeris/model';
-import { CATEGORICAL } from '@flowmeris/render';
+import { type ChartStyle, type Group, type StatPlot, newId } from '@flowmeris/model';
 import {
   type Cell,
   type ColumnDef,
@@ -11,11 +10,19 @@ import {
   summaryForPlot,
 } from '@flowmeris/table';
 import { formatLinear, formatPow10, niceLinearTicks } from '@flowmeris/transforms';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { download, safeName } from '../lib/download.ts';
 import { standaloneSvg } from '../lib/exportPlot.ts';
 import { useAnalysisTable } from '../lib/statsTable.ts';
 import { toast, useGroup, useStore } from '../state/store.ts';
+import {
+  ChartInspector,
+  DEFAULT_CHART_STYLE,
+  orderSeries,
+  seriesColor,
+  seriesKey,
+} from './ChartInspector.tsx';
+import { FONT_STACKS } from './RidgeInspector.tsx';
 
 const ERRORS: { id: StatPlot['error']; label: string }[] = [
   { id: 'none', label: 'None' },
@@ -62,6 +69,7 @@ function defaultPlot(columns: ColumnDef[], n: number): StatPlot {
     yScale: 'linear',
     error: 'sem',
     showPoints: true,
+    style: structuredClone(DEFAULT_CHART_STYLE),
   };
 }
 
@@ -77,42 +85,57 @@ interface Axis {
   hi: number;
 }
 
-function linearAxis(lo: number, hi: number, p0: number, p1: number, zero: boolean): Axis {
-  let a = zero ? Math.min(0, lo) : lo;
-  let b = zero ? Math.max(0, hi) : hi;
+/** User-fixed ends of an axis, in data units. */
+interface Fix {
+  min?: number;
+  max?: number;
+}
+
+function linearAxis(lo: number, hi: number, p0: number, p1: number, zero: boolean, fix: Fix): Axis {
+  let a = fix.min ?? (zero ? Math.min(0, lo) : lo);
+  let b = fix.max ?? (zero ? Math.max(0, hi) : hi);
   if (!(b > a)) {
-    const d = Math.abs(a) * 0.1 || 1;
-    a -= d;
-    b += d;
+    const d = Math.abs(fix.min ?? fix.max ?? a) * 0.1 || 1;
+    if (fix.min === undefined && fix.max === undefined) {
+      a -= d;
+      b += d;
+    } else if (fix.min === undefined) a = b - 2 * d;
+    else b = a + 2 * d;
   }
   const pad = (b - a) * 0.05;
-  if (!(zero && a === 0)) a -= pad;
-  if (!(zero && b === 0)) b += pad;
-  const t = niceLinearTicks(a, b, 6);
-  a = Math.min(a, t[0]!);
-  b = Math.max(b, t[t.length - 1]!);
+  if (fix.min === undefined && !(zero && a === 0)) a -= pad;
+  if (fix.max === undefined && !(zero && b === 0)) b += pad;
+  let t = niceLinearTicks(a, b, 6);
+  if (fix.min === undefined) a = Math.min(a, t[0]!);
+  if (fix.max === undefined) b = Math.max(b, t[t.length - 1]!);
+  const eps = (b - a) * 1e-9;
+  t = t.filter((v) => v >= a - eps && v <= b + eps);
   const map = (v: number) => p0 + ((v - a) / (b - a)) * (p1 - p0);
   return { map, lo: a, hi: b, ticks: t.map((v) => ({ pos: map(v), label: formatLinear(v), major: true })) };
 }
 
-function logAxis(lo: number, hi: number, p0: number, p1: number): Axis {
-  let a = Math.log10(lo);
-  let b = Math.log10(hi);
+function logAxis(lo: number, hi: number, p0: number, p1: number, fix: Fix): Axis {
+  let a = Math.log10(fix.min ?? lo);
+  let b = Math.log10(fix.max ?? hi);
   if (!(b > a)) {
-    a -= 0.5;
-    b += 0.5;
+    if (fix.min === undefined && fix.max === undefined) {
+      a -= 0.5;
+      b += 0.5;
+    } else if (fix.min === undefined) a = b - 1;
+    else b = a + 1;
   }
   const pad = (b - a) * 0.05;
-  a -= pad;
-  b += pad;
+  if (fix.min === undefined) a -= pad;
+  if (fix.max === undefined) b += pad;
   const map = (v: number) => p0 + ((Math.log10(v) - a) / (b - a)) * (p1 - p0);
   const ticks: Axis['ticks'] = [];
   const decades = b - a;
+  const eps = decades * 1e-9;
   for (let k = Math.floor(a); k <= Math.ceil(b); k++)
     for (let m = 1; m <= 9; m++) {
       const v = m * 10 ** k;
       const l = Math.log10(v);
-      if (l < a || l > b) continue;
+      if (l < a - eps || l > b + eps) continue;
       const major = m === 1;
       const label = major ? formatPow10(1, k) : decades < 1.5 && (m === 2 || m === 5) ? formatLinear(v) : '';
       ticks.push({ pos: map(v), label, major });
@@ -123,6 +146,31 @@ function logAxis(lo: number, hi: number, p0: number, p1: number): Axis {
       ticks.push({ pos: map(v), label: formatLinear(Number(v.toPrecision(2))), major: true });
   }
   return { map, lo: 10 ** a, hi: 10 ** b, ticks };
+}
+
+/** A fixed range that cannot be drawn (min ≥ max, or ≤ 0 on a log axis) is ignored. */
+function validFix(min: number | undefined, max: number | undefined, log: boolean): Fix {
+  const ok = (v: number | undefined) => v !== undefined && Number.isFinite(v) && (!log || v > 0);
+  if (ok(min) && ok(max) && !(max! > min!)) return {};
+  return { ...(ok(min) ? { min } : {}), ...(ok(max) ? { max } : {}) };
+}
+
+/** An axis over the data extent [lo, hi], with the user's range and custom ticks applied. */
+function makeAxis(
+  lo: number,
+  hi: number,
+  p0: number,
+  p1: number,
+  opts: { log: boolean; zero: boolean; fix: Fix; ticks: ChartStyle['xTicks'] },
+): Axis {
+  const axis = opts.log ? logAxis(lo, hi, p0, p1, opts.fix) : linearAxis(lo, hi, p0, p1, opts.zero, opts.fix);
+  if (!opts.ticks) return axis;
+  const [a, b] = [Math.min(axis.lo, axis.hi), Math.max(axis.lo, axis.hi)];
+  const eps = (b - a) * 1e-9;
+  axis.ticks = opts.ticks
+    .filter((t) => t.value >= a - eps && t.value <= b + eps && (!opts.log || t.value > 0))
+    .map((t) => ({ pos: axis.map(t.value), label: t.label ?? formatLinear(t.value), major: true }));
+  return axis;
 }
 
 /** Bar path with a rounded data end (r px) and a square baseline end. */
@@ -146,23 +194,31 @@ interface Hover {
   point: PlotPoint;
 }
 
+/** Rough width of text in px (no layout pass needed). */
+const textW = (s: string, size: number) => s.length * size * 0.6;
+
 function Chart(props: {
   plot: StatPlot;
+  /** Series in display order. */
   series: PlotSeries[];
   xCol: ColumnDef;
   yCol: ColumnDef;
   seriesLabel: string | undefined;
   levels: LevelOrder;
   width: number;
+  height: number;
   svgRef: React.RefObject<SVGSVGElement>;
 }) {
   const { plot, series, xCol, yCol, width } = props;
+  const st = plot.style;
   const [hover, setHover] = useState<Hover | null>(null);
+  const clipId = `chart-clip-${useId().replace(/:/g, '')}`;
   const band = plot.kind === 'bar' || plot.kind === 'dot' || xCol.type === 'categorical';
   const xLog = !band && plot.xScale === 'log10';
   const yLog = plot.yScale === 'log10';
   const multi = series.length > 1;
-  const color = (i: number) => CATEGORICAL[Math.min(i, CATEGORICAL.length - 1)]!;
+  const color = (i: number) => seriesColor(st, seriesKey(series[i]?.key), i);
+  const nameOf = (s: PlotSeries) => st.seriesLabels[seriesKey(s.key)] ?? (cellText(s.key) || '(none)');
 
   // Categories of a band axis, in display order.
   const cats = useMemo(() => {
@@ -171,17 +227,7 @@ function Chart(props: {
     return [...m.values()].sort((a, b) => compareCells(a, b, props.levels(plot.x)));
   }, [series, plot.x, props.levels]);
 
-  const longest = Math.max(0, ...cats.map((c) => cellText(c).length));
-  const H = 440;
-  const legendH = multi ? 26 : 0;
-  const m = { l: 72, r: 20, t: 14 + legendH, b: 56 };
-  const bandW = band ? (width - m.l - m.r) / Math.max(1, cats.length) : 0;
-  const rotate = band && longest * 6.6 > bandW - 6;
-  if (rotate) m.b = Math.min(160, 30 + longest * 5.2);
-  const pw = Math.max(80, width - m.l - m.r);
-  const ph = H - m.t - m.b;
-
-  // Value extents (y), dropping non-positive values on log axes.
+  // Value extents, dropping non-positive values on log axes.
   const okY = (v: number) => Number.isFinite(v) && (!yLog || v > 0);
   const okX = (v: number) => Number.isFinite(v) && (!xLog || v > 0);
   let yMin = Infinity;
@@ -211,22 +257,52 @@ function Chart(props: {
     }
   if (!Number.isFinite(yMin))
     return <div className="plot-message">No {yLog ? 'positive ' : ''}values to plot.</div>;
+  if (!band && !Number.isFinite(xMin))
+    return <div className="plot-message">No {xLog ? 'positive ' : ''}x values to plot.</div>;
 
-  const y = yLog
-    ? logAxis(yMin, yMax, m.t + ph, m.t)
-    : linearAxis(yMin, yMax, m.t + ph, m.t, plot.kind === 'bar');
+  const xFix = band ? {} : validFix(st.xMin, st.xMax, xLog);
+  const yFix = validFix(st.yMin, st.yMax, yLog);
+  const yAxisAt = (p0: number, p1: number) =>
+    makeAxis(yMin, yMax, p0, p1, { log: yLog, zero: plot.kind === 'bar', fix: yFix, ticks: st.yTicks });
+
+  // Margins from the text they hold.
+  const fs = st.tickFontSize;
+  const ts = st.titleFontSize;
+  const ls = st.legendFontSize;
+  const xTitle = (plot.xLabel ?? xCol.label).trim();
+  const yTitle = (plot.yLabel ?? yCol.label).trim();
+  const legend = multi ? st.legend : 'none';
+  const H = props.height;
+  const legendW = legend === 'right' ? 24 + Math.max(...series.map((s) => textW(nameOf(s), ls))) : 0;
+  const yLabelW = st.showTickLabels ? Math.max(0, ...yAxisAt(0, 1).ticks.map((t) => textW(t.label, fs))) : 0;
+  const m = {
+    l: 14 + (yTitle ? ts + 8 : 0) + yLabelW + 8,
+    r: 20 + legendW,
+    t: 14 + (legend === 'top' ? ls + 14 : 0),
+    b: (st.showTickLabels ? fs + 10 : 6) + (xTitle ? ts + 18 : 6),
+  };
+  const bandW = band ? (width - m.l - m.r) / Math.max(1, cats.length) : 0;
+  const longest = Math.max(0, ...cats.map((c) => cellText(c).length));
+  const rotate = band && st.showTickLabels && longest * fs * 0.6 > bandW - 6;
+  if (rotate) m.b = Math.min(H * 0.45, 18 + longest * fs * 0.47 + (xTitle ? ts + 6 : 0));
+  const pw = Math.max(80, width - m.l - m.r);
+  const ph = Math.max(40, H - m.t - m.b);
+
+  const y = yAxisAt(m.t + ph, m.t);
   const x: Axis | undefined = band
     ? undefined
-    : !Number.isFinite(xMin)
-      ? undefined
-      : xLog
-        ? logAxis(xMin, xMax, m.l, m.l + pw)
-        : linearAxis(xMin, xMax, m.l, m.l + pw, false);
-  if (!band && !x) return <div className="plot-message">No {xLog ? 'positive ' : ''}x values to plot.</div>;
+    : makeAxis(xMin, xMax, m.l, m.l + pw, { log: xLog, zero: false, fix: xFix, ticks: st.xTicks });
+  const clip = band
+    ? yFix.min !== undefined || yFix.max !== undefined
+    : [xFix.min, xFix.max, yFix.min, yFix.max].some((v) => v !== undefined);
 
   // Horizontal position of series i at category/x value.
-  const slot = band ? Math.min(24, (bandW * 0.8) / series.length) : 0;
   const slotGap = band && plot.kind === 'bar' ? 2 : 4;
+  const slot = !band
+    ? 0
+    : st.barWidth === undefined
+      ? Math.min(24, (bandW * 0.8) / series.length)
+      : Math.max(1, (bandW * st.barWidth - (series.length - 1) * slotGap) / series.length);
   const groupW = series.length * slot + (series.length - 1) * slotGap;
   const px = (xv: Cell, i: number): number => {
     if (band) {
@@ -237,10 +313,9 @@ function Chart(props: {
   };
   const yClamp = (v: number) => (yLog && v <= 0 ? m.t + ph : Math.max(m.t, Math.min(m.t + ph, y.map(v))));
   const base = plot.kind === 'bar' ? (yLog ? m.t + ph : y.map(Math.max(y.lo, Math.min(0, y.hi)))) : 0;
-  const capW = band ? Math.max(6, Math.min(12, slot * 0.6)) : 10;
-
-  const xTitle = plot.xLabel ?? xCol.label;
-  const yTitle = plot.yLabel ?? yCol.label;
+  const capW = st.capWidth ?? (band ? Math.max(6, Math.min(12, slot * 0.6)) : 10);
+  const pointOpacity = st.pointOpacity ?? (plot.kind === 'bar' ? 0.85 : 0.55);
+  const tickText = { fontSize: fs };
 
   return (
     <div className="chart-box" onPointerLeave={() => setHover(null)}>
@@ -250,17 +325,27 @@ function Chart(props: {
         width={width}
         height={H}
         role="img"
-        aria-label={`${yTitle} by ${xTitle}${props.seriesLabel ? ` and ${props.seriesLabel}` : ''}`}
+        aria-label={`${yTitle || yCol.label} by ${xTitle || xCol.label}${props.seriesLabel ? ` and ${props.seriesLabel}` : ''}`}
+        style={{ fontFamily: FONT_STACKS[st.fontFamily] }}
       >
+        {clip && (
+          <defs>
+            <clipPath id={clipId}>
+              <rect x={m.l} y={m.t} width={pw} height={ph} />
+            </clipPath>
+          </defs>
+        )}
         <rect className="chart-bg" x={0} y={0} width={width} height={H} />
         {/* Gridlines and y axis */}
         <g className="chart-axis">
           {y.ticks.map((t, i) => (
             <g key={i}>
-              {t.major && <line className="chart-grid" x1={m.l} x2={m.l + pw} y1={t.pos} y2={t.pos} />}
+              {st.showGrid && t.major && (
+                <line className="chart-grid" x1={m.l} x2={m.l + pw} y1={t.pos} y2={t.pos} />
+              )}
               <line x1={m.l - (t.major ? 5 : 3)} x2={m.l} y1={t.pos} y2={t.pos} />
-              {t.label && (
-                <text x={m.l - 8} y={t.pos} textAnchor="end" dominantBaseline="middle">
+              {st.showTickLabels && t.label && (
+                <text x={m.l - 8} y={t.pos} textAnchor="end" dominantBaseline="middle" style={tickText}>
                   {t.label}
                 </text>
               )}
@@ -274,153 +359,203 @@ function Chart(props: {
                 return (
                   <g key={i}>
                     <line x1={cx} x2={cx} y1={m.t + ph} y2={m.t + ph + 4} />
-                    <text
-                      x={cx}
-                      y={m.t + ph + 16}
-                      textAnchor={rotate ? 'end' : 'middle'}
-                      transform={rotate ? `rotate(-40 ${cx} ${m.t + ph + 12})` : undefined}
-                    >
-                      {cellText(c)}
-                    </text>
+                    {st.showTickLabels && (
+                      <text
+                        x={cx}
+                        y={m.t + ph + fs + 5}
+                        textAnchor={rotate ? 'end' : 'middle'}
+                        transform={rotate ? `rotate(-40 ${cx} ${m.t + ph + fs + 1})` : undefined}
+                        style={tickText}
+                      >
+                        {cellText(c)}
+                      </text>
+                    )}
                   </g>
                 );
               })
             : x!.ticks.map((t, i) => (
                 <g key={i}>
                   <line x1={t.pos} x2={t.pos} y1={m.t + ph} y2={m.t + ph + (t.major ? 5 : 3)} />
-                  {t.label && (
-                    <text x={t.pos} y={m.t + ph + 18} textAnchor="middle">
+                  {st.showTickLabels && t.label && (
+                    <text x={t.pos} y={m.t + ph + fs + 7} textAnchor="middle" style={tickText}>
                       {t.label}
                     </text>
                   )}
                 </g>
               ))}
-          <text className="axis-title" x={m.l + pw / 2} y={H - 8} textAnchor="middle">
-            {xTitle}
-          </text>
-          <text
-            className="axis-title"
-            x={14}
-            y={m.t + ph / 2}
-            textAnchor="middle"
-            transform={`rotate(-90 14 ${m.t + ph / 2})`}
-          >
-            {yTitle}
-          </text>
+          {xTitle && (
+            <text
+              className="axis-title"
+              x={m.l + pw / 2}
+              y={H - 8}
+              textAnchor="middle"
+              style={{ fontSize: ts }}
+            >
+              {xTitle}
+            </text>
+          )}
+          {yTitle && (
+            <text
+              className="axis-title"
+              x={6 + ts * 0.8}
+              y={m.t + ph / 2}
+              textAnchor="middle"
+              transform={`rotate(-90 ${6 + ts * 0.8} ${m.t + ph / 2})`}
+              style={{ fontSize: ts }}
+            >
+              {yTitle}
+            </text>
+          )}
         </g>
         {/* Marks, one group per series */}
-        {series.map((s, i) => {
-          const c = color(i);
-          const pts = s.points.filter((p) => okY(p.mean) && (band || okX(p.x as number)));
-          return (
-            <g key={JSON.stringify(s.key ?? null)}>
-              {plot.kind === 'bar' &&
-                pts.map((p) => (
-                  <path
-                    key={JSON.stringify(p.x)}
-                    d={barPath(px(p.x, i) - slot / 2, slot, base, yClamp(p.mean), 4)}
-                    fill={c}
+        <g clipPath={clip ? `url(#${clipId})` : undefined}>
+          {series.map((s, i) => {
+            const c = color(i);
+            const pts = s.points.filter((p) => okY(p.mean) && (band || okX(p.x as number)));
+            return (
+              <g key={seriesKey(s.key)}>
+                {plot.kind === 'bar' &&
+                  pts.map((p) => (
+                    <path
+                      key={JSON.stringify(p.x)}
+                      d={barPath(px(p.x, i) - slot / 2, slot, base, yClamp(p.mean), 4)}
+                      fill={c}
+                      fillOpacity={st.fillOpacity}
+                    />
+                  ))}
+                {plot.kind === 'line' && pts.length > 1 && st.lineWidth > 0 && (
+                  <polyline
+                    points={pts.map((p) => `${px(p.x, i)},${y.map(p.mean)}`).join(' ')}
+                    fill="none"
+                    stroke={c}
+                    strokeWidth={st.lineWidth}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
                   />
-                ))}
-              {plot.kind === 'line' && pts.length > 1 && (
-                <polyline
-                  points={pts.map((p) => `${px(p.x, i)},${yClamp(p.mean)}`).join(' ')}
-                  fill="none"
-                  stroke={c}
-                  strokeWidth={2}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                />
-              )}
-              {plot.error !== 'none' &&
-                pts.map((p) =>
-                  Number.isFinite(p.err) ? (
-                    <g key={`e${JSON.stringify(p.x)}`} className="chart-err">
-                      <line
-                        x1={px(p.x, i)}
-                        x2={px(p.x, i)}
-                        y1={yClamp(p.mean - p.err)}
-                        y2={yClamp(p.mean + p.err)}
-                      />
-                      <line
-                        x1={px(p.x, i) - capW / 2}
-                        x2={px(p.x, i) + capW / 2}
-                        y1={yClamp(p.mean + p.err)}
-                        y2={yClamp(p.mean + p.err)}
-                      />
-                      <line
-                        x1={px(p.x, i) - capW / 2}
-                        x2={px(p.x, i) + capW / 2}
-                        y1={yClamp(p.mean - p.err)}
-                        y2={yClamp(p.mean - p.err)}
-                      />
-                    </g>
-                  ) : null,
                 )}
-              {plot.showPoints &&
-                pts.flatMap((p) =>
-                  p.values.filter(okY).map((v, j) => {
-                    const spread = band ? Math.max(0, slot * 0.7) : 0;
-                    const dx = p.values.length > 1 ? (j / (p.values.length - 1) - 0.5) * spread : 0;
+                {plot.error !== 'none' &&
+                  st.errorWidth > 0 &&
+                  pts.map((p) => {
+                    if (!Number.isFinite(p.err)) return null;
+                    const cx = px(p.x, i);
+                    const lw = { strokeWidth: st.errorWidth };
                     return (
-                      <circle
-                        key={`r${JSON.stringify(p.x)}${j}`}
-                        className="chart-rep"
-                        cx={px(p.x, i) + dx}
-                        cy={y.map(v)}
-                        r={3}
-                        fill={plot.kind === 'bar' ? 'var(--surface)' : c}
-                        stroke={plot.kind === 'bar' ? 'var(--text)' : 'var(--surface)'}
-                        strokeWidth={plot.kind === 'bar' ? 1 : 1.5}
-                        opacity={plot.kind === 'bar' ? 0.85 : 0.55}
-                      />
+                      <g key={`e${JSON.stringify(p.x)}`} className="chart-err">
+                        <line
+                          x1={cx}
+                          x2={cx}
+                          y1={yClamp(p.mean - p.err)}
+                          y2={yClamp(p.mean + p.err)}
+                          style={lw}
+                        />
+                        {capW > 0 && (
+                          <>
+                            <line
+                              x1={cx - capW / 2}
+                              x2={cx + capW / 2}
+                              y1={yClamp(p.mean + p.err)}
+                              y2={yClamp(p.mean + p.err)}
+                              style={lw}
+                            />
+                            <line
+                              x1={cx - capW / 2}
+                              x2={cx + capW / 2}
+                              y1={yClamp(p.mean - p.err)}
+                              y2={yClamp(p.mean - p.err)}
+                              style={lw}
+                            />
+                          </>
+                        )}
+                      </g>
                     );
-                  }),
-                )}
-              {plot.kind !== 'bar' &&
-                pts.map((p) => (
-                  <circle
-                    key={`m${JSON.stringify(p.x)}`}
-                    cx={px(p.x, i)}
-                    cy={yClamp(p.mean)}
-                    r={5}
-                    fill={c}
-                    stroke="var(--surface)"
-                    strokeWidth={2}
+                  })}
+                {plot.showPoints &&
+                  st.pointSize > 0 &&
+                  pts.flatMap((p) =>
+                    p.values.filter(okY).map((v, j) => {
+                      const spread = band ? Math.max(0, slot * 0.7) : 0;
+                      const dx = p.values.length > 1 ? (j / (p.values.length - 1) - 0.5) * spread : 0;
+                      return (
+                        <circle
+                          key={`r${JSON.stringify(p.x)}${j}`}
+                          className="chart-rep"
+                          cx={px(p.x, i) + dx}
+                          cy={y.map(v)}
+                          r={st.pointSize}
+                          fill={plot.kind === 'bar' ? 'var(--surface)' : c}
+                          stroke={plot.kind === 'bar' ? 'var(--text)' : 'var(--surface)'}
+                          strokeWidth={plot.kind === 'bar' ? 1 : 1.5}
+                          opacity={pointOpacity}
+                        />
+                      );
+                    }),
+                  )}
+                {plot.kind !== 'bar' &&
+                  st.markerSize > 0 &&
+                  pts.map((p) => (
+                    <circle
+                      key={`m${JSON.stringify(p.x)}`}
+                      cx={px(p.x, i)}
+                      cy={y.map(p.mean)}
+                      r={st.markerSize}
+                      fill={c}
+                      fillOpacity={st.fillOpacity}
+                      stroke="var(--surface)"
+                      strokeWidth={Math.min(2, st.markerSize / 2)}
+                    />
+                  ))}
+                {/* Hit targets larger than the marks */}
+                {pts.map((p) => (
+                  <rect
+                    key={`h${JSON.stringify(p.x)}`}
+                    className="chart-hit"
+                    x={px(p.x, i) - Math.max(10, slot / 2 + 2)}
+                    y={plot.kind === 'bar' ? Math.min(base, yClamp(p.mean)) - 8 : yClamp(p.mean) - 12}
+                    width={Math.max(20, slot + 4)}
+                    height={plot.kind === 'bar' ? Math.abs(base - yClamp(p.mean)) + 16 : 24}
+                    onPointerEnter={() =>
+                      setHover({ x: px(p.x, i), y: yClamp(p.mean), series: s.key, point: p })
+                    }
                   />
                 ))}
-              {/* Hit targets larger than the marks */}
-              {pts.map((p) => (
-                <rect
-                  key={`h${JSON.stringify(p.x)}`}
-                  className="chart-hit"
-                  x={px(p.x, i) - Math.max(10, slot / 2 + 2)}
-                  y={plot.kind === 'bar' ? Math.min(base, yClamp(p.mean)) - 8 : yClamp(p.mean) - 12}
-                  width={Math.max(20, slot + 4)}
-                  height={plot.kind === 'bar' ? Math.abs(base - yClamp(p.mean)) + 16 : 24}
-                  onPointerEnter={() =>
-                    setHover({ x: px(p.x, i), y: yClamp(p.mean), series: s.key, point: p })
-                  }
-                />
-              ))}
-            </g>
-          );
-        })}
-        {multi && (
-          <g className="chart-legend" transform={`translate(${m.l}, 12)`}>
+              </g>
+            );
+          })}
+        </g>
+        {legend !== 'none' && (
+          <g
+            className="chart-legend"
+            transform={
+              legend === 'top'
+                ? `translate(${m.l}, ${8 + ls / 2})`
+                : `translate(${m.l + pw + 16}, ${m.t + ls / 2})`
+            }
+          >
             {(() => {
               let off = 0;
+              const sw = Math.round(ls * 0.85);
               return series.map((s, i) => {
-                const label = cellText(s.key) || '(none)';
+                const label = nameOf(s);
                 const g = (
-                  <g key={label} transform={`translate(${off}, 0)`}>
-                    <rect x={0} y={-5} width={10} height={10} rx={2} fill={color(i)} />
-                    <text x={15} y={0} dominantBaseline="middle">
+                  <g
+                    key={seriesKey(s.key)}
+                    transform={legend === 'top' ? `translate(${off}, 0)` : `translate(0, ${i * (ls + 8)})`}
+                  >
+                    <rect
+                      x={0}
+                      y={-sw / 2}
+                      width={sw}
+                      height={sw}
+                      rx={2}
+                      fill={color(i)}
+                      fillOpacity={st.fillOpacity}
+                    />
+                    <text x={sw + 5} y={0} dominantBaseline="middle" style={{ fontSize: ls }}>
                       {label}
                     </text>
                   </g>
                 );
-                off += 28 + label.length * 6.6;
+                off += sw + 18 + textW(label, ls);
                 return g;
               });
             })()}
@@ -438,7 +573,7 @@ function Chart(props: {
                 className="swatch"
                 style={{ background: color(series.findIndex((s) => s.key === hover.series)) }}
               />{' '}
-              {props.seriesLabel}: {cellText(hover.series)}
+              {props.seriesLabel}: {nameOf(series.find((s) => s.key === hover.series)!)}
             </div>
           )}
           <div>
@@ -518,16 +653,20 @@ function ColumnSelect(props: {
   );
 }
 
-function useWidth(ref: React.RefObject<HTMLElement>): number {
+/**
+ * Width of an element, tracked from when it mounts. A callback ref, because the chart frame
+ * only appears once the group has a chart.
+ */
+function useWidth(): [(el: HTMLElement | null) => void, number] {
+  const [el, setEl] = useState<HTMLElement | null>(null);
   const [w, setW] = useState(760);
   useEffect(() => {
-    const el = ref.current;
     if (!el) return;
     const ro = new ResizeObserver(([e]) => setW(Math.max(320, Math.floor(e!.contentRect.width))));
     ro.observe(el);
     return () => ro.disconnect();
-  }, [ref]);
-  return w;
+  }, [el]);
+  return [setEl, w];
 }
 
 export function ChartsView() {
@@ -536,15 +675,20 @@ export function ChartsView() {
   const mutate = useStore((s) => s.mutate);
   const { perSample, levels, stats } = useAnalysisTable(group);
   const [chartId, setChartId] = useState<string | null>(null);
-  const boxRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const width = useWidth(boxRef);
+  const [boxRef, fitWidth] = useWidth();
 
   const plot = group?.statPlots.find((p) => p.id === chartId) ?? group?.statPlots[0];
-  const seriesKey = plot?.series ? `var:${plot.series}` : undefined;
+  const seriesCol = plot?.series ? `var:${plot.series}` : undefined;
   const summary = useMemo(
-    () => (plot ? summaryForPlot(perSample.rows, plot.x, plot.y, seriesKey, plot.error, levels) : []),
-    [plot, perSample, seriesKey, levels],
+    () =>
+      plot
+        ? orderSeries(
+            summaryForPlot(perSample.rows, plot.x, plot.y, seriesCol, plot.error, levels),
+            plot.style.seriesOrder,
+          )
+        : [],
+    [plot, perSample, seriesCol, levels],
   );
 
   if (!group) return <div className="empty">Select a group.</div>;
@@ -605,6 +749,8 @@ export function ChartsView() {
   const catVars = variables.filter((v) => v.type === 'categorical');
   const band = plot.kind === 'bar' || plot.kind === 'dot' || xCol?.type === 'categorical';
   const seriesLabel = variables.find((v) => v.id === plot.series)?.name;
+  const width = plot.style.width ?? fitWidth;
+  const height = plot.style.height;
 
   const exportSvg = () => {
     if (!svgRef.current) return;
@@ -613,7 +759,7 @@ export function ChartsView() {
   const exportPng = async () => {
     if (!svgRef.current) return;
     try {
-      const blob = await svgToPng(standaloneSvg(svgRef.current), width, 440, 300 / 96);
+      const blob = await svgToPng(standaloneSvg(svgRef.current), width, height, 300 / 96);
       download(`${safeName(`${group.name}_${plot.name}`)}.png`, blob, 'image/png');
     } catch (e) {
       toast(`PNG export failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -630,7 +776,7 @@ export function ChartsView() {
     ];
     const rows = summary.flatMap((s) =>
       s.points.map((p) => [
-        ...(seriesLabel ? [s.key ?? ''] : []),
+        ...(seriesLabel ? [plot.style.seriesLabels[seriesKey(s.key)] ?? s.key ?? ''] : []),
         p.x,
         p.mean,
         ...(plot.error !== 'none' ? [p.err] : []),
@@ -640,223 +786,213 @@ export function ChartsView() {
     download(`${safeName(`${group.name}_${plot.name}`)}_data.csv`, toCsv([header, ...rows]), 'text/csv');
   };
 
+  const style: ChartStyle = plot.style;
   return (
-    <div className="charts-view">
-      {tabs}
-      <div className="toolbar chart-controls">
-        <label className="field">
-          Name
-          <input
-            type="text"
-            value={plot.name}
-            onChange={(e) =>
-              edit('Rename chart', (p) => void (p.name = e.target.value), `chart-name:${plot.id}`)
-            }
+    <div className="charts-layout">
+      <div className="charts-view">
+        {tabs}
+        <div className="toolbar chart-controls">
+          <label className="field">
+            Name
+            <input
+              type="text"
+              value={plot.name}
+              onChange={(e) =>
+                edit('Rename chart', (p) => void (p.name = e.target.value), `chart-name:${plot.id}`)
+              }
+            />
+          </label>
+          <div className="seg">
+            {KINDS.map((k) => (
+              <button
+                key={k.id}
+                type="button"
+                className={plot.kind === k.id ? 'on' : ''}
+                onClick={() => edit('Change chart type', (p) => void (p.kind = k.id))}
+              >
+                {k.label}
+              </button>
+            ))}
+          </div>
+          <ColumnSelect
+            label="X"
+            value={plot.x}
+            columns={perSample.columns}
+            onChange={(k) => edit('Change chart x', (p) => void (p.x = k))}
           />
-        </label>
-        <div className="seg">
-          {KINDS.map((k) => (
-            <button
-              key={k.id}
-              type="button"
-              className={plot.kind === k.id ? 'on' : ''}
-              onClick={() => edit('Change chart type', (p) => void (p.kind = k.id))}
+          <ColumnSelect
+            label="Y"
+            value={plot.y}
+            columns={yOptions}
+            onChange={(k) => edit('Change chart y', (p) => void (p.y = k))}
+          />
+          <label className="field">
+            Colour by
+            <select
+              value={plot.series ?? ''}
+              onChange={(e) =>
+                edit('Change chart series', (p) => {
+                  p.series = e.target.value || undefined;
+                  // Colours, labels and order are per value of the previous variable.
+                  p.style.seriesColors = {};
+                  p.style.seriesLabels = {};
+                  p.style.seriesOrder = [];
+                })
+              }
             >
-              {k.label}
+              <option value="">—</option>
+              {catVars.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            X scale
+            <select
+              value={band ? 'linear' : plot.xScale}
+              disabled={band}
+              title={band ? 'Categories: no scale' : undefined}
+              onChange={(e) =>
+                edit('Change chart x scale', (p) => void (p.xScale = e.target.value as StatPlot['xScale']))
+              }
+            >
+              <option value="linear">linear</option>
+              <option value="log10">log</option>
+            </select>
+          </label>
+          <label className="field">
+            Y scale
+            <select
+              value={plot.yScale}
+              onChange={(e) =>
+                edit('Change chart y scale', (p) => void (p.yScale = e.target.value as StatPlot['yScale']))
+              }
+            >
+              <option value="linear">linear</option>
+              <option value="log10">log</option>
+            </select>
+          </label>
+          <label
+            className="field"
+            title="Error bars over the replicates (rows) sharing an x value and colour"
+          >
+            Error
+            <select
+              value={plot.error}
+              onChange={(e) =>
+                edit('Change chart error bars', (p) => void (p.error = e.target.value as StatPlot['error']))
+              }
+            >
+              {ERRORS.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field check">
+            <input
+              type="checkbox"
+              checked={plot.showPoints}
+              onChange={(e) => edit('Toggle replicate points', (p) => void (p.showPoints = e.target.checked))}
+            />
+            Replicates
+          </label>
+        </div>
+        <div className="toolbar chart-controls">
+          {stats.busy > 0 && <span className="muted">computing… {stats.busy} sample(s) left</span>}
+          <div className="spacer" />
+          <div className="seg">
+            <button type="button" onClick={exportSvg}>
+              SVG
             </button>
-          ))}
-        </div>
-        <ColumnSelect
-          label="X"
-          value={plot.x}
-          columns={perSample.columns}
-          onChange={(k) => edit('Change chart x', (p) => void (p.x = k))}
-        />
-        <ColumnSelect
-          label="Y"
-          value={plot.y}
-          columns={yOptions}
-          onChange={(k) => edit('Change chart y', (p) => void (p.y = k))}
-        />
-        <label className="field">
-          Colour by
-          <select
-            value={plot.series ?? ''}
-            onChange={(e) =>
-              edit('Change chart series', (p) => {
-                p.series = e.target.value || undefined;
-              })
-            }
-          >
-            <option value="">—</option>
-            {catVars.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          X scale
-          <select
-            value={band ? 'linear' : plot.xScale}
-            disabled={band}
-            title={band ? 'Categories: no scale' : undefined}
-            onChange={(e) =>
-              edit('Change chart x scale', (p) => void (p.xScale = e.target.value as StatPlot['xScale']))
-            }
-          >
-            <option value="linear">linear</option>
-            <option value="log10">log</option>
-          </select>
-        </label>
-        <label className="field">
-          Y scale
-          <select
-            value={plot.yScale}
-            onChange={(e) =>
-              edit('Change chart y scale', (p) => void (p.yScale = e.target.value as StatPlot['yScale']))
-            }
-          >
-            <option value="linear">linear</option>
-            <option value="log10">log</option>
-          </select>
-        </label>
-        <label className="field" title="Error bars over the replicates (rows) sharing an x value and colour">
-          Error
-          <select
-            value={plot.error}
-            onChange={(e) =>
-              edit('Change chart error bars', (p) => void (p.error = e.target.value as StatPlot['error']))
-            }
-          >
-            {ERRORS.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field check">
-          <input
-            type="checkbox"
-            checked={plot.showPoints}
-            onChange={(e) => edit('Toggle replicate points', (p) => void (p.showPoints = e.target.checked))}
-          />
-          Replicates
-        </label>
-      </div>
-      <div className="toolbar chart-controls">
-        <label className="field">
-          X title
-          <input
-            type="text"
-            value={plot.xLabel ?? ''}
-            placeholder={xCol?.label}
-            onChange={(e) =>
-              edit(
-                'Change x title',
-                (p) => {
-                  p.xLabel = e.target.value || undefined;
-                },
-                `chart-xl:${plot.id}`,
-              )
-            }
-          />
-        </label>
-        <label className="field">
-          Y title
-          <input
-            type="text"
-            value={plot.yLabel ?? ''}
-            placeholder={yCol?.label}
-            onChange={(e) =>
-              edit(
-                'Change y title',
-                (p) => {
-                  p.yLabel = e.target.value || undefined;
-                },
-                `chart-yl:${plot.id}`,
-              )
-            }
-          />
-        </label>
-        {stats.busy > 0 && <span className="muted">computing… {stats.busy} sample(s) left</span>}
-        <div className="spacer" />
-        <div className="seg">
-          <button type="button" onClick={exportSvg}>
-            SVG
+            <button type="button" onClick={() => void exportPng()}>
+              PNG
+            </button>
+            <button type="button" onClick={exportCsv} title="The plotted means, error and n">
+              CSV
+            </button>
+          </div>
+          <button type="button" onClick={() => addChart(plot)}>
+            Duplicate
           </button>
-          <button type="button" onClick={() => void exportPng()}>
-            PNG
-          </button>
-          <button type="button" onClick={exportCsv} title="The plotted means, error and n">
-            CSV
+          <button
+            type="button"
+            onClick={() => {
+              editGroup(
+                'Remove chart',
+                (g) => void (g.statPlots = g.statPlots.filter((p) => p.id !== plot.id)),
+              );
+              setChartId(null);
+            }}
+          >
+            Remove
           </button>
         </div>
-        <button type="button" onClick={() => addChart(plot)}>
-          Duplicate
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            editGroup(
-              'Remove chart',
-              (g) => void (g.statPlots = g.statPlots.filter((p) => p.id !== plot.id)),
-            );
-            setChartId(null);
-          }}
-        >
-          Remove
-        </button>
-      </div>
-      <div ref={boxRef} className="chart-wrap">
-        {!xCol || !yCol ? (
-          <div className="plot-message">Choose the {!xCol ? 'x' : 'y'} column.</div>
-        ) : (
-          <Chart
-            plot={plot}
-            series={summary}
-            xCol={xCol}
-            yCol={yCol}
-            seriesLabel={seriesLabel}
-            levels={levels}
-            width={width}
-            svgRef={svgRef}
-          />
-        )}
-      </div>
-      <details className="chart-data">
-        <summary>Data ({summary.reduce((a, s) => a + s.points.length, 0)} points)</summary>
-        <div className="table-wrap">
-          <table className="stats">
-            <thead>
-              <tr>
-                {seriesLabel && <th>{seriesLabel}</th>}
-                <th>{xCol?.label}</th>
-                <th>Mean</th>
-                {plot.error !== 'none' && <th>{errLabel}</th>}
-                <th>n</th>
-                <th>Values</th>
-              </tr>
-            </thead>
-            <tbody>
-              {summary.flatMap((s) =>
-                s.points.map((p) => (
-                  <tr key={`${JSON.stringify(s.key ?? null)}${JSON.stringify(p.x)}`}>
-                    {seriesLabel && <td className="text-cell">{cellText(s.key)}</td>}
-                    <td className={typeof p.x === 'number' ? undefined : 'text-cell'}>{cellText(p.x)}</td>
-                    <td>{fmt(p.mean)}</td>
-                    {plot.error !== 'none' && <td>{fmt(p.err)}</td>}
-                    <td>{p.n}</td>
-                    <td className="muted small text-cell">{p.values.map(fmt).join(', ')}</td>
-                  </tr>
-                )),
-              )}
-            </tbody>
-          </table>
+        <div ref={boxRef} className="chart-wrap">
+          {!xCol || !yCol ? (
+            <div className="plot-message">Choose the {!xCol ? 'x' : 'y'} column.</div>
+          ) : (
+            <Chart
+              plot={plot}
+              series={summary}
+              xCol={xCol}
+              yCol={yCol}
+              seriesLabel={seriesLabel}
+              levels={levels}
+              width={width}
+              height={height}
+              svgRef={svgRef}
+            />
+          )}
         </div>
-      </details>
+        <details className="chart-data">
+          <summary>Data ({summary.reduce((a, s) => a + s.points.length, 0)} points)</summary>
+          <div className="table-wrap">
+            <table className="stats">
+              <thead>
+                <tr>
+                  {seriesLabel && <th>{seriesLabel}</th>}
+                  <th>{xCol?.label}</th>
+                  <th>Mean</th>
+                  {plot.error !== 'none' && <th>{errLabel}</th>}
+                  <th>n</th>
+                  <th>Values</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.flatMap((s) =>
+                  s.points.map((p) => (
+                    <tr key={`${JSON.stringify(s.key ?? null)}${JSON.stringify(p.x)}`}>
+                      {seriesLabel && (
+                        <td className="text-cell">
+                          {style.seriesLabels[seriesKey(s.key)] ?? cellText(s.key)}
+                        </td>
+                      )}
+                      <td className={typeof p.x === 'number' ? undefined : 'text-cell'}>{cellText(p.x)}</td>
+                      <td>{fmt(p.mean)}</td>
+                      {plot.error !== 'none' && <td>{fmt(p.err)}</td>}
+                      <td>{p.n}</td>
+                      <td className="muted small text-cell">{p.values.map(fmt).join(', ')}</td>
+                    </tr>
+                  )),
+                )}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </div>
+      <ChartInspector
+        plot={plot}
+        series={summary}
+        seriesLabel={seriesLabel}
+        xTitle={xCol?.label ?? plot.x}
+        yTitle={yCol?.label ?? plot.y}
+        band={band}
+        edit={edit}
+      />
     </div>
   );
 }

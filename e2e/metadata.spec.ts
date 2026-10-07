@@ -63,6 +63,24 @@ test('sample variables from a CSV, replicate means, and a chart', async ({ page 
   await expect(page.locator('svg.stat-chart')).toContainText('Median GFP');
   // Coloured by replicate, each point is one sample (no error bar); uncoloured, replicates are pooled.
   await expect(page.locator('svg.stat-chart .chart-hit')).toHaveCount(4);
+
+  // The settings panel restyles the chart: series labels and order, legend, axis range and size.
+  const panel = page.getByRole('complementary', { name: 'Chart settings' });
+  await panel.getByRole('textbox', { name: 'Legend label of r1' }).fill('Replicate 1');
+  await expect(page.locator('svg.stat-chart .chart-legend')).toContainText('Replicate 1');
+  await panel.getByRole('button', { name: 'Reverse' }).click();
+  await expect(page.locator('svg.stat-chart .chart-legend text').first()).toHaveText('r2');
+  await panel.getByRole('combobox', { name: 'Legend', exact: true }).selectOption('none');
+  await expect(page.locator('svg.stat-chart .chart-legend')).toHaveCount(0);
+  const yAxis = panel.locator('fieldset', { hasText: 'Y axis' });
+  await yAxis.getByRole('spinbutton', { name: 'Max' }).fill('1000');
+  await yAxis.getByRole('spinbutton', { name: 'Max' }).press('Enter');
+  await expect(page.locator('svg.stat-chart .chart-axis')).toContainText('1K');
+  await panel.getByRole('spinbutton', { name: 'Height (px)' }).fill('300');
+  await panel.getByRole('spinbutton', { name: 'Height (px)' }).press('Enter');
+  await expect(page.locator('svg.stat-chart')).toHaveAttribute('height', '300');
+  await page.screenshot({ path: 'test-results/charts-panel.png' });
+
   await page.locator('.chart-controls label', { hasText: 'Colour by' }).locator('select').selectOption('');
   await expect(page.locator('svg.stat-chart .chart-err')).toHaveCount(2);
   await expect(page.locator('svg.stat-chart .chart-hit')).toHaveCount(2);

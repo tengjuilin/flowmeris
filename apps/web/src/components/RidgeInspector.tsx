@@ -121,7 +121,7 @@ function parseTicks(text: string): RidgeStyle['ticks'] | null {
   return out;
 }
 
-function TicksEditor({
+export function TicksEditor({
   ticks,
   onCommit,
 }: { ticks: RidgeStyle['ticks']; onCommit: (t: RidgeStyle['ticks']) => void }) {
