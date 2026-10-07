@@ -16,6 +16,7 @@ import {
   type CSSProperties,
   type ComponentProps,
   type MouseEvent,
+  type ReactNode,
   useCallback,
   useMemo,
   useRef,
@@ -364,7 +365,6 @@ function TextStyleEditor({
   );
   return (
     <div className="text-style">
-      <div className="text-style-title">{label}</div>
       <FontSelect
         label="Font"
         value={value.fontFamily}
@@ -404,6 +404,72 @@ function TextStyleEditor({
   );
 }
 
+type RidgeTab = 'sample' | 'axis' | 'text' | 'figure';
+type SectionId =
+  | 'samples'
+  | 'ridgeStyle'
+  | 'scale'
+  | 'ticks'
+  | 'title'
+  | 'labels'
+  | 'tickText'
+  | 'titleText'
+  | 'layout'
+  | 'histogram'
+  | 'baseFont';
+
+const RIDGE_TABS: { id: RidgeTab; label: string }[] = [
+  { id: 'sample', label: 'Sample' },
+  { id: 'axis', label: 'Axis' },
+  { id: 'text', label: 'Text' },
+  { id: 'figure', label: 'Figure' },
+];
+
+/** The first section of each tab starts open. */
+const DEFAULT_OPEN: Partial<Record<SectionId, boolean>> = {
+  samples: true,
+  scale: true,
+  labels: true,
+  layout: true,
+};
+
+/** A collapsible group of settings within a tab. */
+function Section({
+  id,
+  title,
+  open,
+  onToggle,
+  children,
+}: {
+  id: SectionId;
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <section className={`ridge-section${open ? ' open' : ''}`}>
+      <button
+        type="button"
+        className="ridge-section-head"
+        aria-expanded={open}
+        aria-controls={`ridge-section-${id}`}
+        onClick={onToggle}
+      >
+        <span className="chevron" aria-hidden="true">
+          ▸
+        </span>
+        {title}
+      </button>
+      {open && (
+        <div id={`ridge-section-${id}`} className="ridge-section-body">
+          {children}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function RidgeInspector() {
   const popId = useStore((s) => s.ui.popId);
   const { group, layout, style, styleFollow, combine, overlap, axis, rows, allIds, update } = useRidge();
@@ -411,6 +477,13 @@ export function RidgeInspector() {
   const ordered = rows.map((r) => r.id);
   const labels = Object.fromEntries(rows.map((r) => [r.id, r.label]));
   const current = new Set(allIds);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const anchor = useRef<string | null>(null);
+  const [dragIds, setDragIds] = useState<string[] | null>(null);
+  const [drop, setDrop] = useState<{ id: string; after: boolean } | null>(null);
+  const [tab, setTab] = useState<RidgeTab>('sample');
+  const [open, setOpen] = useState<Partial<Record<SectionId, boolean>>>(DEFAULT_OPEN);
+  const toggle = (id: SectionId) => setOpen((o) => ({ ...o, [id]: !o[id] }));
   if (!group) return null;
   const set = <K extends keyof RidgeStyle>(key: K, value: RidgeStyle[K], label: string, merge?: string) =>
     update(
@@ -421,10 +494,6 @@ export function RidgeInspector() {
       },
       merge ?? `style:${key}`,
     );
-  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
-  const anchor = useRef<string | null>(null);
-  const [dragIds, setDragIds] = useState<string[] | null>(null);
-  const [drop, setDrop] = useState<{ id: string; after: boolean } | null>(null);
 
   /** Click selects one row; ⌘/Ctrl toggles; Shift extends from the last clicked row. */
   const select = (id: string, e: MouseEvent) => {
@@ -481,497 +550,577 @@ export function RidgeInspector() {
 
   return (
     <aside className="inspector ridge-inspector" aria-label="Ridge plot settings">
-      <label
-        className="field check"
-        title="Colours, labels, text, size, overlap and histogram settings. Each population keeps its own channel, scale, ticks and axis title."
-      >
-        <input type="checkbox" checked={styleFollow} onChange={(e) => setStyleFollow(e.target.checked)} />
-        Same plot settings for all populations
-      </label>
-      <fieldset>
-        <legend>Ridges</legend>
-        <label className="field">
-          Colour
-          <select
-            value={style.colorMode}
-            onChange={(e) => set('colorMode', e.target.value as RidgeStyle['colorMode'], 'Ridge colour mode')}
-          >
-            <option value="single">Single colour</option>
-            <option value="palette">Categorical palette</option>
-          </select>
-        </label>
-        {style.colorMode === 'single' && (
-          <label className="field">
-            Fill colour
-            <input
-              type="color"
-              value={style.color}
-              onChange={(e) => set('color', e.target.value, 'Ridge colour', 'color')}
-            />
-          </label>
-        )}
-        <label className="field">
-          Fill opacity · {Math.round(style.fillOpacity * 100)}%
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={style.fillOpacity}
-            onChange={(e) => set('fillOpacity', Number(e.target.value), 'Ridge opacity', 'opacity')}
-          />
-        </label>
-        <div className="grid2">
-          <label className="field">
-            Outline
-            <input
-              type="color"
-              value={style.strokeColor ?? '#ffffff'}
-              disabled={style.strokeColor === undefined}
-              onChange={(e) => set('strokeColor', e.target.value, 'Ridge outline colour', 'stroke')}
-            />
-          </label>
-          <LiveNum
-            label="Outline width"
-            step={0.25}
-            value={style.strokeWidth}
-            onCommit={(v) => set('strokeWidth', clamp(v, 0, 10), 'Ridge outline width')}
-          />
+      <div className="ridge-inspector-head">
+        <div className="tabs ridge-tabs" role="tablist" aria-label="Ridge plot settings">
+          {RIDGE_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              id={`ridge-tab-${t.id}`}
+              aria-selected={tab === t.id}
+              aria-controls="ridge-tabpanel"
+              className={tab === t.id ? 'on' : ''}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
-        <label className="field check">
-          <input
-            type="checkbox"
-            checked={style.strokeColor === undefined}
-            onChange={(e) =>
-              set('strokeColor', e.target.checked ? undefined : '#000000', 'Ridge outline colour')
-            }
-          />
-          Outline matches background
-        </label>
-        <label className="field">
-          Overlap · {Math.round(overlap * 100)}%
-          <input
-            type="range"
-            min={0}
-            max={0.9}
-            step={0.05}
-            value={overlap}
-            onChange={(e) =>
-              update(
-                'Ridge overlap',
-                (l) => {
-                  l.overlap = Number(e.target.value);
-                },
-                'overlap',
-              )
-            }
-          />
-        </label>
-        <div className="grid2">
-          <label className="field check">
-            <input
-              type="checkbox"
-              checked={style.rowHeight === undefined}
-              onChange={(e) => set('rowHeight', e.target.checked ? undefined : 40, 'Ridge row height')}
-            />
-            Auto row height
+        <div className="ridge-inspector-global">
+          <label
+            className="field check"
+            title="Colours, labels, text, size, overlap and histogram settings. Each population keeps its own channel, scale, ticks and axis title."
+          >
+            <input type="checkbox" checked={styleFollow} onChange={(e) => setStyleFollow(e.target.checked)} />
+            Same settings for all populations
           </label>
-          {style.rowHeight !== undefined && (
-            <LiveNum
-              label="Row height (px)"
-              step={1}
-              value={style.rowHeight}
-              onCommit={(v) => set('rowHeight', clamp(v, 8, 400), 'Ridge row height')}
-            />
-          )}
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>{combine.enabled ? 'Combined ridges' : 'Samples'}</legend>
-        <label className="field check">
-          <input
-            type="checkbox"
-            checked={style.showLabels}
-            onChange={(e) => set('showLabels', e.target.checked, 'Ridge labels')}
-          />
-          Show labels
-        </label>
-        <label className="field check">
-          <input
-            type="checkbox"
-            checked={style.showCounts}
-            disabled={!style.showLabels}
-            onChange={(e) => set('showCounts', e.target.checked, 'Ridge event counts')}
-          />
-          Show event counts (n)
-        </label>
-        <label className="field check">
-          <input
-            type="checkbox"
-            checked={style.countOnNewLine}
-            disabled={!style.showLabels || !style.showCounts}
-            onChange={(e) => set('countOnNewLine', e.target.checked, 'Ridge count on new line')}
-          />
-          Event count on its own line
-        </label>
-        <div className="grid2">
-          <LiveNum
-            label="Label size (px)"
-            step={0.5}
-            value={style.labelFontSize}
-            onCommit={(v) => set('labelFontSize', clamp(v, 4, 48), 'Ridge label size')}
-          />
-          <LiveNum
-            label="Label width (px)"
-            step={10}
-            title={style.labelOverflow === 'widen' ? 'Set automatically to fit the longest label' : undefined}
-            value={style.labelWidth}
-            onCommit={(v) => set('labelWidth', clamp(v, 0, 1000), 'Ridge label width')}
-          />
-        </div>
-        <label className="field" title="What to do with a label wider than the label column">
-          Long labels
-          <select
-            value={style.labelOverflow}
-            onChange={(e) =>
-              set('labelOverflow', e.target.value as RidgeStyle['labelOverflow'], 'Ridge long labels')
-            }
-          >
-            <option value="wrap">Wrap onto more lines</option>
-            <option value="widen">Widen the label column</option>
-          </select>
-        </label>
-        <label className="field">
-          Label alignment
-          <select
-            value={style.labelAlign}
-            onChange={(e) =>
-              set('labelAlign', e.target.value as RidgeStyle['labelAlign'], 'Ridge label alignment')
-            }
-          >
-            <option value="start">Left</option>
-            <option value="middle">Center</option>
-            <option value="end">Right</option>
-          </select>
-        </label>
-        <ol className="ridge-samples" onDragLeave={() => setDrop(null)}>
-          {ordered.map((id, i) => {
-            const custom = style.sampleColors[id] !== undefined;
-            const isSel = selected.has(id);
-            return (
-              // biome-ignore lint/a11y/useKeyWithClickEvents: row selection is a pointer convenience; every control inside stays keyboard-operable
-              <li
-                key={id}
-                className={[
-                  isSel ? 'selected' : '',
-                  dragIds?.includes(id) ? 'dragging' : '',
-                  drop?.id === id ? (drop.after ? 'drop-after' : 'drop-before') : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                onClick={(e) => {
-                  const t = e.target as HTMLElement;
-                  if (t.closest('input, button')) return;
-                  select(id, e);
-                }}
-                onDragOver={(e) => {
-                  if (!dragIds) return;
-                  e.preventDefault();
-                  const r = e.currentTarget.getBoundingClientRect();
-                  const after = e.clientY > r.top + r.height / 2;
-                  if (drop?.id !== id || drop.after !== after) setDrop({ id, after });
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (dragIds && drop) moveTo(dragIds, drop.id, drop.after);
-                  setDragIds(null);
-                  setDrop(null);
-                }}
-              >
-                <span
-                  className="ridge-grip"
-                  draggable
-                  title="Drag to reorder; click to select (⌘/Ctrl-click to add, Shift-click for a range)"
-                  aria-label={`Drag ${labels[id] ?? id} to reorder`}
-                  onDragStart={(e) => {
-                    const ids = isSel ? ordered.filter((x) => selected.has(x)) : [id];
-                    if (!isSel) {
-                      setSelected(new Set([id]));
-                      anchor.current = id;
-                    }
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData('text/plain', ids.join(','));
-                    const row = e.currentTarget.parentElement;
-                    if (row) e.dataTransfer.setDragImage(row, 8, 8);
-                    setDragIds(ids);
-                  }}
-                  onDragEnd={() => {
-                    setDragIds(null);
-                    setDrop(null);
-                  }}
-                >
-                  ⠿
-                </span>
-                <input
-                  type="color"
-                  className={custom ? 'custom' : ''}
-                  value={ridgeColor(style, id, i)}
-                  title={
-                    isSel && selected.size > 1
-                      ? `Set colour of ${selected.size} selected ridges`
-                      : custom
-                        ? 'Custom colour'
-                        : 'Colour from the ridge settings; pick to override'
-                  }
-                  aria-label={`Colour of ${labels[id] ?? id}`}
-                  onChange={(e) => {
-                    const ids = targets(id);
-                    const v = e.target.value;
-                    update(
-                      'Ridge colour',
-                      (l) => {
-                        for (const x of ids) l.style.sampleColors[x] = v;
-                      },
-                      `color:${ids.join(',')}`,
-                    );
-                  }}
-                />
-                <input
-                  type="text"
-                  value={style.sampleLabels[id] ?? ''}
-                  placeholder={labels[id] ?? id}
-                  aria-label={`Label of ${labels[id] ?? id}`}
-                  onChange={(e) =>
-                    update(
-                      'Ridge label',
-                      (l) => {
-                        if (e.target.value) l.style.sampleLabels[id] = e.target.value;
-                        else delete l.style.sampleLabels[id];
-                      },
-                      `label:${id}`,
-                    )
-                  }
-                />
-                {custom && (
-                  <button
-                    type="button"
-                    className="icon"
-                    title="Reset colour"
-                    aria-label={`Reset colour of ${labels[id] ?? id}`}
-                    onClick={() => {
-                      const ids = targets(id);
-                      update('Reset ridge colour', (l) => {
-                        for (const x of ids) delete l.style.sampleColors[x];
-                      });
-                    }}
-                  >
-                    ×
-                  </button>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-        {selected.size > 1 && (
-          <p className="small muted">{selected.size} selected — a colour change applies to all of them.</p>
-        )}
-        <div className="ridge-actions">
           <button
             type="button"
+            title="Reset every ridge plot setting to its default"
+            disabled={!layout}
             onClick={() =>
-              update('Reverse ridge order', (l) => {
-                l.style.order = [...allIds].reverse().concat(l.style.order.filter((id) => !current.has(id)));
+              update('Reset ridge settings', (l) => {
+                l.style = structuredClone(DEFAULT_RIDGE_STYLE);
+                l.overlap = DEFAULT_OVERLAP;
               })
             }
           >
-            Reverse
-          </button>
-          <button
-            type="button"
-            disabled={!style.order.some((id) => current.has(id))}
-            onClick={() =>
-              set(
-                'order',
-                style.order.filter((id) => !current.has(id)),
-                'Reset ridge order',
-              )
-            }
-          >
-            Reset order
-          </button>
-          <button
-            type="button"
-            disabled={!Object.keys(style.sampleColors).some((id) => current.has(id))}
-            onClick={() =>
-              set(
-                'sampleColors',
-                Object.fromEntries(Object.entries(style.sampleColors).filter(([id]) => !current.has(id))),
-                'Reset ridge colours',
-              )
-            }
-          >
-            Reset colours
-          </button>
-          <button
-            type="button"
-            disabled={!Object.keys(style.sampleLabels).some((id) => current.has(id))}
-            onClick={() =>
-              set(
-                'sampleLabels',
-                Object.fromEntries(Object.entries(style.sampleLabels).filter(([id]) => !current.has(id))),
-                'Reset ridge labels',
-              )
-            }
-          >
-            Reset labels
+            Reset all
           </button>
         </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>X axis</legend>
-        {axis && group && (
-          <AxisFields
-            live
-            axis={axis}
-            legend={`Scale and range · ${axis.channel}`}
-            population={popId}
-            note="Applies to this ridge plot only."
-            apply={(label, fn) => update(label, (l, w, g) => fn(l.axis, w, g), `axis:${label}`)}
-          />
+      </div>
+      <div id="ridge-tabpanel" role="tabpanel" aria-labelledby={`ridge-tab-${tab}`}>
+        {tab === 'sample' && (
+          <>
+            <Section
+              id="samples"
+              title={combine.enabled ? 'Combined ridges' : 'Samples'}
+              open={!!open.samples}
+              onToggle={() => toggle('samples')}
+            >
+              <ol className="ridge-samples" onDragLeave={() => setDrop(null)}>
+                {ordered.map((id, i) => {
+                  const custom = style.sampleColors[id] !== undefined;
+                  const isSel = selected.has(id);
+                  return (
+                    // biome-ignore lint/a11y/useKeyWithClickEvents: row selection is a pointer convenience; every control inside stays keyboard-operable
+                    <li
+                      key={id}
+                      className={[
+                        isSel ? 'selected' : '',
+                        dragIds?.includes(id) ? 'dragging' : '',
+                        drop?.id === id ? (drop.after ? 'drop-after' : 'drop-before') : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      onClick={(e) => {
+                        const t = e.target as HTMLElement;
+                        if (t.closest('input, button')) return;
+                        select(id, e);
+                      }}
+                      onDragOver={(e) => {
+                        if (!dragIds) return;
+                        e.preventDefault();
+                        const r = e.currentTarget.getBoundingClientRect();
+                        const after = e.clientY > r.top + r.height / 2;
+                        if (drop?.id !== id || drop.after !== after) setDrop({ id, after });
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (dragIds && drop) moveTo(dragIds, drop.id, drop.after);
+                        setDragIds(null);
+                        setDrop(null);
+                      }}
+                    >
+                      <span
+                        className="ridge-grip"
+                        draggable
+                        title="Drag to reorder; click to select (⌘/Ctrl-click to add, Shift-click for a range)"
+                        aria-label={`Drag ${labels[id] ?? id} to reorder`}
+                        onDragStart={(e) => {
+                          const ids = isSel ? ordered.filter((x) => selected.has(x)) : [id];
+                          if (!isSel) {
+                            setSelected(new Set([id]));
+                            anchor.current = id;
+                          }
+                          e.dataTransfer.effectAllowed = 'move';
+                          e.dataTransfer.setData('text/plain', ids.join(','));
+                          const row = e.currentTarget.parentElement;
+                          if (row) e.dataTransfer.setDragImage(row, 8, 8);
+                          setDragIds(ids);
+                        }}
+                        onDragEnd={() => {
+                          setDragIds(null);
+                          setDrop(null);
+                        }}
+                      >
+                        ⠿
+                      </span>
+                      <input
+                        type="color"
+                        className={custom ? 'custom' : ''}
+                        value={ridgeColor(style, id, i)}
+                        title={
+                          isSel && selected.size > 1
+                            ? `Set colour of ${selected.size} selected ridges`
+                            : custom
+                              ? 'Custom colour'
+                              : 'Colour from the ridge settings; pick to override'
+                        }
+                        aria-label={`Colour of ${labels[id] ?? id}`}
+                        onChange={(e) => {
+                          const ids = targets(id);
+                          const v = e.target.value;
+                          update(
+                            'Ridge colour',
+                            (l) => {
+                              for (const x of ids) l.style.sampleColors[x] = v;
+                            },
+                            `color:${ids.join(',')}`,
+                          );
+                        }}
+                      />
+                      <input
+                        type="text"
+                        value={style.sampleLabels[id] ?? ''}
+                        placeholder={labels[id] ?? id}
+                        aria-label={`Label of ${labels[id] ?? id}`}
+                        onChange={(e) =>
+                          update(
+                            'Ridge label',
+                            (l) => {
+                              if (e.target.value) l.style.sampleLabels[id] = e.target.value;
+                              else delete l.style.sampleLabels[id];
+                            },
+                            `label:${id}`,
+                          )
+                        }
+                      />
+                      {custom && (
+                        <button
+                          type="button"
+                          className="icon"
+                          title="Reset colour"
+                          aria-label={`Reset colour of ${labels[id] ?? id}`}
+                          onClick={() => {
+                            const ids = targets(id);
+                            update('Reset ridge colour', (l) => {
+                              for (const x of ids) delete l.style.sampleColors[x];
+                            });
+                          }}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+              {selected.size > 1 && (
+                <p className="small muted">
+                  {selected.size} selected — a colour change applies to all of them.
+                </p>
+              )}
+              <div className="ridge-actions">
+                <button
+                  type="button"
+                  onClick={() =>
+                    update('Reverse ridge order', (l) => {
+                      l.style.order = [...allIds]
+                        .reverse()
+                        .concat(l.style.order.filter((id) => !current.has(id)));
+                    })
+                  }
+                >
+                  Reverse
+                </button>
+                <button
+                  type="button"
+                  disabled={!style.order.some((id) => current.has(id))}
+                  onClick={() =>
+                    set(
+                      'order',
+                      style.order.filter((id) => !current.has(id)),
+                      'Reset ridge order',
+                    )
+                  }
+                >
+                  Reset order
+                </button>
+                <button
+                  type="button"
+                  disabled={!Object.keys(style.sampleColors).some((id) => current.has(id))}
+                  onClick={() =>
+                    set(
+                      'sampleColors',
+                      Object.fromEntries(
+                        Object.entries(style.sampleColors).filter(([id]) => !current.has(id)),
+                      ),
+                      'Reset ridge colours',
+                    )
+                  }
+                >
+                  Reset colours
+                </button>
+                <button
+                  type="button"
+                  disabled={!Object.keys(style.sampleLabels).some((id) => current.has(id))}
+                  onClick={() =>
+                    set(
+                      'sampleLabels',
+                      Object.fromEntries(
+                        Object.entries(style.sampleLabels).filter(([id]) => !current.has(id)),
+                      ),
+                      'Reset ridge labels',
+                    )
+                  }
+                >
+                  Reset labels
+                </button>
+              </div>
+            </Section>
+            <Section
+              id="ridgeStyle"
+              title="Ridge style"
+              open={!!open.ridgeStyle}
+              onToggle={() => toggle('ridgeStyle')}
+            >
+              <label className="field">
+                Colour
+                <select
+                  value={style.colorMode}
+                  onChange={(e) =>
+                    set('colorMode', e.target.value as RidgeStyle['colorMode'], 'Ridge colour mode')
+                  }
+                >
+                  <option value="single">Single colour</option>
+                  <option value="palette">Categorical palette</option>
+                </select>
+              </label>
+              {style.colorMode === 'single' && (
+                <label className="field">
+                  Fill colour
+                  <input
+                    type="color"
+                    value={style.color}
+                    onChange={(e) => set('color', e.target.value, 'Ridge colour', 'color')}
+                  />
+                </label>
+              )}
+              <label className="field">
+                Fill opacity · {Math.round(style.fillOpacity * 100)}%
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={style.fillOpacity}
+                  onChange={(e) => set('fillOpacity', Number(e.target.value), 'Ridge opacity', 'opacity')}
+                />
+              </label>
+              <div className="grid2">
+                <label className="field">
+                  Outline
+                  <input
+                    type="color"
+                    value={style.strokeColor ?? '#ffffff'}
+                    disabled={style.strokeColor === undefined}
+                    onChange={(e) => set('strokeColor', e.target.value, 'Ridge outline colour', 'stroke')}
+                  />
+                </label>
+                <LiveNum
+                  label="Outline width"
+                  step={0.25}
+                  value={style.strokeWidth}
+                  onCommit={(v) => set('strokeWidth', clamp(v, 0, 10), 'Ridge outline width')}
+                />
+              </div>
+              <label className="field check">
+                <input
+                  type="checkbox"
+                  checked={style.strokeColor === undefined}
+                  onChange={(e) =>
+                    set('strokeColor', e.target.checked ? undefined : '#000000', 'Ridge outline colour')
+                  }
+                />
+                Outline matches background
+              </label>
+            </Section>
+          </>
         )}
-        <label className="field check">
-          <input
-            type="checkbox"
-            checked={style.showTickLabels}
-            onChange={(e) => set('showTickLabels', e.target.checked, 'Ridge tick labels')}
-          />
-          Show tick labels
-        </label>
-        <LiveNum
-          label="Tick label size (px)"
-          step={0.5}
-          value={style.tickFontSize}
-          onCommit={(v) => set('tickFontSize', clamp(v, 4, 48), 'Ridge tick label size')}
-        />
-        <TicksEditor ticks={style.ticks} onCommit={(t) => set('ticks', t, 'Ridge ticks')} />
-        <label className="field" title="Leave empty for the default; type a space for no title">
-          Axis title
-          <input
-            type="text"
-            value={style.axisTitle ?? ''}
-            placeholder="Marker :: channel"
-            onChange={(e) => set('axisTitle', e.target.value || undefined, 'Ridge axis title', 'title')}
-          />
-        </label>
-        <LiveNum
-          label="Title size (px)"
-          step={0.5}
-          value={style.titleFontSize}
-          onCommit={(v) => set('titleFontSize', clamp(v, 4, 48), 'Ridge title size')}
-        />
-      </fieldset>
-
-      <fieldset>
-        <legend>Histogram</legend>
-        <div className="grid2">
-          <LiveNum
-            label="Bins"
-            step={16}
-            title="Histogram bins across the x range"
-            value={style.bins}
-            onCommit={(v) => set('bins', clamp(Math.round(v), 16, 1024), 'Ridge bins')}
-          />
-          <LiveNum
-            label="Smoothing σ (bins)"
-            step={0.5}
-            title="Gaussian smoothing of each curve; 0 for none"
-            value={style.smoothing}
-            onCommit={(v) => set('smoothing', clamp(v, 0, 20), 'Ridge smoothing')}
-          />
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Text appearance</legend>
-        <TextStyleEditor
-          label="Ridge labels"
-          value={style.labelText}
-          base={style.fontFamily}
-          onChange={(t) => set('labelText', t, 'Ridge label text')}
-        />
-        <TextStyleEditor
-          label="Tick labels"
-          value={style.tickText}
-          base={style.fontFamily}
-          onChange={(t) => set('tickText', t, 'Ridge tick text')}
-        />
-        <TextStyleEditor
-          label="Axis title"
-          value={style.titleText}
-          base={style.fontFamily}
-          onChange={(t) => set('titleText', t, 'Ridge title text')}
-        />
-      </fieldset>
-
-      <fieldset>
-        <legend>Figure</legend>
-        <FontSelect
-          label="Base font"
-          value={style.fontFamily}
-          onChange={(v) => set('fontFamily', v ?? 'sans', 'Ridge font')}
-        />
-        <div className="grid2">
-          <label className="field check">
-            <input
-              type="checkbox"
-              checked={style.width === undefined}
-              onChange={(e) => set('width', e.target.checked ? undefined : 800, 'Ridge plot width')}
-            />
-            Fit width
-          </label>
-          {style.width !== undefined && (
-            <LiveNum
-              label="Width (px)"
-              step={10}
-              value={style.width}
-              onCommit={(v) => set('width', clamp(v, 300, 10000), 'Ridge plot width')}
-            />
-          )}
-        </div>
-        <div className="grid2">
-          <label className="field check">
-            <input
-              type="checkbox"
-              checked={style.aspect === undefined}
-              onChange={(e) => set('aspect', e.target.checked ? undefined : 1.5, 'Ridge aspect ratio')}
-            />
-            Free aspect ratio
-          </label>
-          {style.aspect !== undefined && (
-            <LiveNum
-              label="Width ÷ height"
-              step={0.1}
-              title="Fixes the figure's shape; row height is derived to fit"
-              value={style.aspect}
-              onCommit={(v) => set('aspect', clamp(v, 0.2, 10), 'Ridge aspect ratio')}
-            />
-          )}
-        </div>
-        <button
-          type="button"
-          disabled={!layout}
-          onClick={() =>
-            update('Reset ridge settings', (l) => {
-              l.style = structuredClone(DEFAULT_RIDGE_STYLE);
-              l.overlap = DEFAULT_OVERLAP;
-            })
-          }
-        >
-          Reset all settings
-        </button>
-      </fieldset>
+        {tab === 'axis' && (
+          <>
+            <Section id="scale" title="Scale and range" open={!!open.scale} onToggle={() => toggle('scale')}>
+              {axis && group && (
+                <AxisFields
+                  live
+                  axis={axis}
+                  legend={`Channel · ${axis.channel}`}
+                  population={popId}
+                  note="Applies to this ridge plot only."
+                  apply={(label, fn) => update(label, (l, w, g) => fn(l.axis, w, g), `axis:${label}`)}
+                />
+              )}
+            </Section>
+            <Section id="ticks" title="Ticks" open={!!open.ticks} onToggle={() => toggle('ticks')}>
+              <label className="field check">
+                <input
+                  type="checkbox"
+                  checked={style.showTickLabels}
+                  onChange={(e) => set('showTickLabels', e.target.checked, 'Ridge tick labels')}
+                />
+                Show tick labels
+              </label>
+              <TicksEditor ticks={style.ticks} onCommit={(t) => set('ticks', t, 'Ridge ticks')} />
+            </Section>
+            <Section id="title" title="Title" open={!!open.title} onToggle={() => toggle('title')}>
+              <label className="field" title="Leave empty for the default; type a space for no title">
+                Axis title
+                <input
+                  type="text"
+                  value={style.axisTitle ?? ''}
+                  placeholder="Marker :: channel"
+                  onChange={(e) => set('axisTitle', e.target.value || undefined, 'Ridge axis title', 'title')}
+                />
+              </label>
+            </Section>
+          </>
+        )}
+        {tab === 'text' && (
+          <>
+            <Section id="labels" title="Ridge labels" open={!!open.labels} onToggle={() => toggle('labels')}>
+              <label className="field check">
+                <input
+                  type="checkbox"
+                  checked={style.showLabels}
+                  onChange={(e) => set('showLabels', e.target.checked, 'Ridge labels')}
+                />
+                Show labels
+              </label>
+              <label className="field check">
+                <input
+                  type="checkbox"
+                  checked={style.showCounts}
+                  disabled={!style.showLabels}
+                  onChange={(e) => set('showCounts', e.target.checked, 'Ridge event counts')}
+                />
+                Show event counts (n)
+              </label>
+              <label className="field check">
+                <input
+                  type="checkbox"
+                  checked={style.countOnNewLine}
+                  disabled={!style.showLabels || !style.showCounts}
+                  onChange={(e) => set('countOnNewLine', e.target.checked, 'Ridge count on new line')}
+                />
+                Event count on its own line
+              </label>
+              <div className="grid2">
+                <LiveNum
+                  label="Label size (px)"
+                  step={0.5}
+                  value={style.labelFontSize}
+                  onCommit={(v) => set('labelFontSize', clamp(v, 4, 48), 'Ridge label size')}
+                />
+                <LiveNum
+                  label="Label width (px)"
+                  step={10}
+                  title={
+                    style.labelOverflow === 'widen' ? 'Set automatically to fit the longest label' : undefined
+                  }
+                  value={style.labelWidth}
+                  onCommit={(v) => set('labelWidth', clamp(v, 0, 1000), 'Ridge label width')}
+                />
+              </div>
+              <label className="field" title="What to do with a label wider than the label column">
+                Long labels
+                <select
+                  value={style.labelOverflow}
+                  onChange={(e) =>
+                    set('labelOverflow', e.target.value as RidgeStyle['labelOverflow'], 'Ridge long labels')
+                  }
+                >
+                  <option value="wrap">Wrap onto more lines</option>
+                  <option value="widen">Widen the label column</option>
+                </select>
+              </label>
+              <label className="field">
+                Label alignment
+                <select
+                  value={style.labelAlign}
+                  onChange={(e) =>
+                    set('labelAlign', e.target.value as RidgeStyle['labelAlign'], 'Ridge label alignment')
+                  }
+                >
+                  <option value="start">Left</option>
+                  <option value="middle">Center</option>
+                  <option value="end">Right</option>
+                </select>
+              </label>
+              <TextStyleEditor
+                label="Ridge labels"
+                value={style.labelText}
+                base={style.fontFamily}
+                onChange={(t) => set('labelText', t, 'Ridge label text')}
+              />
+            </Section>
+            <Section
+              id="tickText"
+              title="Tick labels"
+              open={!!open.tickText}
+              onToggle={() => toggle('tickText')}
+            >
+              <LiveNum
+                label="Tick label size (px)"
+                step={0.5}
+                value={style.tickFontSize}
+                onCommit={(v) => set('tickFontSize', clamp(v, 4, 48), 'Ridge tick label size')}
+              />
+              <TextStyleEditor
+                label="Tick labels"
+                value={style.tickText}
+                base={style.fontFamily}
+                onChange={(t) => set('tickText', t, 'Ridge tick text')}
+              />
+            </Section>
+            <Section
+              id="titleText"
+              title="Axis title"
+              open={!!open.titleText}
+              onToggle={() => toggle('titleText')}
+            >
+              <LiveNum
+                label="Title size (px)"
+                step={0.5}
+                value={style.titleFontSize}
+                onCommit={(v) => set('titleFontSize', clamp(v, 4, 48), 'Ridge title size')}
+              />
+              <TextStyleEditor
+                label="Axis title"
+                value={style.titleText}
+                base={style.fontFamily}
+                onChange={(t) => set('titleText', t, 'Ridge title text')}
+              />
+            </Section>
+          </>
+        )}
+        {tab === 'figure' && (
+          <>
+            <Section id="layout" title="Layout" open={!!open.layout} onToggle={() => toggle('layout')}>
+              <label className="field">
+                Overlap · {Math.round(overlap * 100)}%
+                <input
+                  type="range"
+                  min={0}
+                  max={0.9}
+                  step={0.05}
+                  value={overlap}
+                  onChange={(e) =>
+                    update(
+                      'Ridge overlap',
+                      (l) => {
+                        l.overlap = Number(e.target.value);
+                      },
+                      'overlap',
+                    )
+                  }
+                />
+              </label>
+              <div className="grid2">
+                <label className="field check">
+                  <input
+                    type="checkbox"
+                    checked={style.rowHeight === undefined}
+                    onChange={(e) => set('rowHeight', e.target.checked ? undefined : 40, 'Ridge row height')}
+                  />
+                  Auto row height
+                </label>
+                {style.rowHeight !== undefined && (
+                  <LiveNum
+                    label="Row height (px)"
+                    step={1}
+                    value={style.rowHeight}
+                    onCommit={(v) => set('rowHeight', clamp(v, 8, 400), 'Ridge row height')}
+                  />
+                )}
+              </div>
+              <div className="grid2">
+                <label className="field check">
+                  <input
+                    type="checkbox"
+                    checked={style.width === undefined}
+                    onChange={(e) => set('width', e.target.checked ? undefined : 800, 'Ridge plot width')}
+                  />
+                  Fit width
+                </label>
+                {style.width !== undefined && (
+                  <LiveNum
+                    label="Width (px)"
+                    step={10}
+                    value={style.width}
+                    onCommit={(v) => set('width', clamp(v, 300, 10000), 'Ridge plot width')}
+                  />
+                )}
+              </div>
+              <div className="grid2">
+                <label className="field check">
+                  <input
+                    type="checkbox"
+                    checked={style.aspect === undefined}
+                    onChange={(e) => set('aspect', e.target.checked ? undefined : 1.5, 'Ridge aspect ratio')}
+                  />
+                  Free aspect ratio
+                </label>
+                {style.aspect !== undefined && (
+                  <LiveNum
+                    label="Width ÷ height"
+                    step={0.1}
+                    title="Fixes the figure's shape; row height is derived to fit"
+                    value={style.aspect}
+                    onCommit={(v) => set('aspect', clamp(v, 0.2, 10), 'Ridge aspect ratio')}
+                  />
+                )}
+              </div>
+            </Section>
+            <Section
+              id="histogram"
+              title="Histogram"
+              open={!!open.histogram}
+              onToggle={() => toggle('histogram')}
+            >
+              <div className="grid2">
+                <LiveNum
+                  label="Bins"
+                  step={16}
+                  title="Histogram bins across the x range"
+                  value={style.bins}
+                  onCommit={(v) => set('bins', clamp(Math.round(v), 16, 1024), 'Ridge bins')}
+                />
+                <LiveNum
+                  label="Smoothing σ (bins)"
+                  step={0.5}
+                  title="Gaussian smoothing of each curve; 0 for none"
+                  value={style.smoothing}
+                  onCommit={(v) => set('smoothing', clamp(v, 0, 20), 'Ridge smoothing')}
+                />
+              </div>
+            </Section>
+            <Section
+              id="baseFont"
+              title="Base font"
+              open={!!open.baseFont}
+              onToggle={() => toggle('baseFont')}
+            >
+              <FontSelect
+                label="Base font"
+                value={style.fontFamily}
+                onChange={(v) => set('fontFamily', v ?? 'sans', 'Ridge font')}
+              />
+            </Section>
+          </>
+        )}
+      </div>
     </aside>
   );
 }
