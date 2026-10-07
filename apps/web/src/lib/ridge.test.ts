@@ -1,6 +1,6 @@
 import { newWorkspace } from '@flowmeris/model';
 import { describe, expect, it } from 'vitest';
-import { applyOrder, combineCounts, comboRows } from './ridge.ts';
+import { applyOrder, combineCounts, comboRows, selectRidges } from './ridge.ts';
 
 const h = (counts: number[]) => ({
   centers: Float64Array.from(counts, (_, i) => i),
@@ -79,5 +79,17 @@ describe('replicate groups', () => {
 
   it('orders listed ids first', () => {
     expect(applyOrder(['a', 'b', 'c'], ['c', 'x', 'a'])).toEqual(['c', 'a', 'b']);
+  });
+
+  it('drops hidden ridges, excluded replicates and ridges left empty', () => {
+    const rows = comboRows(ws, Object.keys(meta), ['cond', 'dose']);
+    const [ctrl, drug2, drug10, none] = rows.map((r) => r.id);
+    const shown = selectRidges(rows, [ctrl!], ['c', 'd']);
+    expect(shown.map((r) => [r.id, r.sampleIds])).toEqual([
+      [drug10, ['a']],
+      [none, ['e']],
+    ]);
+    expect(shown.some((r) => r.id === drug2)).toBe(false);
+    expect(rows[2]!.sampleIds).toEqual(['a', 'c']);
   });
 });

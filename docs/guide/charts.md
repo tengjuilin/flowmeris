@@ -53,6 +53,10 @@ them.
 - **Series:** categorical palette or a single colour; per-series colour and legend label (also used in
   the tooltip, the Data table and the CSV export). Drag ⠿ to reorder series, or **Reverse**. Changing
   **Colour by** clears these.
+- **Groups:** one row per plotted point (the samples sharing an x value and colour). Untick a group to
+  hide it; open it with ▸ to untick single replicates, which are then left out of its mean, error bar,
+  replicate points, the Data table and the CSV export. Click anywhere on a row to toggle it; Shift-click toggles the range from the last clicked row, as in a file list. **Show all** brings everything back. Hiding a
+  whole series keeps the other series' colours.
 - **Marks:** bar or marker opacity, marker size, line width, bar width (as a share of each category),
   error-bar width and cap width, replicate point size and opacity.
 - **X / Y axis:** title (type a space for none), **Min** / **Max** in data units (empty = fit the data;

@@ -32,7 +32,14 @@ describe('ridge layout style', () => {
     const loaded = loadWorkspace(JSON.parse(JSON.stringify(ws)));
     const l = loaded.groups[0]!.layouts[0]!;
     expect(l.kind === 'ridge' && l.style.fillOpacity).toBe(0.55);
-    expect(l.kind === 'ridge' && l.combine).toEqual({ enabled: false, by: [], method: 'mean', band: 'none' });
+    expect(l.kind === 'ridge' && l.combine).toEqual({
+      enabled: false,
+      by: [],
+      method: 'mean',
+      band: 'none',
+      hidden: [],
+      exclude: [],
+    });
   });
 
   it('rejects malformed colours', () => {
@@ -60,6 +67,7 @@ describe('chart style', () => {
     expect(p.style).toEqual(ChartStyleSchema.parse({}));
     expect(p.style.legend).toBe('top');
     expect(p.style.yMin).toBeUndefined();
+    expect([p.hiddenPoints, p.excludeRows]).toEqual([[], []]);
   });
 });
 
@@ -186,6 +194,8 @@ describe('sample variables and statistics table', () => {
         yScale: 'linear',
         error: 'sem',
         showPoints: true,
+        hiddenPoints: [],
+        excludeRows: [],
         style: ChartStyleSchema.parse({}),
       },
       {
@@ -199,6 +209,8 @@ describe('sample variables and statistics table', () => {
         yScale: 'linear',
         error: 'sem',
         showPoints: true,
+        hiddenPoints: [],
+        excludeRows: [],
         style: ChartStyleSchema.parse({}),
       },
     );

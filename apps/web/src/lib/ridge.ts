@@ -56,6 +56,20 @@ export function comboRows(ws: Workspace, sampleIds: string[], by: string[]): Rid
     }));
 }
 
+/**
+ * The combined ridges to draw: `hidden` ridges dropped, `exclude`d replicates removed from the others, and
+ * ridges left without replicates dropped.
+ */
+export function selectRidges(rows: RidgeRow[], hidden: string[], exclude: string[]): RidgeRow[] {
+  const off = new Set(hidden);
+  const out = new Set(exclude);
+  return rows.flatMap((r) => {
+    if (off.has(r.id)) return [];
+    const sampleIds = r.sampleIds.filter((id) => !out.has(id));
+    return sampleIds.length ? [{ ...r, sampleIds }] : [];
+  });
+}
+
 /** Event counts per bin (smoothed) of one sample on the shared axis. */
 export interface BinCounts {
   centers: Float64Array;

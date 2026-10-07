@@ -355,6 +355,10 @@ export const RidgeCombineSchema = z.object({
   method: z.enum(['mean', 'pool']).default('mean'),
   /** Spread band around the mean curve (method 'mean' only). */
   band: z.enum(['none', 'sd', 'sem']).default('none'),
+  /** Combined ridges left out of the plot (ridge ids, `combo:…`). */
+  hidden: z.array(Id).default([]),
+  /** Replicate samples left out of their combined ridge. */
+  exclude: z.array(Id).default([]),
 });
 export type RidgeCombine = z.infer<typeof RidgeCombineSchema>;
 
@@ -531,6 +535,10 @@ export const StatPlotSchema = z.object({
   error: z.enum(['none', 'sd', 'sem', 'ci95']).default('sem'),
   /** Overlay the individual rows (replicates). */
   showPoints: z.boolean().default(true),
+  /** Points (groups of rows) left out of the chart, keyed by `pointKey`: the JSON of [series value, x value]. */
+  hiddenPoints: z.array(z.string()).default([]),
+  /** Rows (sample ids) left out of the means, error bars and replicate points. */
+  excludeRows: z.array(Id).default([]),
   xLabel: z.string().optional(),
   yLabel: z.string().optional(),
   style: ChartStyleSchema.default({}),

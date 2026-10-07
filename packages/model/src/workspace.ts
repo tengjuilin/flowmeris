@@ -197,7 +197,12 @@ export function removeVariable(ws: Workspace, variableId: string): void {
     for (const d of a.derived)
       if (d.kind === 'normalize') d.within = d.within.filter((v) => v !== variableId);
     a.aggregate.by = a.aggregate.by.filter((v) => v !== variableId);
-    for (const p of g.statPlots) if (p.series === variableId) p.series = undefined;
+    for (const p of g.statPlots)
+      if (p.series === variableId) {
+        p.series = undefined;
+        // Hidden points are keyed by the series value.
+        p.hiddenPoints = [];
+      }
     dropColumns(g, doomed);
   }
 }

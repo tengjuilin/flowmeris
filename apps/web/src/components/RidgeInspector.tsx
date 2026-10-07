@@ -13,8 +13,9 @@ import { CATEGORICAL } from '@flowmeris/render';
 import { formatLinear } from '@flowmeris/transforms';
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from 'react';
 import { defaultAxis } from '../lib/defaults.ts';
-import { type RidgeRow, applyOrder, comboRows } from '../lib/ridge.ts';
+import { type RidgeRow, applyOrder, comboRows, selectRidges } from '../lib/ridge.ts';
 import { useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
+import { GroupPicker, toggleIds } from './GroupPicker.tsx';
 import { NumInput } from './Inspector.tsx';
 import { usePlotForPopulation } from './PlotPanel.tsx';
 
@@ -59,9 +60,10 @@ export function useRidge() {
   }, [group, plot, ch]);
 
   // Ridges of the checked samples, in display order. `allIds` also covers unchecked samples, so a
-  // reorder keeps the slots of ridges hidden by the sidebar selection.
-  const { rows, allIds } = useMemo(() => {
-    if (!group) return { rows: [] as RidgeRow[], allIds: [] as string[] };
+  // reorder keeps the slots of ridges hidden by the sidebar selection. `groups` are the combined
+  // ridges with all their replicates, including those hidden or excluded in the Replicates card.
+  const { rows, allIds, groups } = useMemo(() => {
+    if (!group) return { rows: [] as RidgeRow[], allIds: [] as string[], groups: [] as RidgeRow[] };
     const all: RidgeRow[] = combine.enabled
       ? comboRows(ws, group.sampleIds, combine.by)
       : group.sampleIds.map((id) => ({
@@ -74,9 +76,13 @@ export function useRidge() {
       style.order,
     );
     const vis = new Set(shown);
-    const shownRows = combine.enabled ? comboRows(ws, shown, combine.by) : all.filter((r) => vis.has(r.id));
-    const byId = new Map(shownRows.map((r) => [r.id, r]));
-    return { rows: allIds.flatMap((id) => byId.get(id) ?? []), allIds };
+    const inOrder = (rs: RidgeRow[]) => {
+      const byId = new Map(rs.map((r) => [r.id, r]));
+      return allIds.flatMap((id) => byId.get(id) ?? []);
+    };
+    if (!combine.enabled) return { rows: inOrder(all.filter((r) => vis.has(r.id))), allIds, groups: [] };
+    const groups = inOrder(comboRows(ws, shown, combine.by));
+    return { rows: selectRidges(groups, combine.hidden, combine.exclude), allIds, groups };
   }, [group, combine, style.order, shown, names, ws]);
 
   /** Edit the saved layout, creating it on first edit. Edits sharing `merge` coalesce into one undo step. */
@@ -110,7 +116,7 @@ export function useRidge() {
     [group, popId, ch, mutate],
   );
 
-  return { group, plot, layout, style, combine, overlap, ch, axis, rows, allIds, update };
+  return { group, plot, layout, style, combine, overlap, ch, axis, rows, allIds, groups, update };
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -619,11 +625,11 @@ export function RidgeInspector() {
 /** Card below the population tree: combine replicate samples into one ridge per combination of variables. */
 export function RidgeCombinePanel() {
   const variables = useStore((s) => s.ws.variables);
-  const { group, combine, rows, update } = useRidge();
+  const { group, combine, groups, update } = useRidge();
   const names = useSampleNames(group);
   if (!group) return null;
   const edit = (label: string, fn: (c: RidgeCombine) => void) => update(label, (l) => fn(l.combine));
-  const singles = rows.filter((r) => r.sampleIds.length === 1).length;
+  const singles = groups.filter((r) => r.sampleIds.length === 1).length;
   return (
     <section className="ridge-combine" aria-label="Replicates">
       <div className="pane-title">Replicates</div>
@@ -701,17 +707,33 @@ export function RidgeCombinePanel() {
       )}
       {combine.enabled && (
         <>
-          <ul className="ridge-combine-list small">
-            {rows.map((r) => (
-              <li key={r.id} title={r.sampleIds.map((id) => names[id] ?? id).join('\n')}>
-                <span>{r.label}</span>
-                <span className="muted">
-                  {r.sampleIds.length} {r.sampleIds.length === 1 ? 'sample' : 'samples'}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {singles > 0 && singles === rows.length && (
+          <GroupPicker
+            groups={groups.map((r) => ({
+              id: r.id,
+              label: r.label,
+              members: r.sampleIds.map((id) => ({ id, label: names[id] ?? id })),
+            }))}
+            hidden={new Set(combine.hidden)}
+            excluded={new Set(combine.exclude)}
+            onShow={(ids, on) =>
+              edit(on ? 'Show combined ridge' : 'Hide combined ridge', (c) => {
+                c.hidden = toggleIds(c.hidden, ids, !on);
+              })
+            }
+            onInclude={(ids, on) =>
+              edit(on ? 'Include replicate' : 'Exclude replicate', (c) => {
+                c.exclude = toggleIds(c.exclude, ids, !on);
+              })
+            }
+            onShowAll={() =>
+              edit('Show all combined ridges', (c) => {
+                const ids = new Set(groups.flatMap((r) => [r.id, ...r.sampleIds]));
+                c.hidden = c.hidden.filter((id) => !ids.has(id));
+                c.exclude = c.exclude.filter((id) => !ids.has(id));
+              })
+            }
+          />
+          {singles > 0 && singles === groups.length && (
             <p className="muted small">No two checked samples share these values, so nothing is combined.</p>
           )}
         </>

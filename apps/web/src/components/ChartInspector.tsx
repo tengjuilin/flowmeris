@@ -2,6 +2,8 @@ import { type ChartStyle, ChartStyleSchema, type StatPlot } from '@flowmeris/mod
 import { CATEGORICAL } from '@flowmeris/render';
 import type { Cell, PlotSeries } from '@flowmeris/table';
 import { useState } from 'react';
+import { pointKey } from '../lib/chartSelection.ts';
+import { GroupPicker, toggleIds } from './GroupPicker.tsx';
 import { NumInput } from './Inspector.tsx';
 import { TicksEditor } from './RidgeInspector.tsx';
 
@@ -159,8 +161,10 @@ function AxisFields(props: {
 
 export function ChartInspector(props: {
   plot: StatPlot;
-  /** The plotted series, in display order. */
+  /** All series with all their points and rows, in display order (hidden points included). */
   series: PlotSeries[];
+  /** Sample name of each row id. */
+  rowNames: Record<string, string>;
   seriesLabel: string | undefined;
   xTitle: string;
   yTitle: string;
@@ -351,6 +355,44 @@ export function ChartInspector(props: {
         ) : (
           <p className="small muted">Choose “Colour by” in the toolbar to colour by a variable.</p>
         )}
+      </fieldset>
+
+      <fieldset>
+        <legend>Groups</legend>
+        <p className="small muted">
+          Click a group to hide it; open it with ▸ to leave single replicates out of its mean and error bar.
+          Shift-click selects a range.
+        </p>
+        <GroupPicker
+          groups={series.flatMap((s, i) => {
+            const k = keys[i]!;
+            const name =
+              st.seriesLabels[k] ?? (s.key === undefined || s.key === null ? '(none)' : String(s.key));
+            return s.points.map((p) => ({
+              id: pointKey(s.key, p.x),
+              label: props.seriesLabel ? `${name} · ${String(p.x)}` : String(p.x),
+              members: p.rowIds.map((id) => ({ id, label: props.rowNames[id] ?? id })),
+            }));
+          })}
+          hidden={new Set(plot.hiddenPoints)}
+          excluded={new Set(plot.excludeRows)}
+          onShow={(ids, on) =>
+            edit(on ? 'Show chart group' : 'Hide chart group', (p) => {
+              p.hiddenPoints = toggleIds(p.hiddenPoints, ids, !on);
+            })
+          }
+          onInclude={(ids, on) =>
+            edit(on ? 'Include replicate' : 'Exclude replicate', (p) => {
+              p.excludeRows = toggleIds(p.excludeRows, ids, !on);
+            })
+          }
+          onShowAll={() =>
+            edit('Show all chart groups', (p) => {
+              p.hiddenPoints = [];
+              p.excludeRows = [];
+            })
+          }
+        />
       </fieldset>
 
       <fieldset>

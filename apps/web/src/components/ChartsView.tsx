@@ -11,6 +11,7 @@ import {
 } from '@flowmeris/table';
 import { formatLinear, formatPow10, niceLinearTicks } from '@flowmeris/transforms';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { includedRows, visiblePoints } from '../lib/chartSelection.ts';
 import { download, safeName } from '../lib/download.ts';
 import { standaloneSvg } from '../lib/exportPlot.ts';
 import { useAnalysisTable } from '../lib/statsTable.ts';
@@ -70,6 +71,8 @@ function defaultPlot(columns: ColumnDef[], n: number): StatPlot {
     yScale: 'linear',
     error: 'sem',
     showPoints: true,
+    hiddenPoints: [],
+    excludeRows: [],
     style: structuredClone(DEFAULT_CHART_STYLE),
   };
 }
@@ -202,6 +205,8 @@ function Chart(props: {
   plot: StatPlot;
   /** Series in display order. */
   series: PlotSeries[];
+  /** Palette index of each series key among all series, so hiding one keeps the others' colours. */
+  colorIndex: Map<string, number>;
   xCol: ColumnDef;
   yCol: ColumnDef;
   seriesLabel: string | undefined;
@@ -224,7 +229,10 @@ function Chart(props: {
   const xLog = !band && plot.xScale === 'log10';
   const yLog = plot.yScale === 'log10';
   const multi = series.length > 1;
-  const color = (i: number) => seriesColor(st, seriesKey(series[i]?.key), i);
+  const color = (i: number) => {
+    const k = seriesKey(series[i]?.key);
+    return seriesColor(st, k, props.colorIndex.get(k) ?? i);
+  };
   const nameOf = (s: PlotSeries) => st.seriesLabels[seriesKey(s.key)] ?? (cellText(s.key) || '(none)');
 
   // Categories of a band axis, in display order.
@@ -700,15 +708,24 @@ export function ChartsView() {
 
   const plot = group?.statPlots.find((p) => p.id === chartId) ?? group?.statPlots[0];
   const seriesCol = plot?.series ? `var:${plot.series}` : undefined;
-  const summary = useMemo(
-    () =>
-      plot
-        ? orderSeries(
-            summaryForPlot(perSample.rows, plot.x, plot.y, seriesCol, plot.error, levels),
-            plot.style.seriesOrder,
-          )
-        : [],
-    [plot, perSample, seriesCol, levels],
+  // `allSeries` has every point with all its rows, for the Groups list; `summary` is what is plotted.
+  const { allSeries, summary } = useMemo(() => {
+    if (!plot) return { allSeries: [], summary: [] };
+    const sum = (rows: typeof perSample.rows) =>
+      orderSeries(
+        summaryForPlot(rows, plot.x, plot.y, seriesCol, plot.error, levels),
+        plot.style.seriesOrder,
+      );
+    const allSeries = sum(perSample.rows);
+    const kept = includedRows(perSample.rows, plot.excludeRows);
+    return {
+      allSeries,
+      summary: visiblePoints(kept === perSample.rows ? allSeries : sum(kept), plot.hiddenPoints),
+    };
+  }, [plot, perSample, seriesCol, levels]);
+  const rowNames = useMemo(
+    () => Object.fromEntries(perSample.rows.map((r) => [r.id, cellText(r.values['sample:name'])])),
+    [perSample],
   );
 
   if (!group) return <div className="empty">Select a group.</div>;
@@ -958,6 +975,7 @@ export function ChartsView() {
             <Chart
               plot={plot}
               series={summary}
+              colorIndex={new Map(allSeries.map((s, i) => [seriesKey(s.key), i]))}
               xCol={xCol}
               yCol={yCol}
               seriesLabel={seriesLabel}
@@ -1021,7 +1039,8 @@ export function ChartsView() {
       </div>
       <ChartInspector
         plot={plot}
-        series={summary}
+        series={allSeries}
+        rowNames={rowNames}
         seriesLabel={seriesLabel}
         xTitle={xCol?.label ?? plot.x}
         yTitle={yCol?.label ?? plot.y}
