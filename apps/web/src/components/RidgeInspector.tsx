@@ -711,6 +711,64 @@ export function RidgeInspector() {
         {tab === 'sample' && (
           <>
             <div className="ridge-pane-title">{combine.enabled ? 'Combined ridges' : 'Samples'}</div>
+            <div className="ridge-actions">
+              <button
+                type="button"
+                onClick={() =>
+                  update('Reverse ridge order', (l) => {
+                    l.style.order = [...allIds]
+                      .reverse()
+                      .concat(l.style.order.filter((id) => !current.has(id)));
+                  })
+                }
+              >
+                Reverse
+              </button>
+              <button
+                type="button"
+                disabled={!style.order.some((id) => current.has(id))}
+                onClick={() =>
+                  set(
+                    'order',
+                    style.order.filter((id) => !current.has(id)),
+                    'Reset ridge order',
+                  )
+                }
+              >
+                Reset order
+              </button>
+              <button
+                type="button"
+                disabled={!Object.keys(style.sampleColors).some((id) => current.has(id))}
+                onClick={() =>
+                  set(
+                    'sampleColors',
+                    Object.fromEntries(Object.entries(style.sampleColors).filter(([id]) => !current.has(id))),
+                    'Reset ridge colours',
+                  )
+                }
+              >
+                Reset colours
+              </button>
+              <button
+                type="button"
+                disabled={!Object.keys(style.sampleLabels).some((id) => current.has(id))}
+                onClick={() =>
+                  set(
+                    'sampleLabels',
+                    Object.fromEntries(Object.entries(style.sampleLabels).filter(([id]) => !current.has(id))),
+                    'Reset ridge labels',
+                  )
+                }
+              >
+                Reset labels
+              </button>
+            </div>
+            {selected.size > 1 && (
+              <p className="small muted">
+                {selected.size} selected — a colour change applies to all of them.
+              </p>
+            )}
             <ol className="ridge-samples" onDragLeave={() => setDrop(null)}>
               {ordered.map((id, i) => {
                 const custom = style.sampleColors[id] !== undefined;
@@ -829,64 +887,6 @@ export function RidgeInspector() {
                 );
               })}
             </ol>
-            {selected.size > 1 && (
-              <p className="small muted">
-                {selected.size} selected — a colour change applies to all of them.
-              </p>
-            )}
-            <div className="ridge-actions">
-              <button
-                type="button"
-                onClick={() =>
-                  update('Reverse ridge order', (l) => {
-                    l.style.order = [...allIds]
-                      .reverse()
-                      .concat(l.style.order.filter((id) => !current.has(id)));
-                  })
-                }
-              >
-                Reverse
-              </button>
-              <button
-                type="button"
-                disabled={!style.order.some((id) => current.has(id))}
-                onClick={() =>
-                  set(
-                    'order',
-                    style.order.filter((id) => !current.has(id)),
-                    'Reset ridge order',
-                  )
-                }
-              >
-                Reset order
-              </button>
-              <button
-                type="button"
-                disabled={!Object.keys(style.sampleColors).some((id) => current.has(id))}
-                onClick={() =>
-                  set(
-                    'sampleColors',
-                    Object.fromEntries(Object.entries(style.sampleColors).filter(([id]) => !current.has(id))),
-                    'Reset ridge colours',
-                  )
-                }
-              >
-                Reset colours
-              </button>
-              <button
-                type="button"
-                disabled={!Object.keys(style.sampleLabels).some((id) => current.has(id))}
-                onClick={() =>
-                  set(
-                    'sampleLabels',
-                    Object.fromEntries(Object.entries(style.sampleLabels).filter(([id]) => !current.has(id))),
-                    'Reset ridge labels',
-                  )
-                }
-              >
-                Reset labels
-              </button>
-            </div>
           </>
         )}
         {tab === 'axis' && (

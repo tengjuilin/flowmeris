@@ -2153,3 +2153,11 @@ table.stats.import-map td {
   font-weight: 600;
   margin: 2px 0 6px;
 }
+/* The Sample tab is just the list: let it grow; the panel scrolls only when the window is short. */
+.ridge-inspector .ridge-samples {
+  max-height: none;
+  overflow: visible;
+}
+.ridge-inspector .ridge-actions {
+  margin-bottom: 4px;
+}
