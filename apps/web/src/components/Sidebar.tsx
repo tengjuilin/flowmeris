@@ -1,5 +1,5 @@
 import type { Group } from '@flowmeris/model';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useSampleNames, useStore } from '../state/store.ts';
 import { drill } from './PlotPanel.tsx';
 
@@ -38,6 +38,42 @@ export function Sidebar() {
   const activeGroup = ws.groups.find((g) => g.id === ui.groupId);
   const names = useSampleNames(activeGroup);
   const [editing, setEditing] = useState<string | null>(null);
+  /** Last sample clicked: the start of a shift-click range. */
+  const anchor = useRef<string | null>(null);
+
+  /**
+   * Multi-select of the shown samples, like a file list: shift-click adds or removes the range from the last
+   * click, ctrl/cmd-click adds or removes one sample. Returns false for a plain click.
+   */
+  const multiSelect = (
+    g: Group,
+    id: string,
+    e: { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean },
+  ) => {
+    const from = anchor.current ? g.sampleIds.indexOf(anchor.current) : -1;
+    if (e.shiftKey && from >= 0) {
+      const [lo, hi] = [from, g.sampleIds.indexOf(id)].sort((a, b) => a - b) as [number, number];
+      // Hide the range if it is all shown, else show all of it; samples outside it are left as they are.
+      const range = g.sampleIds.slice(lo, hi + 1);
+      const show = range.some((sid) => ui.excluded[sid]);
+      const excluded = { ...ui.excluded };
+      for (const sid of range) {
+        if (show) delete excluded[sid];
+        else excluded[sid] = true;
+      }
+      setUi({ excluded });
+      return true;
+    }
+    anchor.current = id;
+    if (e.ctrlKey || e.metaKey) {
+      const excluded = { ...ui.excluded };
+      if (excluded[id]) delete excluded[id];
+      else excluded[id] = true;
+      setUi({ excluded });
+      return true;
+    }
+    return false;
+  };
 
   return (
     <nav className="sidebar" aria-label="Groups and samples">
@@ -96,8 +132,17 @@ export function Sidebar() {
                         title="Show in the Tiles, Ridge and Statistics views"
                         onChange={(e) => {
                           const excluded = { ...ui.excluded };
-                          if (e.target.checked) delete excluded[id];
-                          else excluded[id] = true;
+                          const from = anchor.current ? g.sampleIds.indexOf(anchor.current) : -1;
+                          const shift = (e.nativeEvent as MouseEvent).shiftKey && from >= 0;
+                          const to = g.sampleIds.indexOf(id);
+                          const ids = shift
+                            ? g.sampleIds.slice(Math.min(from, to), Math.max(from, to) + 1)
+                            : [id];
+                          for (const sid of ids) {
+                            if (e.target.checked) delete excluded[sid];
+                            else excluded[sid] = true;
+                          }
+                          anchor.current = id;
                           setUi({ excluded });
                         }}
                       />
@@ -128,9 +173,18 @@ export function Sidebar() {
                         <button
                           type="button"
                           className={sel ? 'on' : ''}
-                          onClick={() => setUi({ sampleId: id })}
+                          onMouseDown={(e) => e.shiftKey && e.preventDefault()}
+                          onClick={(e) => {
+                            if (!multiSelect(g, id, e)) setUi({ sampleId: id });
+                          }}
+                          // On macOS ctrl-click is a right-click and sends no click event.
+                          onContextMenu={(e) => {
+                            if (!e.ctrlKey) return;
+                            e.preventDefault();
+                            multiSelect(g, id, e);
+                          }}
                           onDoubleClick={() => setEditing(id)}
-                          title={`Double-click to rename\n${s.relativePath}${s.datasetIndex ? ` (dataset ${s.datasetIndex + 1})` : ''}\nSHA-256 ${s.sha256}`}
+                          title={`Click to open · shift-click for a range, ctrl/cmd-click to add or remove\nDouble-click to rename\n${s.relativePath}${s.datasetIndex ? ` (dataset ${s.datasetIndex + 1})` : ''}\nSHA-256 ${s.sha256}`}
                         >
                           <span className="name">{names[id] ?? s.fileName}</span>
                           <span className="badges">
