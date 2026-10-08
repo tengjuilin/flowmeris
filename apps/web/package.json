@@ -31,8 +31,10 @@
     "comlink": "^4.4",
     "idb": "^8",
     "immer": "^10.1",
+    "jspdf": "^4.2.1",
     "react": "^18.3",
     "react-dom": "^18.3",
+    "svg2pdf.js": "^2.8.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zustand": "^4.5"
   }

@@ -2296,3 +2296,28 @@ table.stats.import-map td {
 .ridge-combine button:not(.tt-btn) {
   font-size: 12px;
 }
+
+.export-menu {
+  position: relative;
+}
+.export-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 200px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.15);
+}
+.export-pop .field {
+  justify-content: space-between;
+}
+.export-pop input[type="number"] {
+  width: 76px;
+}

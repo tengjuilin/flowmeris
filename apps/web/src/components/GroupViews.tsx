@@ -5,8 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { lineageKey } from '../lib/analysis.ts';
 import { factoryAxis } from '../lib/defaults.ts';
-import { download, safeName } from '../lib/download.ts';
-import { standaloneSvg, svgToPng } from '../lib/exportPlot.ts';
+import { type ImageFormat, exportSvgFigure } from '../lib/exportPlot.ts';
 import { scaleFor } from '../lib/geometry.ts';
 import { type RidgeCurve, combineCounts, textMeasure, wrapText } from '../lib/ridge.ts';
 import {
@@ -129,6 +128,68 @@ const Tile = memo(function Tile({
     </div>
   );
 });
+
+/** Export button: opens a small form to choose the file format (and DPI for raster formats). */
+function ExportMenu({ getSvg, baseName }: { getSvg: () => SVGSVGElement | null; baseName: string }) {
+  const [open, setOpen] = useState(false);
+  const [format, setFormat] = useState<ImageFormat>('png');
+  const [dpi, setDpi] = useState(300);
+  const [busy, setBusy] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', away);
+    return () => document.removeEventListener('mousedown', away);
+  }, [open]);
+  const run = () => {
+    const svg = getSvg();
+    if (!svg) return;
+    setBusy(true);
+    exportSvgFigure(svg, format, baseName, Math.min(1200, Math.max(72, dpi || 300)))
+      .then(() => setOpen(false))
+      .catch((e) => toast(`Export failed: ${e instanceof Error ? e.message : String(e)}`))
+      .finally(() => setBusy(false));
+  };
+  return (
+    <div className="export-menu" ref={ref}>
+      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        Export
+      </button>
+      {open && (
+        <div className="export-pop" aria-label="Export options">
+          <label className="field">
+            Format
+            <select value={format} onChange={(e) => setFormat(e.target.value as ImageFormat)}>
+              <option value="png">PNG</option>
+              <option value="jpeg">JPEG</option>
+              <option value="pdf">PDF (vector)</option>
+              <option value="svg">SVG (vector)</option>
+            </select>
+          </label>
+          {(format === 'png' || format === 'jpeg') && (
+            <label className="field">
+              Resolution (DPI)
+              <input
+                type="number"
+                min={72}
+                max={1200}
+                step={50}
+                value={dpi}
+                onChange={(e) => setDpi(Number(e.target.value))}
+              />
+            </label>
+          )}
+          <button type="button" className="primary" disabled={busy} onClick={run}>
+            {busy ? 'Exporting…' : 'Download'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function TilesView() {
   const group = useGroup();
@@ -367,35 +428,7 @@ export function RidgeView() {
             ` · replicates combined (${combine.method === 'mean' ? 'average of curves' : 'pooled events'})`}
         </span>
         <div className="spacer" />
-        <div className="seg">
-          <button
-            type="button"
-            onClick={() => {
-              if (!svgRef.current) return;
-              download(
-                `${safeName(`${group.name}_${pop?.name}_${ch}_ridge`)}.svg`,
-                standaloneSvg(svgRef.current),
-                'image/svg+xml',
-              );
-            }}
-          >
-            SVG
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (!svgRef.current) return;
-              svgToPng(svgRef.current, 300)
-                .then((png) =>
-                  download(`${safeName(`${group.name}_${pop?.name}_${ch}_ridge`)}.png`, png, 'image/png'),
-                )
-                .catch((e) => toast(`PNG export failed: ${e instanceof Error ? e.message : String(e)}`));
-            }}
-            title="PNG at 300 dpi"
-          >
-            PNG
-          </button>
-        </div>
+        <ExportMenu getSvg={() => svgRef.current} baseName={`${group.name}_${pop?.name}_${ch}_ridge`} />
       </div>
       <svg
         ref={svgRef}
