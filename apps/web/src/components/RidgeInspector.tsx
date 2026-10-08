@@ -607,28 +607,45 @@ function Section({
   title,
   open,
   onToggle,
+  changed,
+  onReset,
   children,
 }: {
   id: SectionId;
   title: string;
   open: boolean;
   onToggle: () => void;
+  /** Whether any setting in the section differs from its default; enables the reset button. */
+  changed: boolean;
+  onReset: () => void;
   children: ReactNode;
 }) {
   return (
     <section className={`ridge-section${open ? ' open' : ''}`}>
-      <button
-        type="button"
-        className="ridge-section-head"
-        aria-expanded={open}
-        aria-controls={`ridge-section-${id}`}
-        onClick={onToggle}
-      >
-        <svg className="chevron" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-          <path d="M3.5 1.5 9 6l-5.5 4.5z" fill="currentColor" />
-        </svg>
-        {title}
-      </button>
+      <div className="ridge-section-bar">
+        <button
+          type="button"
+          className="ridge-section-head"
+          aria-expanded={open}
+          aria-controls={`ridge-section-${id}`}
+          onClick={onToggle}
+        >
+          <svg className="chevron" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+            <path d="M3.5 1.5 9 6l-5.5 4.5z" fill="currentColor" />
+          </svg>
+          {title}
+        </button>
+        <button
+          type="button"
+          className="icon reset-btn"
+          disabled={!changed}
+          title={changed ? `Reset ${title.toLowerCase()} to the defaults` : `${title} are at the defaults`}
+          aria-label={`Reset ${title.toLowerCase()}`}
+          onClick={onReset}
+        >
+          <ResetIcon />
+        </button>
+      </div>
       {open && (
         <div id={`ridge-section-${id}`} className="ridge-section-body">
           {children}
@@ -722,6 +739,38 @@ export function RidgeInspector() {
       }
       g.ridgeStyleFollow = on;
     });
+
+  /** Reset props for a section whose settings are the style `keys` (and the overlap, if `withOverlap`). */
+  const resetOf = (keys: (keyof RidgeStyle)[], title: string, withOverlap = false) => ({
+    changed:
+      keys.some((k) => !sameJson(style[k], DEFAULT_RIDGE_STYLE[k])) ||
+      (withOverlap && overlap !== DEFAULT_OVERLAP),
+    onReset: () =>
+      update(`Reset ${title}`, (l) => {
+        for (const k of keys) {
+          const d = DEFAULT_RIDGE_STYLE[k];
+          if (d === undefined) delete l.style[k];
+          else (l.style as Record<string, unknown>)[k] = structuredClone(d);
+        }
+        if (withOverlap) l.overlap = DEFAULT_OVERLAP;
+      }),
+  });
+  const ws = useStore((s) => s.ws);
+  const factory = axis && group ? factoryAxis(ws, group, axis.channel) : null;
+  const axisReset = {
+    changed:
+      !!axis &&
+      !!factory &&
+      (axis.transform !== factory.transform ||
+        axis.range[0] !== factory.range[0] ||
+        axis.range[1] !== factory.range[1]),
+    onReset: () =>
+      update('Reset axis', (l, w, g) => {
+        const f = factoryAxis(w, g, l.axis.channel);
+        l.axis.transform = f.transform;
+        l.axis.range = [...f.range];
+      }),
+  };
 
   return (
     <aside className="inspector ridge-inspector" aria-label="Ridge plot settings">
@@ -966,10 +1015,17 @@ export function RidgeInspector() {
         )}
         {tab === 'axis' && (
           <>
-            <Section id="scale" title="Scale and range" open={!!open.scale} onToggle={() => toggle('scale')}>
+            <Section
+              id="scale"
+              {...axisReset}
+              title="Scale and range"
+              open={!!open.scale}
+              onToggle={() => toggle('scale')}
+            >
               {axis && group && (
                 <AxisFields
                   live
+                  hideReset
                   axis={axis}
                   legend={`Channel · ${axis.channel}`}
                   population={popId}
@@ -978,7 +1034,13 @@ export function RidgeInspector() {
                 />
               )}
             </Section>
-            <Section id="ticks" title="Ticks" open={!!open.ticks} onToggle={() => toggle('ticks')}>
+            <Section
+              id="ticks"
+              {...resetOf(['axisColor', 'baselineColor', 'showTickLabels', 'ticks'], 'ticks')}
+              title="Ticks"
+              open={!!open.ticks}
+              onToggle={() => toggle('ticks')}
+            >
               <div className="field">
                 Axis color
                 <span className="swatch-auto">
@@ -1035,7 +1097,13 @@ export function RidgeInspector() {
               </label>
               <TicksEditor ticks={style.ticks} onCommit={(t) => set('ticks', t, 'Ridge ticks')} />
             </Section>
-            <Section id="title" title="Title" open={!!open.title} onToggle={() => toggle('title')}>
+            <Section
+              id="title"
+              {...resetOf(['axisTitle'], 'title')}
+              title="Title"
+              open={!!open.title}
+              onToggle={() => toggle('title')}
+            >
               <label className="field" title="Leave empty for the default; type a space for no title">
                 Axis title
                 <input
@@ -1052,6 +1120,7 @@ export function RidgeInspector() {
           <>
             <Section
               id="labelText"
+              {...resetOf(['labelText', 'labelFontSize', 'labelAlign'], 'ridge label text')}
               title="Ridge labels"
               open={!!open.labelText}
               onToggle={() => toggle('labelText')}
@@ -1070,6 +1139,7 @@ export function RidgeInspector() {
             </Section>
             <Section
               id="tickText"
+              {...resetOf(['tickText', 'tickFontSize'], 'tick label text')}
               title="Tick labels"
               open={!!open.tickText}
               onToggle={() => toggle('tickText')}
@@ -1086,6 +1156,7 @@ export function RidgeInspector() {
             </Section>
             <Section
               id="titleText"
+              {...resetOf(['titleText', 'titleFontSize'], 'axis title text')}
               title="Axis title"
               open={!!open.titleText}
               onToggle={() => toggle('titleText')}
@@ -1106,6 +1177,7 @@ export function RidgeInspector() {
           <>
             <Section
               id="ridgeStyle"
+              {...resetOf(['colorMode', 'color', 'fillOpacity', 'strokeColor', 'strokeWidth'], 'ridge style')}
               title="Ridge style"
               open={!!open.ridgeStyle}
               onToggle={() => toggle('ridgeStyle')}
@@ -1193,7 +1265,16 @@ export function RidgeInspector() {
                 />
               </div>
             </Section>
-            <Section id="labels" title="Ridge labels" open={!!open.labels} onToggle={() => toggle('labels')}>
+            <Section
+              id="labels"
+              {...resetOf(
+                ['showLabels', 'showCounts', 'countOnNewLine', 'labelWidth', 'labelOverflow'],
+                'ridge labels',
+              )}
+              title="Ridge labels"
+              open={!!open.labels}
+              onToggle={() => toggle('labels')}
+            >
               <label className="field check">
                 <input
                   type="checkbox"
@@ -1244,7 +1325,13 @@ export function RidgeInspector() {
                 </select>
               </label>
             </Section>
-            <Section id="layout" title="Layout" open={!!open.layout} onToggle={() => toggle('layout')}>
+            <Section
+              id="layout"
+              {...resetOf(['rowHeight', 'width', 'aspect'], 'layout', true)}
+              title="Layout"
+              open={!!open.layout}
+              onToggle={() => toggle('layout')}
+            >
               <PercentSlider
                 label="Overlap"
                 value={overlap}
@@ -1323,6 +1410,7 @@ export function RidgeInspector() {
             </Section>
             <Section
               id="histogram"
+              {...resetOf(['bins', 'smoothing'], 'histogram')}
               title="Histogram"
               open={!!open.histogram}
               onToggle={() => toggle('histogram')}
@@ -1346,6 +1434,10 @@ export function RidgeInspector() {
             </Section>
             <Section
               id="baseFont"
+              {...resetOf(
+                ['fontFamily', 'fontColor', 'fontSize', 'labelFontSize', 'tickFontSize', 'titleFontSize'],
+                'base font',
+              )}
               title="Base font"
               open={!!open.baseFont}
               onToggle={() => toggle('baseFont')}

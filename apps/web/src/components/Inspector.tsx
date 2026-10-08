@@ -126,6 +126,7 @@ export function AxisFields({
   apply,
   note,
   live,
+  hideReset,
 }: {
   axis: AxisSpec;
   legend: string;
@@ -133,6 +134,8 @@ export function AxisFields({
   apply: ApplyAxis;
   note?: ReactNode;
   live?: boolean;
+  /** Leave out the legend's reset button when the host provides its own. */
+  hideReset?: boolean;
 }) {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
@@ -191,16 +194,18 @@ export function AxisFields({
     <fieldset className="axis-editor">
       <legend className="axis-legend">
         {legend}
-        <button
-          type="button"
-          className="icon reset-btn"
-          disabled={atDefault}
-          onClick={reset}
-          title="Reset the scale and range to the channel's defaults"
-          aria-label="Reset scale and range"
-        >
-          <ResetIcon />
-        </button>
+        {!hideReset && (
+          <button
+            type="button"
+            className="icon reset-btn"
+            disabled={atDefault}
+            onClick={reset}
+            title="Reset the scale and range to the channel's defaults"
+            aria-label="Reset scale and range"
+          >
+            <ResetIcon />
+          </button>
+        )}
       </legend>
       <label className="field">
         Scale

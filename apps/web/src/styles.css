@@ -2115,6 +2115,15 @@ table.stats.import-map td {
   border-radius: 8px;
   margin: 0 0 8px;
 }
+.ridge-section-bar {
+  display: flex;
+  align-items: center;
+  padding-right: 6px;
+}
+.ridge-section-bar .ridge-section-head {
+  flex: 1;
+  min-width: 0;
+}
 .ridge-section-head {
   display: flex;
   align-items: center;
