@@ -7,7 +7,7 @@ import { lineageKey } from '../lib/analysis.ts';
 import { factoryAxis } from '../lib/defaults.ts';
 import { exportSvgFigure } from '../lib/exportPlot.ts';
 import { scaleFor } from '../lib/geometry.ts';
-import { type RidgeCurve, combineCounts, textMeasure, wrapText } from '../lib/ridge.ts';
+import { type RidgeCurve, combineCounts, textMeasure, withRidgeChannel, wrapText } from '../lib/ridge.ts';
 import {
   contextFor,
   toast,
@@ -357,7 +357,9 @@ export function RidgeView() {
   }
   const setChannel = (c: string) =>
     update('Ridge channel', (l, w, g) => {
-      l.axis = factoryAxis(w, g, c);
+      withRidgeChannel(l, () => {
+        l.axis = factoryAxis(w, g, c);
+      });
     });
 
   return (

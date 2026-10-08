@@ -2140,7 +2140,7 @@ table.stats.import-map td {
   gap: 8px;
   margin-top: 4px;
 }
-.ridge-inspector-global .field.check {
+.ridge-inspector-global .field {
   margin: 0;
   white-space: nowrap;
   min-width: 0;

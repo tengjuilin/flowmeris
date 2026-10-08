@@ -52,6 +52,38 @@ describe('ridge layout style', () => {
     expect(g.ridgeCombine.enabled).toBe(false);
   });
 
+  it('writes ridge settings shared live by older files into each population', () => {
+    const ws = newWorkspace('t', { version: '0', commit: 'x', kernels: 'ts-1' });
+    const g = newGroup('g', [], ['FSC-A']);
+    const axis = { channel: 'FSC-A', comp: 'group', transform: 't_1', range: [0, 1] };
+    const lay = (id: string, style: object) => ({
+      kind: 'ridge',
+      id,
+      population: id,
+      axis,
+      overlap: 0.6,
+      norm: 'mode',
+      style,
+    });
+    g.layouts.push(lay('a', { color: '#111111', axisTitle: 'A' }) as never, lay('b', {}) as never);
+    ws.groups.push(g);
+    const old = JSON.parse(JSON.stringify(ws));
+    Object.assign(old.groups[0], {
+      ridgeStyleFollow: true,
+      ridgeStyle: { color: '#222222', axisTitle: 'S' },
+      ridgeOverlap: 0.3,
+    });
+    const loaded = loadWorkspace(old).groups[0]!;
+    const [a, b] = loaded.layouts as Extract<(typeof loaded.layouts)[number], { kind: 'ridge' }>[];
+    expect(a!.style.color).toBe('#222222');
+    expect(a!.style.axisTitle).toBe('A');
+    expect(b!.style.color).toBe('#222222');
+    expect(b!.style.axisTitle).toBeUndefined();
+    expect(b!.overlap).toBe(0.3);
+    expect(loaded.ridgeStyleFollow).toBe(true);
+    expect('ridgeStyle' in loaded).toBe(false);
+  });
+
   it('rejects malformed colours', () => {
     expect(() => RidgeStyleSchema.parse({ color: 'blue' })).toThrow();
   });

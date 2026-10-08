@@ -5,7 +5,6 @@ import {
   RidgeCombineSchema,
   type RidgeLayout,
   type RidgeStyle,
-  RidgeStyleSchema,
   type TextStyle,
   type Workspace,
   newId,
@@ -18,6 +17,7 @@ import {
   type MouseEvent,
   type ReactNode,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -25,21 +25,37 @@ import {
 import { defaultChannels, factoryAxis } from '../lib/defaults.ts';
 import { FONT_GROUPS, FONT_STACKS, fontStack } from '../lib/figure.ts';
 import {
-  PER_POPULATION,
+  DEFAULT_OVERLAP,
+  DEFAULT_RIDGE_STYLE,
   type RidgeRow,
+  allRidgesAtDefaults,
   applyOrder,
+  applyRidgeToChannels,
+  applyRidgeToPopulations,
+  carryRidge,
   comboRows,
+  isDefaultRidge,
+  resetAllRidges,
+  resetRidgeChannel,
+  resetRidgeCurrent,
+  resetRidgeLayout,
+  ridgeAtDefaults,
+  ridgeChannelAtDefaults,
+  ridgeChannelsMatch,
+  ridgePopulationsMatch,
+  sameJson,
   selectRidges,
-  sharedView,
+  setRidgeChannelStyles,
+  withRidgeChannel,
 } from '../lib/ridge.ts';
 import { useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
 import { GroupPicker, toggleIds } from './GroupPicker.tsx';
-import { AxisFields, NumInput, ResetIcon, Section } from './Inspector.tsx';
+import { ActionRow, ApplyIcon, AxisFields, NumInput, ResetIcon, Section } from './Inspector.tsx';
 
 /** A number input that updates the plot as you type. */
 const LiveNum = (p: ComponentProps<typeof NumInput>) => <NumInput live {...p} />;
 
-export const DEFAULT_RIDGE_STYLE: RidgeStyle = RidgeStyleSchema.parse({});
+export { DEFAULT_OVERLAP, DEFAULT_RIDGE_STYLE };
 export const DEFAULT_RIDGE_COMBINE: RidgeCombine = RidgeCombineSchema.parse({});
 /** A copy of `c` that is safe to take of an Immer draft (`structuredClone` cannot clone one). */
 const copyCombine = (c: RidgeCombine): RidgeCombine => ({
@@ -48,16 +64,6 @@ const copyCombine = (c: RidgeCombine): RidgeCombine => ({
   hidden: [...c.hidden],
   exclude: [...c.exclude],
 });
-export const DEFAULT_OVERLAP = 0.6;
-
-/** Deep equality of plain JSON values, independent of key order. */
-function sameJson(a: unknown, b: unknown): boolean {
-  const norm = (_: string, v: unknown) =>
-    v && typeof v === 'object' && !Array.isArray(v)
-      ? Object.fromEntries(Object.entries(v).sort(([x], [y]) => (x < y ? -1 : 1)))
-      : v;
-  return JSON.stringify(a, norm) === JSON.stringify(b, norm);
-}
 
 export { FONT_GROUPS, FONT_STACKS, fontStack };
 
@@ -87,20 +93,13 @@ export function useRidge() {
   const names = useSampleNames(group);
   const shown = useSelectedSampleIds(group);
   const layout = group?.layouts.find((l): l is RidgeLayout => l.kind === 'ridge' && l.population === popId);
-  const styleFollow = group?.ridgeStyleFollow ?? false;
-  const ownStyle = layout?.style ?? DEFAULT_RIDGE_STYLE;
-  const style: RidgeStyle = useMemo(() => {
-    if (!styleFollow || !group) return ownStyle;
-    const shared = { ...group.ridgeStyle };
-    for (const k of PER_POPULATION) delete (shared as Record<PropertyKey, unknown>)[k];
-    return { ...ownStyle, ...shared };
-  }, [styleFollow, group, ownStyle]);
+  const style: RidgeStyle = layout?.style ?? DEFAULT_RIDGE_STYLE;
   // While following, the group's shared replicate settings apply to every population.
   const follow = group?.ridgeFollow ?? true;
   const combine =
     (follow ? group?.ridgeCombine : layout?.combine) ?? group?.ridgeCombine ?? DEFAULT_RIDGE_COMBINE;
   const ws = useStore((s) => s.ws);
-  const overlap = (styleFollow ? group?.ridgeOverlap : layout?.overlap) ?? DEFAULT_OVERLAP;
+  const overlap = layout?.overlap ?? DEFAULT_OVERLAP;
   const ch = layout?.axis.channel ?? (group ? defaultChannels(ws, group)[0] : '');
 
   // The ridge plot owns its axis (channel, scale and range): it is seeded from the channel's
@@ -144,7 +143,7 @@ export function useRidge() {
           const existing = g.layouts.find(
             (l): l is RidgeLayout => l.kind === 'ridge' && l.population === popId,
           );
-          if (existing) return fn(g.ridgeStyleFollow ? sharedView(existing, g) : existing, w, g);
+          if (existing) return fn(existing, w, g);
           const l: RidgeLayout = {
             kind: 'ridge',
             id: newId('lay_'),
@@ -155,7 +154,7 @@ export function useRidge() {
             style: structuredClone(DEFAULT_RIDGE_STYLE),
             combine: copyCombine(g.ridgeCombine),
           };
-          fn(g.ridgeStyleFollow ? sharedView(l, g) : l, w, g);
+          fn(l, w, g);
           g.layouts.push(l);
         },
         merge && `ridge:${group.id}:${popId}:${merge}`,
@@ -168,7 +167,6 @@ export function useRidge() {
     group,
     layout,
     style,
-    styleFollow,
     combine,
     follow,
     overlap,
@@ -468,8 +466,10 @@ export function TextStyleEditor({
   );
 }
 
-type RidgeTab = 'sample' | 'axis' | 'text' | 'figure';
+type RidgeTab = 'sample' | 'axis' | 'text' | 'figure' | 'settings';
 type SectionId =
+  | 'apply'
+  | 'resetAll'
   | 'ridgeStyle'
   | 'scale'
   | 'ticks'
@@ -487,15 +487,51 @@ const RIDGE_TABS: { id: RidgeTab; label: string }[] = [
   { id: 'sample', label: 'Sample' },
   { id: 'axis', label: 'Axis' },
   { id: 'text', label: 'Text' },
+  { id: 'settings', label: 'Settings' },
 ];
 
-/** The first section of each tab starts open (the Sample tab has no sections). */
+/** The first section of each tab, and the Settings tab's cards, start open (the Sample tab has no sections). */
 const DEFAULT_OPEN: Partial<Record<SectionId, boolean>> = {
+  apply: true,
+  resetAll: true,
   ridgeStyle: true,
   scale: true,
   labels: true,
   labelText: true,
 };
+
+/** The style keys of each card, for the card's reset and its tab's "Reset this panel". */
+const STYLE_KEYS: (keyof RidgeStyle)[] = ['colorMode', 'color', 'fillOpacity', 'strokeColor', 'strokeWidth'];
+const LABEL_KEYS: (keyof RidgeStyle)[] = [
+  'showLabels',
+  'showCounts',
+  'countOnNewLine',
+  'labelWidth',
+  'labelOverflow',
+];
+const LAYOUT_KEYS: (keyof RidgeStyle)[] = ['rowHeight', 'width', 'aspect'];
+const HIST_KEYS: (keyof RidgeStyle)[] = ['bins', 'smoothing'];
+const FONT_KEYS: (keyof RidgeStyle)[] = [
+  'fontFamily',
+  'fontColor',
+  'fontSize',
+  'labelFontSize',
+  'tickFontSize',
+  'titleFontSize',
+];
+const TICK_KEYS: (keyof RidgeStyle)[] = ['axisColor', 'baselineColor', 'showTickLabels', 'ticks'];
+const TITLE_KEYS: (keyof RidgeStyle)[] = ['axisTitle'];
+const LABEL_TEXT_KEYS: (keyof RidgeStyle)[] = ['labelText', 'labelFontSize', 'labelAlign'];
+const TICK_TEXT_KEYS: (keyof RidgeStyle)[] = ['tickText', 'tickFontSize'];
+const TITLE_TEXT_KEYS: (keyof RidgeStyle)[] = ['titleText', 'titleFontSize'];
+/** The style keys each tab's "Reset this panel" resets (the Axis tab also resets the scale, the Sample tab its rows). */
+const PANEL_KEYS: Record<'figure' | 'axis' | 'text', (keyof RidgeStyle)[]> = {
+  figure: [...STYLE_KEYS, ...LABEL_KEYS, ...LAYOUT_KEYS, ...HIST_KEYS, ...FONT_KEYS],
+  axis: [...TICK_KEYS, ...TITLE_KEYS],
+  text: [...LABEL_TEXT_KEYS, ...TICK_TEXT_KEYS, ...TITLE_TEXT_KEYS],
+};
+/** The Sample tab's per-row settings. */
+const ROW_KEYS = ['order', 'sampleColors', 'sampleLabels'] as const;
 
 /** A slider for a 0–`max` fraction, with a percentage box beside it for typing an exact value. */
 function PercentSlider({
@@ -551,7 +587,7 @@ function loadPanel(): { tab: RidgeTab; open: Partial<Record<SectionId, boolean>>
   try {
     const saved = JSON.parse(localStorage.getItem(PANEL_KEY) ?? 'null');
     if (saved && RIDGE_TABS.some((t) => t.id === saved.tab))
-      return { tab: saved.tab, open: saved.open ?? {} };
+      return { tab: saved.tab, open: { apply: true, resetAll: true, ...saved.open } };
   } catch {}
   return { tab: 'figure', open: DEFAULT_OPEN };
 }
@@ -564,7 +600,7 @@ function savePanel(panel: { tab: RidgeTab; open: Partial<Record<SectionId, boole
 
 export function RidgeInspector() {
   const popId = useStore((s) => s.ui.popId);
-  const { group, layout, style, styleFollow, combine, overlap, axis, rows, allIds, update } = useRidge();
+  const { group, layout, style, combine, overlap, axis, rows, allIds, update } = useRidge();
   const mutate = useStore((s) => s.mutate);
   const ordered = rows.map((r) => r.id);
   const labels = Object.fromEntries(rows.map((r) => [r.id, r.label]));
@@ -583,6 +619,23 @@ export function RidgeInspector() {
     });
   const setTab = (t: RidgeTab) => changePanel((p) => ({ ...p, tab: t }));
   const toggle = (id: SectionId) => changePanel((p) => ({ ...p, open: { ...p.open, [id]: !p.open[id] } }));
+  // While settings are carried across populations, the population opened next takes the ridge settings
+  // of the one left (keeping its own ticks and axis title).
+  const last = useRef<{ groupId: string; popId: string; layoutId: string } | null>(null);
+  useEffect(() => {
+    if (!group || !layout) return;
+    const prev = last.current;
+    last.current = { groupId: group.id, popId, layoutId: layout.id };
+    if (!prev || prev.groupId !== group.id || prev.popId === popId || !group.ridgeStyleFollow) return;
+    const from = group.layouts.find((l): l is RidgeLayout => l.kind === 'ridge' && l.id === prev.layoutId);
+    if (!from || !carryRidge(structuredClone(from), structuredClone(layout))) return;
+    mutate('Carry ridge settings to population', (w) => {
+      const ls = w.groups.find((x) => x.id === group.id)?.layouts;
+      const src = ls?.find((l): l is RidgeLayout => l.kind === 'ridge' && l.id === prev.layoutId);
+      const dst = ls?.find((l): l is RidgeLayout => l.kind === 'ridge' && l.id === layout.id);
+      if (src && dst) carryRidge(src, dst);
+    });
+  }, [group?.id, popId, layout?.id]);
   if (!group) return null;
   const set = <K extends keyof RidgeStyle>(key: K, value: RidgeStyle[K], label: string, merge?: string) =>
     update(
@@ -627,26 +680,6 @@ export function RidgeInspector() {
     });
   };
 
-  // Sharing adopts this population's appearance for all; unsharing gives each population a copy of it.
-  const setStyleFollow = (on: boolean) =>
-    mutate(on ? 'Share ridge plot settings' : 'Ridge plot settings per population', (w) => {
-      if (!group) return;
-      const g = w.groups.find((x) => x.id === group.id)!;
-      if (on) {
-        g.ridgeStyle = structuredClone(style);
-        g.ridgeOverlap = overlap;
-      } else {
-        const shared = JSON.parse(JSON.stringify(g.ridgeStyle)) as Record<string, unknown>;
-        for (const k of PER_POPULATION) delete shared[k as string];
-        for (const x of g.layouts) {
-          if (x.kind !== 'ridge') continue;
-          x.style = { ...x.style, ...structuredClone(shared) } as RidgeStyle;
-          x.overlap = g.ridgeOverlap;
-        }
-      }
-      g.ridgeStyleFollow = on;
-    });
-
   /** Reset props for a section whose settings are the style `keys` (and the overlap, if `withOverlap`). */
   const resetOf = (keys: (keyof RidgeStyle)[], title: string, withOverlap = false) => ({
     changed:
@@ -679,6 +712,47 @@ export function RidgeInspector() {
       }),
   };
 
+  /** Edit this population's ridge plot, if it has one. */
+  const editLayout = (label: string, fn: (l: RidgeLayout, g: Group) => void) =>
+    mutate(label, (w) => {
+      const g = w.groups.find((x) => x.id === group.id);
+      const l = g?.layouts.find((x): x is RidgeLayout => x.kind === 'ridge' && x.id === layout?.id);
+      if (g && l) fn(l, g);
+    });
+  // "Reset this panel": the open tab's settings for this ridge plot.
+  const rowsAtDefaults = ROW_KEYS.every((k) =>
+    k === 'order'
+      ? !style.order.some((id) => current.has(id))
+      : !Object.keys(style[k]).some((id) => current.has(id)),
+  );
+  const panelAtDefaults =
+    !layout ||
+    tab === 'settings' ||
+    (tab === 'sample'
+      ? rowsAtDefaults
+      : !resetOf(PANEL_KEYS[tab], tab, tab === 'figure').changed && (tab !== 'axis' || !axisReset.changed));
+  const resetPanel = () =>
+    update(`Reset ridge ${tab} settings`, (l, w, g) => {
+      if (tab === 'settings') return;
+      if (tab === 'sample') {
+        l.style.order = l.style.order.filter((id) => !current.has(id));
+        for (const k of ['sampleColors', 'sampleLabels'] as const)
+          l.style[k] = Object.fromEntries(Object.entries(l.style[k]).filter(([id]) => !current.has(id)));
+        return;
+      }
+      for (const k of PANEL_KEYS[tab]) {
+        const d = DEFAULT_RIDGE_STYLE[k];
+        if (d === undefined) delete l.style[k];
+        else (l.style as Record<string, unknown>)[k] = structuredClone(d);
+      }
+      if (tab === 'figure') l.overlap = DEFAULT_OVERLAP;
+      if (tab === 'axis') {
+        const f = factoryAxis(w, g, l.axis.channel);
+        l.axis.transform = f.transform;
+        l.axis.range = [...f.range];
+      }
+    });
+
   return (
     <aside className="inspector ridge-inspector" aria-label="Ridge plot settings">
       <div className="ridge-inspector-head">
@@ -699,31 +773,133 @@ export function RidgeInspector() {
           ))}
         </div>
         <div className="ridge-inspector-global">
-          <label
-            className="field check"
-            title="Colors, labels, text, size, overlap and histogram settings. Each population keeps its own channel, scale, ticks and axis title."
-          >
-            <input type="checkbox" checked={styleFollow} onChange={(e) => setStyleFollow(e.target.checked)} />
-            Same settings for all populations
-          </label>
+          <span className="field">Reset this panel</span>
           <button
             type="button"
             className="icon reset-all"
-            title="Reset all ridge plot settings to their defaults"
-            aria-label="Reset all settings"
-            disabled={!layout || (sameJson(style, DEFAULT_RIDGE_STYLE) && overlap === DEFAULT_OVERLAP)}
-            onClick={() =>
-              update('Reset ridge settings', (l) => {
-                l.style = structuredClone(DEFAULT_RIDGE_STYLE);
-                l.overlap = DEFAULT_OVERLAP;
-              })
-            }
+            title="Reset the settings in this panel for this ridge plot"
+            aria-label="Reset the settings in this panel"
+            disabled={panelAtDefaults}
+            onClick={resetPanel}
           >
             <ResetIcon />
           </button>
         </div>
       </div>
       <div id="ridge-tabpanel" role="tabpanel" aria-labelledby={`ridge-tab-${tab}`}>
+        {tab === 'settings' && (
+          <>
+            <Section id="apply" title="Apply settings" open={!!open.apply} onToggle={() => toggle('apply')}>
+              <ActionRow
+                label="Apply same settings for all populations"
+                title="Give every population's ridge plot this ridge plot's settings now (each keeps its ticks and axis title)"
+                icon={<ApplyIcon />}
+                disabled={!layout || ridgePopulationsMatch(group, layout.id)}
+                onClick={() =>
+                  editLayout('Apply ridge settings to all populations', (l, g) =>
+                    applyRidgeToPopulations(g, l.id),
+                  )
+                }
+              />
+              <ActionRow
+                label="Apply same settings for all plots"
+                title="Give every axis channel of this population these settings now"
+                icon={<ApplyIcon />}
+                disabled={!layout || ridgeChannelsMatch(layout)}
+                onClick={() =>
+                  editLayout('Apply ridge settings to all plots', (l) => applyRidgeToChannels(l))
+                }
+              />
+              <label
+                className="field check"
+                title="On: the population you open next takes the settings of the one you leave (each keeps its ticks and axis title). Nothing changes when you tick it."
+              >
+                <input
+                  type="checkbox"
+                  checked={group.ridgeStyleFollow}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    mutate(
+                      on ? 'Carry ridge settings to populations' : 'Ridge settings per population',
+                      (w) => {
+                        const g = w.groups.find((x) => x.id === group.id);
+                        if (g) g.ridgeStyleFollow = on;
+                      },
+                    );
+                  }}
+                />
+                Carry settings to next populations
+              </label>
+              <label
+                className="field check"
+                title="On: the axis channel you switch to next takes the settings in use. Off: each channel keeps its own. Nothing changes when you tick it."
+              >
+                <input
+                  type="checkbox"
+                  checked={layout?.styleFollow !== false}
+                  disabled={!layout}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    editLayout(on ? 'Carry ridge settings to plots' : 'Ridge settings per channel', (l) =>
+                      setRidgeChannelStyles(l, !on),
+                    );
+                  }}
+                />
+                Carry settings to next plots
+              </label>
+            </Section>
+            <Section
+              id="resetAll"
+              title="Reset settings"
+              open={!!open.resetAll}
+              onToggle={() => toggle('resetAll')}
+            >
+              <ActionRow
+                label="All settings in this plot"
+                title="Reset the settings of this ridge plot (this population, this axis channel)"
+                icon={<ResetIcon />}
+                disabled={!layout || isDefaultRidge({ style, overlap })}
+                onClick={() =>
+                  editLayout('Reset the settings of this ridge plot', (l) => resetRidgeCurrent(l))
+                }
+              />
+              <ActionRow
+                label="All plots of this population"
+                title="Reset the settings of every axis channel of this population"
+                icon={<ResetIcon />}
+                disabled={!layout || ridgeAtDefaults(layout)}
+                onClick={() =>
+                  editLayout('Reset the ridge settings of every channel of this population', (l) =>
+                    resetRidgeLayout(l),
+                  )
+                }
+              />
+              <ActionRow
+                label="All populations in this plot"
+                title="Reset the settings of this axis channel in every population"
+                icon={<ResetIcon />}
+                disabled={!layout || ridgeChannelAtDefaults(group, layout.axis.channel)}
+                onClick={() =>
+                  editLayout('Reset the ridge settings of this channel in every population', (l, g) =>
+                    resetRidgeChannel(g, l.axis.channel),
+                  )
+                }
+              />
+              <ActionRow
+                label="All plots in all populations"
+                title="Reset the settings of every ridge plot in every population"
+                icon={<ResetIcon />}
+                disabled={allRidgesAtDefaults(group)}
+                onClick={() =>
+                  mutate('Reset every ridge plot', (w) => {
+                    const g = w.groups.find((x) => x.id === group.id);
+                    if (g) resetAllRidges(g);
+                  })
+                }
+              />
+            </Section>
+          </>
+        )}
         {tab === 'sample' && (
           <>
             <div className="ridge-pane-title">{combine.enabled ? 'Combined ridges' : 'Samples'}</div>
@@ -937,7 +1113,9 @@ export function RidgeInspector() {
                     onChange={(e) => {
                       const c = e.target.value;
                       update('Ridge channel', (l, w, g) => {
-                        l.axis = factoryAxis(w, g, c);
+                        withRidgeChannel(l, () => {
+                          l.axis = factoryAxis(w, g, c);
+                        });
                       });
                     }}
                   >
@@ -968,7 +1146,7 @@ export function RidgeInspector() {
             </Section>
             <Section
               id="ticks"
-              {...resetOf(['axisColor', 'baselineColor', 'showTickLabels', 'ticks'], 'ticks')}
+              {...resetOf(TICK_KEYS, 'ticks')}
               title="Ticks"
               open={!!open.ticks}
               onToggle={() => toggle('ticks')}
@@ -1031,7 +1209,7 @@ export function RidgeInspector() {
             </Section>
             <Section
               id="title"
-              {...resetOf(['axisTitle'], 'title')}
+              {...resetOf(TITLE_KEYS, 'title')}
               title="Title"
               open={!!open.title}
               onToggle={() => toggle('title')}
@@ -1052,7 +1230,7 @@ export function RidgeInspector() {
           <>
             <Section
               id="labelText"
-              {...resetOf(['labelText', 'labelFontSize', 'labelAlign'], 'ridge label text')}
+              {...resetOf(LABEL_TEXT_KEYS, 'ridge label text')}
               title="Ridge labels"
               open={!!open.labelText}
               onToggle={() => toggle('labelText')}
@@ -1071,7 +1249,7 @@ export function RidgeInspector() {
             </Section>
             <Section
               id="tickText"
-              {...resetOf(['tickText', 'tickFontSize'], 'tick label text')}
+              {...resetOf(TICK_TEXT_KEYS, 'tick label text')}
               title="Tick labels"
               open={!!open.tickText}
               onToggle={() => toggle('tickText')}
@@ -1088,7 +1266,7 @@ export function RidgeInspector() {
             </Section>
             <Section
               id="titleText"
-              {...resetOf(['titleText', 'titleFontSize'], 'axis title text')}
+              {...resetOf(TITLE_TEXT_KEYS, 'axis title text')}
               title="Axis title"
               open={!!open.titleText}
               onToggle={() => toggle('titleText')}
@@ -1109,7 +1287,7 @@ export function RidgeInspector() {
           <>
             <Section
               id="ridgeStyle"
-              {...resetOf(['colorMode', 'color', 'fillOpacity', 'strokeColor', 'strokeWidth'], 'ridge style')}
+              {...resetOf(STYLE_KEYS, 'ridge style')}
               title="Ridge style"
               open={!!open.ridgeStyle}
               onToggle={() => toggle('ridgeStyle')}
@@ -1199,10 +1377,7 @@ export function RidgeInspector() {
             </Section>
             <Section
               id="labels"
-              {...resetOf(
-                ['showLabels', 'showCounts', 'countOnNewLine', 'labelWidth', 'labelOverflow'],
-                'ridge labels',
-              )}
+              {...resetOf(LABEL_KEYS, 'ridge labels')}
               title="Ridge labels"
               open={!!open.labels}
               onToggle={() => toggle('labels')}
@@ -1259,7 +1434,7 @@ export function RidgeInspector() {
             </Section>
             <Section
               id="layout"
-              {...resetOf(['rowHeight', 'width', 'aspect'], 'layout', true)}
+              {...resetOf(LAYOUT_KEYS, 'layout', true)}
               title="Layout"
               open={!!open.layout}
               onToggle={() => toggle('layout')}
@@ -1342,7 +1517,7 @@ export function RidgeInspector() {
             </Section>
             <Section
               id="histogram"
-              {...resetOf(['bins', 'smoothing'], 'histogram')}
+              {...resetOf(HIST_KEYS, 'histogram')}
               title="Histogram"
               open={!!open.histogram}
               onToggle={() => toggle('histogram')}
@@ -1366,10 +1541,7 @@ export function RidgeInspector() {
             </Section>
             <Section
               id="baseFont"
-              {...resetOf(
-                ['fontFamily', 'fontColor', 'fontSize', 'labelFontSize', 'tickFontSize', 'titleFontSize'],
-                'base font',
-              )}
+              {...resetOf(FONT_KEYS, 'base font')}
               title="Base font"
               open={!!open.baseFont}
               onToggle={() => toggle('baseFont')}

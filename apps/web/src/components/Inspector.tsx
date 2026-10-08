@@ -50,6 +50,51 @@ export function ResetIcon() {
   );
 }
 
+/** One row of a settings panel's Settings tab: a label, and an icon button that applies or resets. */
+export function ActionRow({
+  label,
+  title,
+  icon,
+  disabled,
+  onClick,
+}: { label: string; title: string; icon: ReactNode; disabled: boolean; onClick: () => void }) {
+  return (
+    <div className="field">
+      {label}
+      <button
+        type="button"
+        className="icon reset-btn"
+        disabled={disabled}
+        title={title}
+        aria-label={title}
+        onClick={onClick}
+      >
+        {icon}
+      </button>
+    </div>
+  );
+}
+
+/** Apply: a check mark copying onto a second sheet. */
+export function ApplyIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="2" y="2" width="8" height="8" rx="1.5" />
+      <path d="M6 13.5h6a1.5 1.5 0 0 0 1.5-1.5V6M4.5 6l1.5 1.5 2.5-3" />
+    </svg>
+  );
+}
+
 export function NumInput({
   value,
   onCommit,

@@ -1,5 +1,5 @@
 import type { Group, PlotFigure, PlotSpec } from '@flowmeris/model';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_STYLE, factoryAxis } from '../lib/defaults.ts';
 import {
   DEFAULT_FIGURE,
@@ -24,6 +24,8 @@ import {
 import { gateMatchesAxes } from '../lib/geometry.ts';
 import { useGroup, useStore } from '../state/store.ts';
 import {
+  ActionRow,
+  ApplyIcon,
   AxisEditor,
   GateEditor,
   NumInput,
@@ -37,11 +39,11 @@ import { FontSelect, TextStyleEditor, TicksEditor } from './RidgeInspector.tsx';
 
 type GateTab = 'settings' | 'gate' | 'figure' | 'axis' | 'text';
 const GATE_TABS: { id: GateTab; label: string }[] = [
-  { id: 'settings', label: 'Settings' },
   { id: 'figure', label: 'Figure' },
   { id: 'axis', label: 'Axis' },
   { id: 'text', label: 'Text' },
   { id: 'gate', label: 'Gate' },
+  { id: 'settings', label: 'Settings' },
 ];
 const TAB_KEY = 'flowmeris.gatePanelTab';
 
@@ -53,52 +55,7 @@ function loadTab(): GateTab {
     const t = localStorage.getItem(TAB_KEY);
     if (t && GATE_TABS.some((x) => x.id === t)) return t as GateTab;
   } catch {}
-  return 'settings';
-}
-
-/** One row of the Settings tab: a label, and an icon button that applies or resets. */
-function ActionRow({
-  label,
-  title,
-  icon,
-  disabled,
-  onClick,
-}: { label: string; title: string; icon: ReactNode; disabled: boolean; onClick: () => void }) {
-  return (
-    <div className="field">
-      {label}
-      <button
-        type="button"
-        className="icon reset-btn"
-        disabled={disabled}
-        title={title}
-        aria-label={title}
-        onClick={onClick}
-      >
-        {icon}
-      </button>
-    </div>
-  );
-}
-
-/** Apply: a check mark copying onto a second sheet. */
-function ApplyIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="2" y="2" width="8" height="8" rx="1.5" />
-      <path d="M6 13.5h6a1.5 1.5 0 0 0 1.5-1.5V6M4.5 6l1.5 1.5 2.5-3" />
-    </svg>
-  );
+  return 'figure';
 }
 
 /** The Gate view's settings: the selected gate, then Figure / Axis / Text tabs of collapsible cards. */
@@ -215,7 +172,7 @@ export function Inspector() {
           ))}
         </div>
         <div className="ridge-inspector-global">
-          <span className="field">Settings in this panel</span>
+          <span className="field">Reset this panel</span>
           <button
             type="button"
             className="icon reset-all"

@@ -6,7 +6,6 @@ import {
   type Population,
   ROOT_POPULATION_ID,
   RidgeCombineSchema,
-  RidgeStyleSchema,
   SCHEMA_VERSION,
   type Workspace,
   WorkspaceSchema,
@@ -68,8 +67,6 @@ export function newGroup(name: string, sampleIds: string[], channels: string[]):
     layouts: [],
     ridgeCombine: RidgeCombineSchema.parse({}),
     ridgeFollow: true,
-    ridgeStyle: RidgeStyleSchema.parse({}),
-    ridgeOverlap: 0.6,
     ridgeStyleFollow: true,
     plotStyleFollow: true,
     stats: [],
@@ -232,5 +229,37 @@ export function loadWorkspace(json: unknown): Workspace {
     );
   }
   // Migrations v(n) → v(n+1) are chained here as the schema evolves.
-  return WorkspaceSchema.parse(json);
+  return WorkspaceSchema.parse(unshareRidgeStyle(json));
+}
+
+/**
+ * Files saved while ridge settings were shared live across populations (group `ridgeStyle` and
+ * `ridgeOverlap`): write the shared settings into each population's ridge plot, which keeps its own
+ * ticks and axis title.
+ */
+function unshareRidgeStyle(json: object): object {
+  const doc = json as { groups?: unknown };
+  if (!Array.isArray(doc.groups)) return json;
+  const groups = doc.groups.map((raw: unknown) => {
+    if (!raw || typeof raw !== 'object' || !('ridgeStyle' in raw || 'ridgeOverlap' in raw)) return raw;
+    const { ridgeStyle, ridgeOverlap, ...g } = raw as Record<string, unknown> & {
+      ridgeStyle?: Record<string, unknown>;
+      ridgeOverlap?: number;
+      ridgeStyleFollow?: boolean;
+      layouts?: unknown[];
+    };
+    if (g.ridgeStyleFollow && Array.isArray(g.layouts)) {
+      const { ticks: _t, axisTitle: _a, ...shared } = ridgeStyle ?? {};
+      g.layouts = g.layouts.map((l) => {
+        const lay = l as { kind?: string; style?: Record<string, unknown>; overlap?: number };
+        if (lay?.kind !== 'ridge') return l;
+        const own = lay.style ?? {};
+        const style: Record<string, unknown> = { ...shared };
+        for (const k of ['ticks', 'axisTitle']) if (own[k] !== undefined) style[k] = own[k];
+        return { ...lay, style, overlap: ridgeOverlap ?? lay.overlap };
+      });
+    }
+    return g;
+  });
+  return { ...doc, groups };
 }

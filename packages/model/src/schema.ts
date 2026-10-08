@@ -460,6 +460,13 @@ export const RidgeCombineSchema = z.object({
 });
 export type RidgeCombine = z.infer<typeof RidgeCombineSchema>;
 
+/** A ridge plot's appearance and overlap, saved per axis channel. */
+export const RidgeSettingsSchema = z.object({
+  style: RidgeStyleSchema.default({}),
+  overlap: Num.min(0).max(0.95),
+});
+export type RidgeSettings = z.infer<typeof RidgeSettingsSchema>;
+
 export const LayoutSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('tiles'), id: Id, plotId: Id, columns: z.number().int().min(1).max(16) }),
   z.object({
@@ -471,6 +478,15 @@ export const LayoutSchema = z.discriminatedUnion('kind', [
     norm: z.enum(['mode', 'area']),
     style: RidgeStyleSchema.default({}),
     combine: RidgeCombineSchema.default({}),
+    /** One set of settings whatever the axis channel; omitted = on. */
+    styleFollow: z.boolean().optional(),
+    /**
+     * The settings last used with each axis channel; switching the channel saves `style` and `overlap`
+     * under the old one and, while `styleFollow` is off, restores the new one's.
+     */
+    stylesByChannel: z.record(RidgeSettingsSchema).optional(),
+    /** While `styleFollow` is off: the settings a channel not used yet starts from (those last applied to every channel; omitted = defaults). */
+    styleBase: RidgeSettingsSchema.optional(),
   }),
 ]);
 export type Layout = z.infer<typeof LayoutSchema>;
@@ -671,11 +687,9 @@ export const GroupSchema = z.object({
   ridgeCombine: RidgeCombineSchema.default({}),
   ridgeFollow: z.boolean().default(true),
   /**
-   * Appearance of the ridge plot shared by all the group's populations while `ridgeStyleFollow` is on
-   * (the axis, ticks and axis title stay per population). Off for files saved before this existed.
+   * The ridge plot of the population opened next takes the settings of the one left (each keeps its
+   * ticks and axis title).
    */
-  ridgeStyle: RidgeStyleSchema.default({}),
-  ridgeOverlap: Num.min(0).max(0.95).default(0.6),
   ridgeStyleFollow: z.boolean().default(false),
   /**
    * Gate-view plots share their display and figure settings (each keeps its own type, axes, title, custom
