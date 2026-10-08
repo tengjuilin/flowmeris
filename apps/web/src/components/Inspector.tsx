@@ -233,14 +233,8 @@ export function AxisEditor({
           })}
         </select>
       </label>
+      <AxisFields hideReset axis={axis} population={plot.population} apply={apply} />
       {children}
-      <AxisFields
-        hideReset
-        axis={axis}
-        population={plot.population}
-        apply={apply}
-        note={<>Existing gates keep the scale they were drawn on.</>}
-      />
     </Section>
   );
 }
@@ -442,9 +436,7 @@ export function AxisFields({
           onCommit={(v) => setRange(1, v)}
         />
       </div>
-      <p className="muted small">
-        Stored as Gating-ML <code>{def.kind}</code>. {note}
-      </p>
+      {note && <p className="muted small">{note}</p>}
     </fieldset>
   );
 }

@@ -874,7 +874,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     ((a === plot.x ? fig.xTitle : a === plot.y && !is1d ? fig.yTitle : undefined) ?? channelLabel(a)).trim();
   const tickCss = figureText(fig, fig.tickText, fig.tickFontSize);
   const axisTitleCss = figureText(fig, fig.axisTitleText, fig.axisTitleFontSize);
-  const lineCss = fig.axisColor ? { stroke: fig.axisColor } : undefined;
+  const lineCss = { strokeWidth: fig.tickWidth, ...(fig.axisColor ? { stroke: fig.axisColor } : {}) };
   const [axisMenu, setAxisMenu] = useState<{ axis: 'x' | 'y'; anchor: Anchor } | null>(null);
   const closeAxisMenu = useCallback(() => setAxisMenu(null), []);
   const axisTitle = (axis: 'x' | 'y') =>
@@ -1291,7 +1291,18 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
               <rect x={0} y={0} width={pw} height={ph} />
             </clipPath>
           </defs>
-          <rect x={0} y={0} width={pw} height={ph} className="plot-frame" />
+          <rect
+            x={0}
+            y={0}
+            width={pw}
+            height={ph}
+            className="plot-frame"
+            style={
+              compact
+                ? undefined
+                : { strokeWidth: fig.spineWidth, ...(fig.spineColor ? { stroke: fig.spineColor } : {}) }
+            }
+          />
           <g clipPath={`url(#${clipId})`}>
             {histPath?.overlays.map((o, i) => (
               <path key={i} d={o.d} className="hist-overlay" style={{ stroke: o.color }} />

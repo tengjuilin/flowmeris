@@ -273,6 +273,12 @@ export const PlotFigureSchema = z.object({
   showOffScaleNote: z.boolean().default(true),
   /** Color of the axis tick marks; omitted = the theme's grid color. */
   axisColor: HexColor.optional(),
+  /** Tick mark line width (px). */
+  tickWidth: Num.min(0).max(10).default(1),
+  /** Color of the frame around the plot area; omitted = the theme's border color. */
+  spineColor: HexColor.optional(),
+  /** Frame line width (px). */
+  spineWidth: Num.min(0).max(10).default(1),
   showTickLabels: z.boolean().default(true),
   /** Tick marks in data (linear) units; omitted = automatic. A missing label is formatted from the value. */
   xTicks: z.array(z.object({ value: Num, label: z.string().optional() })).optional(),
@@ -400,6 +406,12 @@ export const RidgeStyleSchema = z.object({
   labelWidth: Num.min(0).max(1000).default(240),
   /** Color of the axis tick marks; omitted = the theme's grid color. */
   axisColor: HexColor.optional(),
+  /** Tick mark line width (px). */
+  tickWidth: Num.min(0).max(10).default(1),
+  /** Color of the frame around the plot area; omitted = the theme's border color. */
+  spineColor: HexColor.optional(),
+  /** Frame line width (px). */
+  spineWidth: Num.min(0).max(10).default(1),
   /** Color of the thin baseline under each ridge; omitted = the theme's border color. */
   baselineColor: HexColor.optional(),
   showTickLabels: z.boolean().default(true),

@@ -93,7 +93,7 @@ export function Inspector() {
     reset: () => fig[k] !== undefined && set(k, undefined, 'Reset axis title'),
   });
   const titleField = (k: 'xTitle' | 'yTitle', label: string) => (
-    <label className="field" title="Leave empty for the default; type a space for no title">
+    <label className="field short-text" title="Leave empty for the default; type a space for no title">
       Title
       <input
         type="text"
@@ -276,32 +276,71 @@ export function Inspector() {
             )}
             <Section
               id="ticks"
-              title="Ticks"
-              {...resetOf(['axisColor', 'showTickLabels', 'xTicks', 'yTicks'], 'ticks')}
+              title="Ticks and spine"
+              {...resetOf(
+                ['axisColor', 'tickWidth', 'spineColor', 'spineWidth', 'showTickLabels', 'xTicks', 'yTicks'],
+                'ticks and spine',
+              )}
               {...card('ticks')}
             >
               <label className="field inline">
-                Axis color
+                Tick color
                 <span className="swatch-auto">
                   <input
                     type="color"
                     className="swatch"
-                    aria-label="Axis color"
+                    aria-label="Tick color"
                     value={fig.axisColor ?? '#c8c8c8'}
-                    onChange={(e) => set('axisColor', e.target.value, 'Axis color', 'axisColor')}
+                    onChange={(e) => set('axisColor', e.target.value, 'Tick color', 'axisColor')}
                   />
                   <button
                     type="button"
                     className="reset-btn"
                     disabled={!fig.axisColor}
-                    aria-label="Reset axis color to the theme's"
-                    title={fig.axisColor ? "Reset axis color to the theme's" : 'Axis color is the default'}
-                    onClick={() => set('axisColor', undefined, 'Axis color')}
+                    aria-label="Reset tick color to the theme's"
+                    title={fig.axisColor ? "Reset tick color to the theme's" : 'Tick color is the default'}
+                    onClick={() => set('axisColor', undefined, 'Tick color')}
                   >
                     <ResetIcon />
                   </button>
                 </span>
               </label>
+              <NumInput
+                live
+                label="Tick width (px)"
+                step={0.25}
+                value={fig.tickWidth}
+                onCommit={(v) => set('tickWidth', clamp(v, 0, 10), 'Tick width', 'tickWidth')}
+              />
+              <label className="field inline">
+                Spine color
+                <span className="swatch-auto">
+                  <input
+                    type="color"
+                    className="swatch"
+                    aria-label="Spine color"
+                    value={fig.spineColor ?? '#c8c8c8'}
+                    onChange={(e) => set('spineColor', e.target.value, 'Spine color', 'spineColor')}
+                  />
+                  <button
+                    type="button"
+                    className="reset-btn"
+                    disabled={!fig.spineColor}
+                    aria-label="Reset spine color to the theme's"
+                    title={fig.spineColor ? "Reset spine color to the theme's" : 'Spine color is the default'}
+                    onClick={() => set('spineColor', undefined, 'Spine color')}
+                  >
+                    <ResetIcon />
+                  </button>
+                </span>
+              </label>
+              <NumInput
+                live
+                label="Spine width (px)"
+                step={0.25}
+                value={fig.spineWidth}
+                onCommit={(v) => set('spineWidth', clamp(v, 0, 10), 'Spine width', 'spineWidth')}
+              />
               <label className="field check">
                 <input
                   type="checkbox"

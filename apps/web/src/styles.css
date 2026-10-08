@@ -2277,6 +2277,9 @@ table.stats.import-map td {
 .ridge-inspector .field.check {
   white-space: nowrap;
 }
+.ridge-inspector .field.short-text:not(.check):not(.tt-wide) > input[type="text"] {
+  flex: 0 0 62%;
+}
 .ridge-inspector .field.tt-wide > input {
   width: 100%;
 }
