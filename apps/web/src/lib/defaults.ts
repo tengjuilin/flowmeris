@@ -12,6 +12,7 @@ import {
 } from '@flowmeris/model';
 import { CATEGORICAL } from '@flowmeris/render';
 import { asinhDefFromCofactor } from '@flowmeris/transforms';
+import { newPlotStyle } from './figure.ts';
 
 export const DEFAULT_STYLE: PlotStyle = {
   colormap: 'viridis',
@@ -123,7 +124,7 @@ export function newPlot(
     population,
     kind,
     x: { ...defaultAxis(ws, g, xc) },
-    style: { ...DEFAULT_STYLE },
+    style: newPlotStyle(g, DEFAULT_STYLE),
   };
   if (kind !== 'histogram') plot.y = { ...defaultAxis(ws, g, yc) };
   g.plots.push(plot);

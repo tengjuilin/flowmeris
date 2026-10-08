@@ -71,6 +71,7 @@ export function newGroup(name: string, sampleIds: string[], channels: string[]):
     ridgeStyle: RidgeStyleSchema.parse({}),
     ridgeOverlap: 0.6,
     ridgeStyleFollow: true,
+    plotStyleFollow: true,
     stats: [],
     analysis: { derived: [], aggregate: { enabled: false, by: [], funcs: ['mean', 'sd', 'n'] } },
     statPlots: [],

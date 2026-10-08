@@ -668,6 +668,11 @@ export const GroupSchema = z.object({
   ridgeStyle: RidgeStyleSchema.default({}),
   ridgeOverlap: Num.min(0).max(0.95).default(0.6),
   ridgeStyleFollow: z.boolean().default(false),
+  /**
+   * Gate-view plots share their display and figure settings (each keeps its own type, axes, title, custom
+   * ticks and axis titles). Off for files saved before this existed.
+   */
+  plotStyleFollow: z.boolean().default(false),
   stats: z.array(StatSpecSchema),
   /** Derived columns, grouping and export columns of the statistics table. */
   analysis: StatAnalysisSchema.default({}),

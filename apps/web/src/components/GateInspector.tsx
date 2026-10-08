@@ -1,6 +1,7 @@
 import type { PlotFigure, PlotSpec } from '@flowmeris/model';
 import { useState } from 'react';
-import { DEFAULT_FIGURE } from '../lib/figure.ts';
+import { DEFAULT_STYLE } from '../lib/defaults.ts';
+import { DEFAULT_FIGURE, syncPlotStyles } from '../lib/figure.ts';
 import { gateMatchesAxes } from '../lib/geometry.ts';
 import { useGroup, useStore } from '../state/store.ts';
 import {
@@ -60,10 +61,12 @@ export function Inspector() {
     mutate(
       label,
       (w) => {
-        const p = w.groups.find((x) => x.id === group.id)?.plots.find((x) => x.id === plot.id);
-        if (!p) return;
+        const g = w.groups.find((x) => x.id === group.id);
+        const p = g?.plots.find((x) => x.id === plot.id);
+        if (!g || !p) return;
         p.style.figure ??= structuredClone(DEFAULT_FIGURE);
         fn(p.style.figure, p);
+        syncPlotStyles(g, p.id);
       },
       merge && `figure:${plot.id}:${merge}`,
     );
@@ -130,6 +133,49 @@ export function Inspector() {
             </button>
           ))}
         </div>
+        <div className="ridge-inspector-global">
+          <label
+            className="field check"
+            title="Display, font, text, tick and spine settings. Each plot keeps its own type, axes, title, custom ticks and axis titles."
+          >
+            <input
+              type="checkbox"
+              checked={group.plotStyleFollow}
+              onChange={(e) => {
+                const on = e.target.checked;
+                mutate(on ? 'Same settings for all plots' : 'Settings per plot', (w) => {
+                  const g = w.groups.find((x) => x.id === group.id);
+                  if (!g) return;
+                  g.plotStyleFollow = on;
+                  // Turning it on adopts this plot's settings for all.
+                  syncPlotStyles(g, plot.id);
+                });
+              }}
+            />
+            Same settings for all plots
+          </label>
+          <button
+            type="button"
+            className="icon reset-all"
+            title="Reset all plot settings to their defaults"
+            aria-label="Reset all settings"
+            disabled={
+              !plot.style.figure &&
+              same({ ...plot.style, figure: undefined }, { ...DEFAULT_STYLE, figure: undefined })
+            }
+            onClick={() =>
+              mutate('Reset plot settings', (w) => {
+                const g = w.groups.find((x) => x.id === group.id);
+                const p = g?.plots.find((x) => x.id === plot.id);
+                if (!g || !p) return;
+                p.style = structuredClone(DEFAULT_STYLE);
+                syncPlotStyles(g, p.id);
+              })
+            }
+          >
+            <ResetIcon />
+          </button>
+        </div>
       </div>
       <div id="gate-tabpanel" role="tabpanel" aria-labelledby={`gate-tab-${tab}`}>
         {tab === 'gate' &&
@@ -140,17 +186,9 @@ export function Inspector() {
           ))}
         {tab === 'figure' && (
           <>
-            <Section id="plotType" title="Plot type" {...card('plotType')}>
+            <Section id="plot" title="Plot" {...resetOf(['title'], 'plot title')} {...card('plot')}>
               <PlotKindSelect group={group} plot={plot} />
-            </Section>
-            <StyleEditor plot={plot} panel={panel} />
-            <Section
-              id="plotTitle"
-              title="Plot title"
-              {...resetOf(['title'], 'plot title')}
-              {...card('plotTitle')}
-            >
-              <label className="field">
+              <label className="field short-text">
                 Title
                 <input
                   type="text"
@@ -160,6 +198,7 @@ export function Inspector() {
                 />
               </label>
             </Section>
+            <StyleEditor plot={plot} panel={panel} />
             <Section
               id="baseFont"
               title="Base font"

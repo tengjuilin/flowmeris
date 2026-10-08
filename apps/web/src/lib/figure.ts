@@ -1,4 +1,10 @@
-import { type PlotFigure, PlotFigureSchema, type TextStyle } from '@flowmeris/model';
+import {
+  type Group,
+  type PlotFigure,
+  PlotFigureSchema,
+  type PlotStyle,
+  type TextStyle,
+} from '@flowmeris/model';
 import type { CSSProperties } from 'react';
 
 export const FONT_GROUPS: { label: string; fonts: { id: string; label: string; stack: string }[] }[] = [
@@ -56,4 +62,36 @@ export function figureText(fig: PlotFigure, t: TextStyle, size: number): CSSProp
     textDecoration: t.underline ? 'underline' : 'none',
     fill: t.color ?? fig.fontColor,
   };
+}
+
+/** Figure options that stay with each plot when the group's plots share their settings. */
+const PER_PLOT = ['title', 'xTicks', 'yTicks', 'xTitle', 'yTitle'] as const;
+
+/** `from`'s shareable settings over `to`'s per-plot ones. */
+function sharedStyle(from: PlotStyle, to: PlotStyle): PlotStyle {
+  const style = JSON.parse(JSON.stringify(from)) as PlotStyle;
+  const own = to.figure;
+  if (style.figure || own) {
+    const f = (style.figure ??= structuredClone(DEFAULT_FIGURE));
+    for (const k of PER_PLOT) {
+      if (own?.[k] === undefined) delete f[k];
+      else (f as Record<string, unknown>)[k] = JSON.parse(JSON.stringify(own[k]));
+    }
+  }
+  return style;
+}
+
+/** While the group's plots share their settings, copy plot `plotId`'s settings to the others. */
+export function syncPlotStyles(g: Group, plotId: string) {
+  if (!g.plotStyleFollow) return;
+  const src = g.plots.find((p) => p.id === plotId);
+  if (!src) return;
+  const from = src.style;
+  for (const p of g.plots) if (p.id !== plotId) p.style = sharedStyle(from, p.style);
+}
+
+/** Settings for a new plot in `g`: those its plots share, when they do. */
+export function newPlotStyle(g: Group, fallback: PlotStyle): PlotStyle {
+  const src = g.plotStyleFollow ? g.plots[0] : undefined;
+  return src ? sharedStyle(src.style, fallback) : { ...fallback };
 }
