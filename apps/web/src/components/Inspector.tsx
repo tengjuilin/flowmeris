@@ -25,7 +25,7 @@ import {
   scaleKindOf,
   transformOfKind,
 } from '../lib/defaults.ts';
-import { DEFAULT_FIGURE, syncPlotStyles } from '../lib/figure.ts';
+import { DEFAULT_FIGURE } from '../lib/figure.ts';
 import { contextFor, toast, useGroup, useStore } from '../state/store.ts';
 import { axisChannelSetter, usePlotForPopulation } from './PlotPanel.tsx';
 
@@ -448,7 +448,6 @@ export function StyleEditor({ plot, panel }: { plot: PlotSpec; panel: Panel }) {
     mutate('Change plot style', (w) => {
       const g = w.groups.find((x) => x.id === group.id)!;
       fn(g.plots.find((x) => x.id === plot.id)!.style);
-      syncPlotStyles(g, plot.id);
     });
   const st = plot.style;
   const showNote = st.figure?.showOffScaleNote ?? true;

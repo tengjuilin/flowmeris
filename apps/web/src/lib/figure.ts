@@ -50,6 +50,18 @@ export function fontStack(family: string): string {
   return FONT_STACKS[family] ?? `"${family.replace(/["\\;<>{}]/g, '')}", sans-serif`;
 }
 
+/** Display settings of a new plot. */
+export const DEFAULT_STYLE: PlotStyle = {
+  colormap: 'viridis',
+  pointPx: 1,
+  smoothSigmaBins: 1.5,
+  contour: { mode: 'equal-prob', pct: 5 },
+  showOutliers: true,
+  histBins: 256,
+  histNorm: 'mode',
+  histSmooth: false,
+};
+
 /** Figure options of a plot that has none saved. */
 export const DEFAULT_FIGURE: PlotFigure = PlotFigureSchema.parse({});
 
@@ -65,11 +77,11 @@ export function figureText(fig: PlotFigure, t: TextStyle, size: number): CSSProp
   };
 }
 
-/** Figure options that stay with each plot when the group's plots share their settings. */
+/** Figure options that stay with each population's plot when settings are carried or applied across populations. */
 const PER_PLOT = ['title', 'xTicks', 'yTicks', 'xTitle', 'yTitle'] as const;
 
 /** `from`'s shareable settings over `to`'s per-plot ones. */
-function sharedStyle(from: PlotStyle, to: PlotStyle): PlotStyle {
+export function sharedStyle(from: PlotStyle, to: PlotStyle): PlotStyle {
   const style = JSON.parse(JSON.stringify(from)) as PlotStyle;
   const own = to.figure;
   if (style.figure || own) {
@@ -82,59 +94,172 @@ function sharedStyle(from: PlotStyle, to: PlotStyle): PlotStyle {
   return style;
 }
 
-/** While the group's plots share their settings, copy plot `plotId`'s settings to the others. */
-export function syncPlotStyles(g: Group, plotId: string) {
-  if (!g.plotStyleFollow) return;
+/** Apply plot `plotId`'s settings to every other population's plot now (each keeps its title, ticks and axis titles). */
+export function applyToPopulations(g: Group, plotId: string) {
   const src = g.plots.find((p) => p.id === plotId);
   if (!src) return;
-  const from = src.style;
-  for (const p of g.plots) if (p.id !== plotId) p.style = sharedStyle(from, p.style);
+  for (const p of g.plots) if (p.id !== plotId) p.style = sharedStyle(src.style, p.style);
 }
 
-/** Settings for a new plot in `g`: those its plots share, when they do. */
-export function newPlotStyle(g: Group, fallback: PlotStyle): PlotStyle {
-  const src = g.plotStyleFollow ? g.plots[0] : undefined;
-  return src ? sharedStyle(src.style, fallback) : { ...fallback };
+/** Whether every other population's plot already has plot `plotId`'s settings. */
+export function populationsMatch(g: Group, plotId: string): boolean {
+  const src = g.plots.find((p) => p.id === plotId);
+  return (
+    !src || g.plots.every((p) => p.id === plotId || canon(sharedStyle(src.style, p.style)) === canon(p.style))
+  );
+}
+
+/**
+ * Opening population plot `to` after `from` while settings are carried across populations: `to` takes
+ * `from`'s settings, keeping its own title, ticks and axis titles. Returns whether anything changed.
+ */
+export function carryToPopulation(from: PlotSpec, to: PlotSpec): boolean {
+  const next = sharedStyle(from.style, to.style);
+  if (canon(next) === canon(to.style)) return false;
+  to.style = next;
+  return true;
 }
 
 /** A plot whose channels can change; only a saved plot (with `style`) keeps settings per channel pair. */
 type Restylable = { kind: string; x: { channel: string }; y?: { channel: string }; style?: PlotStyle } & {
   styleFollow?: boolean;
   stylesByAxes?: Record<string, PlotStyle>;
+  styleBase?: PlotStyle;
 };
 
 export const axesKey = (p: Restylable) =>
   `${p.x.channel}|${p.kind === 'histogram' ? '' : (p.y?.channel ?? '')}`;
 
 /**
- * Run `fn`, which changes `p`'s channels. While `p` keeps settings per channel pair, its settings are
- * saved under the old pair and the new pair's are restored. Returns whether saved settings were restored.
+ * Run `fn`, which changes `p`'s channels. The settings in use are saved under the old channel pair. While
+ * settings are carried to plots (`styleFollow` not false) the new pair takes them over; otherwise it gets
+ * back its saved settings (for a pair not used before, those in use when carrying was turned off).
+ * Returns whether `p`'s settings were replaced.
  */
 export function withAxesChange(p: Restylable, fn: () => void): boolean {
   const before = axesKey(p);
   const style = p.style && (JSON.parse(JSON.stringify(p.style)) as PlotStyle);
   fn();
   const after = axesKey(p);
-  if (!style || p.styleFollow !== false || after === before) return false;
+  if (!style || after === before) return false;
   p.stylesByAxes ??= {};
   p.stylesByAxes[before] = style;
-  const saved = p.stylesByAxes[after];
-  if (!saved) return false;
-  p.style = JSON.parse(JSON.stringify(saved)) as PlotStyle;
+  if (p.styleFollow !== false) return false;
+  const from = p.stylesByAxes[after] ?? p.styleBase;
+  p.style = from ? (JSON.parse(JSON.stringify(from)) as PlotStyle) : structuredClone(DEFAULT_STYLE);
   return true;
+}
+
+/** Apply `p`'s current settings to every channel pair of its population now. */
+export function applyToPairs(p: PlotSpec) {
+  p.stylesByAxes = undefined;
+  if (p.styleFollow === false) p.styleBase = JSON.parse(JSON.stringify(p.style)) as PlotStyle;
+}
+
+/** Whether every channel pair of `p`'s population already has its current settings. */
+export function pairsMatch(p: PlotSpec): boolean {
+  const cur = canon(p.style);
+  const key = axesKey(p);
+  return (
+    Object.entries(p.stylesByAxes ?? {}).every(([k, s]) => k === key || canon(s) === cur) &&
+    (p.styleFollow !== false || !p.styleBase || canon(p.styleBase) === cur)
+  );
 }
 
 /** Default settings for `p` with every channel pair's saved settings dropped. */
 export function resetPlotStyles(p: PlotSpec, defaults: PlotStyle) {
   p.style = structuredClone(defaults);
   p.stylesByAxes = undefined;
+  if (p.styleBase) p.styleBase = structuredClone(defaults);
+}
+
+/**
+ * Carry the settings in use to the channel pairs opened next (on), or let each pair keep its own (off).
+ * Nothing is applied when it is switched; pairs not used yet start from the settings in use when it is
+ * turned off.
+ */
+export function setPairStyles(p: PlotSpec, perPair: boolean) {
+  if (perPair) {
+    p.styleFollow = false;
+    p.styleBase = JSON.parse(JSON.stringify(p.style)) as PlotStyle;
+  } else {
+    p.styleFollow = undefined;
+    p.styleBase = undefined;
+  }
+}
+
+/** Default settings for `p`'s current channel pair only. */
+export function resetCurrentStyle(p: PlotSpec, defaults: PlotStyle) {
+  p.style = structuredClone(defaults);
+}
+
+/** The settings each tab of the Gate view's settings panel holds. */
+export const PANEL_FIGURE_KEYS: Record<'figure' | 'axis' | 'text', (keyof PlotFigure)[]> = {
+  figure: [
+    'title',
+    'fontFamily',
+    'fontColor',
+    'fontSize',
+    'titleFontSize',
+    'tickFontSize',
+    'axisTitleFontSize',
+    'gateFontSize',
+    'showOffScaleNote',
+  ],
+  axis: [
+    'axisColor',
+    'tickWidth',
+    'spineColor',
+    'spineWidth',
+    'showTickLabels',
+    'xTicks',
+    'yTicks',
+    'xTitle',
+    'yTitle',
+  ],
+  text: [
+    'titleText',
+    'titleFontSize',
+    'tickText',
+    'tickFontSize',
+    'axisTitleText',
+    'axisTitleFontSize',
+    'gateText',
+    'gateFontSize',
+  ],
+};
+
+/** Reset the figure options `keys` of `style` (and, with `display`, its display settings) to the defaults. */
+export function resetStyleKeys(style: PlotStyle, keys: (keyof PlotFigure)[], display: PlotStyle | null) {
+  if (display) {
+    const { figure } = style;
+    Object.assign(style, structuredClone(display));
+    style.figure = figure;
+  }
+  if (!style.figure) return;
+  for (const k of keys) {
+    const d = DEFAULT_FIGURE[k];
+    if (d === undefined) delete style.figure[k];
+    else (style.figure as Record<string, unknown>)[k] = structuredClone(d);
+  }
+}
+
+/** Whether the figure options `keys` of `style` (and, with `display`, its display settings) are at the defaults. */
+export function styleKeysAtDefaults(style: PlotStyle, keys: (keyof PlotFigure)[], display: PlotStyle | null) {
+  const f = style.figure ?? DEFAULT_FIGURE;
+  if (keys.some((k) => canon(f[k]) !== canon(DEFAULT_FIGURE[k]))) return false;
+  if (!display) return true;
+  const { figure: _a, ...rest } = style;
+  const { figure: _b, ...base } = display;
+  return canon(rest) === canon(base);
 }
 
 /** Default settings for channel pair `key` in every plot of `g`, current or saved. */
 export function resetPairStyles(g: Group, key: string, defaults: PlotStyle) {
   for (const p of g.plots) {
     if (axesKey(p) === key) p.style = structuredClone(defaults);
-    if (p.stylesByAxes) delete p.stylesByAxes[key];
+    else if (p.styleFollow === false || p.stylesByAxes?.[key])
+      (p.stylesByAxes ??= {})[key] = structuredClone(defaults);
   }
 }
 
@@ -153,13 +278,19 @@ export function isDefaultStyle(s: PlotStyle, defaults: PlotStyle): boolean {
   return canon(rest) === canon(base) && (!figure || canon(figure) === canon(DEFAULT_FIGURE));
 }
 
-const noSaved = (p: PlotSpec, key?: string) =>
-  !p.stylesByAxes || (key ? !p.stylesByAxes[key] : Object.keys(p.stylesByAxes).length === 0);
+/** The settings pair `key` of `p` would show: current, saved, or those an unused pair starts from. */
+const pairStyle = (p: PlotSpec, key: string): PlotStyle | undefined =>
+  axesKey(p) === key ? p.style : p.styleFollow === false ? (p.stylesByAxes?.[key] ?? p.styleBase) : p.style;
 
-/** Whether `p` is at the defaults for its current and every saved channel pair. */
+/** Whether `p` is at the defaults for its current, every saved and every unused channel pair. */
 export const plotAtDefaults = (p: PlotSpec, defaults: PlotStyle) =>
-  isDefaultStyle(p.style, defaults) && noSaved(p);
+  [p.style, p.styleBase, ...Object.values(p.stylesByAxes ?? {})].every(
+    (s) => !s || isDefaultStyle(s, defaults),
+  );
 
 /** Whether channel pair `key` is at the defaults in every plot of `g`. */
 export const pairAtDefaults = (g: Group, key: string, defaults: PlotStyle) =>
-  g.plots.every((p) => (axesKey(p) !== key || isDefaultStyle(p.style, defaults)) && noSaved(p, key));
+  g.plots.every((p) => {
+    const s = pairStyle(p, key);
+    return !s || isDefaultStyle(s, defaults);
+  });

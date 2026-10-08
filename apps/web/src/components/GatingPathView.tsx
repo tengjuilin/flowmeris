@@ -13,7 +13,6 @@ import {
 import { pool } from '../engine-client/pool.ts';
 import { lineageKey } from '../lib/analysis.ts';
 import { DEFAULT_STYLE } from '../lib/defaults.ts';
-import { newPlotStyle } from '../lib/figure.ts';
 import { gateMatchesAxes } from '../lib/geometry.ts';
 import { contextFor, useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { PlotCanvas } from './PlotCanvas.tsx';
@@ -141,7 +140,7 @@ function openInPlot(popId: string, plot: PlotSpec | null, real: boolean) {
     const id = newId('plt_');
     st.mutate('Add plot', (ws) => {
       const gg = ws.groups.find((x) => x.id === g.id)!;
-      gg.plots.push({ ...structuredClone(plot), id, style: newPlotStyle(gg, plot.style) });
+      gg.plots.push({ ...structuredClone(plot), id });
     });
     st.setUi({ popId, plotId: id, selectedGateId: null, view: 'gate' });
   } else {

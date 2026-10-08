@@ -12,18 +12,9 @@ import {
 } from '@flowmeris/model';
 import { CATEGORICAL } from '@flowmeris/render';
 import { asinhDefFromCofactor } from '@flowmeris/transforms';
-import { newPlotStyle } from './figure.ts';
+import { DEFAULT_STYLE } from './figure.ts';
 
-export const DEFAULT_STYLE: PlotStyle = {
-  colormap: 'viridis',
-  pointPx: 1,
-  smoothSigmaBins: 1.5,
-  contour: { mode: 'equal-prob', pct: 5 },
-  showOutliers: true,
-  histBins: 256,
-  histNorm: 'mode',
-  histSmooth: false,
-};
+export { DEFAULT_STYLE };
 
 export function registerTransform(ws: Workspace, t: Transform): string {
   const id = transformId(t);
@@ -124,7 +115,7 @@ export function newPlot(
     population,
     kind,
     x: { ...defaultAxis(ws, g, xc) },
-    style: newPlotStyle(g, DEFAULT_STYLE),
+    style: structuredClone(DEFAULT_STYLE),
   };
   if (kind !== 'histogram') plot.y = { ...defaultAxis(ws, g, yc) };
   g.plots.push(plot);

@@ -1,14 +1,24 @@
-import type { PlotFigure, PlotSpec } from '@flowmeris/model';
-import { useState } from 'react';
-import { DEFAULT_STYLE } from '../lib/defaults.ts';
+import type { Group, PlotFigure, PlotSpec } from '@flowmeris/model';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { DEFAULT_STYLE, factoryAxis } from '../lib/defaults.ts';
 import {
   DEFAULT_FIGURE,
+  PANEL_FIGURE_KEYS,
+  applyToPairs,
+  applyToPopulations,
   axesKey,
+  carryToPopulation,
+  isDefaultStyle,
   pairAtDefaults,
+  pairsMatch,
   plotAtDefaults,
+  populationsMatch,
+  resetCurrentStyle,
   resetPairStyles,
   resetPlotStyles,
-  syncPlotStyles,
+  resetStyleKeys,
+  setPairStyles,
+  styleKeysAtDefaults,
   withAxesChange,
 } from '../lib/figure.ts';
 import { gateMatchesAxes } from '../lib/geometry.ts';
@@ -25,8 +35,9 @@ import {
 import { PlotKindSelect, usePlotForPopulation } from './PlotPanel.tsx';
 import { FontSelect, TextStyleEditor, TicksEditor } from './RidgeInspector.tsx';
 
-type GateTab = 'gate' | 'figure' | 'axis' | 'text';
+type GateTab = 'settings' | 'gate' | 'figure' | 'axis' | 'text';
 const GATE_TABS: { id: GateTab; label: string }[] = [
+  { id: 'settings', label: 'Settings' },
   { id: 'figure', label: 'Figure' },
   { id: 'axis', label: 'Axis' },
   { id: 'text', label: 'Text' },
@@ -42,7 +53,52 @@ function loadTab(): GateTab {
     const t = localStorage.getItem(TAB_KEY);
     if (t && GATE_TABS.some((x) => x.id === t)) return t as GateTab;
   } catch {}
-  return 'figure';
+  return 'settings';
+}
+
+/** One row of the Settings tab: a label, and an icon button that applies or resets. */
+function ActionRow({
+  label,
+  title,
+  icon,
+  disabled,
+  onClick,
+}: { label: string; title: string; icon: ReactNode; disabled: boolean; onClick: () => void }) {
+  return (
+    <div className="field">
+      {label}
+      <button
+        type="button"
+        className="icon reset-btn"
+        disabled={disabled}
+        title={title}
+        aria-label={title}
+        onClick={onClick}
+      >
+        {icon}
+      </button>
+    </div>
+  );
+}
+
+/** Apply: a check mark copying onto a second sheet. */
+function ApplyIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="2" y="2" width="8" height="8" rx="1.5" />
+      <path d="M6 13.5h6a1.5 1.5 0 0 0 1.5-1.5V6M4.5 6l1.5 1.5 2.5-3" />
+    </svg>
+  );
 }
 
 /** The Gate view's settings: the selected gate, then Figure / Axis / Text tabs of collapsible cards. */
@@ -57,6 +113,23 @@ export function Inspector() {
     isOpen: (id) => !closed[id],
     toggle: (id) => setClosed((c) => ({ ...c, [id]: !c[id] })),
   };
+  // While settings are carried across populations, the population opened next takes the settings of
+  // the one left (keeping its own title, ticks and axis titles).
+  const last = useRef<{ groupId: string; plotId: string } | null>(null);
+  useEffect(() => {
+    if (!group || !plot) return;
+    const prev = last.current;
+    last.current = { groupId: group.id, plotId: plot.id };
+    if (!prev || prev.groupId !== group.id || prev.plotId === plot.id || !group.plotStyleFollow) return;
+    const from = group.plots.find((p) => p.id === prev.plotId);
+    if (!from || !carryToPopulation(structuredClone(from), structuredClone(plot))) return;
+    mutate('Carry settings to population', (w) => {
+      const g = w.groups.find((x) => x.id === group.id);
+      const src = g?.plots.find((p) => p.id === prev.plotId);
+      const dst = g?.plots.find((p) => p.id === plot.id);
+      if (src && dst) carryToPopulation(src, dst);
+    });
+  }, [group?.id, plot?.id]);
   if (!group || !plot) return <aside className="inspector" />;
   const setTab = (t: GateTab) => {
     setTabState(t);
@@ -75,7 +148,6 @@ export function Inspector() {
         if (!g || !p) return;
         p.style.figure ??= structuredClone(DEFAULT_FIGURE);
         fn(p.style.figure, p);
-        syncPlotStyles(g, p.id);
       },
       merge && `figure:${plot.id}:${merge}`,
     );
@@ -143,42 +215,18 @@ export function Inspector() {
           ))}
         </div>
         <div className="ridge-inspector-global">
-          <label
-            className="field check"
-            title="Display, font, text, tick and spine settings. Each population keeps its own plot type, axes, title, custom ticks and axis titles."
-          >
-            <input
-              type="checkbox"
-              checked={group.plotStyleFollow}
-              onChange={(e) => {
-                const on = e.target.checked;
-                mutate(on ? 'Same settings for all populations' : 'Settings per population', (w) => {
-                  const g = w.groups.find((x) => x.id === group.id);
-                  if (!g) return;
-                  g.plotStyleFollow = on;
-                  // Turning it on adopts this plot's settings for all.
-                  syncPlotStyles(g, plot.id);
-                });
-              }}
-            />
-            Same settings for all populations
-          </label>
+          <span className="field">Settings in this panel</span>
           <button
             type="button"
             className="icon reset-all"
-            title="Reset all plot settings to their defaults"
-            aria-label="Reset all settings"
-            disabled={
-              !plot.style.figure &&
-              same({ ...plot.style, figure: undefined }, { ...DEFAULT_STYLE, figure: undefined })
-            }
+            title="Reset the settings in this panel for this plot"
+            aria-label="Reset the settings in this panel"
+            disabled={panelAtDefaults(tab, plot, group)}
             onClick={() =>
-              mutate('Reset plot settings', (w) => {
+              mutate(`Reset ${tab} settings`, (w) => {
                 const g = w.groups.find((x) => x.id === group.id);
                 const p = g?.plots.find((x) => x.id === plot.id);
-                if (!g || !p) return;
-                p.style = structuredClone(DEFAULT_STYLE);
-                syncPlotStyles(g, p.id);
+                if (g && p) resetPanel(tab, p, g, w);
               })
             }
           >
@@ -187,6 +235,126 @@ export function Inspector() {
         </div>
       </div>
       <div id="gate-tabpanel" role="tabpanel" aria-labelledby={`gate-tab-${tab}`}>
+        {tab === 'settings' && (
+          <>
+            <Section id="apply" title="Apply settings" {...card('apply')}>
+              <ActionRow
+                label="Apply same settings for all populations"
+                title="Give every population's plot this plot's settings now (each keeps its title, ticks and axis titles)"
+                icon={<ApplyIcon />}
+                disabled={populationsMatch(group, plot.id)}
+                onClick={() =>
+                  mutate('Apply settings to all populations', (w) => {
+                    const g = w.groups.find((x) => x.id === group.id);
+                    const p = g?.plots.find((x) => x.id === plot.id);
+                    if (g && p) applyToPopulations(g, p.id);
+                  })
+                }
+              />
+              <ActionRow
+                label="Apply same settings for all plots"
+                title="Give every X/Y channel pair of this population these settings now"
+                icon={<ApplyIcon />}
+                disabled={pairsMatch(plot)}
+                onClick={() =>
+                  mutate('Apply settings to all plots', (w) => {
+                    const g = w.groups.find((x) => x.id === group.id);
+                    const p = g?.plots.find((x) => x.id === plot.id);
+                    if (g && p) applyToPairs(p);
+                  })
+                }
+              />
+              <label
+                className="field check"
+                title="On: the population you open next takes the settings of the one you leave (each keeps its title, ticks and axis titles). Nothing changes when you tick it."
+              >
+                <input
+                  type="checkbox"
+                  checked={group.plotStyleFollow}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    mutate(on ? 'Carry settings to populations' : 'Settings per population', (w) => {
+                      const g = w.groups.find((x) => x.id === group.id);
+                      if (g) g.plotStyleFollow = on;
+                    });
+                  }}
+                />
+                Carry settings to next populations
+              </label>
+              <label
+                className="field check"
+                title="On: the X/Y channel pair you switch to next takes the settings in use. Off: each pair keeps its own. Nothing changes when you tick it."
+              >
+                <input
+                  type="checkbox"
+                  checked={plot.styleFollow !== false}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    mutate(on ? 'Carry settings to plots' : 'Settings per channel pair', (w) => {
+                      const p = w.groups.find((x) => x.id === group.id)?.plots.find((x) => x.id === plot.id);
+                      if (p) setPairStyles(p, !on);
+                    });
+                  }}
+                />
+                Carry settings to next plots
+              </label>
+            </Section>
+            <Section id="resetAll" title="Reset settings" {...card('resetAll')}>
+              <ActionRow
+                label="All settings in this plot"
+                title="Reset the settings of this plot (this population, these X/Y channels)"
+                icon={<ResetIcon />}
+                disabled={isDefaultStyle(plot.style, DEFAULT_STYLE)}
+                onClick={() =>
+                  mutate('Reset the settings of this plot', (w) => {
+                    const g = w.groups.find((x) => x.id === group.id);
+                    const p = g?.plots.find((x) => x.id === plot.id);
+                    if (g && p) resetCurrentStyle(p, DEFAULT_STYLE);
+                  })
+                }
+              />
+              <ActionRow
+                label="All plots of this population"
+                title="Reset the settings of every plot of this population"
+                icon={<ResetIcon />}
+                disabled={plotAtDefaults(plot, DEFAULT_STYLE)}
+                onClick={() =>
+                  mutate('Reset the settings of every plot of this population', (w) => {
+                    const g = w.groups.find((x) => x.id === group.id);
+                    const p = g?.plots.find((x) => x.id === plot.id);
+                    if (g && p) resetPlotStyles(p, DEFAULT_STYLE);
+                  })
+                }
+              />
+              <ActionRow
+                label="All populations in this plot"
+                title="Reset the settings of this X/Y channel pair in every population"
+                icon={<ResetIcon />}
+                disabled={pairAtDefaults(group, axesKey(plot), DEFAULT_STYLE)}
+                onClick={() =>
+                  mutate('Reset the settings of this X/Y channel pair in every population', (w) => {
+                    const g = w.groups.find((x) => x.id === group.id);
+                    const p = g?.plots.find((x) => x.id === plot.id);
+                    if (g && p) resetPairStyles(g, axesKey(p), DEFAULT_STYLE);
+                  })
+                }
+              />
+              <ActionRow
+                label="All plots in all populations"
+                title="Reset the settings of every plot in every population"
+                icon={<ResetIcon />}
+                disabled={group.plots.every((x) => plotAtDefaults(x, DEFAULT_STYLE))}
+                onClick={() =>
+                  mutate('Reset the settings of every plot in every population', (w) => {
+                    const g = w.groups.find((x) => x.id === group.id);
+                    const p = g?.plots.find((x) => x.id === plot.id);
+                    if (g && p) for (const x of g.plots) resetPlotStyles(x, DEFAULT_STYLE);
+                  })
+                }
+              />
+            </Section>
+          </>
+        )}
         {tab === 'gate' &&
           (gates.length ? (
             gates.map((g) => <GateEditor key={g.id} gateId={g.id} panel={panel} />)
@@ -195,90 +363,6 @@ export function Inspector() {
           ))}
         {tab === 'figure' && (
           <>
-            <Section id="settings" title="Settings" {...card('settings')}>
-              <label
-                className="field check"
-                title="Off: each X/Y channel pair keeps its own settings, restored when you switch back to it"
-              >
-                <input
-                  type="checkbox"
-                  checked={plot.styleFollow !== false}
-                  onChange={(e) => {
-                    const on = e.target.checked;
-                    mutate(on ? 'Same settings for all plots' : 'Settings per channel pair', (w) => {
-                      const p = w.groups.find((x) => x.id === group.id)?.plots.find((x) => x.id === plot.id);
-                      if (!p) return;
-                      if (on) {
-                        p.styleFollow = undefined;
-                        p.stylesByAxes = undefined;
-                      } else p.styleFollow = false;
-                    });
-                  }}
-                />
-                Same settings for all plots
-              </label>
-              <div className="field">
-                All plots of this population
-                <button
-                  type="button"
-                  className="icon reset-btn"
-                  disabled={plotAtDefaults(plot, DEFAULT_STYLE)}
-                  title="Reset the settings of every plot of this population"
-                  aria-label="Reset the settings of every plot of this population"
-                  onClick={() =>
-                    mutate('Reset the settings of every plot of this population', (w) => {
-                      const g = w.groups.find((x) => x.id === group.id);
-                      const p = g?.plots.find((x) => x.id === plot.id);
-                      if (!g || !p) return;
-                      resetPlotStyles(p, DEFAULT_STYLE);
-                      syncPlotStyles(g, p.id);
-                    })
-                  }
-                >
-                  <ResetIcon />
-                </button>
-              </div>
-              <div className="field">
-                All populations in this plot
-                <button
-                  type="button"
-                  className="icon reset-btn"
-                  disabled={pairAtDefaults(group, axesKey(plot), DEFAULT_STYLE)}
-                  title="Reset the settings of this X/Y channel pair in every population"
-                  aria-label="Reset the settings of this X/Y channel pair in every population"
-                  onClick={() =>
-                    mutate('Reset the settings of this X/Y channel pair in every population', (w) => {
-                      const g = w.groups.find((x) => x.id === group.id);
-                      const p = g?.plots.find((x) => x.id === plot.id);
-                      if (!g || !p) return;
-                      resetPairStyles(g, axesKey(p), DEFAULT_STYLE);
-                    })
-                  }
-                >
-                  <ResetIcon />
-                </button>
-              </div>
-              <div className="field">
-                All plots in all populations
-                <button
-                  type="button"
-                  className="icon reset-btn"
-                  disabled={group.plots.every((x) => plotAtDefaults(x, DEFAULT_STYLE))}
-                  title="Reset the settings of every plot in every population"
-                  aria-label="Reset the settings of every plot in every population"
-                  onClick={() =>
-                    mutate('Reset the settings of every plot in every population', (w) => {
-                      const g = w.groups.find((x) => x.id === group.id);
-                      const p = g?.plots.find((x) => x.id === plot.id);
-                      if (!g || !p) return;
-                      for (const x of g.plots) resetPlotStyles(x, DEFAULT_STYLE);
-                    })
-                  }
-                >
-                  <ResetIcon />
-                </button>
-              </div>
-            </Section>
             <Section id="plot" title="Plot" {...resetOf(['title'], 'plot title')} {...card('plot')}>
               <PlotKindSelect group={group} plot={plot} label="Plot type" />
               <label className="field short-text">
@@ -564,4 +648,33 @@ export function Inspector() {
       </div>
     </aside>
   );
+}
+
+const axisAtFactory = (p: PlotSpec, g: Group, ws: Parameters<typeof factoryAxis>[0]) =>
+  [p.x, p.y].every((a) => {
+    if (!a) return true;
+    const f = factoryAxis(ws, g, a.channel);
+    return a.transform === f.transform && a.range[0] === f.range[0] && a.range[1] === f.range[1];
+  });
+
+/** Whether the settings of tab `tab` are at the defaults for plot `p`. */
+function panelAtDefaults(tab: GateTab, p: PlotSpec, g: Group): boolean {
+  if (tab === 'settings' || tab === 'gate') return true;
+  const at = styleKeysAtDefaults(p.style, PANEL_FIGURE_KEYS[tab], tab === 'figure' ? DEFAULT_STYLE : null);
+  return tab === 'axis' ? at && axisAtFactory(p, g, useStore.getState().ws) : at;
+}
+
+/** Reset the settings of tab `tab` for plot `p` (inside a mutation). */
+function resetPanel(tab: GateTab, p: PlotSpec, g: Group, w: Parameters<typeof factoryAxis>[0]) {
+  if (tab === 'settings' || tab === 'gate') return;
+  resetStyleKeys(p.style, PANEL_FIGURE_KEYS[tab], tab === 'figure' ? DEFAULT_STYLE : null);
+  if (tab !== 'axis') return;
+  // The axes' scale and range, as each axis card's own reset does.
+  for (const a of [p.x, p.y]) {
+    if (!a) continue;
+    const f = factoryAxis(w, g, a.channel);
+    a.transform = f.transform;
+    a.range = [...f.range];
+    g.axisDefaults[a.channel] = { ...a };
+  }
 }
