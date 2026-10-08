@@ -41,12 +41,17 @@ function plotForGate(g: Group, popId: string, gate: Gate): { plot: PlotSpec; rea
   if (axes.some((a) => !a)) return own[0] ? { plot: own[0], real: true } : null;
   const is1d = axes.length === 1;
   const base = own.find((p) => (p.kind === 'histogram') === is1d);
+  // The settings this channel pair would have if never opened: its saved ones, not those in use.
+  const key = `${axes[0]!.channel}|${is1d ? '' : axes[1]!.channel}`;
   const plot: PlotSpec = {
     id: `path_${popId}_${gate.id}`,
     population: popId,
     kind: is1d ? 'histogram' : base?.kind && base.kind !== 'histogram' ? base.kind : 'pseudocolor',
     x: axes[0]!,
-    style: base?.style ?? DEFAULT_STYLE,
+    style:
+      base?.stylesByAxes?.[key] ??
+      (base?.styleFollow === false ? base.styleBase : undefined) ??
+      DEFAULT_STYLE,
   };
   if (!is1d) plot.y = axes[1]!;
   return { plot, real: false };

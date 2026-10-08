@@ -133,7 +133,7 @@ export const axesKey = (p: Restylable) =>
 /**
  * Run `fn`, which changes `p`'s channels. The settings in use are saved under the old channel pair. While
  * settings are carried to plots (`styleFollow` not false) the new pair takes them over; otherwise it gets
- * back its saved settings (for a pair not used before, those in use when carrying was turned off).
+ * back its saved settings (for a pair not used before, those last applied to every pair, else the defaults).
  * Returns whether `p`'s settings were replaced.
  */
 export function withAxesChange(p: Restylable, fn: () => void): boolean {
@@ -150,10 +150,10 @@ export function withAxesChange(p: Restylable, fn: () => void): boolean {
   return true;
 }
 
-/** Apply `p`'s current settings to every channel pair of its population now. */
+/** Apply `p`'s current settings to every channel pair of its population now, including pairs not used yet. */
 export function applyToPairs(p: PlotSpec) {
   p.stylesByAxes = undefined;
-  if (p.styleFollow === false) p.styleBase = JSON.parse(JSON.stringify(p.style)) as PlotStyle;
+  p.styleBase = JSON.parse(JSON.stringify(p.style)) as PlotStyle;
 }
 
 /** Whether every channel pair of `p`'s population already has its current settings. */
@@ -162,7 +162,8 @@ export function pairsMatch(p: PlotSpec): boolean {
   const key = axesKey(p);
   return (
     Object.entries(p.stylesByAxes ?? {}).every(([k, s]) => k === key || canon(s) === cur) &&
-    (p.styleFollow !== false || !p.styleBase || canon(p.styleBase) === cur)
+    (p.styleFollow !== false ||
+      (p.styleBase ? canon(p.styleBase) === cur : isDefaultStyle(p.style, DEFAULT_STYLE)))
   );
 }
 
@@ -170,22 +171,15 @@ export function pairsMatch(p: PlotSpec): boolean {
 export function resetPlotStyles(p: PlotSpec, defaults: PlotStyle) {
   p.style = structuredClone(defaults);
   p.stylesByAxes = undefined;
-  if (p.styleBase) p.styleBase = structuredClone(defaults);
+  p.styleBase = undefined;
 }
 
 /**
  * Carry the settings in use to the channel pairs opened next (on), or let each pair keep its own (off).
- * Nothing is applied when it is switched; pairs not used yet start from the settings in use when it is
- * turned off.
+ * Nothing is applied when it is switched.
  */
 export function setPairStyles(p: PlotSpec, perPair: boolean) {
-  if (perPair) {
-    p.styleFollow = false;
-    p.styleBase = JSON.parse(JSON.stringify(p.style)) as PlotStyle;
-  } else {
-    p.styleFollow = undefined;
-    p.styleBase = undefined;
-  }
+  p.styleFollow = perPair ? false : undefined;
 }
 
 /** Default settings for `p`'s current channel pair only. */

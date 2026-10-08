@@ -77,7 +77,7 @@ describe('settings per channel pair', () => {
     p.style.pointPx = 3;
     setPairStyles(p, true);
     setX(p, 'C');
-    expect(p.style.pointPx).toBe(3); // a pair not used yet starts from the settings when it was turned off
+    expect(p.style.pointPx).toBe(DEFAULT_STYLE.pointPx); // a pair not used yet starts from the defaults
     p.style.pointPx = 5;
     expect(setX(p, 'A')).toBe(true);
     expect(p.style.pointPx).toBe(3);
@@ -106,6 +106,8 @@ describe('settings per channel pair', () => {
     expect(pairsMatch(p)).toBe(true);
     setX(p, 'A');
     expect(p.style.pointPx).toBe(5);
+    setX(p, 'D');
+    expect(p.style.pointPx).toBe(5); // so does a pair not used yet
   });
 });
 
@@ -125,6 +127,7 @@ describe('resetting', () => {
     const b = plot('b', 'C', 'D');
     b.style.pointPx = 4;
     setPairStyles(b, true);
+    applyToPairs(b); // pairs not used yet start at 4 px
     b.stylesByAxes = { 'A|B': { ...structuredClone(DEFAULT_STYLE), pointPx: 5 } };
     const g = { plots: [a, b] } as unknown as Group;
     resetPairStyles(g, 'A|B', DEFAULT_STYLE);

@@ -319,7 +319,7 @@ export const PlotSpecSchema = z.object({
    * histogram); switching the channels saves `style` under the old pair and restores the new pair's.
    */
   stylesByAxes: z.record(PlotStyleSchema).optional(),
-  /** While `styleFollow` is off: the settings a channel pair not used yet starts from (those in use when it was turned off). */
+  /** While `styleFollow` is off: the settings a channel pair not used yet starts from (those last applied to every pair; omitted = defaults). */
   styleBase: PlotStyleSchema.optional(),
 });
 export type PlotSpec = z.infer<typeof PlotSpecSchema>;
