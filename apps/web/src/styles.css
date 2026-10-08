@@ -2244,3 +2244,12 @@ table.stats.import-map td {
   height: 22px;
   padding: 0;
 }
+
+/* Settings that only apply when the checkbox above them is on sit one step in. */
+.ridge-inspector .sub-option,
+.ridge-combine .sub-option {
+  margin-left: 20px;
+}
+.ridge-inspector .sub-option-2 {
+  margin-left: 40px;
+}

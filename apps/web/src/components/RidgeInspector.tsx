@@ -988,7 +988,7 @@ export function RidgeInspector() {
                 />
                 Show labels
               </label>
-              <label className="field check">
+              <label className="field check sub-option">
                 <input
                   type="checkbox"
                   checked={style.showCounts}
@@ -997,7 +997,7 @@ export function RidgeInspector() {
                 />
                 Show event counts (n)
               </label>
-              <label className="field check">
+              <label className="field check sub-option sub-option-2">
                 <input
                   type="checkbox"
                   checked={style.countOnNewLine}
@@ -1173,12 +1173,14 @@ export function RidgeInspector() {
                   Auto row height
                 </label>
                 {style.rowHeight !== undefined && (
-                  <LiveNum
-                    label="Row height (px)"
-                    step={1}
-                    value={style.rowHeight}
-                    onCommit={(v) => set('rowHeight', clamp(v, 8, 400), 'Ridge row height')}
-                  />
+                  <div className="sub-option">
+                    <LiveNum
+                      label="Row height (px)"
+                      step={1}
+                      value={style.rowHeight}
+                      onCommit={(v) => set('rowHeight', clamp(v, 8, 400), 'Ridge row height')}
+                    />
+                  </div>
                 )}
               </div>
               <div className="grid2">
@@ -1191,12 +1193,14 @@ export function RidgeInspector() {
                   Fit width
                 </label>
                 {style.width !== undefined && (
-                  <LiveNum
-                    label="Width (px)"
-                    step={10}
-                    value={style.width}
-                    onCommit={(v) => set('width', clamp(v, 300, 10000), 'Ridge plot width')}
-                  />
+                  <div className="sub-option">
+                    <LiveNum
+                      label="Width (px)"
+                      step={10}
+                      value={style.width}
+                      onCommit={(v) => set('width', clamp(v, 300, 10000), 'Ridge plot width')}
+                    />
+                  </div>
                 )}
               </div>
               <div className="grid2">
@@ -1209,13 +1213,15 @@ export function RidgeInspector() {
                   Free aspect ratio
                 </label>
                 {style.aspect !== undefined && (
-                  <LiveNum
-                    label="Width ÷ height"
-                    step={0.1}
-                    title="Fixes the figure's shape; row height is derived to fit"
-                    value={style.aspect}
-                    onCommit={(v) => set('aspect', clamp(v, 0.2, 10), 'Ridge aspect ratio')}
-                  />
+                  <div className="sub-option">
+                    <LiveNum
+                      label="Width ÷ height"
+                      step={0.1}
+                      title="Fixes the figure's shape; row height is derived to fit"
+                      value={style.aspect}
+                      onCommit={(v) => set('aspect', clamp(v, 0.2, 10), 'Ridge aspect ratio')}
+                    />
+                  </div>
                 )}
               </div>
             </Section>
@@ -1326,7 +1332,7 @@ export function RidgeCombinePanel() {
           combined into one ridge.
         </p>
       ) : (
-        <div className="ridge-combine-by">
+        <div className="ridge-combine-by sub-option">
           <span className="muted small">Samples sharing</span>
           {variables.map((v) => (
             <label key={v.id} className="field check">
@@ -1347,7 +1353,7 @@ export function RidgeCombinePanel() {
           ))}
         </div>
       )}
-      <label className="field">
+      <label className="field sub-option">
         Combine by
         <select
           value={combine.method}
@@ -1363,13 +1369,13 @@ export function RidgeCombinePanel() {
           <option value="pool">Pooled events</option>
         </select>
       </label>
-      <p className="muted small">
+      <p className="muted small sub-option">
         {combine.method === 'mean'
           ? 'Each replicate is normalised to unit area and the curves averaged: every replicate weighs the same.'
           : 'All replicates’ events are counted together: replicates with more events weigh more.'}
       </p>
       {combine.method === 'mean' && (
-        <label className="field">
+        <label className="field sub-option">
           Spread band
           <select
             value={combine.band}
