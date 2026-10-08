@@ -27,7 +27,7 @@ import {
 import { contextFor, toast, useGroup, useStore } from '../state/store.ts';
 import { usePlotForPopulation } from './PlotPanel.tsx';
 
-/** Reset: a half circle whose left end sits in the middle of a downward arrowhead (not the closed loop of refresh). */
+/** Reset: a half circle ending in an arrowhead that follows the curve (not the closed loop of refresh). */
 export function ResetIcon() {
   return (
     <svg
@@ -42,8 +42,8 @@ export function ResetIcon() {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="M14.33 10.18a5.5 5.5 0 0 0-11 0" />
-      <path d="M0.83 8.18h5l-2.5 4z" fill="currentColor" stroke="none" />
+      <path d="M14.24 9.31A5.5 5.5 0 0 0 3.24 9.31" />
+      <path d="M0.91 10.22L5.57 8.4L4.69 13.04z" fill="currentColor" stroke="none" />
     </svg>
   );
 }
