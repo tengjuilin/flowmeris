@@ -1001,6 +1001,30 @@ export function RidgeInspector() {
                   </button>
                 </span>
               </div>
+              <div className="field">
+                Baseline color
+                <span className="swatch-auto">
+                  <input
+                    type="color"
+                    className="swatch"
+                    aria-label="Baseline color"
+                    value={style.baselineColor ?? '#d8d7d1'}
+                    onChange={(e) =>
+                      set('baselineColor', e.target.value, 'Ridge baseline color', 'baselineColor')
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="icon reset-btn"
+                    disabled={style.baselineColor === undefined}
+                    title="Reset the baseline color"
+                    aria-label="Reset baseline color"
+                    onClick={() => set('baselineColor', undefined, 'Ridge baseline color')}
+                  >
+                    <ResetIcon />
+                  </button>
+                </span>
+              </div>
               <label className="field check">
                 <input
                   type="checkbox"

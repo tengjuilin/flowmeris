@@ -493,7 +493,14 @@ export function RidgeView() {
                   strokeWidth={style.strokeWidth}
                 />
               )}
-              <line x1={labelW} x2={labelW + pw} y1={base} y2={base} className="ridge-base" />
+              <line
+                x1={labelW}
+                x2={labelW + pw}
+                y1={base}
+                y2={base}
+                className="ridge-base"
+                style={style.baselineColor ? { stroke: style.baselineColor } : undefined}
+              />
             </g>
           );
         })}

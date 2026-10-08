@@ -363,6 +363,8 @@ export const RidgeStyleSchema = z.object({
   labelWidth: Num.min(0).max(1000).default(240),
   /** Color of the axis tick marks; omitted = the theme's grid color. */
   axisColor: HexColor.optional(),
+  /** Color of the thin baseline under each ridge; omitted = the theme's border color. */
+  baselineColor: HexColor.optional(),
   showTickLabels: z.boolean().default(true),
   tickFontSize: Num.min(4).max(48).default(11),
   /** Tick marks in data (linear) units; omitted = automatic. A missing label is formatted from the value. */
