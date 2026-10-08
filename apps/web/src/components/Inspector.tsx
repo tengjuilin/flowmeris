@@ -42,8 +42,8 @@ export function ResetIcon() {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="M13.5 11.5a5.5 5.5 0 0 0-11 0" />
-      <path d="M0.5 9.3l2 2.4 2-2.4" />
+      <path d="M14.3 9.2a5.5 5.5 0 0 0-11 0" />
+      <path d="M0.8 9.2h5l-2.5 4z" fill="currentColor" stroke="none" />
     </svg>
   );
 }
