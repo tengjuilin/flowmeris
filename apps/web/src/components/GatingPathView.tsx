@@ -1,5 +1,5 @@
 import type { Gate, Group, PlotSpec, Population, Workspace } from '@flowmeris/model';
-import { populationLineage, populationsDepthFirst } from '@flowmeris/model';
+import { newId, populationLineage, populationsDepthFirst } from '@flowmeris/model';
 import {
   Component,
   type ReactNode,
@@ -13,6 +13,7 @@ import {
 import { pool } from '../engine-client/pool.ts';
 import { lineageKey } from '../lib/analysis.ts';
 import { DEFAULT_STYLE } from '../lib/defaults.ts';
+import { newPlotStyle } from '../lib/figure.ts';
 import { gateMatchesAxes } from '../lib/geometry.ts';
 import { contextFor, useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { PlotCanvas } from './PlotCanvas.tsx';
@@ -131,8 +132,19 @@ function WhenVisible({ size, children }: { size: number; children: ReactNode }) 
 }
 
 function openInPlot(popId: string, plot: PlotSpec | null, real: boolean) {
-  if (plot && real) useStore.getState().setUi({ popId, plotId: plot.id, selectedGateId: null, view: 'gate' });
-  else {
+  const st = useStore.getState();
+  if (plot && real) st.setUi({ popId, plotId: plot.id, selectedGateId: null, view: 'gate' });
+  else if (plot) {
+    // A preview built from the gate's axes: save it as a plot so the Gate view shows the same axes.
+    const g = st.ws.groups.find((x) => x.id === st.ui.groupId);
+    if (!g) return;
+    const id = newId('plt_');
+    st.mutate('Add plot', (ws) => {
+      const gg = ws.groups.find((x) => x.id === g.id)!;
+      gg.plots.push({ ...structuredClone(plot), id, style: newPlotStyle(gg, plot.style) });
+    });
+    st.setUi({ popId, plotId: id, selectedGateId: null, view: 'gate' });
+  } else {
     drill(popId);
     useStore.getState().setUi({ view: 'gate' });
   }
