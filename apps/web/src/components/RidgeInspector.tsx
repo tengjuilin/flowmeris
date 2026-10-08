@@ -901,6 +901,21 @@ export function RidgeInspector() {
                         );
                       }}
                     />
+                    <button
+                      type="button"
+                      className="reset-btn"
+                      disabled={!custom}
+                      title="Reset color to the ridge settings"
+                      aria-label={`Reset color of ${labels[id] ?? id}`}
+                      onClick={() => {
+                        const ids = targets(id);
+                        update('Reset ridge color', (l) => {
+                          for (const x of ids) delete l.style.sampleColors[x];
+                        });
+                      }}
+                    >
+                      <ResetIcon />
+                    </button>
                     <input
                       type="text"
                       value={style.sampleLabels[id] ?? ''}
@@ -917,22 +932,21 @@ export function RidgeInspector() {
                         )
                       }
                     />
-                    {custom && (
-                      <button
-                        type="button"
-                        className="icon"
-                        title="Reset color"
-                        aria-label={`Reset color of ${labels[id] ?? id}`}
-                        onClick={() => {
-                          const ids = targets(id);
-                          update('Reset ridge color', (l) => {
-                            for (const x of ids) delete l.style.sampleColors[x];
-                          });
-                        }}
-                      >
-                        ×
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      className="reset-btn"
+                      disabled={style.sampleLabels[id] === undefined}
+                      title="Reset label to the sample name"
+                      aria-label={`Reset label of ${labels[id] ?? id}`}
+                      onClick={() => {
+                        const ids = targets(id);
+                        update('Reset ridge label', (l) => {
+                          for (const x of ids) delete l.style.sampleLabels[x];
+                        });
+                      }}
+                    >
+                      <ResetIcon />
+                    </button>
                   </li>
                 );
               })}
@@ -1051,12 +1065,28 @@ export function RidgeInspector() {
               {style.colorMode === 'single' && (
                 <label className="field inline">
                   Fill color
-                  <input
-                    type="color"
-                    className="swatch"
-                    value={style.color}
-                    onChange={(e) => set('color', e.target.value, 'Ridge color', 'color')}
-                  />
+                  <span className="swatch-auto">
+                    <input
+                      type="color"
+                      className="swatch"
+                      value={style.color}
+                      onChange={(e) => set('color', e.target.value, 'Ridge color', 'color')}
+                    />
+                    <button
+                      type="button"
+                      className="reset-btn"
+                      disabled={style.color === DEFAULT_RIDGE_STYLE.color}
+                      aria-label="Reset fill color to the default"
+                      title={
+                        style.color === DEFAULT_RIDGE_STYLE.color
+                          ? 'Fill color is the default'
+                          : 'Reset fill color to the default'
+                      }
+                      onClick={() => set('color', DEFAULT_RIDGE_STYLE.color, 'Ridge color', 'color')}
+                    >
+                      <ResetIcon />
+                    </button>
+                  </span>
                 </label>
               )}
               <PercentSlider
@@ -1080,18 +1110,17 @@ export function RidgeInspector() {
                   />
                   <button
                     type="button"
-                    className={`tt-btn tt-text${style.strokeColor === undefined ? ' on' : ''}`}
-                    aria-pressed={style.strokeColor === undefined}
-                    title="Outline matches the background"
-                    onClick={() =>
-                      set(
-                        'strokeColor',
-                        style.strokeColor === undefined ? '#000000' : undefined,
-                        'Ridge outline color',
-                      )
+                    className="reset-btn"
+                    disabled={style.strokeColor === undefined}
+                    aria-label="Reset outline color to match the background"
+                    title={
+                      style.strokeColor === undefined
+                        ? 'Outline already matches the background'
+                        : 'Reset outline to match the background'
                     }
+                    onClick={() => set('strokeColor', undefined, 'Ridge outline color')}
                   >
-                    Auto
+                    <ResetIcon />
                   </button>
                 </span>
               </div>
