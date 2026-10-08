@@ -1,7 +1,7 @@
 import type { Group, PlotSpec } from '@flowmeris/model';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_STYLE } from './defaults.ts';
-import { DEFAULT_FIGURE, newPlotStyle, syncPlotStyles } from './figure.ts';
+import { DEFAULT_FIGURE, newPlotStyle, resetPairStyles, syncPlotStyles, withAxesChange } from './figure.ts';
 
 const plot = (id: string, style = structuredClone(DEFAULT_STYLE)): PlotSpec =>
   ({ id, population: 'root', kind: 'pseudocolor', x: {}, style }) as unknown as PlotSpec;
@@ -37,5 +37,53 @@ describe('shared plot settings', () => {
     const s = newPlotStyle({ plotStyleFollow: true, plots: [a] } as unknown as Group, DEFAULT_STYLE);
     expect(s.colormap).toBe('magma');
     expect(s.figure?.title).toBeUndefined();
+  });
+});
+
+describe('settings per channel pair', () => {
+  const xy = (x: string, y: string) => {
+    const p = plot('p');
+    p.x = { channel: x } as PlotSpec['x'];
+    p.y = { channel: y } as PlotSpec['x'];
+    return p;
+  };
+
+  it('keeps one set of settings while following', () => {
+    const p = xy('A', 'B');
+    p.style.pointPx = 3;
+    expect(withAxesChange(p, () => void (p.x = { channel: 'C' } as PlotSpec['x']))).toBe(false);
+    expect(p.style.pointPx).toBe(3);
+    expect(p.stylesByAxes).toBeUndefined();
+  });
+
+  it('saves the old pair and restores a pair seen before', () => {
+    const p = xy('A', 'B');
+    p.styleFollow = false;
+    p.style.pointPx = 3;
+    withAxesChange(p, () => void (p.x = { channel: 'C' } as PlotSpec['x']));
+    expect(p.style.pointPx).toBe(3); // a new pair starts from the current settings
+    p.style.pointPx = 5;
+    expect(withAxesChange(p, () => void (p.x = { channel: 'A' } as PlotSpec['x']))).toBe(true);
+    expect(p.style.pointPx).toBe(3);
+    withAxesChange(p, () => void (p.x = { channel: 'C' } as PlotSpec['x']));
+    expect(p.style.pointPx).toBe(5);
+  });
+});
+
+describe('resetting one channel pair', () => {
+  it('resets the pair where it is shown or saved, and leaves other pairs', () => {
+    const a = plot('a');
+    a.x = { channel: 'A' } as PlotSpec['x'];
+    a.y = { channel: 'B' } as PlotSpec['x'];
+    a.style.pointPx = 3;
+    const b = plot('b');
+    b.x = { channel: 'C' } as PlotSpec['x'];
+    b.y = { channel: 'D' } as PlotSpec['x'];
+    b.style.pointPx = 4;
+    b.stylesByAxes = { 'A|B': { ...structuredClone(DEFAULT_STYLE), pointPx: 5 } };
+    resetPairStyles({ plots: [a, b] } as unknown as Group, 'A|B', DEFAULT_STYLE);
+    expect(a.style.pointPx).toBe(DEFAULT_STYLE.pointPx);
+    expect(b.style.pointPx).toBe(4);
+    expect(b.stylesByAxes['A|B']).toBeUndefined();
   });
 });

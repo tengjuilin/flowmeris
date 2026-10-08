@@ -11,6 +11,7 @@ import {
   transformOfKind,
 } from '../lib/defaults.ts';
 import { exportPlot } from '../lib/exportPlot.ts';
+import { withAxesChange } from '../lib/figure.ts';
 import { type Tool, useGroup, useStore } from '../state/store.ts';
 import { ExportMenu } from './ExportMenu.tsx';
 import { PlotCanvas, type PlotHandle } from './PlotCanvas.tsx';
@@ -120,7 +121,9 @@ function editPlot(
 /** Put `channel` on a plot's axis with that channel's default scale. */
 export function setAxisChannel(edit: EditAxes, axis: 'x' | 'y', channel: string) {
   edit('Change axis channel', (p, g, w) => {
-    p[axis] = { ...defaultAxis(w, g, channel) };
+    withAxesChange(p, () => {
+      p[axis] = { ...defaultAxis(w, g, channel) };
+    });
   });
 }
 
@@ -131,19 +134,26 @@ export function axisChannelSetter(group: Group, plot: PlotSpec, edit?: EditAxes)
 }
 
 /** Plot type picker; edits the population's plot (shared by the Plot and Tiles views), or `edit`'s target. */
-export function PlotKindSelect({ group, plot, edit }: { group: Group; plot: PlotSpec; edit?: EditAxes }) {
+export function PlotKindSelect({
+  group,
+  plot,
+  edit,
+  label = 'Plot',
+}: { group: Group; plot: PlotSpec; edit?: EditAxes; label?: string }) {
   const ed: EditAxes = edit ?? ((label, fn) => editPlot(group.id, plot.id, label, fn));
   const setKind = (k: PlotKind) =>
     ed('Change plot type', (p, g, w) => {
-      p.kind = k;
-      if (k !== 'histogram' && !p.y) {
-        const other = g.channels.find((c) => c !== p.x.channel) ?? p.x.channel;
-        p.y = { ...defaultAxis(w, g, other) };
-      }
+      withAxesChange(p, () => {
+        p.kind = k;
+        if (k !== 'histogram' && !p.y) {
+          const other = g.channels.find((c) => c !== p.x.channel) ?? p.x.channel;
+          p.y = { ...defaultAxis(w, g, other) };
+        }
+      });
     });
   return (
     <label className="field">
-      Plot
+      {label}
       <select value={plot.kind} onChange={(e) => setKind(e.target.value as PlotKind)}>
         {KINDS.map((k) => (
           <option key={k.id} value={k.id}>
@@ -224,9 +234,11 @@ export function AxisSelects({ group, plot, edit }: { group: Group; plot: PlotSpe
           onClick={() =>
             ed('Swap axes', (p) => {
               if (!p.y) return;
-              const t = p.x;
-              p.x = p.y;
-              p.y = t;
+              withAxesChange(p, () => {
+                const t = p.x;
+                p.x = p.y!;
+                p.y = t;
+              });
             })
           }
         >

@@ -143,7 +143,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   const selectedGateId = useStore((s) => (interactive ? s.ui.selectedGateId : null));
   const setUi = useStore((s) => s.setUi);
   const fig = plot.style.figure ?? DEFAULT_FIGURE;
-  // Text positions follow the font sizes; at the defaults they are those of the plain plot.
+  // Text positions and margins follow the font sizes.
   const tickY = 7 + fig.tickFontSize;
   const xTitleY = (fig.showTickLabels ? tickY : 4) + 10 + fig.axisTitleFontSize;
   const yTitleX = -(fig.showTickLabels ? 19 + 3 * fig.tickFontSize : 14);

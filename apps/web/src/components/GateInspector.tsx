@@ -1,7 +1,16 @@
 import type { PlotFigure, PlotSpec } from '@flowmeris/model';
 import { useState } from 'react';
 import { DEFAULT_STYLE } from '../lib/defaults.ts';
-import { DEFAULT_FIGURE, syncPlotStyles } from '../lib/figure.ts';
+import {
+  DEFAULT_FIGURE,
+  axesKey,
+  pairAtDefaults,
+  plotAtDefaults,
+  resetPairStyles,
+  resetPlotStyles,
+  syncPlotStyles,
+  withAxesChange,
+} from '../lib/figure.ts';
 import { gateMatchesAxes } from '../lib/geometry.ts';
 import { useGroup, useStore } from '../state/store.ts';
 import {
@@ -136,14 +145,14 @@ export function Inspector() {
         <div className="ridge-inspector-global">
           <label
             className="field check"
-            title="Display, font, text, tick and spine settings. Each plot keeps its own type, axes, title, custom ticks and axis titles."
+            title="Display, font, text, tick and spine settings. Each population keeps its own plot type, axes, title, custom ticks and axis titles."
           >
             <input
               type="checkbox"
               checked={group.plotStyleFollow}
               onChange={(e) => {
                 const on = e.target.checked;
-                mutate(on ? 'Same settings for all plots' : 'Settings per plot', (w) => {
+                mutate(on ? 'Same settings for all populations' : 'Settings per population', (w) => {
                   const g = w.groups.find((x) => x.id === group.id);
                   if (!g) return;
                   g.plotStyleFollow = on;
@@ -152,7 +161,7 @@ export function Inspector() {
                 });
               }}
             />
-            Same settings for all plots
+            Same settings for all populations
           </label>
           <button
             type="button"
@@ -186,10 +195,94 @@ export function Inspector() {
           ))}
         {tab === 'figure' && (
           <>
+            <Section id="settings" title="Settings" {...card('settings')}>
+              <label
+                className="field check"
+                title="Off: each X/Y channel pair keeps its own settings, restored when you switch back to it"
+              >
+                <input
+                  type="checkbox"
+                  checked={plot.styleFollow !== false}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    mutate(on ? 'Same settings for all plots' : 'Settings per channel pair', (w) => {
+                      const p = w.groups.find((x) => x.id === group.id)?.plots.find((x) => x.id === plot.id);
+                      if (!p) return;
+                      if (on) {
+                        p.styleFollow = undefined;
+                        p.stylesByAxes = undefined;
+                      } else p.styleFollow = false;
+                    });
+                  }}
+                />
+                Same settings for all plots
+              </label>
+              <div className="field">
+                All plots of this population
+                <button
+                  type="button"
+                  className="icon reset-btn"
+                  disabled={plotAtDefaults(plot, DEFAULT_STYLE)}
+                  title="Reset the settings of every plot of this population"
+                  aria-label="Reset the settings of every plot of this population"
+                  onClick={() =>
+                    mutate('Reset the settings of every plot of this population', (w) => {
+                      const g = w.groups.find((x) => x.id === group.id);
+                      const p = g?.plots.find((x) => x.id === plot.id);
+                      if (!g || !p) return;
+                      resetPlotStyles(p, DEFAULT_STYLE);
+                      syncPlotStyles(g, p.id);
+                    })
+                  }
+                >
+                  <ResetIcon />
+                </button>
+              </div>
+              <div className="field">
+                All populations in this plot
+                <button
+                  type="button"
+                  className="icon reset-btn"
+                  disabled={pairAtDefaults(group, axesKey(plot), DEFAULT_STYLE)}
+                  title="Reset the settings of this X/Y channel pair in every population"
+                  aria-label="Reset the settings of this X/Y channel pair in every population"
+                  onClick={() =>
+                    mutate('Reset the settings of this X/Y channel pair in every population', (w) => {
+                      const g = w.groups.find((x) => x.id === group.id);
+                      const p = g?.plots.find((x) => x.id === plot.id);
+                      if (!g || !p) return;
+                      resetPairStyles(g, axesKey(p), DEFAULT_STYLE);
+                    })
+                  }
+                >
+                  <ResetIcon />
+                </button>
+              </div>
+              <div className="field">
+                All plots in all populations
+                <button
+                  type="button"
+                  className="icon reset-btn"
+                  disabled={group.plots.every((x) => plotAtDefaults(x, DEFAULT_STYLE))}
+                  title="Reset the settings of every plot in every population"
+                  aria-label="Reset the settings of every plot in every population"
+                  onClick={() =>
+                    mutate('Reset the settings of every plot in every population', (w) => {
+                      const g = w.groups.find((x) => x.id === group.id);
+                      const p = g?.plots.find((x) => x.id === plot.id);
+                      if (!g || !p) return;
+                      for (const x of g.plots) resetPlotStyles(x, DEFAULT_STYLE);
+                    })
+                  }
+                >
+                  <ResetIcon />
+                </button>
+              </div>
+            </Section>
             <Section id="plot" title="Plot" {...resetOf(['title'], 'plot title')} {...card('plot')}>
-              <PlotKindSelect group={group} plot={plot} />
+              <PlotKindSelect group={group} plot={plot} label="Plot type" />
               <label className="field short-text">
-                Title
+                Plot title
                 <input
                   type="text"
                   value={fig.title ?? ''}
@@ -283,7 +376,8 @@ export function Inspector() {
                   onClick={() =>
                     edit('Swap axes', (f, p) => {
                       if (!p.y) return;
-                      [p.x, p.y] = [p.y, p.x];
+                      // Settings saved for the swapped pair come back as they were; otherwise swap the per-axis ones.
+                      if (withAxesChange(p, () => void ([p.x, p.y] = [p.y!, p.x]))) return;
                       [f.xTicks, f.yTicks] = [f.yTicks, f.xTicks];
                       [f.xTitle, f.yTitle] = [f.yTitle, f.xTitle];
                       for (const k of ['xTicks', 'yTicks', 'xTitle', 'yTitle'] as const)

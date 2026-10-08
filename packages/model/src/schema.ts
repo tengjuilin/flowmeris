@@ -257,17 +257,17 @@ export const PlotFigureSchema = z.object({
   /** A key of the app's font list, or the name of any installed font. */
   fontFamily: z.string().min(1).max(80).default('arial'),
   /** Base font size (px); editing it rescales the title, tick and axis title sizes by the same ratio. */
-  fontSize: Num.min(4).max(48).default(11),
+  fontSize: Num.min(4).max(48).default(14),
   /** Color of all plot text unless a text style sets its own. */
   fontColor: HexColor.default('#000000'),
-  titleFontSize: Num.min(4).max(48).default(14),
-  tickFontSize: Num.min(4).max(48).default(11),
-  axisTitleFontSize: Num.min(4).max(48).default(12),
+  titleFontSize: Num.min(4).max(48).default(18),
+  tickFontSize: Num.min(4).max(48).default(14),
+  axisTitleFontSize: Num.min(4).max(48).default(15.5),
   titleText: TextStyleSchema.default({ bold: true }),
   tickText: TextStyleSchema.default({}),
   axisTitleText: TextStyleSchema.default({ bold: true }),
   /** Gate names and percentages drawn on the plot. */
-  gateFontSize: Num.min(4).max(48).default(11.5),
+  gateFontSize: Num.min(4).max(48).default(14.5),
   gateText: TextStyleSchema.default({ bold: true }),
   /** The "n off-scale (piled on edges)" note below the plot. */
   showOffScaleNote: z.boolean().default(true),
@@ -312,6 +312,13 @@ export const PlotSpecSchema = z.object({
   x: AxisSpecSchema,
   y: AxisSpecSchema.optional(),
   style: PlotStyleSchema,
+  /** One set of settings whatever the axes' channels; omitted = on. */
+  styleFollow: z.boolean().optional(),
+  /**
+   * While `styleFollow` is off: the settings last used with each channel pair, keyed "x|y" ("x|" for a
+   * histogram); switching the channels saves `style` under the old pair and restores the new pair's.
+   */
+  stylesByAxes: z.record(PlotStyleSchema).optional(),
 });
 export type PlotSpec = z.infer<typeof PlotSpecSchema>;
 
