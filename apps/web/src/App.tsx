@@ -234,6 +234,15 @@ export function App() {
   const ws = useStore((s) => s.ws);
   const group = useGroup();
   const [dragOver, setDragOver] = useState(false);
+  // On narrow windows the settings panel is a drawer opened from the Settings button.
+  const [drawer, setDrawer] = useState(false);
+  const hasInspector = ui.view === 'gate' || ui.view === 'ridge';
+  useEffect(() => {
+    if (!drawer) return;
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setDrawer(false);
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [drawer]);
 
   useEffect(() => {
     if (!ui.groupId && ws.groups[0]) {
@@ -285,22 +294,40 @@ export function App() {
         <div className="main">
           <Sidebar />
           <section className="center">
-            <div className="tabs" role="tablist">
-              {VIEWS.map((v) => (
+            <div className="tabs-bar">
+              <div className="tabs" role="tablist">
+                {VIEWS.map((v) => (
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={ui.view === v.id}
+                    key={v.id}
+                    className={ui.view === v.id ? 'on' : ''}
+                    onClick={() => {
+                      setUi({ view: v.id });
+                      if (v.id === 'gate' && group) drill(ui.popId);
+                    }}
+                  >
+                    {v.label}
+                  </button>
+                ))}
+              </div>
+              {hasInspector && (
                 <button
                   type="button"
-                  role="tab"
-                  aria-selected={ui.view === v.id}
-                  key={v.id}
-                  className={ui.view === v.id ? 'on' : ''}
-                  onClick={() => {
-                    setUi({ view: v.id });
-                    if (v.id === 'gate' && group) drill(ui.popId);
-                  }}
+                  className="settings-toggle"
+                  aria-expanded={drawer}
+                  aria-label="Settings"
+                  title="Settings"
+                  onClick={() => setDrawer((d) => !d)}
                 >
-                  {v.label}
+                  <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                    <path d="M1 3.5h12M1 10.5h12" stroke="currentColor" strokeWidth="1.4" />
+                    <circle cx="4.5" cy="3.5" r="1.9" fill="var(--surface)" stroke="currentColor" strokeWidth="1.4" />
+                    <circle cx="9.5" cy="10.5" r="1.9" fill="var(--surface)" stroke="currentColor" strokeWidth="1.4" />
+                  </svg>
                 </button>
-              ))}
+              )}
             </div>
             <div className="view">
               {ui.view === 'gate' && (
@@ -331,8 +358,21 @@ export function App() {
               {ui.view === 'samples' && <SamplesView />}
             </div>
           </section>
-          {ui.view === 'gate' && <Inspector />}
-          {ui.view === 'ridge' && <RidgeInspector />}
+          {hasInspector && (
+            <>
+              <button
+                type="button"
+                className="drawer-scrim"
+                aria-label="Close settings"
+                tabIndex={-1}
+                data-open={drawer}
+                onClick={() => setDrawer(false)}
+              />
+              <div className="inspector-drawer" data-open={drawer}>
+                {ui.view === 'gate' ? <Inspector /> : <RidgeInspector />}
+              </div>
+            </>
+          )}
         </div>
       )}
       {ui.ingest && (
