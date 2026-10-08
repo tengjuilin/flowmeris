@@ -54,7 +54,7 @@ const TOOLS: { id: Tool; label: string; key: string; title: string; oneD?: boole
 /** Line icons for the gate drawing tools, drawn on a 20×20 grid in the button's text colour. */
 const TOOL_ICONS: Record<Tool, ReactNode> = {
   select: (
-    <path d="M5.5 3.5v12.2l3.3-3.1 2.3 4.9 2.2-1-2.3-4.8 4.5-.3z" fill="currentColor" fillOpacity="0.18" />
+    <path d="M5.5 3.5v12.2l3.3-3.1 2.3 4.9 2.2-1-2.3-4.8 4.5-.3z" fill="currentColor" fillOpacity="0" />
   ),
   rect: <rect x="3.5" y="5" width="13" height="10" rx="1.5" />,
   ellipse: <ellipse cx="10" cy="10" rx="7.2" ry="4.3" transform="rotate(-28 10 10)" />,
