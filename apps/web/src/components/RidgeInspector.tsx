@@ -364,7 +364,7 @@ function AlignIcon({ lines }: { lines: number[] }) {
 
 /**
  * A word-processor style toolbar for one kind of text: font and size on one row, then
- * bold / italic / underline, colour and (for ridge labels) alignment on the next.
+ * bold / italic / underline, color and (for ridge labels) alignment on the next.
  */
 function TextStyleEditor({
   label,
@@ -451,12 +451,12 @@ function TextStyleEditor({
           {toggle('underline', 'U', 'Underline', { textDecoration: 'underline' })}
         </div>
         <span className="tt-sep" aria-hidden="true" />
-        <label className="tt-btn tt-color" title="Text colour">
+        <label className="tt-btn tt-color" title="Text color">
           <span style={{ color: ink }}>A</span>
           <span className="tt-bar" style={{ background: ink }} />
           <input
             type="color"
-            aria-label={`${label} colour`}
+            aria-label={`${label} color`}
             value={value.color ?? '#444444'}
             onChange={(e) => onChange({ ...value, color: e.target.value })}
           />
@@ -464,8 +464,8 @@ function TextStyleEditor({
         <button
           type="button"
           className="tt-btn tt-text"
-          title="Automatic colour (the theme's text colour)"
-          aria-label={`Automatic ${label.toLowerCase()} colour`}
+          title="Automatic color (the theme's text color)"
+          aria-label={`Automatic ${label.toLowerCase()} color`}
           disabled={!value.color}
           onClick={() => onChange({ ...value, color: undefined })}
         >
@@ -672,7 +672,7 @@ export function RidgeInspector() {
       setSelected(next);
     } else setSelected(new Set([id]));
   };
-  /** Rows a colour edit or reset applies to: the whole selection if this row is part of it. */
+  /** Rows a color edit or reset applies to: the whole selection if this row is part of it. */
   const targets = (id: string) => (selected.has(id) ? ordered.filter((x) => selected.has(x)) : [id]);
 
   /** Move `ids` next to `target`; hidden samples keep their slots. */
@@ -732,7 +732,7 @@ export function RidgeInspector() {
         <div className="ridge-inspector-global">
           <label
             className="field check"
-            title="Colours, labels, text, size, overlap and histogram settings. Each population keeps its own channel, scale, ticks and axis title."
+            title="Colors, labels, text, size, overlap and histogram settings. Each population keeps its own channel, scale, ticks and axis title."
           >
             <input type="checkbox" checked={styleFollow} onChange={(e) => setStyleFollow(e.target.checked)} />
             Same settings for all populations
@@ -761,18 +761,6 @@ export function RidgeInspector() {
             <div className="ridge-actions">
               <button
                 type="button"
-                onClick={() =>
-                  update('Reverse ridge order', (l) => {
-                    l.style.order = [...allIds]
-                      .reverse()
-                      .concat(l.style.order.filter((id) => !current.has(id)));
-                  })
-                }
-              >
-                Reverse
-              </button>
-              <button
-                type="button"
                 disabled={!style.order.some((id) => current.has(id))}
                 onClick={() =>
                   set(
@@ -783,7 +771,7 @@ export function RidgeInspector() {
                 }
               >
                 <ResetIcon />
-                Reset order
+                Order
               </button>
               <button
                 type="button"
@@ -792,12 +780,12 @@ export function RidgeInspector() {
                   set(
                     'sampleColors',
                     Object.fromEntries(Object.entries(style.sampleColors).filter(([id]) => !current.has(id))),
-                    'Reset ridge colours',
+                    'Reset ridge colors',
                   )
                 }
               >
                 <ResetIcon />
-                Reset colours
+                Colors
               </button>
               <button
                 type="button"
@@ -811,12 +799,24 @@ export function RidgeInspector() {
                 }
               >
                 <ResetIcon />
-                Reset labels
+                Labels
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  update('Reverse ridge order', (l) => {
+                    l.style.order = [...allIds]
+                      .reverse()
+                      .concat(l.style.order.filter((id) => !current.has(id)));
+                  })
+                }
+              >
+                Reverse
               </button>
             </div>
             {selected.size > 1 && (
               <p className="small muted">
-                {selected.size} selected — a colour change applies to all of them.
+                {selected.size} selected — a color change applies to all of them.
               </p>
             )}
             <ol className="ridge-samples" onDragLeave={() => setDrop(null)}>
@@ -883,17 +883,17 @@ export function RidgeInspector() {
                       value={ridgeColor(style, id, i)}
                       title={
                         isSel && selected.size > 1
-                          ? `Set colour of ${selected.size} selected ridges`
+                          ? `Set color of ${selected.size} selected ridges`
                           : custom
-                            ? 'Custom colour'
-                            : 'Colour from the ridge settings; pick to override'
+                            ? 'Custom color'
+                            : 'Color from the ridge settings; pick to override'
                       }
-                      aria-label={`Colour of ${labels[id] ?? id}`}
+                      aria-label={`Color of ${labels[id] ?? id}`}
                       onChange={(e) => {
                         const ids = targets(id);
                         const v = e.target.value;
                         update(
-                          'Ridge colour',
+                          'Ridge color',
                           (l) => {
                             for (const x of ids) l.style.sampleColors[x] = v;
                           },
@@ -921,11 +921,11 @@ export function RidgeInspector() {
                       <button
                         type="button"
                         className="icon"
-                        title="Reset colour"
-                        aria-label={`Reset colour of ${labels[id] ?? id}`}
+                        title="Reset color"
+                        aria-label={`Reset color of ${labels[id] ?? id}`}
                         onClick={() => {
                           const ids = targets(id);
-                          update('Reset ridge colour', (l) => {
+                          update('Reset ridge color', (l) => {
                             for (const x of ids) delete l.style.sampleColors[x];
                           });
                         }}
@@ -1081,25 +1081,25 @@ export function RidgeInspector() {
               onToggle={() => toggle('ridgeStyle')}
             >
               <label className="field">
-                Colour
+                Color
                 <select
                   value={style.colorMode}
                   onChange={(e) =>
-                    set('colorMode', e.target.value as RidgeStyle['colorMode'], 'Ridge colour mode')
+                    set('colorMode', e.target.value as RidgeStyle['colorMode'], 'Ridge color mode')
                   }
                 >
-                  <option value="single">Single colour</option>
+                  <option value="single">Single color</option>
                   <option value="palette">Categorical palette</option>
                 </select>
               </label>
               {style.colorMode === 'single' && (
                 <label className="field inline">
-                  Fill colour
+                  Fill color
                   <input
                     type="color"
                     className="swatch"
                     value={style.color}
-                    onChange={(e) => set('color', e.target.value, 'Ridge colour', 'color')}
+                    onChange={(e) => set('color', e.target.value, 'Ridge color', 'color')}
                   />
                 </label>
               )}
@@ -1110,17 +1110,17 @@ export function RidgeInspector() {
                 onChange={(v) => set('fillOpacity', v, 'Ridge opacity', 'opacity')}
               />
               <div className="field">
-                Outline colour
+                Outline color
                 <span className="swatch-auto">
                   <input
                     type="color"
                     className="swatch"
-                    aria-label="Outline colour"
+                    aria-label="Outline color"
                     title={
                       style.strokeColor === undefined ? 'Matches the background; pick to override' : undefined
                     }
                     value={style.strokeColor ?? '#ffffff'}
-                    onChange={(e) => set('strokeColor', e.target.value, 'Ridge outline colour', 'stroke')}
+                    onChange={(e) => set('strokeColor', e.target.value, 'Ridge outline color', 'stroke')}
                   />
                   <button
                     type="button"
@@ -1131,7 +1131,7 @@ export function RidgeInspector() {
                       set(
                         'strokeColor',
                         style.strokeColor === undefined ? '#000000' : undefined,
-                        'Ridge outline colour',
+                        'Ridge outline color',
                       )
                     }
                   >
