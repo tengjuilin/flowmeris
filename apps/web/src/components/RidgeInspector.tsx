@@ -33,7 +33,7 @@ import {
 } from '../lib/ridge.ts';
 import { useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
 import { GroupPicker, toggleIds } from './GroupPicker.tsx';
-import { AxisFields, NumInput } from './Inspector.tsx';
+import { AxisFields, NumInput, ResetIcon } from './Inspector.tsx';
 
 /** A number input that updates the plot as you type. */
 const LiveNum = (p: ComponentProps<typeof NumInput>) => <NumInput live {...p} />;
@@ -567,27 +567,6 @@ function PercentSlider({
         %
       </span>
     </div>
-  );
-}
-
-/** Reset: an arrow curving back down to the left (not the circular arrow of refresh). */
-function ResetIcon() {
-  return (
-    <svg
-      className="reset-icon"
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M13 12.5a5.2 5.2 0 0 0-8.9-4.6L3 9.5" />
-      <path d="M3 5.5v4h4" />
-    </svg>
   );
 }
 

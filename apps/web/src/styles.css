@@ -2230,3 +2230,17 @@ table.stats.import-map td {
 .reset-icon {
   flex: none;
 }
+
+.axis-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.reset-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  padding: 0;
+}

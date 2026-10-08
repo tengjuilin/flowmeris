@@ -27,6 +27,27 @@ import {
 import { contextFor, toast, useGroup, useStore } from '../state/store.ts';
 import { usePlotForPopulation } from './PlotPanel.tsx';
 
+/** Reset: a half-circle arrow returning down on the left (not the closed loop of refresh). */
+export function ResetIcon() {
+  return (
+    <svg
+      className="reset-icon"
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M13.5 11.5a5.5 5.5 0 0 0-11 0" />
+      <path d="M0.5 9.3l2 2.4 2-2.4" />
+    </svg>
+  );
+}
+
 export function NumInput({
   value,
   onCommit,
@@ -163,12 +184,18 @@ export function AxisFields({
 
   return (
     <fieldset className="axis-editor">
-      <legend>{legend}</legend>
-      <div className="row">
-        <button type="button" onClick={reset} title="Return the scale and range to the channel's defaults">
-          Reset to auto
+      <legend className="axis-legend">
+        {legend}
+        <button
+          type="button"
+          className="icon reset-btn"
+          onClick={reset}
+          title="Reset the scale and range to the channel's defaults"
+          aria-label="Reset scale and range"
+        >
+          <ResetIcon />
         </button>
-      </div>
+      </legend>
       <label className="field">
         Scale
         <select value={scaleKindOf(def)} onChange={(e) => setKind(e.target.value as ScaleKind)}>
