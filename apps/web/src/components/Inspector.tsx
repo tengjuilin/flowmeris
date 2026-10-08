@@ -628,14 +628,12 @@ export function GateEditor({ gateId, panel }: { gateId: string; panel: Panel }) 
   const sampleId = ui.sampleId ?? group.sampleIds[0]!;
   const geom = effectiveGeometry(group, gate.id, sampleId);
   const ov = isOverridden(group, gate.id, sampleId);
-  const nOv = group.overrides.filter((o) => o.gateId === gate.id).length;
   const pops = populationsOfGate(group.template, gate.id);
   const commit = (g: Geometry) =>
     setGateGeometry(group.id, gate.id, g, ui.editScope, sampleId, `gate:${gate.id}:${ui.editScope}`);
-  const name = pops.map((p) => p.name).join(', ');
-  const units = gate.dims.map((d) =>
-    d.transform ? `${ws.transforms[d.transform]?.kind ?? '?'} units` : 'linear units',
-  );
+  // A quadrant or spider gate makes several populations; name the card by its kind rather than list them all.
+  const name =
+    pops.length > 1 ? `${geom.kind[0]!.toUpperCase()}${geom.kind.slice(1)}` : (pops[0]?.name ?? 'Gate');
 
   return (
     <Section
@@ -659,12 +657,6 @@ export function GateEditor({ gateId, panel }: { gateId: string; panel: Panel }) 
         </button>
       }
     >
-      <p className="muted small">
-        {geom.kind} on{' '}
-        {gate.dims
-          .map((d, i) => `${d.channel} (${units[i]}${d.comp === 'group' ? ', compensated' : ''})`)
-          .join(' × ')}
-      </p>
       {geom.kind === 'rect' && (
         <div className="grid2">
           {gate.dims.map((d, i) => (
@@ -748,23 +740,17 @@ export function GateEditor({ gateId, panel }: { gateId: string; panel: Panel }) 
           {geom.vertices.length} vertices. Drag vertices; click an edge midpoint to add one.
         </p>
       )}
-      <div className="row">
-        {ov ? (
-          <>
-            <span className="badge warn">Overridden for this sample</span>
-            <button type="button" onClick={() => revertOverride(group.id, gate.id, sampleId)}>
-              Revert to template
-            </button>
-            <button type="button" onClick={() => promoteOverride(group.id, gate.id, sampleId)}>
-              Make this the template
-            </button>
-          </>
-        ) : (
-          <span className="muted small">
-            Template gate{nOv > 0 ? ` · overridden in ${nOv} sample(s)` : ''}
-          </span>
-        )}
-      </div>
+      {ov && (
+        <div className="row">
+          <span className="badge warn">Overridden for this sample</span>
+          <button type="button" onClick={() => revertOverride(group.id, gate.id, sampleId)}>
+            Revert to template
+          </button>
+          <button type="button" onClick={() => promoteOverride(group.id, gate.id, sampleId)}>
+            Make this the template
+          </button>
+        </div>
+      )}
     </Section>
   );
 }

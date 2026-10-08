@@ -2192,6 +2192,9 @@ table.stats.import-map td {
 .ridge-section-bar .ridge-section-head {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ridge-section-head {
   display: flex;

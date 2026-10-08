@@ -1,6 +1,7 @@
 import type { PlotFigure, PlotSpec } from '@flowmeris/model';
 import { useState } from 'react';
 import { DEFAULT_FIGURE } from '../lib/figure.ts';
+import { gateMatchesAxes } from '../lib/geometry.ts';
 import { useGroup, useStore } from '../state/store.ts';
 import {
   AxisEditor,
@@ -104,9 +105,11 @@ export function Inspector() {
     </label>
   );
   const card = (id: string) => ({ open: panel.isOpen(id), onToggle: () => panel.toggle(id) });
-  // Every gate drawn on this population, in the order they were made.
-  const gates = Object.values(group.template.gates).filter((g) => g.parentPop === plot.population);
   const is2d = plot.kind !== 'histogram' && !!plot.y;
+  // The gates drawn on this plot (this population, on these axes), in the order they were made.
+  const gates = Object.values(group.template.gates).filter(
+    (g) => g.parentPop === plot.population && gateMatchesAxes(g, plot.x, is2d ? plot.y : undefined),
+  );
 
   return (
     <aside className="inspector ridge-inspector" aria-label="Gate settings">
@@ -133,9 +136,7 @@ export function Inspector() {
           (gates.length ? (
             gates.map((g) => <GateEditor key={g.id} gateId={g.id} panel={panel} />)
           ) : (
-            <p className="muted small">
-              No gates on this population yet. Draw one with the tools above the plot.
-            </p>
+            <p className="muted small">No gates on this plot yet. Draw one with the tools above the plot.</p>
           ))}
         {tab === 'figure' && (
           <>
