@@ -167,6 +167,11 @@ export function AxisFields({
       },
       true,
     );
+  const factory = factoryAxis(ws, group, axis.channel);
+  const atDefault =
+    axis.transform === factory.transform &&
+    axis.range[0] === factory.range[0] &&
+    axis.range[1] === factory.range[1];
   const setKind = (k: ScaleKind) => setDef(transformOfKind(k, top));
   const scale = makeScale(def);
   const setRange = (i: 0 | 1, dataValue: number) => {
@@ -189,6 +194,7 @@ export function AxisFields({
         <button
           type="button"
           className="icon reset-btn"
+          disabled={atDefault}
           onClick={reset}
           title="Reset the scale and range to the channel's defaults"
           aria-label="Reset scale and range"

@@ -2321,3 +2321,24 @@ table.stats.import-map td {
 .export-pop input[type="number"] {
   width: 76px;
 }
+
+/* Reset buttons: borderless; grey and inert at the default, black and clickable once changed. */
+button.reset-btn,
+button.reset-all,
+.ridge-inspector .ridge-actions button {
+  border: none;
+  background: transparent;
+  color: var(--text);
+}
+button.reset-btn:hover:not(:disabled),
+button.reset-all:hover:not(:disabled),
+.ridge-inspector .ridge-actions button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+button.reset-btn:disabled,
+button.reset-all:disabled,
+.ridge-inspector .ridge-actions button:disabled {
+  color: var(--muted);
+  opacity: 0.6;
+  cursor: default;
+}

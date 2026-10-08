@@ -49,6 +49,15 @@ const copyCombine = (c: RidgeCombine): RidgeCombine => ({
 });
 export const DEFAULT_OVERLAP = 0.6;
 
+/** Deep equality of plain JSON values, independent of key order. */
+function sameJson(a: unknown, b: unknown): boolean {
+  const norm = (_: string, v: unknown) =>
+    v && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([x], [y]) => (x < y ? -1 : 1)))
+      : v;
+  return JSON.stringify(a, norm) === JSON.stringify(b, norm);
+}
+
 export const FONT_GROUPS: { label: string; fonts: { id: string; label: string; stack: string }[] }[] = [
   {
     label: 'Sans-serif',
@@ -746,7 +755,7 @@ export function RidgeInspector() {
             className="icon reset-all"
             title="Reset all ridge plot settings to their defaults"
             aria-label="Reset all settings"
-            disabled={!layout}
+            disabled={!layout || (sameJson(style, DEFAULT_RIDGE_STYLE) && overlap === DEFAULT_OVERLAP)}
             onClick={() =>
               update('Reset ridge settings', (l) => {
                 l.style = structuredClone(DEFAULT_RIDGE_STYLE);
