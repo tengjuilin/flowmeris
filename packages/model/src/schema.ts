@@ -335,7 +335,7 @@ export const RidgeStyleSchema = z.object({
   /** Figure width ÷ height; omitted = free. When set, the row pitch is derived to fit the height (overrides `rowHeight`). */
   aspect: Num.min(0.2).max(10).optional(),
   /** A key of the app's font list, or the name of any installed font. */
-  fontFamily: z.string().min(1).max(80).default('sans'),
+  fontFamily: z.string().min(1).max(80).default('arial'),
   /**
    * Base font size (px). Editing it rescales the label, tick and title sizes by the same ratio, so
    * their relative sizes are kept; each can still be set on its own afterwards.

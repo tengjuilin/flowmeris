@@ -53,8 +53,8 @@ export const FONT_GROUPS: { label: string; fonts: { id: string; label: string; s
   {
     label: 'Sans-serif',
     fonts: [
-      { id: 'sans', label: 'Sans-serif (default)', stack: 'Inter, Helvetica, Arial, sans-serif' },
-      { id: 'arial', label: 'Arial', stack: 'Arial, "Liberation Sans", Helvetica, sans-serif' },
+      { id: 'sans', label: 'Sans-serif', stack: 'Inter, Helvetica, Arial, sans-serif' },
+      { id: 'arial', label: 'Arial (default)', stack: 'Arial, "Liberation Sans", Helvetica, sans-serif' },
       { id: 'helvetica', label: 'Helvetica', stack: '"Helvetica Neue", Helvetica, Arial, sans-serif' },
       { id: 'calibri', label: 'Calibri', stack: 'Calibri, Carlito, "Segoe UI", sans-serif' },
       { id: 'verdana', label: 'Verdana', stack: 'Verdana, "DejaVu Sans", sans-serif' },
@@ -1298,7 +1298,7 @@ export function RidgeInspector() {
               <FontSelect
                 label="Base font"
                 value={style.fontFamily}
-                onChange={(v) => set('fontFamily', v ?? 'sans', 'Ridge font')}
+                onChange={(v) => set('fontFamily', v ?? 'arial', 'Ridge font')}
               />
               <label className="field inline">
                 Base font color
