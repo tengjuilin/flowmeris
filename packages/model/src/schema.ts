@@ -337,6 +337,11 @@ export const RidgeStyleSchema = z.object({
   /** A key of the app's font list, or the name of any installed font. */
   fontFamily: z.string().min(1).max(80).default('sans'),
   /**
+   * Base font size (px). Editing it rescales the label, tick and title sizes by the same ratio, so
+   * their relative sizes are kept; each can still be set on its own afterwards.
+   */
+  fontSize: Num.min(4).max(48).default(11.5),
+  /**
    * Display order of ridges; ridges not listed follow in default order. A ridge id is a sample id, or
    * `combo:<JSON of the grouping variables' values>` for combined replicates (see `RidgeCombineSchema`).
    */

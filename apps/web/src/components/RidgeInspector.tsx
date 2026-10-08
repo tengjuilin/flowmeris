@@ -570,6 +570,27 @@ function PercentSlider({
   );
 }
 
+/** Reset: an arrow curving back down to the left (not the circular arrow of refresh). */
+function ResetIcon() {
+  return (
+    <svg
+      className="reset-icon"
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M13 12.5a5.2 5.2 0 0 0-8.9-4.6L3 9.5" />
+      <path d="M3 5.5v4h4" />
+    </svg>
+  );
+}
+
 const PANEL_KEY = 'flowmeris.ridgePanel';
 
 /** The last tab and open sections, remembered in this browser. */
@@ -750,7 +771,7 @@ export function RidgeInspector() {
               })
             }
           >
-            ↺
+            <ResetIcon />
           </button>
         </div>
       </div>
@@ -782,6 +803,7 @@ export function RidgeInspector() {
                   )
                 }
               >
+                <ResetIcon />
                 Reset order
               </button>
               <button
@@ -795,6 +817,7 @@ export function RidgeInspector() {
                   )
                 }
               >
+                <ResetIcon />
                 Reset colours
               </button>
               <button
@@ -808,6 +831,7 @@ export function RidgeInspector() {
                   )
                 }
               >
+                <ResetIcon />
                 Reset labels
               </button>
             </div>
@@ -1106,30 +1130,37 @@ export function RidgeInspector() {
                 max={1}
                 onChange={(v) => set('fillOpacity', v, 'Ridge opacity', 'opacity')}
               />
-              <label className="field check">
-                <input
-                  type="checkbox"
-                  checked={style.strokeColor === undefined}
-                  onChange={(e) =>
-                    set('strokeColor', e.target.checked ? undefined : '#000000', 'Ridge outline colour')
-                  }
-                />
-                Outline matches background
-              </label>
-              <div className="grid2">
-                <label
-                  className="field inline"
-                  title={style.strokeColor === undefined ? 'Matches the background' : undefined}
-                >
-                  Outline
+              <div className="field">
+                Outline colour
+                <span className="swatch-auto">
                   <input
                     type="color"
                     className="swatch"
+                    aria-label="Outline colour"
+                    title={
+                      style.strokeColor === undefined ? 'Matches the background; pick to override' : undefined
+                    }
                     value={style.strokeColor ?? '#ffffff'}
-                    disabled={style.strokeColor === undefined}
                     onChange={(e) => set('strokeColor', e.target.value, 'Ridge outline colour', 'stroke')}
                   />
-                </label>
+                  <button
+                    type="button"
+                    className={`tt-btn tt-text${style.strokeColor === undefined ? ' on' : ''}`}
+                    aria-pressed={style.strokeColor === undefined}
+                    title="Outline matches the background"
+                    onClick={() =>
+                      set(
+                        'strokeColor',
+                        style.strokeColor === undefined ? '#000000' : undefined,
+                        'Ridge outline colour',
+                      )
+                    }
+                  >
+                    Auto
+                  </button>
+                </span>
+              </div>
+              <div className="grid2">
                 <LiveNum
                   label="Outline width"
                   step={0.25}
@@ -1242,6 +1273,28 @@ export function RidgeInspector() {
                 label="Base font"
                 value={style.fontFamily}
                 onChange={(v) => set('fontFamily', v ?? 'sans', 'Ridge font')}
+              />
+              <LiveNum
+                label="Base font size (px)"
+                step={0.5}
+                title="Scales the label, tick and title sizes together"
+                value={style.fontSize}
+                onCommit={(v) => {
+                  const next = clamp(v, 4, 48);
+                  if (next === style.fontSize) return;
+                  const k = next / style.fontSize;
+                  const scaled = (x: number) => clamp(Math.round(x * k * 2) / 2, 4, 48);
+                  update(
+                    'Ridge base font size',
+                    (l) => {
+                      l.style.fontSize = next;
+                      l.style.labelFontSize = scaled(l.style.labelFontSize);
+                      l.style.tickFontSize = scaled(l.style.tickFontSize);
+                      l.style.titleFontSize = scaled(l.style.titleFontSize);
+                    },
+                    'style:fontSize',
+                  );
+                }}
               />
             </Section>
           </>
