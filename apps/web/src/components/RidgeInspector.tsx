@@ -503,6 +503,7 @@ type SectionId =
   | 'ticks'
   | 'title'
   | 'labels'
+  | 'labelText'
   | 'tickText'
   | 'titleText'
   | 'layout'
@@ -521,6 +522,7 @@ const DEFAULT_OPEN: Partial<Record<SectionId, boolean>> = {
   ridgeStyle: true,
   scale: true,
   labels: true,
+  labelText: true,
 };
 
 /** A slider for a 0–`max` fraction, with a percentage box beside it for typing an exact value. */
@@ -815,9 +817,7 @@ export function RidgeInspector() {
               </button>
             </div>
             {selected.size > 1 && (
-              <p className="small muted">
-                {selected.size} selected — a color change applies to all of them.
-              </p>
+              <p className="small muted">{selected.size} selected — a color change applies to all of them.</p>
             )}
             <ol className="ridge-samples" onDragLeave={() => setDrop(null)}>
               {ordered.map((id, i) => {
@@ -979,33 +979,12 @@ export function RidgeInspector() {
         )}
         {tab === 'text' && (
           <>
-            <Section id="labels" title="Ridge labels" open={!!open.labels} onToggle={() => toggle('labels')}>
-              <label className="field check">
-                <input
-                  type="checkbox"
-                  checked={style.showLabels}
-                  onChange={(e) => set('showLabels', e.target.checked, 'Ridge labels')}
-                />
-                Show labels
-              </label>
-              <label className="field check sub-option">
-                <input
-                  type="checkbox"
-                  checked={style.showCounts}
-                  disabled={!style.showLabels}
-                  onChange={(e) => set('showCounts', e.target.checked, 'Ridge event counts')}
-                />
-                Show event counts (n)
-              </label>
-              <label className="field check sub-option sub-option-2">
-                <input
-                  type="checkbox"
-                  checked={style.countOnNewLine}
-                  disabled={!style.showLabels || !style.showCounts}
-                  onChange={(e) => set('countOnNewLine', e.target.checked, 'Ridge count on new line')}
-                />
-                Event count on its own line
-              </label>
+            <Section
+              id="labelText"
+              title="Ridge labels"
+              open={!!open.labelText}
+              onToggle={() => toggle('labelText')}
+            >
               <TextStyleEditor
                 label="Ridge labels"
                 value={style.labelText}
@@ -1016,29 +995,6 @@ export function RidgeInspector() {
                 align={style.labelAlign}
                 onAlign={(a) => set('labelAlign', a, 'Ridge label alignment')}
               />
-              <div className="grid2">
-                <LiveNum
-                  label="Label width (px)"
-                  step={10}
-                  title={
-                    style.labelOverflow === 'widen' ? 'Set automatically to fit the longest label' : undefined
-                  }
-                  value={style.labelWidth}
-                  onCommit={(v) => set('labelWidth', clamp(v, 0, 1000), 'Ridge label width')}
-                />
-              </div>
-              <label className="field" title="What to do with a label wider than the label column">
-                Long labels
-                <select
-                  value={style.labelOverflow}
-                  onChange={(e) =>
-                    set('labelOverflow', e.target.value as RidgeStyle['labelOverflow'], 'Ridge long labels')
-                  }
-                >
-                  <option value="wrap">Wrap onto more lines</option>
-                  <option value="widen">Widen the label column</option>
-                </select>
-              </label>
             </Section>
             <Section
               id="tickText"
@@ -1147,6 +1103,57 @@ export function RidgeInspector() {
                   onCommit={(v) => set('strokeWidth', clamp(v, 0, 10), 'Ridge outline width')}
                 />
               </div>
+            </Section>
+            <Section id="labels" title="Ridge labels" open={!!open.labels} onToggle={() => toggle('labels')}>
+              <label className="field check">
+                <input
+                  type="checkbox"
+                  checked={style.showLabels}
+                  onChange={(e) => set('showLabels', e.target.checked, 'Ridge labels')}
+                />
+                Show labels
+              </label>
+              <label className="field check sub-option">
+                <input
+                  type="checkbox"
+                  checked={style.showCounts}
+                  disabled={!style.showLabels}
+                  onChange={(e) => set('showCounts', e.target.checked, 'Ridge event counts')}
+                />
+                Show event counts (n)
+              </label>
+              <label className="field check sub-option sub-option-2">
+                <input
+                  type="checkbox"
+                  checked={style.countOnNewLine}
+                  disabled={!style.showLabels || !style.showCounts}
+                  onChange={(e) => set('countOnNewLine', e.target.checked, 'Ridge count on new line')}
+                />
+                Event count on its own line
+              </label>
+              <div className="grid2">
+                <LiveNum
+                  label="Label width (px)"
+                  step={10}
+                  title={
+                    style.labelOverflow === 'widen' ? 'Set automatically to fit the longest label' : undefined
+                  }
+                  value={style.labelWidth}
+                  onCommit={(v) => set('labelWidth', clamp(v, 0, 1000), 'Ridge label width')}
+                />
+              </div>
+              <label className="field" title="What to do with a label wider than the label column">
+                Long labels
+                <select
+                  value={style.labelOverflow}
+                  onChange={(e) =>
+                    set('labelOverflow', e.target.value as RidgeStyle['labelOverflow'], 'Ridge long labels')
+                  }
+                >
+                  <option value="wrap">Wrap onto more lines</option>
+                  <option value="widen">Widen the label column</option>
+                </select>
+              </label>
             </Section>
             <Section id="layout" title="Layout" open={!!open.layout} onToggle={() => toggle('layout')}>
               <PercentSlider
