@@ -2374,6 +2374,8 @@ table.stats.import-map td {
 .ridge-inspector .small,
 .plot-side .pop-tree,
 .plot-side .pop-tree :is(button, input, .pane-title),
+.tiles-side .pop-tree,
+.tiles-side .pop-tree :is(button, input, .pane-title),
 .plot-side .ref-plots,
 .plot-side :is(.ref-plots, .ref-tabs) :is(button, select, input, .field, .small, .pane-title),
 .ridge-combine .field,
