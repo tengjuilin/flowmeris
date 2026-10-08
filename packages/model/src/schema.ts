@@ -313,7 +313,7 @@ export const TextStyleSchema = z.object({
   bold: z.boolean().default(false),
   italic: z.boolean().default(false),
   underline: z.boolean().default(false),
-  /** Omitted = the theme's text colour. */
+  /** Omitted = the figure's font color. */
   color: HexColor.optional(),
 });
 export type TextStyle = z.infer<typeof TextStyleSchema>;
@@ -341,6 +341,8 @@ export const RidgeStyleSchema = z.object({
    * their relative sizes are kept; each can still be set on its own afterwards.
    */
   fontSize: Num.min(4).max(48).default(11.5),
+  /** Color of all ridge text (labels, ticks, axis title) unless a text style sets its own. */
+  fontColor: HexColor.default('#000000'),
   /**
    * Display order of ridges; ridges not listed follow in default order. A ridge id is a sample id, or
    * `combo:<JSON of the grouping variables' values>` for combined replicates (see `RidgeCombineSchema`).

@@ -437,7 +437,10 @@ export function RidgeView() {
                   y={base - 3 - (lines.length - 1) * lineH}
                   textAnchor={style.labelAlign}
                   className="ridge-label"
-                  style={{ fontSize: style.labelFontSize, ...textCss(style.labelText, style.fontFamily) }}
+                  style={{
+                    fontSize: style.labelFontSize,
+                    ...textCss(style.labelText, style.fontFamily, style.fontColor),
+                  }}
                 >
                   <title>{r.sampleIds.map((id) => ws.samples[id]?.relativePath).join('\n')}</title>
                   {lines.map((line, k) => (
@@ -469,7 +472,10 @@ export function RidgeView() {
                 <text
                   y={tickLabelY}
                   textAnchor="middle"
-                  style={{ fontSize: style.tickFontSize, ...textCss(style.tickText, style.fontFamily) }}
+                  style={{
+                    fontSize: style.tickFontSize,
+                    ...textCss(style.tickText, style.fontFamily, style.fontColor),
+                  }}
                 >
                   {t.label}
                 </text>
@@ -482,7 +488,10 @@ export function RidgeView() {
               y={titleY}
               textAnchor="middle"
               className="axis-title pickable"
-              style={{ fontSize: style.titleFontSize, ...textCss(style.titleText, style.fontFamily) }}
+              style={{
+                fontSize: style.titleFontSize,
+                ...textCss(style.titleText, style.fontFamily, style.fontColor),
+              }}
               {...pickerTrigger(`X axis: ${title}. Change channel`, setChMenu)}
             >
               {title}

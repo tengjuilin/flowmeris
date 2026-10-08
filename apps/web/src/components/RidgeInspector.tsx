@@ -92,13 +92,13 @@ export function fontStack(family: string): string {
 }
 
 /** SVG text styling for `t`, falling back to the figure's font family. */
-export function textCss(t: TextStyle, base: RidgeStyle['fontFamily']): CSSProperties {
+export function textCss(t: TextStyle, base: RidgeStyle['fontFamily'], baseColor: string): CSSProperties {
   return {
     fontFamily: fontStack(t.fontFamily ?? base),
     fontWeight: t.bold ? 700 : 400,
     fontStyle: t.italic ? 'italic' : 'normal',
     textDecoration: t.underline ? 'underline' : 'none',
-    ...(t.color ? { fill: t.color } : {}),
+    fill: t.color ?? baseColor,
   };
 }
 
@@ -370,6 +370,7 @@ function TextStyleEditor({
   label,
   value,
   base,
+  baseColor,
   onChange,
   size,
   onSize,
@@ -379,6 +380,7 @@ function TextStyleEditor({
   label: string;
   value: TextStyle;
   base: string;
+  baseColor: string;
   onChange: (t: TextStyle) => void;
   size: number;
   onSize: (v: number) => void;
@@ -399,7 +401,7 @@ function TextStyleEditor({
       {glyph}
     </button>
   );
-  const ink = value.color ?? 'var(--text)';
+  const ink = value.color ?? baseColor;
   return (
     <div className="text-toolbar">
       <div className="tt-row">
@@ -457,19 +459,19 @@ function TextStyleEditor({
           <input
             type="color"
             aria-label={`${label} color`}
-            value={value.color ?? '#444444'}
+            value={ink}
             onChange={(e) => onChange({ ...value, color: e.target.value })}
           />
         </label>
         <button
           type="button"
-          className="tt-btn tt-text"
-          title="Automatic color (the theme's text color)"
-          aria-label={`Automatic ${label.toLowerCase()} color`}
+          className="reset-btn"
+          title="Reset color to the base font color"
+          aria-label={`Reset ${label.toLowerCase()} color`}
           disabled={!value.color}
           onClick={() => onChange({ ...value, color: undefined })}
         >
-          Auto
+          <ResetIcon />
         </button>
         {align && onAlign && (
           <>
@@ -1003,6 +1005,7 @@ export function RidgeInspector() {
                 label="Ridge labels"
                 value={style.labelText}
                 base={style.fontFamily}
+                baseColor={style.fontColor}
                 onChange={(t) => set('labelText', t, 'Ridge label text')}
                 size={style.labelFontSize}
                 onSize={(v) => set('labelFontSize', v, 'Ridge label size')}
@@ -1020,6 +1023,7 @@ export function RidgeInspector() {
                 label="Tick labels"
                 value={style.tickText}
                 base={style.fontFamily}
+                baseColor={style.fontColor}
                 onChange={(t) => set('tickText', t, 'Ridge tick text')}
                 size={style.tickFontSize}
                 onSize={(v) => set('tickFontSize', v, 'Ridge tick label size')}
@@ -1035,6 +1039,7 @@ export function RidgeInspector() {
                 label="Axis title"
                 value={style.titleText}
                 base={style.fontFamily}
+                baseColor={style.fontColor}
                 onChange={(t) => set('titleText', t, 'Ridge title text')}
                 size={style.titleFontSize}
                 onSize={(v) => set('titleFontSize', v, 'Ridge title size')}
@@ -1295,6 +1300,31 @@ export function RidgeInspector() {
                 value={style.fontFamily}
                 onChange={(v) => set('fontFamily', v ?? 'sans', 'Ridge font')}
               />
+              <label className="field inline">
+                Base font color
+                <span className="swatch-auto">
+                  <input
+                    type="color"
+                    className="swatch"
+                    value={style.fontColor}
+                    onChange={(e) => set('fontColor', e.target.value, 'Ridge font color', 'fontColor')}
+                  />
+                  <button
+                    type="button"
+                    className="reset-btn"
+                    disabled={style.fontColor === DEFAULT_RIDGE_STYLE.fontColor}
+                    aria-label="Reset base font color to black"
+                    title={
+                      style.fontColor === DEFAULT_RIDGE_STYLE.fontColor
+                        ? 'Base font color is the default'
+                        : 'Reset base font color to black'
+                    }
+                    onClick={() => set('fontColor', DEFAULT_RIDGE_STYLE.fontColor, 'Ridge font color')}
+                  >
+                    <ResetIcon />
+                  </button>
+                </span>
+              </label>
               <LiveNum
                 label="Base font size (px)"
                 step={0.5}
