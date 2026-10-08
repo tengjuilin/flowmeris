@@ -27,7 +27,7 @@ import {
 } from '../lib/defaults.ts';
 import { DEFAULT_FIGURE } from '../lib/figure.ts';
 import { contextFor, toast, useGroup, useStore } from '../state/store.ts';
-import { axisChannelSetter, usePlotForPopulation } from './PlotPanel.tsx';
+import { axisChannelSetter, tilesEdit, usePlotForPopulation } from './PlotPanel.tsx';
 
 /** Reset: an undo arrow, an open arrowhead on a line that turns back on itself in a half circle. */
 export function ResetIcon() {
@@ -215,10 +215,13 @@ export function AxisEditor({
   panel,
   children,
   extra,
+  tiles,
 }: {
   which: 'x' | 'y';
   plot: PlotSpec;
   panel: Panel;
+  /** Edit the group's Tiles plot instead of a Gate-view plot; its scales never become the channel's defaults. */
+  tiles?: boolean;
   /** More settings for this axis, after the channel picker. */
   children?: ReactNode;
   /** Whether those settings differ from their defaults, and how to reset them with the axis. */
@@ -230,9 +233,9 @@ export function AxisEditor({
   const apply: ApplyAxis = (label, fn, shared) =>
     mutate(label, (w) => {
       const g = w.groups.find((x) => x.id === group.id)!;
-      const a = g.plots.find((x) => x.id === plot.id)![which]!;
+      const a = (tiles ? g.tilePlots : g.plots).find((x) => x.id === plot.id)![which]!;
       fn(a, w, g);
-      if (shared) g.axisDefaults[a.channel] = { ...a };
+      if (shared && !tiles) g.axisDefaults[a.channel] = { ...a };
     });
   const axis = plot[which] as AxisSpec;
   const factory = factoryAxis(ws, group, axis.channel);
@@ -266,7 +269,16 @@ export function AxisEditor({
     >
       <label className="field">
         Channel
-        <select value={axis.channel} onChange={(e) => axisChannelSetter(group, plot)(which, e.target.value)}>
+        <select
+          value={axis.channel}
+          onChange={(e) =>
+            axisChannelSetter(
+              group,
+              plot,
+              tiles ? tilesEdit(group.id, plot.id) : undefined,
+            )(which, e.target.value)
+          }
+        >
           {group.channels.map((c) => {
             const pns = sample?.channels.find((x) => x.pnn === c)?.pns;
             return (

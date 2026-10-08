@@ -205,6 +205,7 @@ export const PANEL_FIGURE_KEYS: Record<'figure' | 'axis' | 'text', (keyof PlotFi
     'tickWidth',
     'spineColor',
     'spineWidth',
+    'boxAspect',
     'showTickLabels',
     'xTicks',
     'yTicks',

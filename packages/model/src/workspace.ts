@@ -62,6 +62,7 @@ export function newGroup(name: string, sampleIds: string[], channels: string[]):
     overrides: [],
     axisDefaults: {},
     plots: [],
+    tilePlots: [],
     refPlots: [],
     grid: { columns: 3, cells: [] },
     layouts: [],
@@ -158,6 +159,7 @@ export function removeGateCascade(group: Group, gateId: string): void {
   for (const gid of doomedGates) delete t.gates[gid];
   group.overrides = group.overrides.filter((o) => !doomedGates.has(o.gateId));
   group.plots = group.plots.filter((p) => !doomedPops.has(p.population));
+  group.tilePlots = group.tilePlots.filter((p) => !doomedPops.has(p.population));
   // Reference plots pinned to a removed population fall back to following the gated one.
   for (const r of group.refPlots) if (r.population && doomedPops.has(r.population)) r.population = undefined;
   // Grid cells showing a removed population go back to the removed gate's parent population.

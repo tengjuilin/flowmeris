@@ -452,7 +452,16 @@ export function Inspector() {
               id="ticks"
               title="Ticks and spine"
               {...resetOf(
-                ['axisColor', 'tickWidth', 'spineColor', 'spineWidth', 'showTickLabels', 'xTicks', 'yTicks'],
+                [
+                  'axisColor',
+                  'tickWidth',
+                  'spineColor',
+                  'spineWidth',
+                  'boxAspect',
+                  'showTickLabels',
+                  'xTicks',
+                  'yTicks',
+                ],
                 'ticks and spine',
               )}
               {...card('ticks')}
@@ -515,6 +524,25 @@ export function Inspector() {
                 value={fig.spineWidth}
                 onCommit={(v) => set('spineWidth', clamp(v, 0, 10), 'Spine width', 'spineWidth')}
               />
+              <label className="field check">
+                <input
+                  type="checkbox"
+                  checked={fig.boxAspect === undefined}
+                  onChange={(e) => set('boxAspect', e.target.checked ? undefined : 1, 'Box aspect ratio')}
+                />
+                Free box aspect ratio
+              </label>
+              {fig.boxAspect !== undefined && (
+                <div className="sub-option">
+                  <NumInput
+                    live
+                    label="Box width ÷ height"
+                    step={0.1}
+                    value={fig.boxAspect}
+                    onCommit={(v) => set('boxAspect', clamp(v, 0.2, 10), 'Box aspect ratio', 'boxAspect')}
+                  />
+                </div>
+              )}
               <label className="field check">
                 <input
                   type="checkbox"

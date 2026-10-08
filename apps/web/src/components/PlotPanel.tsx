@@ -149,13 +149,20 @@ function editPlot(
   plotId: string,
   label: string,
   fn: (p: PlotSpec, g: Group, w: Workspace) => void,
+  tiles = false,
 ) {
   useStore.getState().mutate(label, (w) => {
     const g = w.groups.find((x) => x.id === groupId);
-    const p = g?.plots.find((x) => x.id === plotId);
+    const p = (tiles ? g?.tilePlots : g?.plots)?.find((x) => x.id === plotId);
     if (g && p) fn(p, g, w);
   });
 }
+
+/** Edits the group's Tiles plot `plotId`, leaving the Gate view's plots alone. */
+export const tilesEdit =
+  (groupId: string, plotId: string): EditAxes =>
+  (label, fn) =>
+    editPlot(groupId, plotId, label, fn, true);
 
 /** Put `channel` on a plot's axis with that channel's default scale. */
 export function setAxisChannel(edit: EditAxes, axis: 'x' | 'y', channel: string) {
@@ -172,7 +179,7 @@ export function axisChannelSetter(group: Group, plot: PlotSpec, edit?: EditAxes)
   return (axis: 'x' | 'y', channel: string) => setAxisChannel(ed, axis, channel);
 }
 
-/** Plot type picker; edits the population's plot (shared by the Plot and Tiles views), or `edit`'s target. */
+/** Plot type picker; edits the population's Gate-view plot, or `edit`'s target. */
 export function PlotKindSelect({
   group,
   plot,

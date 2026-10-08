@@ -67,6 +67,7 @@ interface Props {
   group: Group;
   sampleId: string;
   plot: PlotSpec;
+  /** Space available; a fixed box aspect ratio (figure `boxAspect`) may use less of it. */
   width: number;
   height: number;
   interactive?: boolean;
@@ -124,8 +125,8 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     group,
     sampleId,
     plot,
-    width,
-    height,
+    width: availWidth,
+    height: availHeight,
     interactive = false,
     compact = false,
     hideOffScaleNote = false,
@@ -156,8 +157,15 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         t: title ? 14 + fig.titleFontSize * 1.4 : 14,
         b: xTitleY + 8,
       };
-  const pw = Math.max(10, width - margin.l - margin.r);
-  const ph = Math.max(10, height - margin.t - margin.b);
+  let pw = Math.max(10, availWidth - margin.l - margin.r);
+  let ph = Math.max(10, availHeight - margin.t - margin.b);
+  // A fixed box aspect ratio shrinks the plot area to the largest box of that shape that fits.
+  if (fig.boxAspect) {
+    if (pw / ph > fig.boxAspect) pw = Math.max(10, ph * fig.boxAspect);
+    else ph = Math.max(10, pw / fig.boxAspect);
+  }
+  const width = fig.boxAspect ? pw + margin.l + margin.r : availWidth;
+  const height = fig.boxAspect ? ph + margin.t + margin.b : availHeight;
   const is1d = plot.kind === 'histogram' || !plot.y;
   const xr = plot.x.range;
   const yr = plot.y?.range ?? [0, 1];

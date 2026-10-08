@@ -1,6 +1,6 @@
 import type { AnalysisContext } from '@flowmeris/engine';
 import { type Group, type Workspace, newWorkspace } from '@flowmeris/model';
-import { type Patch, applyPatches, enablePatches, produceWithPatches } from 'immer';
+import { type Patch, applyPatches, enablePatches, produce, produceWithPatches } from 'immer';
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import { displayNames } from '../lib/names.ts';
@@ -68,6 +68,8 @@ interface Store {
    * typing) collapse into one undo step.
    */
   mutate: (label: string, fn: (ws: Workspace) => void, merge?: string) => void;
+  /** Change the workspace without an undo step, for bookkeeping the user did not ask for (e.g. a view's plot made on first visit). */
+  mutateQuiet: (fn: (ws: Workspace) => void) => void;
   undo: () => void;
   redo: () => void;
   setWorkspace: (ws: Workspace) => void;
@@ -147,6 +149,9 @@ export const useStore = create<Store>((set, get) => ({
         : { label, redo, undo };
       return { ws: next, past: [...s.past.slice(-199), h], future: [] };
     });
+  },
+  mutateQuiet(fn) {
+    set((s) => ({ ws: produce(s.ws, (draft) => void fn(draft as Workspace)) }));
   },
   undo() {
     const { past, ws } = get();

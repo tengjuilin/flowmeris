@@ -900,6 +900,9 @@ code,
   max-width: 100%;
   margin: 0 0 12px 12px;
 }
+.tiles-plot {
+  margin-bottom: 8px;
+}
 .tiles-side .pop-tree {
   max-height: 50vh;
   overflow: auto;
@@ -928,6 +931,21 @@ code,
 .tile-title span:first-child {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* A tile's title is text with an icon button that opens the sample in the Gate view. */
+.tile .tile-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 0;
+}
+.tile .tile-title span:first-child {
+  flex: 1;
+  white-space: nowrap;
+}
+.tile .tile-title button.icon {
+  display: flex;
+  padding: 2px;
 }
 .tile .gate-label {
   font-size: 10px;

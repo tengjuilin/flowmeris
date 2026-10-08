@@ -4,7 +4,7 @@ import { axisTicks, formatLinear } from '@flowmeris/transforms';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { lineageKey } from '../lib/analysis.ts';
-import { factoryAxis } from '../lib/defaults.ts';
+import { factoryAxis, newTilePlot } from '../lib/defaults.ts';
 import { exportSvgFigure } from '../lib/exportPlot.ts';
 import { scaleFor } from '../lib/geometry.ts';
 import { type RidgeCurve, combineCounts, textMeasure, withRidgeChannel, wrapText } from '../lib/ridge.ts';
@@ -17,16 +17,16 @@ import {
   useStore,
 } from '../state/store.ts';
 import { ExportMenu } from './ExportMenu.tsx';
+import { AxisEditor, type Panel, Section } from './Inspector.tsx';
 import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './PickerMenu.tsx';
 import { PlotCanvas } from './PlotCanvas.tsx';
 import {
-  AxisSelects,
   EditScopeToggle,
   PlotKindSelect,
   ToolButtons,
   axisChannelSetter,
   drill,
-  usePlotForPopulation,
+  tilesEdit,
 } from './PlotPanel.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { fontStack, ridgeColor, textCss, useRidge } from './RidgeInspector.tsx';
@@ -92,15 +92,32 @@ const Tile = memo(function Tile({
         if (!current) setUi({ sampleId, selectedGateId: null });
       }}
     >
-      <button
-        type="button"
-        className="tile-title"
-        title={`${s?.relativePath} — open in the Gate view`}
-        onClick={() => setUi({ sampleId, view: 'gate' })}
-      >
+      <div className="tile-title" title={s?.relativePath}>
         <span>{name}</span>
         {ov && <span className="badge warn">override</span>}
-      </button>
+        <button
+          type="button"
+          className="icon"
+          title="Open in the Gate view"
+          aria-label={`Open ${name} in the Gate view`}
+          onClick={() => setUi({ sampleId, view: 'gate' })}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3.5 12.5V3.5h13v13h-9" />
+            <path d="M3.5 16.5l7-7M7 9.5h3.5V13" />
+          </svg>
+        </button>
+      </div>
       <div style={{ width: size, height: size, overflow: 'hidden' }}>
         {/* While the size slider moves, the last render is stretched to the live size; it is redrawn
             sharp at `renderSize` once the slider settles. */}
@@ -122,7 +139,7 @@ const Tile = memo(function Tile({
               hideOffScaleNote
               interactive={current}
               onDrill={drill}
-              onPickChannel={axisChannelSetter(group, plot)}
+              onPickChannel={axisChannelSetter(group, plot, tilesEdit(group.id, plot.id))}
             />
           </div>
         )}
@@ -131,9 +148,43 @@ const Tile = memo(function Tile({
   );
 });
 
+/** The Tiles plot's type, then each axis's channel, scale and range, as the same cards as the Gate view's settings. */
+function TilesPlotCard({ group, plot }: { group: Group; plot: PlotSpec }) {
+  // Every card starts open; collapsing one lasts for the session.
+  const [closed, setClosed] = useState<Record<string, boolean>>({});
+  const panel: Panel = {
+    isOpen: (id) => !closed[id],
+    toggle: (id) => setClosed((c) => ({ ...c, [id]: !c[id] })),
+  };
+  return (
+    <div className="ridge-inspector tiles-plot" aria-label="Tiles plot settings">
+      <Section id="plot" title="Plot" open={panel.isOpen('plot')} onToggle={() => panel.toggle('plot')}>
+        <PlotKindSelect group={group} plot={plot} edit={tilesEdit(group.id, plot.id)} label="Plot type" />
+      </Section>
+      <AxisEditor tiles which="x" plot={plot} panel={panel} />
+      {plot.kind !== 'histogram' && plot.y && <AxisEditor tiles which="y" plot={plot} panel={panel} />}
+    </div>
+  );
+}
+
+/** The Tiles plot of the population being gated; made from the Gate view's plot on first visit. */
+function useTilePlot(group: Group | undefined): PlotSpec | undefined {
+  const popId = useStore((s) => s.ui.popId);
+  const plot = group?.tilePlots.find((p) => p.population === popId);
+  const missing = !!group && !plot && !!group.template.populations[popId];
+  useEffect(() => {
+    if (!missing || !group) return;
+    useStore.getState().mutateQuiet((w) => {
+      const g = w.groups.find((x) => x.id === group.id);
+      if (g && !g.tilePlots.some((p) => p.population === popId)) newTilePlot(w, g, popId);
+    });
+  }, [missing, group, popId]);
+  return plot;
+}
+
 export function TilesView() {
   const group = useGroup();
-  const plot = usePlotForPopulation();
+  const plot = useTilePlot(group);
   const names = useSampleNames(group);
   const shown = useSelectedSampleIds(group);
   const [tile, setTile] = useState(280);
@@ -142,22 +193,13 @@ export function TilesView() {
   const renderSize = useSettled(tile, 150);
   if (!group || !plot)
     return (
-      <div className="empty">Open a plot first; tiles show that plot for every sample in the group.</div>
+      <div className="empty">Open a population first; tiles show its plot for every sample in the group.</div>
     );
-  const pop = group.template.populations[plot.population];
   return (
     <div className="tiles-view">
       <div className="toolbar">
-        <strong>{pop?.name}</strong>
-        <PlotKindSelect group={group} plot={plot} />
-        <AxisSelects group={group} plot={plot} />
         <ToolButtons is1d={plot.kind === 'histogram'} />
         <EditScopeToggle />
-        <span className="muted">
-          {shown.length === group.sampleIds.length
-            ? `${shown.length} samples`
-            : `${shown.length} of ${group.sampleIds.length} samples`}
-        </span>
         <div className="spacer" />
         <label className="field">
           Tile size
@@ -170,16 +212,11 @@ export function TilesView() {
           />
         </label>
       </div>
-      <p className="muted small">
-        Gates are drawn from the group template; samples with overrides are flagged and drawn with their own
-        gate. Click a tile to select it, then gate on it with the tools above; click its title to open it in
-        the Gate view. Plot type and axes are shared with the Gate view; choose samples with the checkboxes in
-        the sidebar.
-      </p>
       {shown.length === 0 && <div className="empty">No samples selected: check some in the sidebar.</div>}
       {/* The population card floats top-right: tiles flow beside it, then use the full width below it. */}
       <div className="tiles">
         <div className="tiles-side">
+          <TilesPlotCard group={group} plot={plot} />
           <PopulationTree />
         </div>
         {shown.map((id) => (

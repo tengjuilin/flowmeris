@@ -122,6 +122,25 @@ export function newPlot(
   return plot;
 }
 
+/**
+ * Add the population's Tiles plot: a copy of the Gate view's plot type and axes (or the defaults when it
+ * has none) with the default appearance. Not linked to the Gate view's plot afterwards.
+ */
+export function newTilePlot(ws: Workspace, g: Group, population: string): PlotSpec {
+  const src = g.plots.find((p) => p.population === population);
+  const [xc, yc] = defaultChannels(ws, g);
+  const plot: PlotSpec = {
+    id: newId('tpl_'),
+    population,
+    kind: src?.kind ?? 'pseudocolor',
+    x: { ...(src?.x ?? defaultAxis(ws, g, xc)) },
+    style: structuredClone(DEFAULT_STYLE),
+  };
+  if (plot.kind !== 'histogram') plot.y = { ...(src?.y ?? defaultAxis(ws, g, yc)) };
+  g.tilePlots.push(plot);
+  return plot;
+}
+
 /** Next population colour: categorical palette in fixed order (dataviz rule: never cycled). */
 export function nextColor(g: Group): string {
   const used = Object.keys(g.template.populations).length - 1;

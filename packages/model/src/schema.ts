@@ -279,6 +279,8 @@ export const PlotFigureSchema = z.object({
   spineColor: HexColor.optional(),
   /** Frame line width (px). */
   spineWidth: Num.min(0).max(10).default(1),
+  /** Width ÷ height of the plot area inside the spine; omitted = fill the space given. */
+  boxAspect: Num.min(0.2).max(10).optional(),
   showTickLabels: z.boolean().default(true),
   /** Tick marks in data (linear) units; omitted = automatic. A missing label is formatted from the value. */
   xTicks: z.array(z.object({ value: Num, label: z.string().optional() })).optional(),
@@ -675,6 +677,11 @@ export const GroupSchema = z.object({
   /** Default axis per channel ($PnN). */
   axisDefaults: z.record(AxisSpecSchema),
   plots: z.array(PlotSpecSchema),
+  /**
+   * Plots of the Tiles view, at most one per population: their own type and axes, copied from the Gate
+   * view's plot once on first visit and edited apart from it afterwards; drawn with the default appearance.
+   */
+  tilePlots: z.array(PlotSpecSchema).default([]),
   /** Reference plots of the Plot view, one per tab. */
   refPlots: z.array(RefPlotSchema).default([]),
   /** Grid of plots of the Plot view. */
