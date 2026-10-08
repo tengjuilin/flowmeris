@@ -2343,6 +2343,8 @@ table.stats.import-map td {
 .ridge-inspector .tt-btn.tt-text,
 .ridge-inspector .group-picker,
 .ridge-inspector .small,
+.plot-side:has(.ridge-combine) .pop-tree,
+.plot-side:has(.ridge-combine) .pop-tree :is(button, input, .pane-title),
 .ridge-combine .field,
 .ridge-combine .small,
 .ridge-combine .pane-title,
@@ -2386,6 +2388,26 @@ table.stats.import-map td {
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.15);
+}
+.export-menu > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ridge-export {
+  flex: 0 0 auto;
+}
+.ridge-export,
+.ridge-export > button {
+  font-size: 12px;
+}
+.ridge-export > button {
+  width: 100%;
+  justify-content: center;
+}
+.ridge-export .export-pop {
+  left: 0;
+  right: auto;
 }
 .export-pop .field {
   justify-content: space-between;

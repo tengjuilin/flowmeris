@@ -1023,6 +1023,32 @@ export function RidgeInspector() {
               onToggle={() => toggle('scale')}
             >
               {axis && group && (
+                <label className="field">
+                  Channel
+                  <select
+                    value={axis.channel}
+                    onChange={(e) => {
+                      const c = e.target.value;
+                      update('Ridge channel', (l, w, g) => {
+                        l.axis = factoryAxis(w, g, c);
+                      });
+                    }}
+                  >
+                    {group.channels.map((c) => {
+                      const pns = ws.samples[group.sampleIds[0] ?? '']?.channels.find(
+                        (x) => x.pnn === c,
+                      )?.pns;
+                      return (
+                        <option key={c} value={c}>
+                          {c}
+                          {pns ? ` (${pns})` : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              )}
+              {axis && group && (
                 <AxisFields
                   live
                   hideReset

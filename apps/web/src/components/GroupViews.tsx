@@ -131,7 +131,11 @@ const Tile = memo(function Tile({
 });
 
 /** Export button: opens a small form to choose the file format (and DPI for raster formats). */
-function ExportMenu({ getSvg, baseName }: { getSvg: () => SVGSVGElement | null; baseName: string }) {
+function ExportMenu({
+  getSvg,
+  baseName,
+  className,
+}: { getSvg: () => SVGSVGElement | null; baseName: string; className?: string }) {
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<ImageFormat>('pdf');
   const [dpi, setDpi] = useState(300);
@@ -155,8 +159,18 @@ function ExportMenu({ getSvg, baseName }: { getSvg: () => SVGSVGElement | null; 
       .finally(() => setBusy(false));
   };
   return (
-    <div className="export-menu" ref={ref}>
+    <div className={className ? `export-menu ${className}` : 'export-menu'} ref={ref}>
       <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
+          <path
+            d="M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 11v2.5h11V11"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
         Export
       </button>
       {open && (
@@ -264,6 +278,21 @@ export function TilesView() {
 // shared x axis.
 // ---------------------------------------------------------------------------
 
+/** Card above the population tree: export the ridge plot figure. */
+export function RidgeExportCard() {
+  const ui = useStore((s) => s.ui);
+  const { group, ch } = useRidge();
+  if (!group) return null;
+  const pop = group.template.populations[ui.popId];
+  return (
+    <ExportMenu
+      className="ridge-export"
+      getSvg={() => document.querySelector<SVGSVGElement>('.ridge-view svg.ridge')}
+      baseName={`${group.name}_${pop?.name}_${ch}_ridge`}
+    />
+  );
+}
+
 export function RidgeView() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
@@ -271,7 +300,6 @@ export function RidgeView() {
   const { group, style, combine, overlap, ch, axis, rows, update } = useRidge();
   const sampleIds = useMemo(() => rows.flatMap((r) => r.sampleIds), [rows]);
   const box = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
   const { width } = useSize(box);
   const [data, setData] = useState<Record<string, HistogramResponse>>({});
   const [chMenu, setChMenu] = useState<Anchor | null>(null);
@@ -407,32 +435,7 @@ export function RidgeView() {
 
   return (
     <div className="ridge-view" ref={box}>
-      <div className="toolbar">
-        <label className="field">
-          Channel
-          <select value={ch} onChange={(e) => setChannel(e.target.value)}>
-            {group.channels.map((c) => (
-              <option key={c} value={c}>
-                {c}
-                {sample0?.channels.find((x) => x.pnn === c)?.pns
-                  ? ` (${sample0.channels.find((x) => x.pnn === c)!.pns})`
-                  : ''}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span className="muted">
-          Population: {pop?.name}
-          {sampleIds.length < group.sampleIds.length &&
-            ` · ${sampleIds.length} of ${group.sampleIds.length} samples (sidebar selection)`}
-          {combine.enabled &&
-            ` · replicates combined (${combine.method === 'mean' ? 'average of curves' : 'pooled events'})`}
-        </span>
-        <div className="spacer" />
-        <ExportMenu getSvg={() => svgRef.current} baseName={`${group.name}_${pop?.name}_${ch}_ridge`} />
-      </div>
       <svg
-        ref={svgRef}
         width={W}
         height={H}
         className="ridge"
@@ -540,6 +543,13 @@ export function RidgeView() {
           )}
         </g>
       </svg>
+      <p className="muted small">
+        Population: {pop?.name}
+        {sampleIds.length < group.sampleIds.length &&
+          ` · ${sampleIds.length} of ${group.sampleIds.length} samples (sidebar selection)`}
+        {combine.enabled &&
+          ` · replicates combined (${combine.method === 'mean' ? 'average of curves' : 'pooled events'})`}
+      </p>
       {chMenu && (
         <PickerMenu
           anchor={chMenu}

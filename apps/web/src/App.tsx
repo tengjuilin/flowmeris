@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChartsView } from './components/ChartsView.tsx';
 import { CompensationView, SamplesView } from './components/CompensationView.tsx';
 import { GatingPathView } from './components/GatingPathView.tsx';
-import { RidgeView, TilesView } from './components/GroupViews.tsx';
+import { RidgeExportCard, RidgeView, TilesView } from './components/GroupViews.tsx';
 import { Inspector } from './components/Inspector.tsx';
 import { MetadataView } from './components/MetadataView.tsx';
 import { PlotGridView } from './components/PlotGridView.tsx';
@@ -359,6 +359,7 @@ export function App() {
                 <div className="plot-layout">
                   <RidgeView />
                   <div className="plot-side">
+                    <RidgeExportCard />
                     <PopulationTree />
                     <RidgeCombinePanel />
                   </div>
