@@ -925,6 +925,19 @@ export function RidgeInspector() {
             <div className="ridge-actions">
               <button
                 type="button"
+                onClick={() =>
+                  update('Reverse ridge order', (l) => {
+                    l.style.order = [...allIds]
+                      .reverse()
+                      .concat(l.style.order.filter((id) => !current.has(id)));
+                  })
+                }
+              >
+                <ReverseIcon />
+                Reverse
+              </button>
+              <button
+                type="button"
                 disabled={!style.order.some((id) => current.has(id))}
                 onClick={() =>
                   set(
@@ -964,19 +977,6 @@ export function RidgeInspector() {
               >
                 <ResetIcon />
                 Labels
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  update('Reverse ridge order', (l) => {
-                    l.style.order = [...allIds]
-                      .reverse()
-                      .concat(l.style.order.filter((id) => !current.has(id)));
-                  })
-                }
-              >
-                <ReverseIcon />
-                Reverse
               </button>
             </div>
             {selected.size > 1 && (
