@@ -77,30 +77,35 @@ export function PopulationTree() {
               {p.name}
             </button>
           )}
-          {overridden && (
-            <span className="badge warn" title="Gate geometry overridden for this sample">
-              ov
-            </span>
-          )}
+          {/* Fixed-width slots keep the count columns aligned across rows (root has no badge or delete). */}
+          <span className="pop-flag">
+            {overridden && (
+              <span className="badge warn" title="Gate geometry overridden for this sample">
+                ov
+              </span>
+            )}
+          </span>
           <span className="num" title="Events">
             {c ? c.count.toLocaleString() : ''}
           </span>
           <span className="num pct" title="% of parent">
             {c && p.parent && c.parent > 0 ? `${((100 * c.count) / c.parent).toFixed(2)}%` : ''}
           </span>
-          {p.gate && (
-            <button
-              type="button"
-              className="icon"
-              title={`Delete gate${group.template.gates[p.gate]?.geometry.kind === 'quadrant' || group.template.gates[p.gate]?.geometry.kind === 'spider' ? ' (all four regions)' : ''} and its subpopulations`}
-              onClick={() => {
-                deleteGate(group.id, p.gate!);
-                if (ui.popId === p.id) drill('root');
-              }}
-            >
-              ✕
-            </button>
-          )}
+          <span className="pop-del">
+            {p.gate && (
+              <button
+                type="button"
+                className="icon"
+                title={`Delete gate${group.template.gates[p.gate]?.geometry.kind === 'quadrant' || group.template.gates[p.gate]?.geometry.kind === 'spider' ? ' (all four regions)' : ''} and its subpopulations`}
+                onClick={() => {
+                  deleteGate(group.id, p.gate!);
+                  if (ui.popId === p.id) drill('root');
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </span>
         </div>
         {kids.length > 0 && <ul>{kids.map((k) => row(k, depth + 1))}</ul>}
       </li>

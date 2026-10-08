@@ -839,6 +839,18 @@ code,
 .num.pct {
   color: var(--text);
 }
+.pop-row .pop-flag,
+.pop-row .pop-del {
+  flex: none;
+  display: flex;
+  justify-content: center;
+}
+.pop-row .pop-flag {
+  width: 26px;
+}
+.pop-row .pop-del {
+  width: 22px;
+}
 
 .inspector {
   width: 300px;
