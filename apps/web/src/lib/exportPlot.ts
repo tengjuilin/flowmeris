@@ -295,42 +295,28 @@ async function buildSvg(h: PlotHandle, plot: PlotSpec, dpi: number): Promise<str
   return new XMLSerializer().serializeToString(clone);
 }
 
+/**
+ * Export a Gate-view plot. SVG is written as built; PNG, JPEG and PDF render that SVG (axes and gates stay
+ * vector in the PDF, the event raster is embedded at `dpi`).
+ */
 export async function exportPlot(
   h: PlotHandle,
   plot: PlotSpec,
-  format: 'svg' | 'png',
+  format: ImageFormat,
   baseName: string,
   dpi = 300,
 ) {
+  const svg = await buildSvg(h, plot, dpi);
+  const name = baseName.replace(/\.(fcs|lmd)$/i, '');
+  if (format === 'svg') return download(`${safeName(name)}.svg`, svg, 'image/svg+xml');
+  // The rasterisers and PDF writer read computed styles, so the figure is laid out off-screen first.
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none';
+  host.innerHTML = svg;
+  document.body.appendChild(host);
   try {
-    const svg = await buildSvg(h, plot, dpi);
-    const name = safeName(baseName.replace(/\.(fcs|lmd)$/i, ''));
-    if (format === 'svg') {
-      download(`${name}.svg`, svg, 'image/svg+xml');
-      return;
-    }
-    const scale = dpi / 96;
-    const { width, height } = h.size;
-    const img = new Image();
-    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-    await new Promise<void>((res, rej) => {
-      img.onload = () => res();
-      img.onerror = () => rej(new Error('Could not render SVG for PNG export'));
-      img.src = url;
-    });
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(width * scale);
-    canvas.height = Math.round(height * scale);
-    const g = canvas.getContext('2d')!;
-    g.drawImage(img, 0, 0, canvas.width, canvas.height);
-    URL.revokeObjectURL(url);
-    const data = g.getImageData(0, 0, canvas.width, canvas.height);
-    download(
-      `${name}.png`,
-      await encodePngCompressed(data.data, canvas.width, canvas.height, dpi),
-      'image/png',
-    );
-  } catch (e) {
-    toast(`Export failed: ${e instanceof Error ? e.message : String(e)}`);
+    await exportSvgFigure(host.querySelector('svg')!, format, name, dpi);
+  } finally {
+    host.remove();
   }
 }

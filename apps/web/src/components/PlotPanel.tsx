@@ -12,6 +12,7 @@ import {
 } from '../lib/defaults.ts';
 import { exportPlot } from '../lib/exportPlot.ts';
 import { type Tool, useGroup, useStore } from '../state/store.ts';
+import { ExportMenu } from './ExportMenu.tsx';
 import { PlotCanvas, type PlotHandle } from './PlotCanvas.tsx';
 import { useSize } from './hooks.ts';
 
@@ -282,6 +283,28 @@ export function EditScopeToggle() {
   );
 }
 
+/** The Gate view's plot, for the export card beside it. */
+const gatePlotHandle: { current: PlotHandle | null } = { current: null };
+
+/** Card above the population tree: export the Gate view's plot. */
+export function GateExportCard() {
+  const ws = useStore((s) => s.ws);
+  const ui = useStore((s) => s.ui);
+  const group = useGroup();
+  const plot = usePlotForPopulation();
+  if (!group || !plot) return null;
+  const sampleId = ui.sampleId && group.sampleIds.includes(ui.sampleId) ? ui.sampleId : group.sampleIds[0];
+  const name = ws.samples[sampleId ?? '']?.fileName ?? 'plot';
+  return (
+    <ExportMenu
+      className="side-export"
+      onExport={(format, dpi) =>
+        gatePlotHandle.current ? exportPlot(gatePlotHandle.current, plot, format, name, dpi) : undefined
+      }
+    />
+  );
+}
+
 export function PlotPanel() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
@@ -289,7 +312,6 @@ export function PlotPanel() {
   const plot = usePlotForPopulation();
   const box = useRef<HTMLDivElement>(null);
   const size = useSize(box);
-  const handle = useRef<PlotHandle>(null);
 
   if (!group) return <div className="empty">Select or add a group.</div>;
   const sampleId = ui.sampleId && group.sampleIds.includes(ui.sampleId) ? ui.sampleId : group.sampleIds[0];
@@ -312,28 +334,8 @@ export function PlotPanel() {
         <ToolButtons is1d={is1d} />
         <PlotKindSelect group={group} plot={plot} />
         <EditScopeToggle />
-        <div className="spacer" />
-        <div className="seg">
-          <button
-            type="button"
-            onClick={() =>
-              handle.current && void exportPlot(handle.current, plot, 'svg', `${sample?.fileName ?? 'plot'}`)
-            }
-          >
-            SVG
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              handle.current && void exportPlot(handle.current, plot, 'png', `${sample?.fileName ?? 'plot'}`)
-            }
-          >
-            PNG
-          </button>
-        </div>
       </div>
       <div className="axis-pickers">
-        <AxisSelects group={group} plot={plot} />
         <span className="muted">
           {sample?.fileName} · {sample?.eventCount.toLocaleString()} events
         </span>
@@ -341,7 +343,7 @@ export function PlotPanel() {
       <div className="plot-box" ref={box}>
         {size.width > 0 && (
           <PlotCanvas
-            ref={handle}
+            ref={gatePlotHandle}
             ws={ws}
             group={group}
             sampleId={sampleId}

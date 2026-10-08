@@ -20,12 +20,13 @@ import {
   SCALE_KINDS,
   type ScaleKind,
   factoryAxis,
+  groupSample,
   registerTransform,
   scaleKindOf,
   transformOfKind,
 } from '../lib/defaults.ts';
 import { contextFor, toast, useGroup, useStore } from '../state/store.ts';
-import { usePlotForPopulation } from './PlotPanel.tsx';
+import { axisChannelSetter, usePlotForPopulation } from './PlotPanel.tsx';
 
 /** Reset: an undo arrow, an open arrowhead on a line that turns back on itself in a half circle. */
 export function ResetIcon() {
@@ -97,7 +98,67 @@ export type ApplyAxis = (
   shared?: boolean,
 ) => void;
 
-function AxisEditor({ which, plot }: { which: 'x' | 'y'; plot: PlotSpec }) {
+/** A collapsible group of settings, with its reset button at the top right; shared by the Gate and ridge settings. */
+export function Section({
+  id,
+  title,
+  open,
+  onToggle,
+  changed,
+  onReset,
+  children,
+}: {
+  id: string;
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  /** Whether any setting in the section differs from its default; enables the reset button. */
+  changed?: boolean;
+  /** Leave out to show no reset button. */
+  onReset?: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <section className={`ridge-section${open ? ' open' : ''}`}>
+      <div className="ridge-section-bar">
+        <button
+          type="button"
+          className="ridge-section-head"
+          aria-expanded={open}
+          aria-controls={`ridge-section-${id}`}
+          onClick={onToggle}
+        >
+          <svg className="chevron" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+            <path d="M3.5 1.5 9 6l-5.5 4.5z" fill="currentColor" />
+          </svg>
+          {title}
+        </button>
+        {onReset && (
+          <button
+            type="button"
+            className="icon reset-btn"
+            disabled={!changed}
+            title={changed ? `Reset ${title.toLowerCase()} to the defaults` : `${title} are at the defaults`}
+            aria-label={`Reset ${title.toLowerCase()}`}
+            onClick={onReset}
+          >
+            <ResetIcon />
+          </button>
+        )}
+      </div>
+      {open && (
+        <div id={`ridge-section-${id}`} className="ridge-section-body">
+          {children}
+        </div>
+      )}
+    </section>
+  );
+}
+
+type Panel = { isOpen: (id: string) => boolean; toggle: (id: string) => void };
+
+function AxisEditor({ which, plot, panel }: { which: 'x' | 'y'; plot: PlotSpec; panel: Panel }) {
+  const ws = useStore((s) => s.ws);
   const group = useGroup()!;
   const mutate = useStore((s) => s.mutate);
   const apply: ApplyAxis = (label, fn, shared) =>
@@ -107,14 +168,71 @@ function AxisEditor({ which, plot }: { which: 'x' | 'y'; plot: PlotSpec }) {
       fn(a, w, g);
       if (shared) g.axisDefaults[a.channel] = { ...a };
     });
+  const axis = plot[which] as AxisSpec;
+  const factory = factoryAxis(ws, group, axis.channel);
+  const sample = groupSample(ws, group);
+  const id = `${which}axis`;
+  const title = `${which.toUpperCase()} axis`;
   return (
-    <AxisFields
-      axis={plot[which] as AxisSpec}
-      legend={`${which.toUpperCase()} axis · ${plot[which]!.channel}`}
-      population={plot.population}
-      apply={apply}
-      note={<>Existing gates keep the scale they were drawn on.</>}
-    />
+    <Section
+      id={id}
+      title={title}
+      open={panel.isOpen(id)}
+      onToggle={() => panel.toggle(id)}
+      changed={
+        axis.transform !== factory.transform ||
+        axis.range[0] !== factory.range[0] ||
+        axis.range[1] !== factory.range[1]
+      }
+      onReset={() =>
+        apply(
+          `Reset ${title}`,
+          (a, w, g) => {
+            const f = factoryAxis(w, g, a.channel);
+            a.transform = f.transform;
+            a.range = [...f.range];
+          },
+          true,
+        )
+      }
+    >
+      <label className="field">
+        Channel
+        <select value={axis.channel} onChange={(e) => axisChannelSetter(group, plot)(which, e.target.value)}>
+          {group.channels.map((c) => {
+            const pns = sample?.channels.find((x) => x.pnn === c)?.pns;
+            return (
+              <option key={c} value={c}>
+                {c}
+                {pns ? ` (${pns})` : ''}
+              </option>
+            );
+          })}
+        </select>
+      </label>
+      {which === 'y' && (
+        <button
+          type="button"
+          title="Swap the X and Y axes"
+          onClick={() =>
+            mutate('Swap axes', (w) => {
+              const p = w.groups.find((x) => x.id === group.id)!.plots.find((x) => x.id === plot.id)!;
+              if (!p.y) return;
+              [p.x, p.y] = [p.y, p.x];
+            })
+          }
+        >
+          ⇄ Swap X and Y
+        </button>
+      )}
+      <AxisFields
+        hideReset
+        axis={axis}
+        population={plot.population}
+        apply={apply}
+        note={<>Existing gates keep the scale they were drawn on.</>}
+      />
+    </Section>
   );
 }
 
@@ -129,7 +247,8 @@ export function AxisFields({
   hideReset,
 }: {
   axis: AxisSpec;
-  legend: string;
+  /** Caption above the fields; leave out when the host card already names the axis. */
+  legend?: string;
   population: string;
   apply: ApplyAxis;
   note?: ReactNode;
@@ -192,21 +311,23 @@ export function AxisFields({
 
   return (
     <fieldset className="axis-editor">
-      <legend className="axis-legend">
-        {legend}
-        {!hideReset && (
-          <button
-            type="button"
-            className="icon reset-btn"
-            disabled={atDefault}
-            onClick={reset}
-            title="Reset the scale and range to the channel's defaults"
-            aria-label="Reset scale and range"
-          >
-            <ResetIcon />
-          </button>
-        )}
-      </legend>
+      {(legend || !hideReset) && (
+        <legend className="axis-legend">
+          {legend}
+          {!hideReset && (
+            <button
+              type="button"
+              className="icon reset-btn"
+              disabled={atDefault}
+              onClick={reset}
+              title="Reset the scale and range to the channel's defaults"
+              aria-label="Reset scale and range"
+            >
+              <ResetIcon />
+            </button>
+          )}
+        </legend>
+      )}
       <label className="field">
         Scale
         <select value={scaleKindOf(def)} onChange={(e) => setKind(e.target.value as ScaleKind)}>
@@ -319,7 +440,7 @@ export function AxisFields({
   );
 }
 
-function StyleEditor({ plot }: { plot: PlotSpec }) {
+function StyleEditor({ plot, panel }: { plot: PlotSpec; panel: Panel }) {
   const group = useGroup()!;
   const mutate = useStore((s) => s.mutate);
   const set = (fn: (st: PlotSpec['style']) => void) =>
@@ -328,18 +449,18 @@ function StyleEditor({ plot }: { plot: PlotSpec }) {
       fn(p.style);
     });
   const st = plot.style;
+  const changed = (Object.keys(DEFAULT_STYLE) as (keyof PlotSpec['style'])[]).some(
+    (k) => JSON.stringify(st[k]) !== JSON.stringify(DEFAULT_STYLE[k]),
+  );
   return (
-    <fieldset>
-      <legend>Display</legend>
-      <div className="row">
-        <button
-          type="button"
-          onClick={() => set((s) => Object.assign(s, structuredClone(DEFAULT_STYLE)))}
-          title="Return the display options to their defaults"
-        >
-          Reset to default
-        </button>
-      </div>
+    <Section
+      id="display"
+      title="Display"
+      open={panel.isOpen('display')}
+      onToggle={() => panel.toggle('display')}
+      changed={changed}
+      onReset={() => set((s) => Object.assign(s, structuredClone(DEFAULT_STYLE)))}
+    >
       {plot.kind !== 'histogram' && (
         <div className="grid2">
           {plot.kind !== 'dot' && (
@@ -445,18 +566,17 @@ function StyleEditor({ plot }: { plot: PlotSpec }) {
           </label>
         </div>
       )}
-    </fieldset>
+    </Section>
   );
 }
 
-function GateEditor() {
+function GateEditor({ panel }: { panel: Panel }) {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
   const setUi = useStore((s) => s.setUi);
   const group = useGroup()!;
   const gate = ui.selectedGateId ? group.template.gates[ui.selectedGateId] : undefined;
-  if (!gate)
-    return <p className="muted small">Select a gate on the plot to see and edit its exact coordinates.</p>;
+  if (!gate) return null;
   const sampleId = ui.sampleId ?? group.sampleIds[0]!;
   const geom = effectiveGeometry(group, gate.id, sampleId);
   const ov = isOverridden(group, gate.id, sampleId);
@@ -468,8 +588,12 @@ function GateEditor() {
   );
 
   return (
-    <fieldset>
-      <legend>Gate · {pops.map((p) => p.name).join(', ')}</legend>
+    <Section
+      id="gate"
+      title={`Gate · ${pops.map((p) => p.name).join(', ')}`}
+      open={panel.isOpen('gate')}
+      onToggle={() => panel.toggle('gate')}
+    >
       <p className="muted small">
         {geom.kind} on{' '}
         {gate.dims
@@ -583,20 +707,26 @@ function GateEditor() {
           Delete gate
         </button>
       </div>
-    </fieldset>
+    </Section>
   );
 }
 
 export function Inspector() {
   const group = useGroup();
   const plot = usePlotForPopulation();
+  // Every card starts open; collapsing one lasts for the session.
+  const [closed, setClosed] = useState<Record<string, boolean>>({});
+  const panel: Panel = {
+    isOpen: (id) => !closed[id],
+    toggle: (id) => setClosed((c) => ({ ...c, [id]: !c[id] })),
+  };
   if (!group || !plot) return <aside className="inspector" />;
   return (
-    <aside className="inspector" aria-label="Inspector">
-      <GateEditor />
-      <AxisEditor which="x" plot={plot} />
-      {plot.kind !== 'histogram' && plot.y && <AxisEditor which="y" plot={plot} />}
-      <StyleEditor plot={plot} />
+    <aside className="inspector ridge-inspector gate-inspector" aria-label="Gate settings">
+      <GateEditor panel={panel} />
+      <AxisEditor which="x" plot={plot} panel={panel} />
+      {plot.kind !== 'histogram' && plot.y && <AxisEditor which="y" plot={plot} panel={panel} />}
+      <StyleEditor plot={plot} panel={panel} />
     </aside>
   );
 }

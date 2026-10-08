@@ -5,7 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { lineageKey } from '../lib/analysis.ts';
 import { factoryAxis } from '../lib/defaults.ts';
-import { type ImageFormat, exportSvgFigure } from '../lib/exportPlot.ts';
+import { exportSvgFigure } from '../lib/exportPlot.ts';
 import { scaleFor } from '../lib/geometry.ts';
 import { type RidgeCurve, combineCounts, textMeasure, wrapText } from '../lib/ridge.ts';
 import {
@@ -16,6 +16,7 @@ import {
   useSelectedSampleIds,
   useStore,
 } from '../state/store.ts';
+import { ExportMenu } from './ExportMenu.tsx';
 import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './PickerMenu.tsx';
 import { PlotCanvas } from './PlotCanvas.tsx';
 import {
@@ -130,82 +131,6 @@ const Tile = memo(function Tile({
   );
 });
 
-/** Export button: opens a small form to choose the file format (and DPI for raster formats). */
-function ExportMenu({
-  getSvg,
-  baseName,
-  className,
-}: { getSvg: () => SVGSVGElement | null; baseName: string; className?: string }) {
-  const [open, setOpen] = useState(false);
-  const [format, setFormat] = useState<ImageFormat>('pdf');
-  const [dpi, setDpi] = useState(300);
-  const [busy, setBusy] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const away = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', away);
-    return () => document.removeEventListener('mousedown', away);
-  }, [open]);
-  const run = () => {
-    const svg = getSvg();
-    if (!svg) return;
-    setBusy(true);
-    exportSvgFigure(svg, format, baseName, Math.min(1200, Math.max(72, dpi || 300)))
-      .then(() => setOpen(false))
-      .catch((e) => toast(`Export failed: ${e instanceof Error ? e.message : String(e)}`))
-      .finally(() => setBusy(false));
-  };
-  return (
-    <div className={className ? `export-menu ${className}` : 'export-menu'} ref={ref}>
-      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
-          <path
-            d="M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 11v2.5h11V11"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-        Export
-      </button>
-      {open && (
-        <div className="export-pop" aria-label="Export options">
-          <label className="field">
-            Format
-            <select value={format} onChange={(e) => setFormat(e.target.value as ImageFormat)}>
-              <option value="pdf">PDF (vector)</option>
-              <option value="png">PNG</option>
-              <option value="jpeg">JPEG</option>
-              <option value="svg">SVG (vector)</option>
-            </select>
-          </label>
-          {(format === 'png' || format === 'jpeg') && (
-            <label className="field">
-              Resolution (DPI)
-              <input
-                type="number"
-                min={72}
-                max={1200}
-                step={50}
-                value={dpi}
-                onChange={(e) => setDpi(Number(e.target.value))}
-              />
-            </label>
-          )}
-          <button type="button" className="primary" disabled={busy} onClick={run}>
-            {busy ? 'Exporting…' : 'Download'}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function TilesView() {
   const group = useGroup();
   const plot = usePlotForPopulation();
@@ -286,9 +211,11 @@ export function RidgeExportCard() {
   const pop = group.template.populations[ui.popId];
   return (
     <ExportMenu
-      className="ridge-export"
-      getSvg={() => document.querySelector<SVGSVGElement>('.ridge-view svg.ridge')}
-      baseName={`${group.name}_${pop?.name}_${ch}_ridge`}
+      className="side-export"
+      onExport={(format, dpi) => {
+        const svg = document.querySelector<SVGSVGElement>('.ridge-view svg.ridge');
+        return svg ? exportSvgFigure(svg, format, `${group.name}_${pop?.name}_${ch}_ridge`, dpi) : undefined;
+      }}
     />
   );
 }

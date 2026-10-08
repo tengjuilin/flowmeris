@@ -33,7 +33,7 @@ import {
 } from '../lib/ridge.ts';
 import { useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
 import { GroupPicker, toggleIds } from './GroupPicker.tsx';
-import { AxisFields, NumInput, ResetIcon } from './Inspector.tsx';
+import { AxisFields, NumInput, ResetIcon, Section } from './Inspector.tsx';
 
 /** A number input that updates the plot as you type. */
 const LiveNum = (p: ComponentProps<typeof NumInput>) => <NumInput live {...p} />;
@@ -601,60 +601,6 @@ function savePanel(panel: { tab: RidgeTab; open: Partial<Record<SectionId, boole
   } catch {}
 }
 
-/** A collapsible group of settings within a tab. */
-function Section({
-  id,
-  title,
-  open,
-  onToggle,
-  changed,
-  onReset,
-  children,
-}: {
-  id: SectionId;
-  title: string;
-  open: boolean;
-  onToggle: () => void;
-  /** Whether any setting in the section differs from its default; enables the reset button. */
-  changed: boolean;
-  onReset: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <section className={`ridge-section${open ? ' open' : ''}`}>
-      <div className="ridge-section-bar">
-        <button
-          type="button"
-          className="ridge-section-head"
-          aria-expanded={open}
-          aria-controls={`ridge-section-${id}`}
-          onClick={onToggle}
-        >
-          <svg className="chevron" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-            <path d="M3.5 1.5 9 6l-5.5 4.5z" fill="currentColor" />
-          </svg>
-          {title}
-        </button>
-        <button
-          type="button"
-          className="icon reset-btn"
-          disabled={!changed}
-          title={changed ? `Reset ${title.toLowerCase()} to the defaults` : `${title} are at the defaults`}
-          aria-label={`Reset ${title.toLowerCase()}`}
-          onClick={onReset}
-        >
-          <ResetIcon />
-        </button>
-      </div>
-      {open && (
-        <div id={`ridge-section-${id}`} className="ridge-section-body">
-          {children}
-        </div>
-      )}
-    </section>
-  );
-}
-
 export function RidgeInspector() {
   const popId = useStore((s) => s.ui.popId);
   const { group, layout, style, styleFollow, combine, overlap, axis, rows, allIds, update } = useRidge();
@@ -1053,7 +999,6 @@ export function RidgeInspector() {
                   live
                   hideReset
                   axis={axis}
-                  legend={`Channel · ${axis.channel}`}
                   population={popId}
                   note="Applies to this ridge plot only."
                   apply={(label, fn) => update(label, (l, w, g) => fn(l.axis, w, g), `axis:${label}`)}

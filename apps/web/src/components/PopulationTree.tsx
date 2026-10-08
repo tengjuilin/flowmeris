@@ -2,13 +2,14 @@ import { type Population, childPopulations, isOverridden } from '@flowmeris/mode
 import { useEffect, useMemo, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { deleteGate, lineageKey, renamePopulation } from '../lib/analysis.ts';
-import { contextFor, useGroup, useStore } from '../state/store.ts';
+import { contextFor, useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { drill } from './PlotPanel.tsx';
 
 export function PopulationTree() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
   const group = useGroup();
+  const names = useSampleNames(group);
   const [counts, setCounts] = useState<Record<string, { count: number; parent: number }>>({});
   const [editing, setEditing] = useState<string | null>(null);
   const sampleId =
@@ -109,7 +110,10 @@ export function PopulationTree() {
   return (
     <div className="pop-tree">
       <div className="pane-title">
-        Populations <span className="muted small">{sampleId ? ws.samples[sampleId]?.fileName : ''}</span>
+        Populations{' '}
+        <span className="muted small">
+          {sampleId ? (names[sampleId] ?? ws.samples[sampleId]?.fileName) : ''}
+        </span>
       </div>
       <ul>{root && row(root, 0)}</ul>
     </div>

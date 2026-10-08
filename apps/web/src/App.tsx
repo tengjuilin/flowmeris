@@ -7,7 +7,7 @@ import { RidgeExportCard, RidgeView, TilesView } from './components/GroupViews.t
 import { Inspector } from './components/Inspector.tsx';
 import { MetadataView } from './components/MetadataView.tsx';
 import { PlotGridView } from './components/PlotGridView.tsx';
-import { PlotPanel, drill } from './components/PlotPanel.tsx';
+import { GateExportCard, PlotPanel, drill } from './components/PlotPanel.tsx';
 import { PopulationTree } from './components/PopulationTree.tsx';
 import { RefPlots } from './components/RefPlots.tsx';
 import { RidgeCombinePanel, RidgeInspector } from './components/RidgeInspector.tsx';
@@ -348,6 +348,7 @@ export function App() {
                 <div className="plot-layout">
                   <PlotPanel />
                   <div className="plot-side">
+                    <GateExportCard />
                     <PopulationTree />
                     <RefPlots />
                   </div>

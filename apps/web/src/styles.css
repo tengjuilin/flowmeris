@@ -2114,6 +2114,9 @@ table.stats.import-map td {
 .ridge-inspector {
   padding-top: 0;
 }
+.gate-inspector {
+  padding-top: 8px;
+}
 .ridge-inspector-head {
   position: sticky;
   top: 0;
@@ -2240,7 +2243,7 @@ table.stats.import-map td {
 
 /* Ridge settings read like an Office format pane: one setting per line, label left, control right. */
 .ridge-inspector .grid2 {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
 }
 .ridge-inspector .field:not(.check):not(.tt-wide):not(:has(textarea)) {
   flex-direction: row;
@@ -2394,18 +2397,18 @@ table.stats.import-map td {
   align-items: center;
   gap: 6px;
 }
-.ridge-export {
+.side-export {
   flex: 0 0 auto;
 }
-.ridge-export,
-.ridge-export > button {
+.side-export,
+.side-export > button {
   font-size: 12px;
 }
-.ridge-export > button {
+.side-export > button {
   width: 100%;
   justify-content: center;
 }
-.ridge-export .export-pop {
+.side-export .export-pop {
   left: 0;
   right: auto;
 }
