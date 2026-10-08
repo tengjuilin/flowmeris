@@ -1,5 +1,5 @@
 import type { Group, PlotKind, PlotSpec, Workspace } from '@flowmeris/model';
-import { useRef } from 'react';
+import { type ReactNode, useRef } from 'react';
 import {
   SCALE_KINDS,
   type ScaleKind,
@@ -50,6 +50,45 @@ const TOOLS: { id: Tool; label: string; key: string; title: string; oneD?: boole
     oneD: true,
   },
 ];
+
+/** Line icons for the gate drawing tools, drawn on a 20×20 grid in the button's text colour. */
+const TOOL_ICONS: Record<Tool, ReactNode> = {
+  select: (
+    <path d="M5.5 3.5v12.2l3.3-3.1 2.3 4.9 2.2-1-2.3-4.8 4.5-.3z" fill="currentColor" fillOpacity="0.18" />
+  ),
+  rect: <rect x="3.5" y="5" width="13" height="10" rx="1.5" />,
+  ellipse: <ellipse cx="10" cy="10" rx="7.2" ry="4.3" transform="rotate(-28 10 10)" />,
+  polygon: (
+    <>
+      <path d="M4 5.5 15.5 4l-4 6.2 5 5.8L5 15.5z" />
+      <g fill="currentColor" stroke="none">
+        <circle cx="4" cy="5.5" r="1.4" />
+        <circle cx="15.5" cy="4" r="1.4" />
+        <circle cx="11.5" cy="10.2" r="1.4" />
+        <circle cx="16.5" cy="16" r="1.4" />
+        <circle cx="5" cy="15.5" r="1.4" />
+      </g>
+    </>
+  ),
+  quadrant: (
+    <>
+      <path d="M7.5 2.5v15M2.5 12.5h15" />
+      <circle cx="7.5" cy="12.5" r="1.8" fill="currentColor" stroke="none" />
+    </>
+  ),
+  spider: (
+    <>
+      <path d="M9.8 9 11.8 2.5M9.8 9 2.5 13M9.8 9l7.7 2.7M9.8 9l3.4 8.5" />
+      <circle cx="9.8" cy="9" r="1.8" fill="currentColor" stroke="none" />
+    </>
+  ),
+  range: (
+    <>
+      <path d="M2.5 17c3.5 0 4.5-8 7.5-8s4 8 7.5 8" strokeOpacity="0.45" />
+      <path d="M5 3.5v5M15 3.5v5M5 6h10" />
+    </>
+  ),
+};
 
 const KINDS: { id: PlotKind; label: string }[] = [
   { id: 'pseudocolor', label: 'Pseudocolor' },
@@ -254,17 +293,30 @@ export function ToolButtons({ is1d }: { is1d: boolean }) {
   const tool = useStore((s) => s.ui.tool);
   const setUi = useStore((s) => s.setUi);
   return (
-    <div className="seg">
+    <div className="seg tool-seg">
       {TOOLS.filter((t) => (is1d ? !t.twoD : !t.oneD)).map((t) => (
         <button
           type="button"
           key={t.id}
           title={t.title}
+          aria-label={t.label}
           aria-pressed={tool === t.id}
           className={tool === t.id ? 'on' : ''}
           onClick={() => setUi({ tool: t.id })}
         >
-          {t.label}
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            {TOOL_ICONS[t.id]}
+          </svg>
         </button>
       ))}
     </div>

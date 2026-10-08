@@ -428,6 +428,12 @@ code,
   border-color: var(--accent);
   position: relative;
 }
+.tool-seg button {
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  justify-content: center;
+}
 .seg button.on.warn {
   background: var(--gate-override);
   border-color: var(--gate-override);
@@ -740,9 +746,17 @@ code,
   color: var(--text);
   font-weight: 600;
 }
+.ref-tab > button.icon,
 .ref-add {
-  padding: 5px 8px;
-  font-size: 1.1em;
+  align-self: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+}
+/* Clear the tabs' 2px underline so + lines up with ✕. */
+.ref-add {
+  margin-bottom: 2px;
 }
 .ref-controls {
   display: grid;
@@ -2343,7 +2357,8 @@ table.stats.import-map td {
   margin-left: 40px;
 }
 
-/* One type scale for the ridge settings: 12px throughout, primary text for labels and controls,
+/* One type scale for the ridge settings and the side panels beside the Gate and Ridge plots
+   (populations, reference plots): 12px throughout, primary text for labels and controls,
    muted only for hints. Section titles stay bold at the same size. */
 .ridge-inspector,
 .ridge-combine {
@@ -2357,8 +2372,10 @@ table.stats.import-map td {
 .ridge-inspector .tt-btn.tt-text,
 .ridge-inspector .group-picker,
 .ridge-inspector .small,
-.plot-side:has(.ridge-combine) .pop-tree,
-.plot-side:has(.ridge-combine) .pop-tree :is(button, input, .pane-title),
+.plot-side .pop-tree,
+.plot-side .pop-tree :is(button, input, .pane-title),
+.plot-side .ref-plots,
+.plot-side :is(.ref-plots, .ref-tabs) :is(button, select, input, .field, .small, .pane-title),
 .ridge-combine .field,
 .ridge-combine .small,
 .ridge-combine .pane-title,

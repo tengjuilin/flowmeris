@@ -86,8 +86,20 @@ export function RefPlots() {
             className="icon"
             title="Close reference plot"
             onClick={() => removeRef(group.id, r.id)}
+            aria-label="Close reference plot"
           >
-            ✕
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <path d="M2 2l6 6M8 2 2 8" />
+            </svg>
           </button>
         </div>
       ))}
@@ -96,8 +108,20 @@ export function RefPlots() {
         className="icon ref-add"
         title="Add a reference plot"
         onClick={() => addRef(group.id)}
+        aria-label="Add a reference plot"
       >
-        +
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <path d="M5 1.5v7M1.5 5h7" />
+        </svg>
       </button>
     </div>
   );
