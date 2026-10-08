@@ -970,6 +970,28 @@ export function RidgeInspector() {
               )}
             </Section>
             <Section id="ticks" title="Ticks" open={!!open.ticks} onToggle={() => toggle('ticks')}>
+              <div className="field">
+                Axis color
+                <span className="swatch-auto">
+                  <input
+                    type="color"
+                    className="swatch"
+                    aria-label="Axis color"
+                    value={style.axisColor ?? '#9a9994'}
+                    onChange={(e) => set('axisColor', e.target.value, 'Ridge axis color', 'axisColor')}
+                  />
+                  <button
+                    type="button"
+                    className="icon reset-btn"
+                    disabled={style.axisColor === undefined}
+                    title="Reset the axis color"
+                    aria-label="Reset axis color"
+                    onClick={() => set('axisColor', undefined, 'Ridge axis color')}
+                  >
+                    <ResetIcon />
+                  </button>
+                </span>
+              </div>
               <label className="field check">
                 <input
                   type="checkbox"

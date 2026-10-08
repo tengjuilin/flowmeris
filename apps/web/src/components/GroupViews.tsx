@@ -500,7 +500,7 @@ export function RidgeView() {
         <g className="axis" transform={`translate(0,${axisY})`}>
           {ticks.map((t, i) => (
             <g key={i} transform={`translate(${X(t.pos)},0)`}>
-              <line y2={t.major ? 6 : 3} />
+              <line y2={t.major ? 6 : 3} style={style.axisColor ? { stroke: style.axisColor } : undefined} />
               {style.showTickLabels && t.label && (
                 <text
                   y={tickLabelY}
