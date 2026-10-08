@@ -25,7 +25,11 @@ test('ingest an FCS file, draw a gate, see statistics', async ({ page }) => {
   await expect(page.getByText('13,367').first()).toBeVisible();
 
   // Axes SSC-H × FL1-H (linear, T = $PnR = 1024), as in the ISAC "Rectangle1" compliance gate.
-  const card = (title: string) => page.locator('.gate-inspector .ridge-section', { hasText: title });
+  await page.getByRole('tab', { name: 'Axis' }).click();
+  const card = (title: string) =>
+    page
+      .locator('.inspector .ridge-section')
+      .filter({ has: page.getByRole('button', { name: title, exact: true }) });
   await card('X axis').getByLabel('Channel').selectOption('SSC-H');
   await card('Y axis').getByLabel('Channel').selectOption('FL1-H');
   await card('Y axis').getByLabel('Scale').selectOption('linear');

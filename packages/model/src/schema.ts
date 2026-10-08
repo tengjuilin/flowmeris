@@ -236,6 +236,50 @@ export const ContourSpecSchema = z.discriminatedUnion('mode', [
 ]);
 export type ContourSpec = z.infer<typeof ContourSpecSchema>;
 
+const HexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+
+/** Appearance of one kind of text in a figure. */
+export const TextStyleSchema = z.object({
+  /** Omitted = the figure's font. */
+  fontFamily: z.string().min(1).max(80).optional(),
+  bold: z.boolean().default(false),
+  italic: z.boolean().default(false),
+  underline: z.boolean().default(false),
+  /** Omitted = the figure's font color. */
+  color: HexColor.optional(),
+});
+export type TextStyle = z.infer<typeof TextStyleSchema>;
+
+/** Figure options of a Gate-view plot: title, fonts, ticks and axis titles. `PlotFigureSchema.parse({})` is the default. */
+export const PlotFigureSchema = z.object({
+  /** Plot title above the plot; omitted = none. */
+  title: z.string().optional(),
+  /** A key of the app's font list, or the name of any installed font. */
+  fontFamily: z.string().min(1).max(80).default('arial'),
+  /** Base font size (px); editing it rescales the title, tick and axis title sizes by the same ratio. */
+  fontSize: Num.min(4).max(48).default(11),
+  /** Color of all plot text unless a text style sets its own; omitted = the theme's text colors. */
+  fontColor: HexColor.optional(),
+  titleFontSize: Num.min(4).max(48).default(14),
+  tickFontSize: Num.min(4).max(48).default(11),
+  axisTitleFontSize: Num.min(4).max(48).default(12),
+  titleText: TextStyleSchema.default({ bold: true }),
+  tickText: TextStyleSchema.default({}),
+  axisTitleText: TextStyleSchema.default({ bold: true }),
+  /** The "n off-scale (piled on edges)" note below the plot. */
+  showOffScaleNote: z.boolean().default(true),
+  /** Color of the axis tick marks; omitted = the theme's grid color. */
+  axisColor: HexColor.optional(),
+  showTickLabels: z.boolean().default(true),
+  /** Tick marks in data (linear) units; omitted = automatic. A missing label is formatted from the value. */
+  xTicks: z.array(z.object({ value: Num, label: z.string().optional() })).optional(),
+  yTicks: z.array(z.object({ value: Num, label: z.string().optional() })).optional(),
+  /** Axis titles; omitted = "<marker> :: <channel>". */
+  xTitle: z.string().optional(),
+  yTitle: z.string().optional(),
+});
+export type PlotFigure = z.infer<typeof PlotFigureSchema>;
+
 export const PlotStyleSchema = z.object({
   colormap: z.string(),
   pointPx: z.number().int().min(1).max(4),
@@ -246,6 +290,8 @@ export const PlotStyleSchema = z.object({
   histBins: z.number().int().min(16).max(1024),
   histNorm: z.enum(['count', 'mode', 'area']),
   histSmooth: z.boolean(),
+  /** Figure options (Gate view); omitted = the defaults. */
+  figure: PlotFigureSchema.optional(),
 });
 export type PlotStyle = z.infer<typeof PlotStyleSchema>;
 
@@ -303,20 +349,8 @@ export const SampleOrderSchema = z.object({
   custom: z.array(Id).optional(),
 });
 
-const HexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
 /** Appearance of a ridge plot. Every member has a default, so `RidgeStyleSchema.parse({})` is the default style. */
-/** Appearance of one kind of text in a figure. */
-export const TextStyleSchema = z.object({
-  /** Omitted = the figure's font. */
-  fontFamily: z.string().min(1).max(80).optional(),
-  bold: z.boolean().default(false),
-  italic: z.boolean().default(false),
-  underline: z.boolean().default(false),
-  /** Omitted = the figure's font color. */
-  color: HexColor.optional(),
-});
-export type TextStyle = z.infer<typeof TextStyleSchema>;
 
 export const RidgeStyleSchema = z.object({
   /** 'single': every ridge uses `color`; 'palette': ridges cycle the categorical palette. */

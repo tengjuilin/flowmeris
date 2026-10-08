@@ -25,6 +25,7 @@ import {
   scaleKindOf,
   transformOfKind,
 } from '../lib/defaults.ts';
+import { DEFAULT_FIGURE } from '../lib/figure.ts';
 import { contextFor, toast, useGroup, useStore } from '../state/store.ts';
 import { axisChannelSetter, usePlotForPopulation } from './PlotPanel.tsx';
 
@@ -155,9 +156,9 @@ export function Section({
   );
 }
 
-type Panel = { isOpen: (id: string) => boolean; toggle: (id: string) => void };
+export type Panel = { isOpen: (id: string) => boolean; toggle: (id: string) => void };
 
-function AxisEditor({ which, plot, panel }: { which: 'x' | 'y'; plot: PlotSpec; panel: Panel }) {
+export function AxisEditor({ which, plot, panel }: { which: 'x' | 'y'; plot: PlotSpec; panel: Panel }) {
   const ws = useStore((s) => s.ws);
   const group = useGroup()!;
   const mutate = useStore((s) => s.mutate);
@@ -210,21 +211,6 @@ function AxisEditor({ which, plot, panel }: { which: 'x' | 'y'; plot: PlotSpec; 
           })}
         </select>
       </label>
-      {which === 'y' && (
-        <button
-          type="button"
-          title="Swap the X and Y axes"
-          onClick={() =>
-            mutate('Swap axes', (w) => {
-              const p = w.groups.find((x) => x.id === group.id)!.plots.find((x) => x.id === plot.id)!;
-              if (!p.y) return;
-              [p.x, p.y] = [p.y, p.x];
-            })
-          }
-        >
-          ⇄ Swap X and Y
-        </button>
-      )}
       <AxisFields
         hideReset
         axis={axis}
@@ -440,7 +426,7 @@ export function AxisFields({
   );
 }
 
-function StyleEditor({ plot, panel }: { plot: PlotSpec; panel: Panel }) {
+export function StyleEditor({ plot, panel }: { plot: PlotSpec; panel: Panel }) {
   const group = useGroup()!;
   const mutate = useStore((s) => s.mutate);
   const set = (fn: (st: PlotSpec['style']) => void) =>
@@ -449,9 +435,12 @@ function StyleEditor({ plot, panel }: { plot: PlotSpec; panel: Panel }) {
       fn(p.style);
     });
   const st = plot.style;
-  const changed = (Object.keys(DEFAULT_STYLE) as (keyof PlotSpec['style'])[]).some(
-    (k) => JSON.stringify(st[k]) !== JSON.stringify(DEFAULT_STYLE[k]),
-  );
+  const showNote = st.figure?.showOffScaleNote ?? true;
+  const changed =
+    !showNote ||
+    (Object.keys(DEFAULT_STYLE) as (keyof PlotSpec['style'])[]).some(
+      (k) => JSON.stringify(st[k]) !== JSON.stringify(DEFAULT_STYLE[k]),
+    );
   return (
     <Section
       id="display"
@@ -459,7 +448,12 @@ function StyleEditor({ plot, panel }: { plot: PlotSpec; panel: Panel }) {
       open={panel.isOpen('display')}
       onToggle={() => panel.toggle('display')}
       changed={changed}
-      onReset={() => set((s) => Object.assign(s, structuredClone(DEFAULT_STYLE)))}
+      onReset={() =>
+        set((s) => {
+          Object.assign(s, structuredClone(DEFAULT_STYLE));
+          if (s.figure) s.figure.showOffScaleNote = true;
+        })
+      }
     >
       {plot.kind !== 'histogram' && (
         <div className="grid2">
@@ -566,11 +560,27 @@ function StyleEditor({ plot, panel }: { plot: PlotSpec; panel: Panel }) {
           </label>
         </div>
       )}
+      <label
+        className="field check"
+        title="The count of events outside the axis range, drawn on the plot edges"
+      >
+        <input
+          type="checkbox"
+          checked={showNote}
+          onChange={(e) =>
+            set((s) => {
+              s.figure ??= structuredClone(DEFAULT_FIGURE);
+              s.figure.showOffScaleNote = e.target.checked;
+            })
+          }
+        />
+        Show off-scale note
+      </label>
     </Section>
   );
 }
 
-function GateEditor({ panel }: { panel: Panel }) {
+export function GateEditor({ panel }: { panel: Panel }) {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
   const setUi = useStore((s) => s.setUi);
@@ -708,25 +718,5 @@ function GateEditor({ panel }: { panel: Panel }) {
         </button>
       </div>
     </Section>
-  );
-}
-
-export function Inspector() {
-  const group = useGroup();
-  const plot = usePlotForPopulation();
-  // Every card starts open; collapsing one lasts for the session.
-  const [closed, setClosed] = useState<Record<string, boolean>>({});
-  const panel: Panel = {
-    isOpen: (id) => !closed[id],
-    toggle: (id) => setClosed((c) => ({ ...c, [id]: !c[id] })),
-  };
-  if (!group || !plot) return <aside className="inspector" />;
-  return (
-    <aside className="inspector ridge-inspector gate-inspector" aria-label="Gate settings">
-      <GateEditor panel={panel} />
-      <AxisEditor which="x" plot={plot} panel={panel} />
-      {plot.kind !== 'histogram' && plot.y && <AxisEditor which="y" plot={plot} panel={panel} />}
-      <StyleEditor plot={plot} panel={panel} />
-    </aside>
   );
 }

@@ -12,7 +12,7 @@ import {
   isOverridden,
   populationsOfGate,
 } from '@flowmeris/model';
-import { axisTicks } from '@flowmeris/transforms';
+import { axisTicks, formatLinear } from '@flowmeris/transforms';
 import {
   type PointerEvent as RPointerEvent,
   forwardRef,
@@ -27,6 +27,7 @@ import {
 } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { createGate, deleteGate, lineageKey, plotKey, setGateGeometry } from '../lib/analysis.ts';
+import { DEFAULT_FIGURE, figureText } from '../lib/figure.ts';
 import {
   type DimMap,
   type Pt,
@@ -141,7 +142,20 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   const tool = useStore((s) => (interactive ? s.ui.tool : 'select'));
   const selectedGateId = useStore((s) => (interactive ? s.ui.selectedGateId : null));
   const setUi = useStore((s) => s.setUi);
-  const margin: Margin = compact ? { l: 6, r: 4, t: 4, b: 6 } : { l: 66, r: 14, t: 14, b: 48 };
+  const fig = plot.style.figure ?? DEFAULT_FIGURE;
+  // Text positions follow the font sizes; at the defaults they are those of the plain plot.
+  const tickY = 7 + fig.tickFontSize;
+  const xTitleY = (fig.showTickLabels ? tickY : 4) + 10 + fig.axisTitleFontSize;
+  const yTitleX = -(fig.showTickLabels ? 19 + 3 * fig.tickFontSize : 14);
+  const title = fig.title?.trim();
+  const margin: Margin = compact
+    ? { l: 6, r: 4, t: 4, b: 6 }
+    : {
+        l: -yTitleX + fig.axisTitleFontSize + 2,
+        r: 14,
+        t: title ? 14 + fig.titleFontSize * 1.4 : 14,
+        b: xTitleY + 8,
+      };
   const pw = Math.max(10, width - margin.l - margin.r);
   const ph = Math.max(10, height - margin.t - margin.b);
   const is1d = plot.kind === 'histogram' || !plot.y;
@@ -831,26 +845,36 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   const xTicks = useMemo(() => {
     try {
       const s = scaleFor(ws, plot.x.transform);
-      return axisTicks(s.def, s.apply, s.inverse, xr[0], xr[1]);
+      return fig.xTicks
+        ? customTicks(fig.xTicks, s.apply, xr)
+        : axisTicks(s.def, s.apply, s.inverse, xr[0], xr[1]);
     } catch {
       return [];
     }
-  }, [ws, plot.x.transform, xr]);
+  }, [ws, plot.x.transform, xr, fig.xTicks]);
   const yTicks = useMemo(() => {
     if (is1d || !plot.y) return [];
     try {
       const s = scaleFor(ws, plot.y.transform);
-      return axisTicks(s.def, s.apply, s.inverse, yr[0], yr[1]);
+      return fig.yTicks
+        ? customTicks(fig.yTicks, s.apply, yr)
+        : axisTicks(s.def, s.apply, s.inverse, yr[0], yr[1]);
     } catch {
       return [];
     }
-  }, [ws, plot.y, yr, is1d]);
+  }, [ws, plot.y, yr, is1d, fig.yTicks]);
 
-  const label = (a: AxisSpec) => {
+  const channelLabel = (a: AxisSpec) => {
     const s = ws.samples[sampleId];
     const ch = s?.channels.find((c) => c.pnn === a.channel);
     return ch?.pns ? `${ch.pns} :: ${a.channel}` : a.channel;
   };
+  // A custom axis title replaces the channel label; on a histogram only the x title is customisable.
+  const label = (a: AxisSpec) =>
+    ((a === plot.x ? fig.xTitle : a === plot.y && !is1d ? fig.yTitle : undefined) ?? channelLabel(a)).trim();
+  const tickCss = figureText(fig, fig.tickText, fig.tickFontSize);
+  const axisTitleCss = figureText(fig, fig.axisTitleText, fig.axisTitleFontSize);
+  const lineCss = fig.axisColor ? { stroke: fig.axisColor } : undefined;
   const [axisMenu, setAxisMenu] = useState<{ axis: 'x' | 'y'; anchor: Anchor } | null>(null);
   const closeAxisMenu = useCallback(() => setAxisMenu(null), []);
   const axisTitle = (axis: 'x' | 'y') =>
@@ -1291,18 +1315,29 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
           </g>
           {!compact && (
             <>
-              <g className="axis" transform={`translate(0,${ph})`}>
+              {title && (
+                <text
+                  className="plot-title"
+                  x={pw / 2}
+                  y={-10 - fig.titleFontSize * 0.4}
+                  textAnchor="middle"
+                  style={figureText(fig, fig.titleText, fig.titleFontSize)}
+                >
+                  {title}
+                </text>
+              )}
+              <g className="axis" transform={`translate(0,${ph})`} style={{ fontFamily: tickCss.fontFamily }}>
                 {xTicks.map((t, i) => (
                   <g key={i} transform={`translate(${X(t.pos)},0)`}>
-                    <line y2={t.major ? 6 : 3} />
-                    {t.label && (
-                      <text y={18} textAnchor="middle">
+                    <line y2={t.major ? 6 : 3} style={lineCss} />
+                    {fig.showTickLabels && t.label && (
+                      <text y={tickY} textAnchor="middle" style={tickCss}>
                         {t.label}
                       </text>
                     )}
                   </g>
                 ))}
-                <text {...axisTitle('x')} x={pw / 2} y={40} textAnchor="middle">
+                <text {...axisTitle('x')} x={pw / 2} y={xTitleY} textAnchor="middle" style={axisTitleCss}>
                   {label(plot.x)}
                 </text>
               </g>
@@ -1310,17 +1345,19 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
                 {is1d
                   ? histYTicks(histPath?.top ?? 1, plot.style.histNorm).map((v) => (
                       <g key={v} transform={`translate(0,${ph - (v / (histPath?.top ?? 1)) * ph})`}>
-                        <line x2={-6} />
-                        <text x={-9} dy="0.32em" textAnchor="end">
-                          {formatHistTick(v, plot.style.histNorm)}
-                        </text>
+                        <line x2={-6} style={lineCss} />
+                        {fig.showTickLabels && (
+                          <text x={-9} dy="0.32em" textAnchor="end" style={tickCss}>
+                            {formatHistTick(v, plot.style.histNorm)}
+                          </text>
+                        )}
                       </g>
                     ))
                   : yTicks.map((t, i) => (
                       <g key={i} transform={`translate(0,${Y(t.pos)})`}>
-                        <line x2={t.major ? -6 : -3} />
-                        {t.label && (
-                          <text x={-9} dy="0.32em" textAnchor="end">
+                        <line x2={t.major ? -6 : -3} style={lineCss} />
+                        {fig.showTickLabels && t.label && (
+                          <text x={-9} dy="0.32em" textAnchor="end" style={tickCss}>
                             {t.label}
                           </text>
                         )}
@@ -1328,8 +1365,9 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
                     ))}
                 <text
                   {...(is1d ? { className: 'axis-title' } : axisTitle('y'))}
-                  transform={`translate(${-52},${ph / 2}) rotate(-90)`}
+                  transform={`translate(${yTitleX},${ph / 2}) rotate(-90)`}
                   textAnchor="middle"
+                  style={axisTitleCss}
                 >
                   {is1d
                     ? plot.style.histNorm === 'mode'
@@ -1351,6 +1389,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       )}
       {!compact &&
         !hideOffScaleNote &&
+        fig.showOffScaleNote &&
         (() => {
           const st = is1d ? hist : raster;
           if (!st || (st.offScale === 0 && st.nan === 0)) return null;
@@ -1380,6 +1419,17 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     </div>
   );
 });
+
+/** User ticks in data units, placed on the scale and kept within the axis range. */
+function customTicks(
+  ticks: { value: number; label?: string }[],
+  apply: (v: number) => number,
+  [lo, hi]: readonly number[],
+) {
+  return ticks
+    .map((t) => ({ pos: apply(t.value), label: t.label ?? formatLinear(t.value), major: true }))
+    .filter((t) => Number.isFinite(t.pos) && t.pos >= lo! - 1e-9 && t.pos <= hi! + 1e-9);
+}
 
 function histYTicks(top: number, norm: string): number[] {
   if (norm === 'mode') return [0, 0.25, 0.5, 0.75, 1].filter((v) => v <= top);

@@ -23,6 +23,7 @@ import {
   useState,
 } from 'react';
 import { defaultChannels, factoryAxis } from '../lib/defaults.ts';
+import { FONT_GROUPS, FONT_STACKS, fontStack } from '../lib/figure.ts';
 import {
   PER_POPULATION,
   type RidgeRow,
@@ -58,47 +59,7 @@ function sameJson(a: unknown, b: unknown): boolean {
   return JSON.stringify(a, norm) === JSON.stringify(b, norm);
 }
 
-export const FONT_GROUPS: { label: string; fonts: { id: string; label: string; stack: string }[] }[] = [
-  {
-    label: 'Sans-serif',
-    fonts: [
-      { id: 'sans', label: 'Sans-serif', stack: 'Inter, Helvetica, Arial, sans-serif' },
-      { id: 'arial', label: 'Arial (default)', stack: 'Arial, "Liberation Sans", Helvetica, sans-serif' },
-      { id: 'helvetica', label: 'Helvetica', stack: '"Helvetica Neue", Helvetica, Arial, sans-serif' },
-      { id: 'calibri', label: 'Calibri', stack: 'Calibri, Carlito, "Segoe UI", sans-serif' },
-      { id: 'verdana', label: 'Verdana', stack: 'Verdana, "DejaVu Sans", sans-serif' },
-      { id: 'tahoma', label: 'Tahoma', stack: 'Tahoma, Geneva, sans-serif' },
-      { id: 'trebuchet', label: 'Trebuchet MS', stack: '"Trebuchet MS", "Lucida Grande", sans-serif' },
-    ],
-  },
-  {
-    label: 'Serif',
-    fonts: [
-      { id: 'serif', label: 'Serif (default)', stack: 'Georgia, "Times New Roman", serif' },
-      { id: 'times', label: 'Times New Roman', stack: '"Times New Roman", Times, "Liberation Serif", serif' },
-      { id: 'georgia', label: 'Georgia', stack: 'Georgia, "DejaVu Serif", serif' },
-      { id: 'palatino', label: 'Palatino', stack: '"Palatino Linotype", Palatino, "Book Antiqua", serif' },
-      { id: 'garamond', label: 'Garamond', stack: 'Garamond, "EB Garamond", "Times New Roman", serif' },
-    ],
-  },
-  {
-    label: 'Monospace',
-    fonts: [
-      { id: 'mono', label: 'Monospace (default)', stack: 'Menlo, Consolas, "DejaVu Sans Mono", monospace' },
-      { id: 'courier', label: 'Courier New', stack: '"Courier New", Courier, "Liberation Mono", monospace' },
-      { id: 'consolas', label: 'Consolas', stack: 'Consolas, Menlo, "DejaVu Sans Mono", monospace' },
-    ],
-  },
-];
-
-export const FONT_STACKS: Record<string, string> = Object.fromEntries(
-  FONT_GROUPS.flatMap((g) => g.fonts.map((f) => [f.id, f.stack])),
-);
-
-/** CSS font-family for a font key, or for the name of any installed font. */
-export function fontStack(family: string): string {
-  return FONT_STACKS[family] ?? `"${family.replace(/["\\;<>{}]/g, '')}", sans-serif`;
-}
+export { FONT_GROUPS, FONT_STACKS, fontStack };
 
 /** SVG text styling for `t`, falling back to the figure's font family. */
 export function textCss(t: TextStyle, base: RidgeStyle['fontFamily'], baseColor: string): CSSProperties {
@@ -283,7 +244,7 @@ export function TicksEditor({
 const CUSTOM_FONT = '__custom';
 
 /** A font picker: the app's font list, or the name of any font installed on this computer. */
-function FontSelect({
+export function FontSelect({
   label,
   value,
   onChange,
@@ -375,7 +336,7 @@ function AlignIcon({ lines }: { lines: number[] }) {
  * A word-processor style toolbar for one kind of text: font and size on one row, then
  * bold / italic / underline, color and (for ridge labels) alignment on the next.
  */
-function TextStyleEditor({
+export function TextStyleEditor({
   label,
   value,
   base,

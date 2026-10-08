@@ -332,7 +332,6 @@ export function PlotPanel() {
     <div className="plot-panel">
       <div className="toolbar" role="toolbar" aria-label="Gating tools">
         <ToolButtons is1d={is1d} />
-        <PlotKindSelect group={group} plot={plot} />
         <EditScopeToggle />
       </div>
       <div className="axis-pickers">
