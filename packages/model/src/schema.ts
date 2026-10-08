@@ -258,14 +258,17 @@ export const PlotFigureSchema = z.object({
   fontFamily: z.string().min(1).max(80).default('arial'),
   /** Base font size (px); editing it rescales the title, tick and axis title sizes by the same ratio. */
   fontSize: Num.min(4).max(48).default(11),
-  /** Color of all plot text unless a text style sets its own; omitted = the theme's text colors. */
-  fontColor: HexColor.optional(),
+  /** Color of all plot text unless a text style sets its own. */
+  fontColor: HexColor.default('#000000'),
   titleFontSize: Num.min(4).max(48).default(14),
   tickFontSize: Num.min(4).max(48).default(11),
   axisTitleFontSize: Num.min(4).max(48).default(12),
   titleText: TextStyleSchema.default({ bold: true }),
   tickText: TextStyleSchema.default({}),
   axisTitleText: TextStyleSchema.default({ bold: true }),
+  /** Gate names and percentages drawn on the plot. */
+  gateFontSize: Num.min(4).max(48).default(11.5),
+  gateText: TextStyleSchema.default({ bold: true }),
   /** The "n off-scale (piled on edges)" note below the plot. */
   showOffScaleNote: z.boolean().default(true),
   /** Color of the axis tick marks; omitted = the theme's grid color. */
@@ -348,7 +351,6 @@ export const SampleOrderSchema = z.object({
   keyword: z.string().optional(),
   custom: z.array(Id).optional(),
 });
-
 
 /** Appearance of a ridge plot. Every member has a default, so `RidgeStyleSchema.parse({})` is the default style. */
 

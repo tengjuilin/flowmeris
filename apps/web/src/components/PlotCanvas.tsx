@@ -1114,6 +1114,11 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
             y={l.y}
             textAnchor={l.anchor}
             className={`gate-label${l.focus ? ' focus' : ''}`}
+            style={
+              compact
+                ? undefined
+                : figureText(fig, fig.gateText, l.focus ? fig.gateFontSize * (13 / 11.5) : fig.gateFontSize)
+            }
           >
             {l.text}
           </text>

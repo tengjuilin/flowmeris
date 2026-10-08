@@ -137,7 +137,15 @@ export function Inspector() {
               id="baseFont"
               title="Base font"
               {...resetOf(
-                ['fontFamily', 'fontColor', 'fontSize', 'titleFontSize', 'tickFontSize', 'axisTitleFontSize'],
+                [
+                  'fontFamily',
+                  'fontColor',
+                  'fontSize',
+                  'titleFontSize',
+                  'tickFontSize',
+                  'axisTitleFontSize',
+                  'gateFontSize',
+                ],
                 'base font',
               )}
               {...card('baseFont')}
@@ -153,20 +161,20 @@ export function Inspector() {
                   <input
                     type="color"
                     className="swatch"
-                    value={fig.fontColor ?? '#000000'}
+                    value={fig.fontColor}
                     onChange={(e) => set('fontColor', e.target.value, 'Plot font color', 'fontColor')}
                   />
                   <button
                     type="button"
                     className="reset-btn"
-                    disabled={!fig.fontColor}
-                    aria-label="Reset base font color to the theme's"
+                    disabled={fig.fontColor === DEFAULT_FIGURE.fontColor}
+                    aria-label="Reset base font color to black"
                     title={
-                      fig.fontColor
-                        ? "Reset base font color to the theme's"
-                        : 'Base font color is the default'
+                      fig.fontColor === DEFAULT_FIGURE.fontColor
+                        ? 'Base font color is the default'
+                        : 'Reset base font color to black'
                     }
-                    onClick={() => set('fontColor', undefined, 'Plot font color')}
+                    onClick={() => set('fontColor', DEFAULT_FIGURE.fontColor, 'Plot font color')}
                   >
                     <ResetIcon />
                   </button>
@@ -176,7 +184,7 @@ export function Inspector() {
                 live
                 label="Base font size (px)"
                 step={0.5}
-                title="Scales the title, tick and axis title sizes together"
+                title="Scales the title, tick, axis title and gate label sizes together"
                 value={fig.fontSize}
                 onCommit={(v) => {
                   const next = clamp(v, 4, 48);
@@ -190,6 +198,7 @@ export function Inspector() {
                       f.titleFontSize = scaled(f.titleFontSize);
                       f.tickFontSize = scaled(f.tickFontSize);
                       f.axisTitleFontSize = scaled(f.axisTitleFontSize);
+                      f.gateFontSize = scaled(f.gateFontSize);
                     },
                     'fontSize',
                   );
@@ -308,7 +317,7 @@ export function Inspector() {
                 label="Plot title"
                 value={fig.titleText}
                 base={fig.fontFamily}
-                baseColor={fig.fontColor ?? '#000000'}
+                baseColor={fig.fontColor}
                 onChange={(t) => set('titleText', t, 'Plot title text')}
                 size={fig.titleFontSize}
                 onSize={(v) => set('titleFontSize', v, 'Plot title size')}
@@ -324,7 +333,7 @@ export function Inspector() {
                 label="Tick labels"
                 value={fig.tickText}
                 base={fig.fontFamily}
-                baseColor={fig.fontColor ?? '#000000'}
+                baseColor={fig.fontColor}
                 onChange={(t) => set('tickText', t, 'Tick label text')}
                 size={fig.tickFontSize}
                 onSize={(v) => set('tickFontSize', v, 'Tick label size')}
@@ -340,10 +349,26 @@ export function Inspector() {
                 label="Axis titles"
                 value={fig.axisTitleText}
                 base={fig.fontFamily}
-                baseColor={fig.fontColor ?? '#000000'}
+                baseColor={fig.fontColor}
                 onChange={(t) => set('axisTitleText', t, 'Axis title text')}
                 size={fig.axisTitleFontSize}
                 onSize={(v) => set('axisTitleFontSize', v, 'Axis title size')}
+              />
+            </Section>
+            <Section
+              id="gateText"
+              title="Gate labels"
+              {...resetOf(['gateText', 'gateFontSize'], 'gate label text')}
+              {...card('gateText')}
+            >
+              <TextStyleEditor
+                label="Gate labels"
+                value={fig.gateText}
+                base={fig.fontFamily}
+                baseColor={fig.fontColor}
+                onChange={(t) => set('gateText', t, 'Gate label text')}
+                size={fig.gateFontSize}
+                onSize={(v) => set('gateFontSize', v, 'Gate label size')}
               />
             </Section>
           </>

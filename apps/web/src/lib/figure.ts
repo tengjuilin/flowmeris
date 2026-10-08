@@ -46,15 +46,14 @@ export function fontStack(family: string): string {
 /** Figure options of a plot that has none saved. */
 export const DEFAULT_FIGURE: PlotFigure = PlotFigureSchema.parse({});
 
-/** SVG text styling for one kind of plot text; color falls back to the base color, then to the theme (CSS). */
+/** SVG text styling for one kind of plot text; color falls back to the base color. */
 export function figureText(fig: PlotFigure, t: TextStyle, size: number): CSSProperties {
-  const color = t.color ?? fig.fontColor;
   return {
     fontSize: size,
     fontFamily: fontStack(t.fontFamily ?? fig.fontFamily),
     fontWeight: t.bold ? 700 : 400,
     fontStyle: t.italic ? 'italic' : 'normal',
     textDecoration: t.underline ? 'underline' : 'none',
-    ...(color ? { fill: color } : {}),
+    fill: t.color ?? fig.fontColor,
   };
 }

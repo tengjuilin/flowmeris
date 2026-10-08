@@ -326,18 +326,11 @@ export function PlotPanel() {
     );
   }
   const is1d = plot.kind === 'histogram';
-  const sample = ws.samples[sampleId];
-
   return (
     <div className="plot-panel">
       <div className="toolbar" role="toolbar" aria-label="Gating tools">
         <ToolButtons is1d={is1d} />
         <EditScopeToggle />
-      </div>
-      <div className="axis-pickers">
-        <span className="muted">
-          {sample?.fileName} · {sample?.eventCount.toLocaleString()} events
-        </span>
       </div>
       <div className="plot-box" ref={box}>
         {size.width > 0 && (
