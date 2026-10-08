@@ -533,6 +533,26 @@ const PANEL_KEYS: Record<'figure' | 'axis' | 'text', (keyof RidgeStyle)[]> = {
 /** The Sample tab's per-row settings. */
 const ROW_KEYS = ['order', 'sampleColors', 'sampleLabels'] as const;
 
+/** Reverse: two arrows pointing opposite ways, up and down. */
+function ReverseIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 13V3M2.5 5.5L5 3l2.5 2.5" />
+      <path d="M11 3v10M8.5 10.5L11 13l2.5-2.5" />
+    </svg>
+  );
+}
+
 /** A slider for a 0–`max` fraction, with a percentage box beside it for typing an exact value. */
 function PercentSlider({
   label,
@@ -902,7 +922,6 @@ export function RidgeInspector() {
         )}
         {tab === 'sample' && (
           <>
-            <div className="ridge-pane-title">{combine.enabled ? 'Combined ridges' : 'Samples'}</div>
             <div className="ridge-actions">
               <button
                 type="button"
@@ -956,6 +975,7 @@ export function RidgeInspector() {
                   })
                 }
               >
+                <ReverseIcon />
                 Reverse
               </button>
             </div>
