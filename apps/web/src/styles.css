@@ -2256,3 +2256,43 @@ table.stats.import-map td {
 .ridge-inspector .sub-option-2 {
   margin-left: 40px;
 }
+
+/* One type scale for the ridge settings: 12px throughout, primary text for labels and controls,
+   muted only for hints. Section titles stay bold at the same size. */
+.ridge-inspector,
+.ridge-combine {
+  font-size: 12px;
+}
+.ridge-inspector .field,
+.ridge-inspector .field.check,
+.ridge-inspector .ridge-section-head,
+.ridge-inspector .ridge-section-body > fieldset > legend,
+.ridge-inspector .ridge-pane-title,
+.ridge-inspector .tt-btn.tt-text,
+.ridge-inspector .group-picker,
+.ridge-inspector .small,
+.ridge-combine .field,
+.ridge-combine .small,
+.ridge-combine .pane-title,
+.ridge-combine .group-picker {
+  font-size: 12px;
+}
+.ridge-inspector .field,
+.ridge-inspector .ridge-section-body > fieldset > legend,
+.ridge-combine .field {
+  color: var(--text);
+}
+.ridge-inspector .field:has(> input:disabled),
+.ridge-inspector .field:has(> select:disabled),
+.ridge-combine .field:has(> input:disabled),
+.ridge-combine .field:has(> select:disabled) {
+  color: var(--muted);
+}
+.ridge-inspector select,
+.ridge-inspector input,
+.ridge-inspector button:not(.tt-btn),
+.ridge-combine select,
+.ridge-combine input,
+.ridge-combine button:not(.tt-btn) {
+  font-size: 12px;
+}
