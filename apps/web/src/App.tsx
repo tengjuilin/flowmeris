@@ -323,8 +323,22 @@ export function App() {
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
                     <path d="M1 3.5h12M1 10.5h12" stroke="currentColor" strokeWidth="1.4" />
-                    <circle cx="4.5" cy="3.5" r="1.9" fill="var(--surface)" stroke="currentColor" strokeWidth="1.4" />
-                    <circle cx="9.5" cy="10.5" r="1.9" fill="var(--surface)" stroke="currentColor" strokeWidth="1.4" />
+                    <circle
+                      cx="4.5"
+                      cy="3.5"
+                      r="1.9"
+                      fill="var(--surface)"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                    />
+                    <circle
+                      cx="9.5"
+                      cy="10.5"
+                      r="1.9"
+                      fill="var(--surface)"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                    />
                   </svg>
                 </button>
               )}
