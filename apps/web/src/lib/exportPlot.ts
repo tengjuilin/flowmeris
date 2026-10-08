@@ -239,7 +239,7 @@ async function hiResRaster(plot: PlotSpec, pw: number, ph: number, scale: number
   const sampleId = st.ui.sampleId && g.sampleIds.includes(st.ui.sampleId) ? st.ui.sampleId : g.sampleIds[0]!;
   const style = {
     ...plot.style,
-    pointPx: Math.max(1, Math.round(plot.style.pointPx * scale)),
+    pointPx: Math.min(10 * scale, plot.style.pointPx * scale),
     smoothSigmaBins: plot.style.smoothSigmaBins * scale,
   };
   return pool.raster(contextFor(st.ws, g), {

@@ -158,7 +158,21 @@ export function Section({
 
 export type Panel = { isOpen: (id: string) => boolean; toggle: (id: string) => void };
 
-export function AxisEditor({ which, plot, panel }: { which: 'x' | 'y'; plot: PlotSpec; panel: Panel }) {
+export function AxisEditor({
+  which,
+  plot,
+  panel,
+  children,
+  extra,
+}: {
+  which: 'x' | 'y';
+  plot: PlotSpec;
+  panel: Panel;
+  /** More settings for this axis, after the channel picker. */
+  children?: ReactNode;
+  /** Whether those settings differ from their defaults, and how to reset them with the axis. */
+  extra?: { changed: boolean; reset: () => void };
+}) {
   const ws = useStore((s) => s.ws);
   const group = useGroup()!;
   const mutate = useStore((s) => s.mutate);
@@ -181,11 +195,13 @@ export function AxisEditor({ which, plot, panel }: { which: 'x' | 'y'; plot: Plo
       open={panel.isOpen(id)}
       onToggle={() => panel.toggle(id)}
       changed={
+        !!extra?.changed ||
         axis.transform !== factory.transform ||
         axis.range[0] !== factory.range[0] ||
         axis.range[1] !== factory.range[1]
       }
-      onReset={() =>
+      onReset={() => {
+        extra?.reset();
         apply(
           `Reset ${title}`,
           (a, w, g) => {
@@ -194,8 +210,8 @@ export function AxisEditor({ which, plot, panel }: { which: 'x' | 'y'; plot: Plo
             a.range = [...f.range];
           },
           true,
-        )
-      }
+        );
+      }}
     >
       <label className="field">
         Channel
@@ -211,6 +227,7 @@ export function AxisEditor({ which, plot, panel }: { which: 'x' | 'y'; plot: Plo
           })}
         </select>
       </label>
+      {children}
       <AxisFields
         hideReset
         axis={axis}
@@ -469,19 +486,14 @@ export function StyleEditor({ plot, panel }: { plot: PlotSpec; panel: Panel }) {
               </select>
             </label>
           )}
-          <label className="field">
-            Point size
-            <select
-              value={st.pointPx}
-              onChange={(e) => set((s) => void (s.pointPx = Number(e.target.value)))}
-            >
-              {[1, 2, 3, 4].map((v) => (
-                <option key={v} value={v}>
-                  {v} px
-                </option>
-              ))}
-            </select>
-          </label>
+          <NumInput
+            live
+            label="Point size (px)"
+            step={0.25}
+            value={st.pointPx}
+            onCommit={(v) => set((s) => void (s.pointPx = Math.max(0.25, Math.min(10, v))))}
+            title="Size of each event's point, 0.25–10 px; fractional sizes are allowed"
+          />
           {plot.kind !== 'dot' && (
             <NumInput
               label="Smoothing σ (px)"

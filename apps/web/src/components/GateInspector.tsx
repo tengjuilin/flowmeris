@@ -86,6 +86,22 @@ export function Inspector() {
         }
       }),
   });
+  const titleReset = (k: 'xTitle' | 'yTitle') => ({
+    changed: fig[k] !== undefined,
+    reset: () => fig[k] !== undefined && set(k, undefined, 'Reset axis title'),
+  });
+  const titleField = (k: 'xTitle' | 'yTitle', label: string) => (
+    <label className="field" title="Leave empty for the default; type a space for no title">
+      Title
+      <input
+        type="text"
+        aria-label={label}
+        value={fig[k] ?? ''}
+        placeholder="Marker :: channel"
+        onChange={(e) => set(k, e.target.value || undefined, label, k)}
+      />
+    </label>
+  );
   const card = (id: string) => ({ open: panel.isOpen(id), onToggle: () => panel.toggle(id) });
   const is2d = plot.kind !== 'histogram' && !!plot.y;
 
@@ -210,7 +226,7 @@ export function Inspector() {
         {tab === 'axis' && (
           <>
             {is2d && (
-              <div className="ridge-actions">
+              <div className="side-export swap-axes">
                 <button
                   type="button"
                   title="Swap the X and Y axes"
@@ -225,12 +241,28 @@ export function Inspector() {
                     })
                   }
                 >
-                  ⇄ Swap X and Y
+                  <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
+                    <path
+                      d="M2.5 5h10M10 2.5 12.5 5 10 7.5M13.5 11h-10M6 8.5 3.5 11 6 13.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  Swap X and Y
                 </button>
               </div>
             )}
-            <AxisEditor which="x" plot={plot} panel={panel} />
-            {is2d && <AxisEditor which="y" plot={plot} panel={panel} />}
+            <AxisEditor which="x" plot={plot} panel={panel} extra={titleReset('xTitle')}>
+              {titleField('xTitle', 'X axis title')}
+            </AxisEditor>
+            {is2d && (
+              <AxisEditor which="y" plot={plot} panel={panel} extra={titleReset('yTitle')}>
+                {titleField('yTitle', 'Y axis title')}
+              </AxisEditor>
+            )}
             <Section
               id="ticks"
               title="Ticks"
@@ -274,33 +306,6 @@ export function Inspector() {
                   <div className="ridge-pane-title">Y axis</div>
                   <TicksEditor ticks={fig.yTicks} onCommit={(t) => set('yTicks', t, 'Y ticks')} />
                 </>
-              )}
-            </Section>
-            <Section
-              id="axisTitles"
-              title="Axis titles"
-              {...resetOf(['xTitle', 'yTitle'], 'axis titles')}
-              {...card('axisTitles')}
-            >
-              <label className="field" title="Leave empty for the default; type a space for no title">
-                X axis title
-                <input
-                  type="text"
-                  value={fig.xTitle ?? ''}
-                  placeholder="Marker :: channel"
-                  onChange={(e) => set('xTitle', e.target.value || undefined, 'X axis title', 'xTitle')}
-                />
-              </label>
-              {is2d && (
-                <label className="field" title="Leave empty for the default; type a space for no title">
-                  Y axis title
-                  <input
-                    type="text"
-                    value={fig.yTitle ?? ''}
-                    placeholder="Marker :: channel"
-                    onChange={(e) => set('yTitle', e.target.value || undefined, 'Y axis title', 'yTitle')}
-                  />
-                </label>
               )}
             </Section>
           </>

@@ -285,7 +285,8 @@ export type PlotFigure = z.infer<typeof PlotFigureSchema>;
 
 export const PlotStyleSchema = z.object({
   colormap: z.string(),
-  pointPx: z.number().int().min(1).max(4),
+  /** Point size in display px; fractional sizes are drawn with partly covered edge pixels. */
+  pointPx: Num.min(0.25).max(10),
   /** Gaussian smoothing σ in display bins (0 = none). */
   smoothSigmaBins: Num.nonnegative(),
   contour: ContourSpecSchema,

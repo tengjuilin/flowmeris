@@ -132,6 +132,10 @@ export interface Raster2DOutput {
   sigmaPx: number;
 }
 
+/**
+ * Paint a square point `size` px wide centred on pixel (px, py). A fractional size covers its edge
+ * pixels partly; their alpha is that coverage (kept at the highest of overlapping points).
+ */
 function putPixel(
   rgba: Uint8ClampedArray,
   w: number,
@@ -143,18 +147,25 @@ function putPixel(
   b: number,
   size: number,
 ) {
-  const half = (size - 1) >> 1;
-  for (let dy = -half; dy < size - half; dy++) {
+  const lo = 0.5 - size / 2;
+  const hi = 0.5 + size / 2;
+  const cover = (d: number) => Math.max(0, Math.min(d + 1, hi) - Math.max(d, lo));
+  const reach = Math.ceil(size / 2);
+  for (let dy = -reach; dy <= reach; dy++) {
     const yy = py + dy;
-    if (yy < 0 || yy >= h) continue;
-    for (let dx = -half; dx < size - half; dx++) {
+    const cy = cover(dy);
+    if (yy < 0 || yy >= h || cy <= 0) continue;
+    for (let dx = -reach; dx <= reach; dx++) {
       const xx = px + dx;
-      if (xx < 0 || xx >= w) continue;
+      const c = cy * cover(dx);
+      if (xx < 0 || xx >= w || c <= 0) continue;
       const o = (yy * w + xx) * 4;
+      const a = Math.round(c * 255);
+      if (a < (rgba[o + 3] as number)) continue;
       rgba[o] = r;
       rgba[o + 1] = g;
       rgba[o + 2] = b;
-      rgba[o + 3] = 255;
+      rgba[o + 3] = a;
     }
   }
 }

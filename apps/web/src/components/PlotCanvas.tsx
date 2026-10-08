@@ -294,7 +294,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
             ...plot,
             population: bgPop.popId,
             kind: 'dot' as const,
-            style: { ...plot.style, pointPx: Math.min(4, Math.max(2, plot.style.pointPx)) },
+            style: { ...plot.style, pointPx: Math.max(2, plot.style.pointPx) },
           },
           width: Math.round(pw * dpr),
           height: Math.round(ph * dpr),
@@ -1457,6 +1457,6 @@ function overlayDots(plot: PlotSpec): PlotSpec {
   return {
     ...plot,
     kind: 'dot',
-    style: { ...plot.style, pointPx: Math.min(4, Math.max(2, plot.style.pointPx)) },
+    style: { ...plot.style, pointPx: Math.max(2, plot.style.pointPx) },
   };
 }

@@ -2389,6 +2389,10 @@ table.stats.import-map td {
   border-radius: 8px;
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.15);
 }
+.swap-axes {
+  margin-bottom: 8px;
+}
+.swap-axes > button,
 .export-menu > button {
   display: inline-flex;
   align-items: center;
