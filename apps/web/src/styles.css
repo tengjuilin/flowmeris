@@ -119,11 +119,13 @@ button.icon:hover {
 }
 button:focus-visible,
 select:focus-visible,
+textarea:focus-visible,
 input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 select,
+textarea,
 input[type="number"],
 input[type="text"],
 input:not([type]) {
@@ -940,7 +942,8 @@ code,
 }
 .inspector textarea {
   width: 100%;
-  font: 12px / 1.4 var(--mono);
+  font: inherit;
+  padding: 3px 6px;
   resize: vertical;
 }
 .inspector textarea[aria-invalid="true"] {
