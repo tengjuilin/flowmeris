@@ -2178,6 +2178,12 @@ table.stats.import-map td {
   border-radius: 8px;
   margin: 0 0 8px;
 }
+.ridge-section.selected {
+  border-color: var(--accent);
+}
+.danger-icon:not(:disabled):hover {
+  color: var(--danger, #c0392b);
+}
 .ridge-section-bar {
   display: flex;
   align-items: center;

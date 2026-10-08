@@ -179,6 +179,20 @@ async function embedFonts(root: SVGSVGElement, pdf: import('jspdf').jsPDF): Prom
   return [...substituted];
 }
 
+/**
+ * svg2pdf ignores `paint-order`, so a text's halo stroke would be painted over its glyphs. Draw the halo
+ * as a separate copy behind the text instead, and the text itself without a stroke.
+ */
+function splitHalos(root: SVGSVGElement) {
+  for (const t of Array.from(root.querySelectorAll<SVGTextElement>('text'))) {
+    if (!t.style.paintOrder.startsWith('stroke') || !t.style.stroke || t.style.stroke === 'none') continue;
+    const halo = t.cloneNode(true) as SVGTextElement;
+    halo.style.fill = 'none';
+    t.parentNode!.insertBefore(halo, t);
+    t.style.stroke = 'none';
+  }
+}
+
 /** A one-page vector PDF of an on-screen SVG: paths and text stay vector, with fonts embedded where possible. */
 export async function svgToPdf(svg: SVGSVGElement): Promise<Blob> {
   // Ask for installed fonts first, while the click that started the export still counts as a user gesture.
@@ -199,6 +213,7 @@ export async function svgToPdf(svg: SVGSVGElement): Promise<Blob> {
       orientation: w >= h ? 'landscape' : 'portrait',
       hotfixes: ['px_scaling'],
     });
+    splitHalos(el);
     const substituted = await embedFonts(el, pdf);
     await svg2pdf(el, pdf, { x: 0, y: 0, width: w, height: h });
     if (substituted.length)

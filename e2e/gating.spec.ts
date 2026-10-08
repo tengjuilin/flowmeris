@@ -44,6 +44,7 @@ test('ingest an FCS file, draw a gate, see statistics', async ({ page }) => {
   await expect(page.locator('.pop-row', { hasText: 'Gate 1' })).toBeVisible();
 
   // Type the exact Rectangle1 bounds in display units: flin(x) = x / 1024.
+  await page.getByRole('tablist', { name: 'Gate settings' }).getByRole('tab', { name: 'Gate' }).click();
   const set = async (label: string, v: number) => {
     const input = page.getByLabel(label, { exact: true });
     await input.fill(String(v / 1024));

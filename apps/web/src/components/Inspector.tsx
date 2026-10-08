@@ -107,6 +107,8 @@ export function Section({
   onToggle,
   changed,
   onReset,
+  actions,
+  className,
   children,
 }: {
   id: string;
@@ -117,10 +119,13 @@ export function Section({
   changed?: boolean;
   /** Leave out to show no reset button. */
   onReset?: () => void;
+  /** Buttons at the top right in place of the reset button. */
+  actions?: ReactNode;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <section className={`ridge-section${open ? ' open' : ''}`}>
+    <section className={`ridge-section${open ? ' open' : ''}${className ? ` ${className}` : ''}`}>
       <div className="ridge-section-bar">
         <button
           type="button"
@@ -146,6 +151,7 @@ export function Section({
             <ResetIcon />
           </button>
         )}
+        {actions}
       </div>
       {open && (
         <div id={`ridge-section-${id}`} className="ridge-section-body">
@@ -592,29 +598,66 @@ export function StyleEditor({ plot, panel }: { plot: PlotSpec; panel: Panel }) {
   );
 }
 
-export function GateEditor({ panel }: { panel: Panel }) {
+/** Trash can: a lid with a handle over a bin with two slats. */
+export function DeleteIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9M6.7 7v4.5M9.3 7v4.5" />
+    </svg>
+  );
+}
+
+/** One gate's exact coordinates, editable live, with a delete button at the card's top right. */
+export function GateEditor({ gateId, panel }: { gateId: string; panel: Panel }) {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
   const setUi = useStore((s) => s.setUi);
   const group = useGroup()!;
-  const gate = ui.selectedGateId ? group.template.gates[ui.selectedGateId] : undefined;
+  const gate = group.template.gates[gateId];
   if (!gate) return null;
   const sampleId = ui.sampleId ?? group.sampleIds[0]!;
   const geom = effectiveGeometry(group, gate.id, sampleId);
   const ov = isOverridden(group, gate.id, sampleId);
   const nOv = group.overrides.filter((o) => o.gateId === gate.id).length;
   const pops = populationsOfGate(group.template, gate.id);
-  const commit = (g: Geometry) => setGateGeometry(group.id, gate.id, g, ui.editScope, sampleId);
+  const commit = (g: Geometry) =>
+    setGateGeometry(group.id, gate.id, g, ui.editScope, sampleId, `gate:${gate.id}:${ui.editScope}`);
+  const name = pops.map((p) => p.name).join(', ');
   const units = gate.dims.map((d) =>
     d.transform ? `${ws.transforms[d.transform]?.kind ?? '?'} units` : 'linear units',
   );
 
   return (
     <Section
-      id="gate"
-      title={`Gate · ${pops.map((p) => p.name).join(', ')}`}
-      open={panel.isOpen('gate')}
-      onToggle={() => panel.toggle('gate')}
+      id={`gate-${gate.id}`}
+      title={name}
+      className={ui.selectedGateId === gate.id ? 'selected' : undefined}
+      open={panel.isOpen(`gate-${gate.id}`)}
+      onToggle={() => panel.toggle(`gate-${gate.id}`)}
+      actions={
+        <button
+          type="button"
+          className="icon reset-btn danger-icon"
+          title={`Delete gate ${name}`}
+          aria-label={`Delete gate ${name}`}
+          onClick={() => {
+            deleteGate(group.id, gate.id);
+            if (ui.selectedGateId === gate.id) setUi({ selectedGateId: null });
+          }}
+        >
+          <DeleteIcon />
+        </button>
+      }
     >
       <p className="muted small">
         {geom.kind} on{' '}
@@ -627,11 +670,13 @@ export function GateEditor({ panel }: { panel: Panel }) {
           {gate.dims.map((d, i) => (
             <div key={d.channel} className="grid2 span2">
               <NumInput
+                live
                 label={`${d.channel} min`}
                 value={geom.min[i] ?? Number.NEGATIVE_INFINITY}
                 onCommit={(v) => commit({ ...geom, min: geom.min.map((x, k) => (k === i ? v : x)) })}
               />
               <NumInput
+                live
                 label={`${d.channel} max`}
                 value={geom.max[i] ?? Number.POSITIVE_INFINITY}
                 onCommit={(v) => commit({ ...geom, max: geom.max.map((x, k) => (k === i ? v : x)) })}
@@ -643,6 +688,7 @@ export function GateEditor({ panel }: { panel: Panel }) {
       {(geom.kind === 'quadrant' || geom.kind === 'spider') && (
         <div className="grid2">
           <NumInput
+            live
             label="Centre x"
             value={geom.center[0]}
             onCommit={(v) =>
@@ -658,6 +704,7 @@ export function GateEditor({ panel }: { panel: Panel }) {
             }
           />
           <NumInput
+            live
             label="Centre y"
             value={geom.center[1]}
             onCommit={(v) =>
@@ -683,11 +730,12 @@ export function GateEditor({ panel }: { panel: Panel }) {
           };
           return (
             <div className="grid2">
-              <NumInput label="Centre x" value={e.cx} onCommit={(cx) => set({ cx })} />
-              <NumInput label="Centre y" value={e.cy} onCommit={(cy) => set({ cy })} />
-              <NumInput label="Semi-axis a" value={e.a} onCommit={(a) => a > 0 && set({ a })} />
-              <NumInput label="Semi-axis b" value={e.b} onCommit={(b) => b > 0 && set({ b })} />
+              <NumInput live label="Centre x" value={e.cx} onCommit={(cx) => set({ cx })} />
+              <NumInput live label="Centre y" value={e.cy} onCommit={(cy) => set({ cy })} />
+              <NumInput live label="Semi-axis a" value={e.a} onCommit={(a) => a > 0 && set({ a })} />
+              <NumInput live label="Semi-axis b" value={e.b} onCommit={(b) => b > 0 && set({ b })} />
               <NumInput
+                live
                 label="Angle (°)"
                 value={(e.theta * 180) / Math.PI}
                 onCommit={(d) => set({ theta: (d * Math.PI) / 180 })}
@@ -716,18 +764,6 @@ export function GateEditor({ panel }: { panel: Panel }) {
             Template gate{nOv > 0 ? ` · overridden in ${nOv} sample(s)` : ''}
           </span>
         )}
-      </div>
-      <div className="row">
-        <button
-          type="button"
-          className="danger"
-          onClick={() => {
-            deleteGate(group.id, gate.id);
-            setUi({ selectedGateId: null });
-          }}
-        >
-          Delete gate
-        </button>
       </div>
     </Section>
   );

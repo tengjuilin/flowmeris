@@ -101,21 +101,27 @@ export function setGateGeometry(
   geometry: Geometry,
   scope: 'template' | 'sample',
   sampleId: string | null,
+  /** Consecutive edits sharing this key coalesce into one undo step. */
+  merge?: string,
 ) {
-  useStore.getState().mutate(scope === 'template' ? 'Edit gate' : 'Override gate for sample', (ws) => {
-    const g = ws.groups.find((x) => x.id === groupId)!;
-    const gate = g.template.gates[gateId];
-    if (!gate) return;
-    if (scope === 'template' || !sampleId) {
-      gate.geometry = geometry;
-    } else {
-      const ov = g.overrides.find((o) => o.gateId === gateId && o.sampleId === sampleId);
-      if (ov) {
-        ov.geometry = geometry;
-        ov.at = new Date().toISOString();
-      } else g.overrides.push({ gateId, sampleId, geometry, at: new Date().toISOString() });
-    }
-  });
+  useStore.getState().mutate(
+    scope === 'template' ? 'Edit gate' : 'Override gate for sample',
+    (ws) => {
+      const g = ws.groups.find((x) => x.id === groupId)!;
+      const gate = g.template.gates[gateId];
+      if (!gate) return;
+      if (scope === 'template' || !sampleId) {
+        gate.geometry = geometry;
+      } else {
+        const ov = g.overrides.find((o) => o.gateId === gateId && o.sampleId === sampleId);
+        if (ov) {
+          ov.geometry = geometry;
+          ov.at = new Date().toISOString();
+        } else g.overrides.push({ gateId, sampleId, geometry, at: new Date().toISOString() });
+      }
+    },
+    merge,
+  );
 }
 
 export function revertOverride(groupId: string, gateId: string, sampleId: string) {

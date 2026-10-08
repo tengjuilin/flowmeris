@@ -14,11 +14,12 @@ import {
 import { PlotKindSelect, usePlotForPopulation } from './PlotPanel.tsx';
 import { FontSelect, TextStyleEditor, TicksEditor } from './RidgeInspector.tsx';
 
-type GateTab = 'figure' | 'axis' | 'text';
+type GateTab = 'gate' | 'figure' | 'axis' | 'text';
 const GATE_TABS: { id: GateTab; label: string }[] = [
   { id: 'figure', label: 'Figure' },
   { id: 'axis', label: 'Axis' },
   { id: 'text', label: 'Text' },
+  { id: 'gate', label: 'Gate' },
 ];
 const TAB_KEY = 'flowmeris.gatePanelTab';
 
@@ -103,6 +104,8 @@ export function Inspector() {
     </label>
   );
   const card = (id: string) => ({ open: panel.isOpen(id), onToggle: () => panel.toggle(id) });
+  // Every gate drawn on this population, in the order they were made.
+  const gates = Object.values(group.template.gates).filter((g) => g.parentPop === plot.population);
   const is2d = plot.kind !== 'histogram' && !!plot.y;
 
   return (
@@ -125,8 +128,15 @@ export function Inspector() {
           ))}
         </div>
       </div>
-      <GateEditor panel={panel} />
       <div id="gate-tabpanel" role="tabpanel" aria-labelledby={`gate-tab-${tab}`}>
+        {tab === 'gate' &&
+          (gates.length ? (
+            gates.map((g) => <GateEditor key={g.id} gateId={g.id} panel={panel} />)
+          ) : (
+            <p className="muted small">
+              No gates on this population yet. Draw one with the tools above the plot.
+            </p>
+          ))}
         {tab === 'figure' && (
           <>
             <Section id="plotType" title="Plot type" {...card('plotType')}>
