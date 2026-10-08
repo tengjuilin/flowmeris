@@ -29,6 +29,7 @@ import {
 } from './PlotPanel.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { fontStack, ridgeColor, textCss, useRidge } from './RidgeInspector.tsx';
+import { SupLabel } from './SupLabel.tsx';
 import { useSize } from './hooks.ts';
 
 // One observer shared by every tile (hundreds of tiles would otherwise each own one).
@@ -132,7 +133,7 @@ const Tile = memo(function Tile({
 /** Export button: opens a small form to choose the file format (and DPI for raster formats). */
 function ExportMenu({ getSvg, baseName }: { getSvg: () => SVGSVGElement | null; baseName: string }) {
   const [open, setOpen] = useState(false);
-  const [format, setFormat] = useState<ImageFormat>('png');
+  const [format, setFormat] = useState<ImageFormat>('pdf');
   const [dpi, setDpi] = useState(300);
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -163,9 +164,9 @@ function ExportMenu({ getSvg, baseName }: { getSvg: () => SVGSVGElement | null; 
           <label className="field">
             Format
             <select value={format} onChange={(e) => setFormat(e.target.value as ImageFormat)}>
+              <option value="pdf">PDF (vector)</option>
               <option value="png">PNG</option>
               <option value="jpeg">JPEG</option>
-              <option value="pdf">PDF (vector)</option>
               <option value="svg">SVG (vector)</option>
             </select>
           </label>
@@ -517,7 +518,7 @@ export function RidgeView() {
                     ...textCss(style.tickText, style.fontFamily, style.fontColor),
                   }}
                 >
-                  {t.label}
+                  <SupLabel label={t.label} fontSize={style.tickFontSize} />
                 </text>
               )}
             </g>

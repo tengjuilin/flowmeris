@@ -25,6 +25,7 @@ import {
 } from './ChartInspector.tsx';
 import { type Anchor, type PickOption, PickerMenu, pickerTrigger } from './PickerMenu.tsx';
 import { FONT_STACKS } from './RidgeInspector.tsx';
+import { SupLabel } from './SupLabel.tsx';
 
 const ERRORS: { id: StatPlot['error']; label: string }[] = [
   { id: 'none', label: 'None' },
@@ -361,7 +362,7 @@ function Chart(props: {
               <line x1={m.l - (t.major ? 5 : 3)} x2={m.l} y1={t.pos} y2={t.pos} />
               {st.showTickLabels && t.label && (
                 <text x={m.l - 8} y={t.pos} textAnchor="end" dominantBaseline="middle" style={tickText}>
-                  {t.label}
+                  <SupLabel label={t.label} fontSize={fs} />
                 </text>
               )}
             </g>
@@ -393,7 +394,7 @@ function Chart(props: {
                   <line x1={t.pos} x2={t.pos} y1={m.t + ph} y2={m.t + ph + (t.major ? 5 : 3)} />
                   {st.showTickLabels && t.label && (
                     <text x={t.pos} y={m.t + ph + fs + 7} textAnchor="middle" style={tickText}>
-                      {t.label}
+                      <SupLabel label={t.label} fontSize={fs} />
                     </text>
                   )}
                 </g>
