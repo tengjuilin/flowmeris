@@ -584,6 +584,11 @@ code,
   stroke-width: 3px;
   pointer-events: none;
 }
+.gate-label.movable {
+  pointer-events: auto;
+  cursor: move;
+  user-select: none;
+}
 .draft-label {
   fill: var(--accent);
 }

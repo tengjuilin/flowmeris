@@ -154,3 +154,12 @@ export function renamePopulation(groupId: string, popId: string, name: string) {
     if (p) p.name = name;
   });
 }
+
+/** Move a population's label on its gate's plots; undefined puts it back in its default place. */
+export function setLabelOffset(groupId: string, popId: string, offset: [number, number] | undefined) {
+  useStore.getState().mutate(offset ? 'Move gate label' : 'Reset gate label', (ws) => {
+    const p = ws.groups.find((x) => x.id === groupId)?.template.populations[popId];
+    if (!p) return;
+    p.labelOffset = offset;
+  });
+}

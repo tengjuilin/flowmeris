@@ -38,6 +38,8 @@ function inlineStyles(src: Element, dst: Element) {
 export function standaloneSvg(svg: SVGSVGElement): string {
   const clone = svg.cloneNode(true) as SVGSVGElement;
   inlineStyles(svg, clone);
+  // On-screen hints (e.g. on draggable gate labels) are not part of the figure.
+  for (const t of Array.from(clone.querySelectorAll('title'))) t.remove();
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   clone.setAttribute('viewBox', `0 0 ${svg.getAttribute('width')} ${svg.getAttribute('height')}`);
   return new XMLSerializer().serializeToString(clone);

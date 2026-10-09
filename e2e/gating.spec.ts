@@ -98,6 +98,41 @@ test('gating path shows each step and backgating for one sample', async ({ page 
   await expect(page.locator('.path-tree .path-chip.on')).toContainText('Gate 1');
 });
 
+test('a gate label can be dragged off the events and put back', async ({ page }) => {
+  await page.goto('/');
+  await page
+    .getByTestId('file-input')
+    .first()
+    .setInputFiles([fixture('flowkit/gate_ref/data1.fcs')]);
+  await expect(page.getByText('All events')).toBeVisible({ timeout: 20_000 });
+
+  await page.getByRole('button', { name: 'Rectangle' }).click();
+  const svg = page.locator('svg.plot-overlay');
+  const box = (await svg.boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.7);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.4, { steps: 8 });
+  await page.mouse.up();
+
+  const label = svg.locator('text.gate-label', { hasText: 'Gate 1' });
+  await expect(label).toBeVisible();
+  const before = (await label.boundingBox())!;
+  await page.mouse.move(before.x + 5, before.y + before.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(before.x + 85, before.y + before.height / 2 + 60, { steps: 6 });
+  await page.mouse.up();
+  const after = (await label.boundingBox())!;
+  expect(after.x - before.x).toBeCloseTo(80, 0);
+  expect(after.y - before.y).toBeCloseTo(60, 0);
+  // Moving the label leaves the gate where it was.
+  await expect(page.locator('.pop-row', { hasText: 'Gate 1' })).toBeVisible();
+
+  await label.dblclick();
+  const reset = (await label.boundingBox())!;
+  expect(reset.x).toBeCloseTo(before.x, 0);
+  expect(reset.y).toBeCloseTo(before.y, 0);
+});
+
 test('privacy: production build declares a restrictive CSP', async ({ page }) => {
   await page.goto('/');
   const csp = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');

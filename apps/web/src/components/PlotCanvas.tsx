@@ -26,7 +26,14 @@ import {
   useState,
 } from 'react';
 import { pool } from '../engine-client/pool.ts';
-import { createGate, deleteGate, lineageKey, plotKey, setGateGeometry } from '../lib/analysis.ts';
+import {
+  createGate,
+  deleteGate,
+  lineageKey,
+  plotKey,
+  setGateGeometry,
+  setLabelOffset,
+} from '../lib/analysis.ts';
 import { DEFAULT_FIGURE, figureText } from '../lib/figure.ts';
 import {
   type DimMap,
@@ -92,7 +99,9 @@ interface Props {
 type Drag =
   | { kind: 'create'; tool: 'rect' | 'range' | 'ellipse'; start: [number, number]; cur: [number, number] }
   | { kind: 'move'; gateId: string; start: [number, number]; base: Geometry }
-  | { kind: 'handle'; gateId: string; handle: string; base: Geometry };
+  | { kind: 'handle'; gateId: string; handle: string; base: Geometry }
+  /** A population's label, its offset in fractions of the plot size. */
+  | { kind: 'label'; popId: string; start: [number, number]; base: [number, number]; cur: [number, number] };
 
 const SPAN = 1e6;
 
@@ -513,6 +522,8 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
 
   // --- editing --------------------------------------------------------------------
   const canDraw = interactive && !missing;
+  // Gate labels can be dragged off the events they cover on any full-size plot, unless a gate is being drawn.
+  const labelsMovable = !compact && !missing && tool === 'select' && !poly;
 
   // the quadrant / spider gate that a click would place now
   const hoverGeom: Extract<Geometry, { kind: 'quadrant' | 'spider' }> | null =
@@ -577,6 +588,17 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   };
 
   const onPointerDown = (e: RPointerEvent<SVGSVGElement>) => {
+    const labelEl = labelsMovable && e.button === 0 && (e.target as Element).closest('[data-label-pop]');
+    if (labelEl) {
+      // Keep the press from the plot's container too (e.g. panning the tree of plots).
+      e.stopPropagation();
+      e.preventDefault();
+      (e.target as Element).setPointerCapture?.(e.pointerId);
+      const popId = labelEl.getAttribute('data-label-pop')!;
+      const base = group.template.populations[popId]?.labelOffset ?? [0, 0];
+      setDrag({ kind: 'label', popId, start: evPt(e), base, cur: base });
+      return;
+    }
     if (!canDraw || e.button !== 0) return;
     const [px, py] = evPt(e);
     if (px < 0 || py < 0 || px > pw || py > ph) return;
@@ -655,6 +677,12 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       setDrag({ ...drag, cur: p });
       return;
     }
+    if (drag.kind === 'label') {
+      const dx = (px - drag.start[0]) / pw;
+      const dy = (py - drag.start[1]) / ph;
+      setDrag({ ...drag, cur: [drag.base[0] + dx, drag.base[1] + dy] });
+      return;
+    }
     const gate = group.template.gates[drag.gateId]!;
     let next: Geometry | null = null;
     if (drag.kind === 'move')
@@ -671,6 +699,12 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
 
   const onPointerUp = () => {
     if (!drag) return;
+    if (drag.kind === 'label') {
+      const moved = drag.cur[0] !== drag.base[0] || drag.cur[1] !== drag.base[1];
+      if (moved) setLabelOffset(group.id, drag.popId, drag.cur);
+      setDrag(null);
+      return;
+    }
     if (drag.kind === 'create') {
       const [x0, y0] = drag.start;
       const [x1, y1] = drag.cur;
@@ -707,6 +741,14 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   };
 
   const onDoubleClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    const labelEl = labelsMovable && (e.target as Element).closest('[data-label-pop]');
+    if (labelEl) {
+      // Put a moved label back in its default place (instead of drilling into the population).
+      e.stopPropagation();
+      const popId = labelEl.getAttribute('data-label-pop')!;
+      if (group.template.populations[popId]?.labelOffset) setLabelOffset(group.id, popId, undefined);
+      return;
+    }
     if (!interactive) return;
     if (poly && poly.length >= 3) {
       finishCreate({ kind: 'polygon', vertices: poly.slice(0, -1).length >= 3 ? poly.slice(0, -1) : poly });
@@ -981,7 +1023,14 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     const dimmed = focusPopId !== undefined && !focused;
     const cls = `gate${selected ? ' selected' : ''}${overridden ? ' overridden' : ''}${focused ? ' focus' : ''}`;
     const handles: { id: string; x: number; y: number; shape?: 'mid' }[] = [];
-    const labels: { text: string; x: number; y: number; anchor: 'start' | 'end'; focus?: boolean }[] = [];
+    const labels: {
+      popId: string;
+      text: string;
+      x: number;
+      y: number;
+      anchor: 'start' | 'end';
+      focus?: boolean;
+    }[] = [];
     let body: JSX.Element | null = null;
 
     if (is1d && geom.kind === 'rect') {
@@ -1009,6 +1058,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       const pop = pops[0];
       if (pop)
         labels.push({
+          popId: pop.id,
           text: `${pop.name} ${fmtPct(pop.id, 'in', gate.id)}%`,
           x: Math.min(Math.max(ca + 4, 4), pw - 4),
           y: ph * 0.12 - 6,
@@ -1064,6 +1114,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         const c = QUAD_CORNERS[p.region]?.(pw, ph);
         if (c)
           labels.push({
+            popId: p.id,
             text: `${fmtPct(p.id, p.region, gate.id)}%`,
             x: c[0],
             y: c[1],
@@ -1119,6 +1170,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       const pop = pops[0];
       if (pop)
         labels.push({
+          popId: pop.id,
           text: `${pop.name} ${fmtPct(pop.id, 'in', gate.id)}%`,
           x: Math.max(4, Math.min(pw - 60, minX)),
           y: Math.max(12, minY - 6),
@@ -1130,22 +1182,33 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       <g key={gate.id} data-gate-id={gate.id} className={dimmed ? 'gate-dim' : undefined}>
         <g className="gate-halo">{body}</g>
         {body}
-        {labels.map((l, i) => (
-          <text
-            key={i}
-            x={l.x}
-            y={l.y}
-            textAnchor={l.anchor}
-            className={`gate-label${l.focus ? ' focus' : ''}`}
-            style={
-              compact
-                ? undefined
-                : figureText(fig, fig.gateText, l.focus ? fig.gateFontSize * (13 / 11.5) : fig.gateFontSize)
-            }
-          >
-            {l.text}
-          </text>
-        ))}
+        {labels.map((l) => {
+          const off =
+            drag?.kind === 'label' && drag.popId === l.popId
+              ? drag.cur
+              : group.template.populations[l.popId]?.labelOffset;
+          // A moved label stays inside the plot, however small the plot is drawn.
+          const x = off ? Math.min(Math.max(l.x + off[0] * pw, 2), pw - 2) : l.x;
+          const y = off ? Math.min(Math.max(l.y + off[1] * ph, 10), ph - 2) : l.y;
+          return (
+            <text
+              key={l.popId}
+              x={x}
+              y={y}
+              textAnchor={l.anchor}
+              data-label-pop={labelsMovable ? l.popId : undefined}
+              className={`gate-label${l.focus ? ' focus' : ''}${labelsMovable ? ' movable' : ''}`}
+              style={
+                compact
+                  ? undefined
+                  : figureText(fig, fig.gateText, l.focus ? fig.gateFontSize * (13 / 11.5) : fig.gateFontSize)
+              }
+            >
+              {labelsMovable && <title>Drag to move this label; double-click to put it back</title>}
+              {l.text}
+            </text>
+          );
+        })}
         {selected &&
           editable &&
           handles.map((h) =>

@@ -194,6 +194,11 @@ export const PopulationSchema = z.object({
   region: RegionSchema,
   name: z.string(),
   color: z.string(),
+  /**
+   * Where the user moved the population's label on its gate's plots: an offset from the default
+   * place, as fractions of the plot's width and height (x right, y down). Display only.
+   */
+  labelOffset: z.tuple([Num, Num]).optional(),
 });
 export type Population = z.infer<typeof PopulationSchema>;
 
