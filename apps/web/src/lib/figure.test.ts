@@ -36,14 +36,14 @@ const setX = (p: PlotSpec, x: string) =>
 describe('applying settings across populations', () => {
   it('copies the shared settings now and keeps each plot’s title, ticks and axis titles', () => {
     const a = plot('a');
-    a.style.pointPx = 3;
+    a.style.pointPx = 2;
     a.style.figure = fig({ fontSize: 20, title: 'A', xTitle: 'X of A' });
     const b = plot('b');
     b.style.figure = fig({ title: 'B', yTicks: [{ value: 10 }] });
     const plots = [a, b];
     expect(populationsMatch(plots, 'a')).toBe(false);
     applyToPopulations(plots, 'a');
-    expect(b.style.pointPx).toBe(3);
+    expect(b.style.pointPx).toBe(2);
     expect(b.style.figure?.fontSize).toBe(20);
     expect(b.style.figure?.title).toBe('B');
     expect(b.style.figure?.xTitle).toBeUndefined();
@@ -66,39 +66,39 @@ describe('applying settings across populations', () => {
 describe('settings per channel pair', () => {
   it('carries the settings in use to the next pair while carrying is on, and saves the pair left', () => {
     const p = plot('p');
-    p.style.pointPx = 3;
+    p.style.pointPx = 2;
     expect(setX(p, 'C')).toBe(false);
-    expect(p.style.pointPx).toBe(3);
-    expect(p.stylesByAxes?.['A|B']?.pointPx).toBe(3);
+    expect(p.style.pointPx).toBe(2);
+    expect(p.stylesByAxes?.['A|B']?.pointPx).toBe(2);
   });
 
   it('restores each pair’s own settings while carrying is off', () => {
     const p = plot('p');
-    p.style.pointPx = 3;
+    p.style.pointPx = 2;
     setPairStyles(p, true);
     setX(p, 'C');
     expect(p.style.pointPx).toBe(DEFAULT_STYLE.pointPx); // a pair not used yet starts from the defaults
     p.style.pointPx = 5;
     expect(setX(p, 'A')).toBe(true);
-    expect(p.style.pointPx).toBe(3);
+    expect(p.style.pointPx).toBe(2);
     setX(p, 'C');
     expect(p.style.pointPx).toBe(5);
   });
 
   it('does not change anything when carrying is switched', () => {
     const p = plot('p');
-    p.style.pointPx = 3;
+    p.style.pointPx = 2;
     p.stylesByAxes = { 'C|B': { ...structuredClone(DEFAULT_STYLE), pointPx: 7 } };
     setPairStyles(p, true);
     setPairStyles(p, false);
-    expect(p.style.pointPx).toBe(3);
+    expect(p.style.pointPx).toBe(2);
     expect(p.stylesByAxes['C|B']?.pointPx).toBe(7);
   });
 
   it('applies the settings in use to every pair now', () => {
     const p = plot('p');
     setPairStyles(p, true);
-    p.style.pointPx = 3;
+    p.style.pointPx = 2;
     setX(p, 'C');
     p.style.pointPx = 5;
     expect(pairsMatch(p)).toBe(false);
@@ -114,16 +114,16 @@ describe('settings per channel pair', () => {
 describe('resetting', () => {
   it('resets only the current plot', () => {
     const p = plot('p');
-    p.style.pointPx = 3;
+    p.style.pointPx = 2;
     setX(p, 'C');
     resetCurrentStyle(p, DEFAULT_STYLE);
     expect(isDefaultStyle(p.style, DEFAULT_STYLE)).toBe(true);
-    expect(plotAtDefaults(p, DEFAULT_STYLE)).toBe(false); // the A|B pair keeps 3 px
+    expect(plotAtDefaults(p, DEFAULT_STYLE)).toBe(false); // the A|B pair keeps 2 px
   });
 
   it('resets one channel pair where it is shown or saved, and leaves other pairs', () => {
     const a = plot('a');
-    a.style.pointPx = 3;
+    a.style.pointPx = 2;
     const b = plot('b', 'C', 'D');
     b.style.pointPx = 4;
     setPairStyles(b, true);
@@ -140,7 +140,7 @@ describe('resetting', () => {
 
   it('resets one panel’s settings and leaves the others', () => {
     const p = plot('p');
-    p.style.pointPx = 3;
+    p.style.pointPx = 2;
     p.style.figure = fig({
       fontSize: 20,
       tickWidth: 2,

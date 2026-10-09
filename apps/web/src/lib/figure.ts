@@ -52,8 +52,8 @@ export function fontStack(family: string): string {
 /** Display settings of a new plot. */
 export const DEFAULT_STYLE: PlotStyle = {
   colormap: 'viridis',
-  pointPx: 1,
-  smoothSigmaBins: 1.5,
+  pointPx: 3,
+  smoothSigmaBins: 2,
   contour: { mode: 'equal-prob', pct: 5 },
   showOutliers: true,
   histBins: 256,

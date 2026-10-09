@@ -35,15 +35,15 @@ test('carrying settings applies them to the population opened next, not on toggl
   await tab(page, 'Settings');
   await page.getByLabel('Carry settings to next populations').uncheck();
   await tab(page, 'Figure');
-  await pointSize(page).fill('3');
+  await pointSize(page).fill('2');
   await visit(page, 'Gate 1');
-  await expect(pointSize(page)).toHaveValue('1');
+  await expect(pointSize(page)).toHaveValue('3');
 
   // Ticking the toggle changes nothing by itself...
   await tab(page, 'Settings');
   await page.getByLabel('Carry settings to next populations').check();
   await tab(page, 'Figure');
-  await expect(pointSize(page)).toHaveValue('1');
+  await expect(pointSize(page)).toHaveValue('3');
   // ...the population opened next takes the settings of the one left.
   await pointSize(page).fill('4');
   await visit(page, 'All events');
@@ -64,22 +64,22 @@ test('apply and reset buttons in the Settings tab', async ({ page }) => {
   await expect(resetThis).toBeDisabled();
 
   await tab(page, 'Figure');
-  await pointSize(page).fill('3');
+  await pointSize(page).fill('2');
   await tab(page, 'Settings');
   await expect(resetThis).toBeEnabled();
   await applyAll.click();
   await expect(applyAll).toBeDisabled();
   await visit(page, 'Gate 1');
   await tab(page, 'Figure');
-  await expect(pointSize(page)).toHaveValue('3');
+  await expect(pointSize(page)).toHaveValue('2');
 
   // The header reset clears only the open panel's settings.
   await page.getByRole('button', { name: 'Reset the settings in this panel' }).click();
-  await expect(pointSize(page)).toHaveValue('1');
-  await visit(page, 'All events');
   await expect(pointSize(page)).toHaveValue('3');
+  await visit(page, 'All events');
+  await expect(pointSize(page)).toHaveValue('2');
   await tab(page, 'Settings');
   await resetThis.click();
   await tab(page, 'Figure');
-  await expect(pointSize(page)).toHaveValue('1');
+  await expect(pointSize(page)).toHaveValue('3');
 });

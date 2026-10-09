@@ -108,27 +108,46 @@ test('a gate label can be dragged off the events and put back', async ({ page })
 
   await page.getByRole('button', { name: 'Rectangle' }).click();
   const svg = page.locator('svg.plot-overlay');
-  const box = (await svg.boundingBox())!;
-  await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.7);
+  const plot = (await svg.boundingBox())!;
+  await page.mouse.move(plot.x + plot.width * 0.3, plot.y + plot.height * 0.7);
   await page.mouse.down();
-  await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.4, { steps: 8 });
+  await page.mouse.move(plot.x + plot.width * 0.6, plot.y + plot.height * 0.4, { steps: 8 });
   await page.mouse.up();
 
   const label = svg.locator('text.gate-label', { hasText: 'Gate 1' });
   await expect(label).toBeVisible();
-  const before = (await label.boundingBox())!;
-  await page.mouse.move(before.x + 5, before.y + before.height / 2);
+  // The plot resizes as the new gate's settings open: read the label once it has stopped moving.
+  // Read its box from the page: WebKit's locator.boundingBox() misplaces SVG text.
+  const box = () =>
+    label.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    });
+  const settled = async () => {
+    let prev = '';
+    for (;;) {
+      const b = await box();
+      const k = `${Math.round(b.x)},${Math.round(b.y)}`;
+      if (k === prev) return b;
+      prev = k;
+      await page.waitForTimeout(150);
+    }
+  };
+  const before = await settled();
+  // Grab it mid-text, clear of the selected gate's corner handle.
+  const [gx, gy] = [before.x + before.width / 2, before.y + before.height / 2];
+  await page.mouse.move(gx, gy);
   await page.mouse.down();
-  await page.mouse.move(before.x + 85, before.y + before.height / 2 + 60, { steps: 6 });
+  await page.mouse.move(gx + 80, gy + 60, { steps: 6 });
   await page.mouse.up();
-  const after = (await label.boundingBox())!;
+  const after = await settled();
   expect(after.x - before.x).toBeCloseTo(80, 0);
   expect(after.y - before.y).toBeCloseTo(60, 0);
   // Moving the label leaves the gate where it was.
   await expect(page.locator('.pop-row', { hasText: 'Gate 1' })).toBeVisible();
 
-  await label.dblclick();
-  const reset = (await label.boundingBox())!;
+  await page.mouse.dblclick(after.x + after.width / 2, after.y + after.height / 2);
+  const reset = await settled();
   expect(reset.x).toBeCloseTo(before.x, 0);
   expect(reset.y).toBeCloseTo(before.y, 0);
 });

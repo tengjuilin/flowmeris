@@ -17,7 +17,7 @@ the plot. They are never silently dropped.
 ## M-PLOT-SMOOTH — density estimate
 
 Smoothing is a separable Gaussian convolution of the binned counts (a binned kernel density estimate;
-Wand 1994), with kernel standard deviation σ in pixels (Display → Smoothing σ; default 1.5 px), truncated
+Wand 1994), with kernel standard deviation σ in pixels (Display → Smoothing σ; default 2 px), truncated
 at ±4σ and normalised. Zero padding is used at the plot edges, so mass is lost beyond the displayed
 range. That mass is already counted as off-scale.
 
@@ -25,8 +25,8 @@ range. That mass is already counted as off-scale.
 
 | Type | Definition |
 |---|---|
-| **Dot** | every pixel containing ≥ 1 event is drawn in the dot colour (optionally enlarged to 2–4 px) |
-| **Pseudocolor** (M-PLOT-PSEUDO) | every pixel containing ≥ 1 event is coloured by $\log(1+\hat f)/\log(1+\hat f_\max)$ of the smoothed density $\hat f$. Isolated events stay visible while dense regions show structure. |
+| **Dot** | every pixel containing ≥ 1 event is drawn in the dot colour, as a point of Display → Point size (default 3 px; 0.25–10 px) |
+| **Pseudocolor** (M-PLOT-PSEUDO) | every pixel containing ≥ 1 event is coloured by $\log(1+\hat f)/\log(1+\hat f_\max)$ of the smoothed density $\hat f$. Isolated events stay visible while dense regions show structure. Points are 3 px by default, as for dot plots. |
 | **Density** (M-PLOT-DENSITY) | the smoothed density image, linear colour scale, cells below 0.5% of the maximum transparent |
 | **Contour** | iso-density lines of the smoothed density (marching squares) on a grid of 3-px cells |
 | **Histogram** | 1-D counts in 256 bins (64–1024), optionally smoothed (σ = 1.5 bins), normalised to count, mode (% of max) or area |
