@@ -1,4 +1,4 @@
-import type { Group, PlotSpec } from '@flowmeris/model';
+import type { PlotSpec } from '@flowmeris/model';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_STYLE } from './defaults.ts';
 import {
@@ -40,15 +40,15 @@ describe('applying settings across populations', () => {
     a.style.figure = fig({ fontSize: 20, title: 'A', xTitle: 'X of A' });
     const b = plot('b');
     b.style.figure = fig({ title: 'B', yTicks: [{ value: 10 }] });
-    const g = { plots: [a, b] } as unknown as Group;
-    expect(populationsMatch(g, 'a')).toBe(false);
-    applyToPopulations(g, 'a');
+    const plots = [a, b];
+    expect(populationsMatch(plots, 'a')).toBe(false);
+    applyToPopulations(plots, 'a');
     expect(b.style.pointPx).toBe(3);
     expect(b.style.figure?.fontSize).toBe(20);
     expect(b.style.figure?.title).toBe('B');
     expect(b.style.figure?.xTitle).toBeUndefined();
     expect(b.style.figure?.yTicks).toEqual([{ value: 10 }]);
-    expect(populationsMatch(g, 'a')).toBe(true);
+    expect(populationsMatch(plots, 'a')).toBe(true);
   });
 
   it('carries the settings of the population left to the one opened', () => {
@@ -129,13 +129,13 @@ describe('resetting', () => {
     setPairStyles(b, true);
     applyToPairs(b); // pairs not used yet start at 4 px
     b.stylesByAxes = { 'A|B': { ...structuredClone(DEFAULT_STYLE), pointPx: 5 } };
-    const g = { plots: [a, b] } as unknown as Group;
-    resetPairStyles(g, 'A|B', DEFAULT_STYLE);
+    const plots = [a, b];
+    resetPairStyles(plots, 'A|B', DEFAULT_STYLE);
     expect(a.style.pointPx).toBe(DEFAULT_STYLE.pointPx);
     expect(b.style.pointPx).toBe(4);
     expect(b.stylesByAxes['A|B']?.pointPx).toBe(DEFAULT_STYLE.pointPx);
-    expect(pairAtDefaults(g, 'A|B', DEFAULT_STYLE)).toBe(true);
-    expect(pairAtDefaults(g, 'X|Y', DEFAULT_STYLE)).toBe(false); // b's unused pairs start at 4 px
+    expect(pairAtDefaults(plots, 'A|B', DEFAULT_STYLE)).toBe(true);
+    expect(pairAtDefaults(plots, 'X|Y', DEFAULT_STYLE)).toBe(false); // b's unused pairs start at 4 px
   });
 
   it('resets one panel’s settings and leaves the others', () => {

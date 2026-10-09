@@ -362,7 +362,30 @@ code,
   flex: none;
   padding: 5px 7px;
 }
-.settings-toggle[aria-expanded="true"] {
+.tiles-settings {
+  display: inline-flex;
+  padding: 5px 7px;
+}
+/* Above the Tiles view's populations card: tile size, then the settings panel toggle. */
+.tiles-controls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.tiles-controls .field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tiles-controls input[type="range"] {
+  flex: 1;
+  min-width: 0;
+}
+.settings-toggle[aria-expanded="true"],
+.tiles-settings[aria-expanded="true"] {
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -890,21 +913,16 @@ code,
   grid-column: span 2;
 }
 
+.tiles-view {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+/* The toolbar stays put while the tiles scroll under it. */
 .tiles {
-  /* Tiles are inline blocks so they wrap around the floated population card. */
-  display: flow-root;
-}
-.tiles-side {
-  float: right;
-  width: 320px;
-  max-width: 100%;
-  margin: 0 0 12px 12px;
-}
-.tiles-plot {
-  margin-bottom: 8px;
-}
-.tiles-side .pop-tree {
-  max-height: 50vh;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
 }
 .tile {
@@ -2404,8 +2422,6 @@ table.stats.import-map td {
 .ridge-inspector .small,
 .plot-side .pop-tree,
 .plot-side .pop-tree :is(button, input, .pane-title),
-.tiles-side .pop-tree,
-.tiles-side .pop-tree :is(button, input, .pane-title),
 .plot-side .ref-plots,
 .plot-side :is(.ref-plots, .ref-tabs) :is(button, select, input, .field, .small, .pane-title),
 .ridge-combine .field,

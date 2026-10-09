@@ -12,7 +12,7 @@ import {
 } from '@flowmeris/model';
 import { CATEGORICAL } from '@flowmeris/render';
 import { asinhDefFromCofactor } from '@flowmeris/transforms';
-import { DEFAULT_STYLE } from './figure.ts';
+import { DEFAULT_STYLE, TILE_STYLE } from './figure.ts';
 
 export { DEFAULT_STYLE };
 
@@ -124,7 +124,7 @@ export function newPlot(
 
 /**
  * Add the population's Tiles plot: a copy of the Gate view's plot type and axes (or the defaults when it
- * has none) with the default appearance. Not linked to the Gate view's plot afterwards.
+ * has none) with the Tiles default appearance. Not linked to the Gate view's plot afterwards.
  */
 export function newTilePlot(ws: Workspace, g: Group, population: string): PlotSpec {
   const src = g.plots.find((p) => p.population === population);
@@ -134,7 +134,7 @@ export function newTilePlot(ws: Workspace, g: Group, population: string): PlotSp
     population,
     kind: src?.kind ?? 'pseudocolor',
     x: { ...(src?.x ?? defaultAxis(ws, g, xc)) },
-    style: structuredClone(DEFAULT_STYLE),
+    style: structuredClone(TILE_STYLE),
   };
   if (plot.kind !== 'histogram') plot.y = { ...(src?.y ?? defaultAxis(ws, g, yc)) };
   g.tilePlots.push(plot);

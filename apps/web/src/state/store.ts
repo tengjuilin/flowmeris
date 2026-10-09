@@ -43,6 +43,8 @@ interface UiState {
   refPlotId: string | null;
   /** Active (gateable) cell of the Plot view's grid. */
   gridCellId: string | null;
+  /** Whether the Tiles view's settings panel is shown. */
+  tilesSettings: boolean;
   missing: Record<string, true>;
   /** Samples left out of the Tiles, Ridge and Statistics views (unchecked in the sidebar). */
   excluded: Record<string, true>;
@@ -119,6 +121,7 @@ export const useStore = create<Store>((set, get) => ({
     selectedGateId: null,
     refPlotId: null,
     gridCellId: null,
+    tilesSettings: false,
     missing: {},
     excluded: {},
     ingest: null,

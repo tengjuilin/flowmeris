@@ -4,8 +4,9 @@ import { axisTicks, formatLinear } from '@flowmeris/transforms';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { lineageKey } from '../lib/analysis.ts';
-import { factoryAxis, newTilePlot } from '../lib/defaults.ts';
+import { factoryAxis } from '../lib/defaults.ts';
 import { exportSvgFigure } from '../lib/exportPlot.ts';
+import { TILE_FIGURE } from '../lib/figure.ts';
 import { scaleFor } from '../lib/geometry.ts';
 import { type RidgeCurve, combineCounts, textMeasure, withRidgeChannel, wrapText } from '../lib/ridge.ts';
 import {
@@ -17,16 +18,16 @@ import {
   useStore,
 } from '../state/store.ts';
 import { ExportMenu } from './ExportMenu.tsx';
-import { AxisEditor, type Panel, Section } from './Inspector.tsx';
+import { SettingsIcon } from './Inspector.tsx';
 import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './PickerMenu.tsx';
 import { PlotCanvas } from './PlotCanvas.tsx';
 import {
   EditScopeToggle,
-  PlotKindSelect,
   ToolButtons,
   axisChannelSetter,
   drill,
   tilesEdit,
+  useTilePlot,
 } from './PlotPanel.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { fontStack, ridgeColor, textCss, useRidge } from './RidgeInspector.tsx';
@@ -148,45 +149,19 @@ const Tile = memo(function Tile({
   );
 });
 
-/** The Tiles plot's type, then each axis's channel, scale and range, as the same cards as the Gate view's settings. */
-function TilesPlotCard({ group, plot }: { group: Group; plot: PlotSpec }) {
-  // Every card starts open; collapsing one lasts for the session.
-  const [closed, setClosed] = useState<Record<string, boolean>>({});
-  const panel: Panel = {
-    isOpen: (id) => !closed[id],
-    toggle: (id) => setClosed((c) => ({ ...c, [id]: !c[id] })),
-  };
-  return (
-    <div className="ridge-inspector tiles-plot" aria-label="Tiles plot settings">
-      <Section id="plot" title="Plot" open={panel.isOpen('plot')} onToggle={() => panel.toggle('plot')}>
-        <PlotKindSelect group={group} plot={plot} edit={tilesEdit(group.id, plot.id)} label="Plot type" />
-      </Section>
-      <AxisEditor tiles which="x" plot={plot} panel={panel} />
-      {plot.kind !== 'histogram' && plot.y && <AxisEditor tiles which="y" plot={plot} panel={panel} />}
-    </div>
-  );
-}
-
-/** The Tiles plot of the population being gated; made from the Gate view's plot on first visit. */
-function useTilePlot(group: Group | undefined): PlotSpec | undefined {
-  const popId = useStore((s) => s.ui.popId);
-  const plot = group?.tilePlots.find((p) => p.population === popId);
-  const missing = !!group && !plot && !!group.template.populations[popId];
-  useEffect(() => {
-    if (!missing || !group) return;
-    useStore.getState().mutateQuiet((w) => {
-      const g = w.groups.find((x) => x.id === group.id);
-      if (g && !g.tilePlots.some((p) => p.population === popId)) newTilePlot(w, g, popId);
-    });
-  }, [missing, group, popId]);
-  return plot;
-}
-
 export function TilesView() {
   const group = useGroup();
-  const plot = useTilePlot(group);
+  const saved = useTilePlot(group);
+  // A Tiles plot without saved figure options is drawn with the Tiles defaults.
+  const plot = useMemo(
+    () =>
+      saved && !saved.style.figure ? { ...saved, style: { ...saved.style, figure: TILE_FIGURE } } : saved,
+    [saved],
+  );
   const names = useSampleNames(group);
   const shown = useSelectedSampleIds(group);
+  const settingsOpen = useStore((s) => s.ui.tilesSettings);
+  const setUi = useStore((s) => s.setUi);
   const [tile, setTile] = useState(280);
   // Re-lay out and re-render the tiles once the slider settles, not on every step of a drag.
   // Tiles resize live; their plots are recomputed at the new size once the slider settles.
@@ -196,40 +171,51 @@ export function TilesView() {
       <div className="empty">Open a population first; tiles show its plot for every sample in the group.</div>
     );
   return (
-    <div className="tiles-view">
-      <div className="toolbar">
-        <ToolButtons is1d={plot.kind === 'histogram'} />
-        <EditScopeToggle />
-        <div className="spacer" />
-        <label className="field">
-          Tile size
-          <input
-            type="range"
-            min={200}
-            max={520}
-            value={tile}
-            onChange={(e) => setTile(Number(e.target.value))}
-          />
-        </label>
-      </div>
-      {shown.length === 0 && <div className="empty">No samples selected: check some in the sidebar.</div>}
-      {/* The population card floats top-right: tiles flow beside it, then use the full width below it. */}
-      <div className="tiles">
-        <div className="tiles-side">
-          <TilesPlotCard group={group} plot={plot} />
-          <PopulationTree />
+    <div className="plot-layout">
+      <div className="tiles-view">
+        <div className="toolbar">
+          <ToolButtons is1d={plot.kind === 'histogram'} />
+          <EditScopeToggle />
         </div>
-        {shown.map((id) => (
-          <Tile
-            key={id}
-            group={group}
-            sampleId={id}
-            plot={plot}
-            size={tile}
-            renderSize={renderSize}
-            name={names[id] ?? id}
-          />
-        ))}
+        {shown.length === 0 && <div className="empty">No samples selected: check some in the sidebar.</div>}
+        <div className="tiles">
+          {shown.map((id) => (
+            <Tile
+              key={id}
+              group={group}
+              sampleId={id}
+              plot={plot}
+              size={tile}
+              renderSize={renderSize}
+              name={names[id] ?? id}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="plot-side">
+        <div className="tiles-controls">
+          <label className="field">
+            Tile size
+            <input
+              type="range"
+              min={200}
+              max={520}
+              value={tile}
+              onChange={(e) => setTile(Number(e.target.value))}
+            />
+          </label>
+          <button
+            type="button"
+            className="tiles-settings"
+            aria-expanded={settingsOpen}
+            aria-label="Settings"
+            title={settingsOpen ? 'Hide settings' : 'Show settings'}
+            onClick={() => setUi({ tilesSettings: !settingsOpen })}
+          >
+            <SettingsIcon />
+          </button>
+        </div>
+        <PopulationTree />
       </div>
     </div>
   );

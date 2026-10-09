@@ -25,7 +25,7 @@ import {
   scaleKindOf,
   transformOfKind,
 } from '../lib/defaults.ts';
-import { DEFAULT_FIGURE } from '../lib/figure.ts';
+import { DEFAULT_FIGURE, TILE_FIGURE } from '../lib/figure.ts';
 import { contextFor, toast, useGroup, useStore } from '../state/store.ts';
 import { axisChannelSetter, tilesEdit, usePlotForPopulation } from './PlotPanel.tsx';
 
@@ -46,6 +46,17 @@ export function ResetIcon() {
     >
       <path d="M5.8 3L2.4 6L5.8 9" />
       <path d="M2.8 6H10.5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+  );
+}
+
+/** Settings: two slider tracks with their knobs. */
+export function SettingsIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+      <path d="M1 3.5h12M1 10.5h12" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="4.5" cy="3.5" r="1.9" fill="var(--surface)" stroke="currentColor" strokeWidth="1.4" />
+      <circle cx="9.5" cy="10.5" r="1.9" fill="var(--surface)" stroke="currentColor" strokeWidth="1.4" />
     </svg>
   );
 }
@@ -498,13 +509,13 @@ export function AxisFields({
   );
 }
 
-export function StyleEditor({ plot, panel }: { plot: PlotSpec; panel: Panel }) {
+export function StyleEditor({ plot, panel, tiles }: { plot: PlotSpec; panel: Panel; tiles?: boolean }) {
   const group = useGroup()!;
   const mutate = useStore((s) => s.mutate);
   const set = (fn: (st: PlotSpec['style']) => void) =>
     mutate('Change plot style', (w) => {
       const g = w.groups.find((x) => x.id === group.id)!;
-      fn(g.plots.find((x) => x.id === plot.id)!.style);
+      fn((tiles ? g.tilePlots : g.plots).find((x) => x.id === plot.id)!.style);
     });
   const st = plot.style;
   const showNote = st.figure?.showOffScaleNote ?? true;
@@ -636,7 +647,7 @@ export function StyleEditor({ plot, panel }: { plot: PlotSpec; panel: Panel }) {
           checked={showNote}
           onChange={(e) =>
             set((s) => {
-              s.figure ??= structuredClone(DEFAULT_FIGURE);
+              s.figure ??= structuredClone(tiles ? TILE_FIGURE : DEFAULT_FIGURE);
               s.figure.showOffScaleNote = e.target.checked;
             })
           }

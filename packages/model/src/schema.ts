@@ -703,6 +703,8 @@ export const GroupSchema = z.object({
    * ticks and axis titles). Off for files saved before this existed.
    */
   plotStyleFollow: z.boolean().default(false),
+  /** The same as `plotStyleFollow`, for the Tiles plots. */
+  tilePlotStyleFollow: z.boolean().default(true),
   stats: z.array(StatSpecSchema),
   /** Derived columns, grouping and export columns of the statistics table. */
   analysis: StatAnalysisSchema.default({}),

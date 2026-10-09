@@ -4,6 +4,8 @@ import { DEFAULT_STYLE, factoryAxis } from '../lib/defaults.ts';
 import {
   DEFAULT_FIGURE,
   PANEL_FIGURE_KEYS,
+  TILE_FIGURE,
+  TILE_STYLE,
   applyToPairs,
   applyToPopulations,
   axesKey,
@@ -34,7 +36,7 @@ import {
   Section,
   StyleEditor,
 } from './Inspector.tsx';
-import { PlotKindSelect, usePlotForPopulation } from './PlotPanel.tsx';
+import { PlotKindSelect, tilesEdit, usePlotForPopulation, useTilePlot } from './PlotPanel.tsx';
 import { FontSelect, TextStyleEditor, TicksEditor } from './RidgeInspector.tsx';
 
 type GateTab = 'settings' | 'gate' | 'figure' | 'axis' | 'text';
@@ -45,25 +47,36 @@ const GATE_TABS: { id: GateTab; label: string }[] = [
   { id: 'gate', label: 'Gate' },
   { id: 'settings', label: 'Settings' },
 ];
-const TAB_KEY = 'flowmeris.gatePanelTab';
+const tabKey = (tiles: boolean) => (tiles ? 'flowmeris.tilesPanelTab' : 'flowmeris.gatePanelTab');
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
-function loadTab(): GateTab {
+function loadTab(tiles: boolean): GateTab {
   try {
-    const t = localStorage.getItem(TAB_KEY);
+    const t = localStorage.getItem(tabKey(tiles));
     if (t && GATE_TABS.some((x) => x.id === t)) return t as GateTab;
   } catch {}
   return 'figure';
 }
 
-/** The Gate view's settings: the selected gate, then Figure / Axis / Text tabs of collapsible cards. */
-export function Inspector() {
+/**
+ * The Gate view's settings: Figure / Axis / Text / Gate / Settings tabs of collapsible cards. With `tiles`,
+ * the same panel for the Tiles view, editing the Tiles plots (never the Gate view's).
+ */
+export function Inspector({ tiles = false }: { tiles?: boolean }) {
   const group = useGroup();
-  const plot = usePlotForPopulation();
+  const gatePlot = usePlotForPopulation();
+  const tilePlot = useTilePlot(tiles ? group : undefined);
+  const plot = tiles ? tilePlot : gatePlot;
+  /** The plots this panel edits: the group's Tiles plots or its Gate-view plots. */
+  const plotsOf = (g: Group) => (tiles ? g.tilePlots : g.plots);
+  const follow = (g: Group) => (tiles ? g.tilePlotStyleFollow : g.plotStyleFollow);
+  /** Defaults of the plots this panel edits: Tiles plots start with smaller text. */
+  const defStyle = tiles ? TILE_STYLE : DEFAULT_STYLE;
+  const defFig = tiles ? TILE_FIGURE : DEFAULT_FIGURE;
   const mutate = useStore((s) => s.mutate);
-  const [tab, setTabState] = useState<GateTab>(loadTab);
+  const [tab, setTabState] = useState<GateTab>(() => loadTab(tiles));
   // Every card starts open; collapsing one lasts for the session.
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   const panel: Panel = {
@@ -77,13 +90,13 @@ export function Inspector() {
     if (!group || !plot) return;
     const prev = last.current;
     last.current = { groupId: group.id, plotId: plot.id };
-    if (!prev || prev.groupId !== group.id || prev.plotId === plot.id || !group.plotStyleFollow) return;
-    const from = group.plots.find((p) => p.id === prev.plotId);
+    if (!prev || prev.groupId !== group.id || prev.plotId === plot.id || !follow(group)) return;
+    const from = plotsOf(group).find((p) => p.id === prev.plotId);
     if (!from || !carryToPopulation(structuredClone(from), structuredClone(plot))) return;
     mutate('Carry settings to population', (w) => {
       const g = w.groups.find((x) => x.id === group.id);
-      const src = g?.plots.find((p) => p.id === prev.plotId);
-      const dst = g?.plots.find((p) => p.id === plot.id);
+      const src = g && plotsOf(g).find((p) => p.id === prev.plotId);
+      const dst = g && plotsOf(g).find((p) => p.id === plot.id);
       if (src && dst) carryToPopulation(src, dst);
     });
   }, [group?.id, plot?.id]);
@@ -91,19 +104,19 @@ export function Inspector() {
   const setTab = (t: GateTab) => {
     setTabState(t);
     try {
-      localStorage.setItem(TAB_KEY, t);
+      localStorage.setItem(tabKey(tiles), t);
     } catch {}
   };
-  const fig = plot.style.figure ?? DEFAULT_FIGURE;
+  const fig = plot.style.figure ?? defFig;
   /** Edit the plot's figure options, creating them on first edit. Edits sharing `merge` coalesce into one undo step. */
   const edit = (label: string, fn: (f: PlotFigure, p: PlotSpec) => void, merge?: string) =>
     mutate(
       label,
       (w) => {
         const g = w.groups.find((x) => x.id === group.id);
-        const p = g?.plots.find((x) => x.id === plot.id);
+        const p = g && plotsOf(g).find((x) => x.id === plot.id);
         if (!g || !p) return;
-        p.style.figure ??= structuredClone(DEFAULT_FIGURE);
+        p.style.figure ??= structuredClone(defFig);
         fn(p.style.figure, p);
       },
       merge && `figure:${plot.id}:${merge}`,
@@ -119,11 +132,11 @@ export function Inspector() {
     );
   /** Reset props for a card whose settings are the figure `keys`. */
   const resetOf = (keys: (keyof PlotFigure)[], title: string) => ({
-    changed: keys.some((k) => !same(fig[k], DEFAULT_FIGURE[k])),
+    changed: keys.some((k) => !same(fig[k], defFig[k])),
     onReset: () =>
       edit(`Reset ${title}`, (f) => {
         for (const k of keys) {
-          const d = DEFAULT_FIGURE[k];
+          const d = defFig[k];
           if (d === undefined) delete f[k];
           else (f as Record<string, unknown>)[k] = structuredClone(d);
         }
@@ -153,9 +166,13 @@ export function Inspector() {
   );
 
   return (
-    <aside className="inspector ridge-inspector" aria-label="Gate settings">
+    <aside className="inspector ridge-inspector" aria-label={tiles ? 'Tiles settings' : 'Gate settings'}>
       <div className="ridge-inspector-head">
-        <div className="tabs ridge-tabs" role="tablist" aria-label="Gate settings">
+        <div
+          className="tabs ridge-tabs"
+          role="tablist"
+          aria-label={tiles ? 'Tiles settings' : 'Gate settings'}
+        >
           {GATE_TABS.map((t) => (
             <button
               key={t.id}
@@ -178,12 +195,12 @@ export function Inspector() {
             className="icon reset-all"
             title="Reset the settings in this panel for this plot"
             aria-label="Reset the settings in this panel"
-            disabled={panelAtDefaults(tab, plot, group)}
+            disabled={panelAtDefaults(tab, plot, group, tiles)}
             onClick={() =>
               mutate(`Reset ${tab} settings`, (w) => {
                 const g = w.groups.find((x) => x.id === group.id);
-                const p = g?.plots.find((x) => x.id === plot.id);
-                if (g && p) resetPanel(tab, p, g, w);
+                const p = g && plotsOf(g).find((x) => x.id === plot.id);
+                if (g && p) resetPanel(tab, p, g, w, tiles);
               })
             }
           >
@@ -199,12 +216,12 @@ export function Inspector() {
                 label="Apply same settings for all populations"
                 title="Give every population's plot this plot's settings now (each keeps its title, ticks and axis titles)"
                 icon={<ApplyIcon />}
-                disabled={populationsMatch(group, plot.id)}
+                disabled={populationsMatch(plotsOf(group), plot.id)}
                 onClick={() =>
                   mutate('Apply settings to all populations', (w) => {
                     const g = w.groups.find((x) => x.id === group.id);
-                    const p = g?.plots.find((x) => x.id === plot.id);
-                    if (g && p) applyToPopulations(g, p.id);
+                    const p = g && plotsOf(g).find((x) => x.id === plot.id);
+                    if (g && p) applyToPopulations(plotsOf(g), p.id);
                   })
                 }
               />
@@ -216,7 +233,7 @@ export function Inspector() {
                 onClick={() =>
                   mutate('Apply settings to all plots', (w) => {
                     const g = w.groups.find((x) => x.id === group.id);
-                    const p = g?.plots.find((x) => x.id === plot.id);
+                    const p = g && plotsOf(g).find((x) => x.id === plot.id);
                     if (g && p) applyToPairs(p);
                   })
                 }
@@ -227,12 +244,14 @@ export function Inspector() {
               >
                 <input
                   type="checkbox"
-                  checked={group.plotStyleFollow}
+                  checked={follow(group)}
                   onChange={(e) => {
                     const on = e.target.checked;
                     mutate(on ? 'Carry settings to populations' : 'Settings per population', (w) => {
                       const g = w.groups.find((x) => x.id === group.id);
-                      if (g) g.plotStyleFollow = on;
+                      if (!g) return;
+                      if (tiles) g.tilePlotStyleFollow = on;
+                      else g.plotStyleFollow = on;
                     });
                   }}
                 />
@@ -248,7 +267,8 @@ export function Inspector() {
                   onChange={(e) => {
                     const on = e.target.checked;
                     mutate(on ? 'Carry settings to plots' : 'Settings per channel pair', (w) => {
-                      const p = w.groups.find((x) => x.id === group.id)?.plots.find((x) => x.id === plot.id);
+                      const g = w.groups.find((x) => x.id === group.id);
+                      const p = g && plotsOf(g).find((x) => x.id === plot.id);
                       if (p) setPairStyles(p, !on);
                     });
                   }}
@@ -261,12 +281,12 @@ export function Inspector() {
                 label="All settings in this plot"
                 title="Reset the settings of this plot (this population, these X/Y channels)"
                 icon={<ResetIcon />}
-                disabled={isDefaultStyle(plot.style, DEFAULT_STYLE)}
+                disabled={isDefaultStyle(plot.style, defStyle)}
                 onClick={() =>
                   mutate('Reset the settings of this plot', (w) => {
                     const g = w.groups.find((x) => x.id === group.id);
-                    const p = g?.plots.find((x) => x.id === plot.id);
-                    if (g && p) resetCurrentStyle(p, DEFAULT_STYLE);
+                    const p = g && plotsOf(g).find((x) => x.id === plot.id);
+                    if (g && p) resetCurrentStyle(p, defStyle);
                   })
                 }
               />
@@ -274,12 +294,12 @@ export function Inspector() {
                 label="All plots of this population"
                 title="Reset the settings of every plot of this population"
                 icon={<ResetIcon />}
-                disabled={plotAtDefaults(plot, DEFAULT_STYLE)}
+                disabled={plotAtDefaults(plot, defStyle)}
                 onClick={() =>
                   mutate('Reset the settings of every plot of this population', (w) => {
                     const g = w.groups.find((x) => x.id === group.id);
-                    const p = g?.plots.find((x) => x.id === plot.id);
-                    if (g && p) resetPlotStyles(p, DEFAULT_STYLE);
+                    const p = g && plotsOf(g).find((x) => x.id === plot.id);
+                    if (g && p) resetPlotStyles(p, defStyle);
                   })
                 }
               />
@@ -287,12 +307,12 @@ export function Inspector() {
                 label="All populations in this plot"
                 title="Reset the settings of this X/Y channel pair in every population"
                 icon={<ResetIcon />}
-                disabled={pairAtDefaults(group, axesKey(plot), DEFAULT_STYLE)}
+                disabled={pairAtDefaults(plotsOf(group), axesKey(plot), defStyle)}
                 onClick={() =>
                   mutate('Reset the settings of this X/Y channel pair in every population', (w) => {
                     const g = w.groups.find((x) => x.id === group.id);
-                    const p = g?.plots.find((x) => x.id === plot.id);
-                    if (g && p) resetPairStyles(g, axesKey(p), DEFAULT_STYLE);
+                    const p = g && plotsOf(g).find((x) => x.id === plot.id);
+                    if (g && p) resetPairStyles(plotsOf(g), axesKey(p), defStyle);
                   })
                 }
               />
@@ -300,12 +320,12 @@ export function Inspector() {
                 label="All plots in all populations"
                 title="Reset the settings of every plot in every population"
                 icon={<ResetIcon />}
-                disabled={group.plots.every((x) => plotAtDefaults(x, DEFAULT_STYLE))}
+                disabled={plotsOf(group).every((x) => plotAtDefaults(x, defStyle))}
                 onClick={() =>
                   mutate('Reset the settings of every plot in every population', (w) => {
                     const g = w.groups.find((x) => x.id === group.id);
-                    const p = g?.plots.find((x) => x.id === plot.id);
-                    if (g && p) for (const x of g.plots) resetPlotStyles(x, DEFAULT_STYLE);
+                    const p = g && plotsOf(g).find((x) => x.id === plot.id);
+                    if (g && p) for (const x of plotsOf(g)) resetPlotStyles(x, defStyle);
                   })
                 }
               />
@@ -316,12 +336,19 @@ export function Inspector() {
           (gates.length ? (
             gates.map((g) => <GateEditor key={g.id} gateId={g.id} panel={panel} />)
           ) : (
-            <p className="muted small">No gates on this plot yet. Draw one with the tools above the plot.</p>
+            <p className="muted small">
+              No gates on this plot yet. Draw one with the tools above the {tiles ? 'tiles' : 'plot'}.
+            </p>
           ))}
         {tab === 'figure' && (
           <>
             <Section id="plot" title="Plot" {...resetOf(['title'], 'plot title')} {...card('plot')}>
-              <PlotKindSelect group={group} plot={plot} label="Plot type" />
+              <PlotKindSelect
+                group={group}
+                plot={plot}
+                edit={tiles ? tilesEdit(group.id, plot.id) : undefined}
+                label="Plot type"
+              />
               <label className="field short-text">
                 Plot title
                 <input
@@ -332,7 +359,7 @@ export function Inspector() {
                 />
               </label>
             </Section>
-            <StyleEditor plot={plot} panel={panel} />
+            <StyleEditor tiles={tiles} plot={plot} panel={panel} />
             <Section
               id="baseFont"
               title="Base font"
@@ -440,11 +467,11 @@ export function Inspector() {
                 </button>
               </div>
             )}
-            <AxisEditor which="x" plot={plot} panel={panel} extra={titleReset('xTitle')}>
+            <AxisEditor tiles={tiles} which="x" plot={plot} panel={panel} extra={titleReset('xTitle')}>
               {titleField('xTitle', 'X axis title')}
             </AxisEditor>
             {is2d && (
-              <AxisEditor which="y" plot={plot} panel={panel} extra={titleReset('yTitle')}>
+              <AxisEditor tiles={tiles} which="y" plot={plot} panel={panel} extra={titleReset('yTitle')}>
                 {titleField('yTitle', 'Y axis title')}
               </AxisEditor>
             )}
@@ -642,17 +669,33 @@ const axisAtFactory = (p: PlotSpec, g: Group, ws: Parameters<typeof factoryAxis>
     return a.transform === f.transform && a.range[0] === f.range[0] && a.range[1] === f.range[1];
   });
 
-/** Whether the settings of tab `tab` are at the defaults for plot `p`. */
-function panelAtDefaults(tab: GateTab, p: PlotSpec, g: Group): boolean {
+/** Whether the settings of tab `tab` are at the defaults for plot `p` (a Tiles plot with `tiles`). */
+function panelAtDefaults(tab: GateTab, p: PlotSpec, g: Group, tiles: boolean): boolean {
   if (tab === 'settings' || tab === 'gate') return true;
-  const at = styleKeysAtDefaults(p.style, PANEL_FIGURE_KEYS[tab], tab === 'figure' ? DEFAULT_STYLE : null);
+  const at = styleKeysAtDefaults(
+    p.style,
+    PANEL_FIGURE_KEYS[tab],
+    tab === 'figure' ? (tiles ? TILE_STYLE : DEFAULT_STYLE) : null,
+    tiles ? TILE_FIGURE : DEFAULT_FIGURE,
+  );
   return tab === 'axis' ? at && axisAtFactory(p, g, useStore.getState().ws) : at;
 }
 
-/** Reset the settings of tab `tab` for plot `p` (inside a mutation). */
-function resetPanel(tab: GateTab, p: PlotSpec, g: Group, w: Parameters<typeof factoryAxis>[0]) {
+/** Reset the settings of tab `tab` for plot `p` (inside a mutation); a Tiles plot's scales never become the channel's defaults. */
+function resetPanel(
+  tab: GateTab,
+  p: PlotSpec,
+  g: Group,
+  w: Parameters<typeof factoryAxis>[0],
+  tiles: boolean,
+) {
   if (tab === 'settings' || tab === 'gate') return;
-  resetStyleKeys(p.style, PANEL_FIGURE_KEYS[tab], tab === 'figure' ? DEFAULT_STYLE : null);
+  resetStyleKeys(
+    p.style,
+    PANEL_FIGURE_KEYS[tab],
+    tab === 'figure' ? (tiles ? TILE_STYLE : DEFAULT_STYLE) : null,
+    tiles ? TILE_FIGURE : DEFAULT_FIGURE,
+  );
   if (tab !== 'axis') return;
   // The axes' scale and range, as each axis card's own reset does.
   for (const a of [p.x, p.y]) {
@@ -660,6 +703,6 @@ function resetPanel(tab: GateTab, p: PlotSpec, g: Group, w: Parameters<typeof fa
     const f = factoryAxis(w, g, a.channel);
     a.transform = f.transform;
     a.range = [...f.range];
-    g.axisDefaults[a.channel] = { ...a };
+    if (!tiles) g.axisDefaults[a.channel] = { ...a };
   }
 }

@@ -1,11 +1,12 @@
 import type { Group, PlotKind, PlotSpec, Workspace } from '@flowmeris/model';
-import { type ReactNode, useRef } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import {
   SCALE_KINDS,
   type ScaleKind,
   defaultAxis,
   groupSample,
   newPlot,
+  newTilePlot,
   registerTransform,
   scaleKindOf,
   transformOfKind,
@@ -106,6 +107,21 @@ export function usePlotForPopulation(): PlotSpec | undefined {
     group.plots.find((p) => p.id === ui.plotId && p.population === ui.popId) ??
     group.plots.find((p) => p.population === ui.popId)
   );
+}
+
+/** The Tiles plot of the population being gated; made from the Gate view's plot on first visit. */
+export function useTilePlot(group: Group | undefined): PlotSpec | undefined {
+  const popId = useStore((s) => s.ui.popId);
+  const plot = group?.tilePlots.find((p) => p.population === popId);
+  const missing = !!group && !plot && !!group.template.populations[popId];
+  useEffect(() => {
+    if (!missing || !group) return;
+    useStore.getState().mutateQuiet((w) => {
+      const g = w.groups.find((x) => x.id === group.id);
+      if (g && !g.tilePlots.some((p) => p.population === popId)) newTilePlot(w, g, popId);
+    });
+  }, [missing, group, popId]);
+  return plot;
 }
 
 /** Make sure the active population has a plot (creates one with the parent's axes). */

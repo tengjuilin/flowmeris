@@ -5,6 +5,7 @@ import { CompensationView, SamplesView } from './components/CompensationView.tsx
 import { Inspector } from './components/GateInspector.tsx';
 import { GatingPathView } from './components/GatingPathView.tsx';
 import { RidgeExportCard, RidgeView, TilesView } from './components/GroupViews.tsx';
+import { SettingsIcon } from './components/Inspector.tsx';
 import { MetadataView } from './components/MetadataView.tsx';
 import { PlotGridView } from './components/PlotGridView.tsx';
 import { GateExportCard, PlotPanel, drill } from './components/PlotPanel.tsx';
@@ -237,6 +238,8 @@ export function App() {
   // On narrow windows the settings panel is a drawer opened from the Settings button.
   const [drawer, setDrawer] = useState(false);
   const hasInspector = ui.view === 'gate' || ui.view === 'ridge';
+  // The Tiles view's settings panel is shown and hidden from its own toolbar.
+  const tilesPanel = ui.view === 'tiles' && ui.tilesSettings;
   useEffect(() => {
     if (!drawer) return;
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && setDrawer(false);
@@ -321,25 +324,7 @@ export function App() {
                   title="Settings"
                   onClick={() => setDrawer((d) => !d)}
                 >
-                  <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-                    <path d="M1 3.5h12M1 10.5h12" stroke="currentColor" strokeWidth="1.4" />
-                    <circle
-                      cx="4.5"
-                      cy="3.5"
-                      r="1.9"
-                      fill="var(--surface)"
-                      stroke="currentColor"
-                      strokeWidth="1.4"
-                    />
-                    <circle
-                      cx="9.5"
-                      cy="10.5"
-                      r="1.9"
-                      fill="var(--surface)"
-                      stroke="currentColor"
-                      strokeWidth="1.4"
-                    />
-                  </svg>
+                  <SettingsIcon />
                 </button>
               )}
             </div>
@@ -374,18 +359,24 @@ export function App() {
               {ui.view === 'samples' && <SamplesView />}
             </div>
           </section>
-          {hasInspector && (
+          {(hasInspector || tilesPanel) && (
             <>
               <button
                 type="button"
                 className="drawer-scrim"
                 aria-label="Close settings"
                 tabIndex={-1}
-                data-open={drawer}
-                onClick={() => setDrawer(false)}
+                data-open={tilesPanel || drawer}
+                onClick={() => (tilesPanel ? setUi({ tilesSettings: false }) : setDrawer(false))}
               />
-              <div className="inspector-drawer" data-open={drawer}>
-                {ui.view === 'gate' ? <Inspector /> : <RidgeInspector />}
+              <div className="inspector-drawer" data-open={tilesPanel || drawer}>
+                {ui.view === 'gate' ? (
+                  <Inspector />
+                ) : ui.view === 'tiles' ? (
+                  <Inspector key="tiles" tiles />
+                ) : (
+                  <RidgeInspector />
+                )}
               </div>
             </>
           )}
