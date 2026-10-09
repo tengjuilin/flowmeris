@@ -123,12 +123,17 @@ test('a gate label can be dragged off the events and put back', async ({ page })
       const r = el.getBoundingClientRect();
       return { x: r.x, y: r.y, width: r.width, height: r.height };
     });
+  // Offsets are stored as fractions of the plot, so the plot's size must have settled too; a resize
+  // can pause briefly, so require several unchanged reads in a row.
   const settled = async () => {
     let prev = '';
+    let same = 0;
     for (;;) {
       const b = await box();
-      const k = `${Math.round(b.x)},${Math.round(b.y)}`;
-      if (k === prev) return b;
+      const p = (await svg.boundingBox())!;
+      const k = [b.x, b.y, p.width, p.height].map(Math.round).join(',');
+      same = k === prev ? same + 1 : 0;
+      if (same >= 3) return b;
       prev = k;
       await page.waitForTimeout(150);
     }
