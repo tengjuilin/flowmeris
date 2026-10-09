@@ -67,6 +67,26 @@ export function SettingsIcon() {
   );
 }
 
+/** Open in another view: an arrow leaving a box. */
+export function OpenInIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3.5 12.5V3.5h13v13h-9" />
+      <path d="M3.5 16.5l7-7M7 9.5h3.5V13" />
+    </svg>
+  );
+}
+
 /** One row of a settings panel's Settings tab: a label, and an icon button that applies or resets. */
 export function ActionRow({
   label,

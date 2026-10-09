@@ -6,7 +6,7 @@ import { defaultAxis, defaultChannels } from '../lib/defaults.ts';
 import { exportPlot } from '../lib/exportPlot.ts';
 import { TILE_FIGURE, TILE_STYLE } from '../lib/figure.ts';
 import { useGroup, useSampleNames, useStore } from '../state/store.ts';
-import { SettingsIcon } from './Inspector.tsx';
+import { OpenInIcon, SettingsIcon } from './Inspector.tsx';
 import { type Anchor, type PickOption, PickerMenu } from './PickerMenu.tsx';
 import { PlotCanvas, type PlotHandle } from './PlotCanvas.tsx';
 import {
@@ -538,6 +538,27 @@ function GridCell({
             follows
           </span>
         )}
+        <span className="spacer" />
+        <button
+          type="button"
+          className="icon labeled"
+          title="Open in the Gate view"
+          aria-label="Open this plot in the Gate view"
+          onClick={() => openInGateView(group, cell, sampleId)}
+        >
+          <OpenInIcon />
+          Gate
+        </button>
+        <button
+          type="button"
+          className="icon labeled"
+          title="Open in the Tiles view"
+          aria-label="Open this plot in the Tiles view"
+          onClick={() => useStore.getState().setUi({ view: 'tiles', ...(sampleId ? { sampleId } : {}) })}
+        >
+          <OpenInIcon />
+          Tiles
+        </button>
       </div>
       {overlaying && overlay && sampleId && (
         <div className="cell-legend">

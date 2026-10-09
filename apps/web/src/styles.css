@@ -1500,13 +1500,23 @@ button.link:hover {
 .cell-title {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 4px;
   height: 26px;
   flex: none;
   padding: 0 6px;
   white-space: nowrap;
   overflow: hidden;
+}
+.cell-title > button.icon.labeled {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px;
+  font-size: 11px;
+}
+.cell-title > .spacer {
+  flex: 1;
 }
 .cell-title > .muted {
   overflow: hidden;
@@ -1692,7 +1702,7 @@ button.link:hover {
 .cell-title > button.link {
   color: var(--accent);
   text-decoration: underline;
-  font-weight: 600;
+  font-weight: normal;
 }
 .cell-title > button.cell-sample {
   display: block;
@@ -1700,14 +1710,6 @@ button.link:hover {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--text-2);
-  font-weight: normal;
-  text-decoration: underline dotted;
-}
-.cell-title > button.cell-sample:hover,
-.cell-title > button.cell-sample:focus-visible {
-  color: var(--accent);
-  text-decoration: underline;
 }
 
 /* ---------------------------------------------------------------------------
