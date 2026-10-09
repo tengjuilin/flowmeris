@@ -1651,27 +1651,50 @@ button.link:hover {
   gap: 8px;
   min-width: 0;
 }
-/* The card is as tall as the plots beside it; its own height doesn't count, and the tree scrolls inside. */
-.path-row > .path-side {
-  align-self: stretch;
-  contain: size;
+/* Populations panel along the bottom, below the scrolling plots; its top edge resizes it. */
+.path-resize {
+  flex: none;
+  height: 10px;
+  /* Sits in the view's gaps rather than adding to them. */
+  margin: -6px 0;
+  cursor: row-resize;
+  touch-action: none;
+  position: relative;
 }
-.path-side .pop-tree {
+.path-resize::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 3px;
+  width: 40px;
+  height: 4px;
+  margin-left: -20px;
+  border-radius: 2px;
+  background: var(--border);
+}
+.path-resize:hover::after,
+.path-resize:focus-visible::after {
+  background: var(--accent);
+}
+/* Flush with the bottom and sides of the view (over its padding), its edges no more than a top border. */
+.path-panel {
+  flex: none;
+  margin: 0 -10px -10px;
+}
+.path-panel .pop-tree {
   flex: 1 1 auto;
   max-height: none;
+  border-width: 1px 0 0;
+  border-radius: 0;
+  padding-top: 0;
 }
-/* Tree mode: the tree scrolls sideways beside the populations card. */
-.path-split {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-.path-split > .path-tree {
-  flex: 1;
-  min-width: 0;
-}
-.path-split > .path-side {
-  flex: none;
+/* The title stays in place while the populations scroll under it. */
+.path-panel .pane-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  padding-top: 8px;
 }
 .path-card {
   background: var(--surface);

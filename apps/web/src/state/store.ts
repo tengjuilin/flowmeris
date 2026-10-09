@@ -63,6 +63,8 @@ interface UiState {
   tilesColumns: number;
   /** Plots per row picked with the Gating path view's slider (kept while other views are shown). */
   pathColumns: number;
+  /** Height (px) of the Gating path view's populations panel. */
+  pathPanelHeight: number;
   /** Whether the Plot view's settings panel (for its selected grid plot) is shown. */
   gridSettings: boolean;
   missing: Record<string, true>;
@@ -158,6 +160,7 @@ export const useStore = create<Store>((set, get) => ({
     tilesSettings: false,
     tilesColumns: 5,
     pathColumns: 4,
+    pathPanelHeight: 200,
     gridSettings: false,
     missing: {},
     excluded: {},
