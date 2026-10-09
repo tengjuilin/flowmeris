@@ -366,7 +366,8 @@ code,
   display: inline-flex;
   padding: 5px 7px;
 }
-/* Above the Tiles view's populations card: tile size, then the settings panel toggle. */
+/* At the end of the Tiles toolbar: tiles per row, then the settings panel toggle. Fixed widths, so the
+   slider stays put under the pointer while the tiles re-lay out. */
 .tiles-controls {
   flex: 0 0 auto;
   display: flex;
@@ -375,14 +376,16 @@ code,
   font-size: 12px;
 }
 .tiles-controls .field {
-  flex: 1;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 .tiles-controls input[type="range"] {
-  flex: 1;
-  min-width: 0;
+  width: 160px;
+}
+.tiles-controls .muted {
+  min-width: 2ch;
+  font-variant-numeric: tabular-nums;
 }
 .settings-toggle[aria-expanded="true"],
 .tiles-settings[aria-expanded="true"] {
@@ -916,6 +919,8 @@ code,
 .tiles-view {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+  height: 100%;
   min-width: 0;
   min-height: 0;
 }
@@ -924,6 +929,17 @@ code,
   flex: 1;
   min-height: 0;
   overflow: auto;
+}
+/* 12 px wider than the scroll area, so each row's last tile margin hangs past its edge. */
+.tiles-flow {
+  display: flow-root;
+  margin-right: -12px;
+}
+/* The populations card floats right; tiles fill the space beside it and then the full width below. */
+.tiles-side {
+  float: right;
+  margin: 0 12px 12px 0;
+  overflow: visible;
 }
 .tile {
   display: inline-block;

@@ -149,60 +149,81 @@ const Tile = memo(function Tile({
   );
 });
 
+/** Space a tile takes beyond its plot: padding and border (10), then its right margin (12). */
+const TILE_EXTRA = 22;
+/** Width of the populations card the tiles flow around, its bounds, and the smallest tile offered. */
+const TILES_SIDE = 320;
+const SIDE_MIN = 280;
+const SIDE_MAX = 500;
+const MIN_TILE = 160;
+const DEFAULT_COLUMNS = 5;
+
+/**
+ * Plot size of `columns` tiles filling a row of the `width`-wide tiles area. The flow box is 12 px
+ * wider than the area so the last tile's right margin hangs past its edge.
+ */
+function tileSizeFor(width: number, columns: number): number {
+  return Math.floor((width + 12) / columns) - TILE_EXTRA;
+}
+
+/**
+ * Width of the populations card: as many whole tile slots as make it at least SIDE_MIN wide, so the
+ * tiles beside it line up with the full rows below; the default width when that would be too wide.
+ */
+function sideWidthFor(tile: number): number {
+  const slot = tile + TILE_EXTRA;
+  const w = Math.ceil((SIDE_MIN + 12) / slot) * slot - 12;
+  return tile > 0 && w <= SIDE_MAX ? w : TILES_SIDE;
+}
+
 export function TilesView() {
   const group = useGroup();
   const saved = useTilePlot(group);
+  if (!group || !saved)
+    return (
+      <div className="empty">Open a population first; tiles show its plot for every sample in the group.</div>
+    );
+  return <Tiles group={group} saved={saved} />;
+}
+
+function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
   // A Tiles plot without saved figure options is drawn with the Tiles defaults.
   const plot = useMemo(
-    () =>
-      saved && !saved.style.figure ? { ...saved, style: { ...saved.style, figure: TILE_FIGURE } } : saved,
+    () => (!saved.style.figure ? { ...saved, style: { ...saved.style, figure: TILE_FIGURE } } : saved),
     [saved],
   );
   const names = useSampleNames(group);
   const shown = useSelectedSampleIds(group);
   const settingsOpen = useStore((s) => s.ui.tilesSettings);
   const setUi = useStore((s) => s.setUi);
-  const [tile, setTile] = useState(280);
-  // Re-lay out and re-render the tiles once the slider settles, not on every step of a drag.
+  const box = useRef<HTMLDivElement>(null);
+  const { width } = useSize(box);
+  // Tile sizes are discrete: each fills a full-width row (below the populations card) with a whole
+  // number of tiles, so the slider picks the number per row and the size follows the window.
+  const maxColumns = Math.max(1, Math.floor((width + 12) / (MIN_TILE + TILE_EXTRA)));
+  const [picked, setPicked] = useState(DEFAULT_COLUMNS);
+  const columns = Math.min(maxColumns, picked);
+  const tile = width > 0 ? Math.max(MIN_TILE, tileSizeFor(width, columns)) : 0;
   // Tiles resize live; their plots are recomputed at the new size once the slider settles.
   const renderSize = useSettled(tile, 150);
-  if (!group || !plot)
-    return (
-      <div className="empty">Open a population first; tiles show its plot for every sample in the group.</div>
-    );
   return (
-    <div className="plot-layout">
-      <div className="tiles-view">
-        <div className="toolbar">
-          <ToolButtons is1d={plot.kind === 'histogram'} />
-          <EditScopeToggle />
-        </div>
-        {shown.length === 0 && <div className="empty">No samples selected: check some in the sidebar.</div>}
-        <div className="tiles">
-          {shown.map((id) => (
-            <Tile
-              key={id}
-              group={group}
-              sampleId={id}
-              plot={plot}
-              size={tile}
-              renderSize={renderSize}
-              name={names[id] ?? id}
-            />
-          ))}
-        </div>
-      </div>
-      <div className="plot-side">
+    <div className="tiles-view">
+      <div className="toolbar">
+        <ToolButtons is1d={plot.kind === 'histogram'} />
+        <EditScopeToggle />
+        <div className="spacer" />
         <div className="tiles-controls">
-          <label className="field">
-            Tile size
+          <label className="field" title="Tiles per row: the tiles are sized to fill each row">
+            Tiles per row
             <input
               type="range"
-              min={200}
-              max={520}
-              value={tile}
-              onChange={(e) => setTile(Number(e.target.value))}
+              min={1}
+              max={maxColumns}
+              step={1}
+              value={columns}
+              onChange={(e) => setPicked(Number(e.target.value))}
             />
+            <span className="muted">{columns}</span>
           </label>
           <button
             type="button"
@@ -215,7 +236,27 @@ export function TilesView() {
             <SettingsIcon />
           </button>
         </div>
-        <PopulationTree />
+      </div>
+      <div className="tiles" ref={box}>
+        <div className="tiles-flow">
+          {/* Floated, so tiles fill the space beside it and run full width below it. */}
+          <div className="plot-side tiles-side" style={{ width: sideWidthFor(tile) }}>
+            <PopulationTree />
+          </div>
+          {shown.length === 0 && <div className="empty">No samples selected: check some in the sidebar.</div>}
+          {tile > 0 &&
+            shown.map((id) => (
+              <Tile
+                key={id}
+                group={group}
+                sampleId={id}
+                plot={plot}
+                size={tile}
+                renderSize={renderSize || tile}
+                name={names[id] ?? id}
+              />
+            ))}
+        </div>
       </div>
     </div>
   );
