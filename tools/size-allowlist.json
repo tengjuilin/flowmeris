@@ -10,7 +10,7 @@
   "apps/web/src/components/PlotCanvas.tsx": 1627,
   "apps/web/src/components/RidgeInspector.tsx": 1762,
   "apps/web/src/components/StatsView.tsx": 1357,
-  "packages/engine/src/engine.ts": 684,
+  "packages/engine/src/engine.ts": 685,
   "packages/fcs/src/parse.ts": 630,
   "packages/model/src/schema.ts": 762
 }

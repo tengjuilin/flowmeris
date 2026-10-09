@@ -5,7 +5,16 @@ import { evaluateGatingML, parseGatingML } from '@flowmeris/gatingml';
 import { type Gate, type Transform, newGroup, newWorkspace, transformId } from '@flowmeris/model';
 import { readFixture } from '@flowmeris/testkit';
 import { describe, expect, it } from 'vitest';
-import { type StatCell, csvField, eventsToFcs, exportGatingML, tidyRows, toCsv, wideRows } from './index.ts';
+import {
+  type StatCell,
+  csvField,
+  eventsToCsv,
+  eventsToFcs,
+  exportGatingML,
+  tidyRows,
+  toCsv,
+  wideRows,
+} from './index.ts';
 
 const bytes = readFixture('flowkit/gate_ref/data1.fcs');
 const ds = parseFcs(bytes).datasets[0]!;
@@ -244,5 +253,19 @@ describe('M-EXPORT-STATS', () => {
     const wide = wideRows(ws, g, cells);
     expect(wide[0]!.slice(0, 4)).toEqual(['sample_file', 'sample_sha256', 'Dose (nM)', 'value']);
     expect(wide[1]!.slice(2)).toEqual([10, 'ctl', 5]);
+  });
+});
+
+describe('gated events as CSV', () => {
+  it('has a quoted header and one row per event', () => {
+    const csv = eventsToCsv({
+      channels: ['FSC-A', 'FL1 "x"'],
+      columns: [
+        [1, 2.5],
+        [-0.125, 3],
+      ],
+      count: 2,
+    });
+    expect(csv).toBe('"FSC-A","FL1 \\"x\\""\n1,-0.125\n2.5,3\n');
   });
 });

@@ -1,11 +1,11 @@
 import type { PlotSpec } from '@flowmeris/model';
-import { pool } from '../engine-client/pool.ts';
+import { getPool } from '../engine-client/pool.ts';
 import { exportSvgFigure as exportSvg } from '../lib/export/figure.ts';
 import { type PlotExportSource, type PlotHandle, exportPlotFigure } from '../lib/export/plot.ts';
 import type { ImageFormat } from '../lib/export/svg.ts';
 import { APP_INFO, contextFor, toast, useStore } from './store.ts';
 
-/** Figure export wired to the app: warnings go to the toast, plot data comes from the store and worker pool. */
+/** Figure export wired to the app: warnings go to the toast, plot data comes from the store and worker getPool(). */
 
 /** Export an on-screen SVG figure (see lib/export/figure.ts); font substitutions are reported in a toast. */
 export function exportSvgFigure(svg: SVGSVGElement, format: ImageFormat, baseName: string, dpi: number) {
@@ -14,7 +14,7 @@ export function exportSvgFigure(svg: SVGSVGElement, format: ImageFormat, baseNam
 
 /**
  * The selected group's data for exporting `plot`: events of the selected sample (the group's first
- * sample when none of its samples is selected), rendered by the worker pool.
+ * sample when none of its samples is selected), rendered by the worker getPool().
  */
 function selectedSource(plot: PlotSpec): PlotExportSource {
   const st = useStore.getState();
@@ -22,7 +22,7 @@ function selectedSource(plot: PlotSpec): PlotExportSource {
   const sampleId = st.ui.sampleId && g.sampleIds.includes(st.ui.sampleId) ? st.ui.sampleId : g.sampleIds[0]!;
   return {
     raster: (p, width, height) =>
-      pool.raster(contextFor(st.ws, g), { sampleId, plot: p, width, height, dotColor: '#222222' }),
+      getPool().raster(contextFor(st.ws, g), { sampleId, plot: p, width, height, dotColor: '#222222' }),
     sha256: st.ws.samples[st.ui.sampleId ?? '']?.sha256,
     transforms: {
       x: st.ws.transforms[plot.x.transform],

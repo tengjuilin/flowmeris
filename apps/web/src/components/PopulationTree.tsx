@@ -1,6 +1,6 @@
 import { type Population, childPopulations, isOverridden } from '@flowmeris/model';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { pool } from '../engine-client/pool.ts';
+import { getPool } from '../engine-client/pool.ts';
 import { lineageKey } from '../lib/keys.ts';
 import { deleteGate, renamePopulation } from '../state/commands/gates.ts';
 import { drill } from '../state/commands/plots.ts';
@@ -50,7 +50,7 @@ export function PopulationTree({
   useEffect(() => {
     if (!group || !sampleId || missing[sampleId]) return;
     let live = true;
-    pool
+    getPool()
       .counts(
         contextFor(ws, group),
         sampleId,

@@ -1,4 +1,4 @@
-import { pool } from '../../engine-client/pool.ts';
+import { getPool } from '../../engine-client/pool.ts';
 import { DATA_FILE_RE } from '../../lib/files.ts';
 import { type IngestedFile, type InputFile, addIngested, folderOf } from '../../lib/ingest.ts';
 import { toast, useStore } from '../store.ts';
@@ -30,7 +30,7 @@ export async function ingestFiles(files: InputFile[]): Promise<void> {
       progress.current = f.path;
       setStatus({ ingest: { ...progress, errors: [...progress.errors] } });
       try {
-        const r = await pool.ingest(f.file, f.path);
+        const r = await getPool().ingest(f.file, f.path);
         results.push({ folder: folderOf(f.path), samples: r.samples });
       } catch (e) {
         progress.errors.push({ file: f.path, message: e instanceof Error ? e.message : String(e) });
@@ -39,7 +39,7 @@ export async function ingestFiles(files: InputFile[]): Promise<void> {
       setStatus({ ingest: { ...progress, errors: [...progress.errors] } });
     }
   };
-  await Promise.all(Array.from({ length: pool.size }, workerLoop));
+  await Promise.all(Array.from({ length: getPool().size }, workerLoop));
 
   let added: ReturnType<typeof addIngested> = { relinked: [], firstNewGroup: null };
   useStore.getState().mutate('Add FCS files', (ws) => {
@@ -70,12 +70,12 @@ export async function ingestFiles(files: InputFile[]): Promise<void> {
 
 /** After restoring a workspace, find samples whose decoded data is not in browser storage. */
 export async function checkMissing(): Promise<void> {
-  await pool.whenReady();
+  await getPool().whenReady();
   const ws = useStore.getState().ws;
   const missing: Record<string, true> = {};
   await Promise.all(
     Object.keys(ws.samples).map(async (id) => {
-      if (!(await pool.hasSample(id))) missing[id] = true;
+      if (!(await getPool().hasSample(id))) missing[id] = true;
     }),
   );
   useStore.getState().setStatus({ missing });

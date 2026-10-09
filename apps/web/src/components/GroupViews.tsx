@@ -3,7 +3,7 @@ import type { HistogramResponse } from '@flowmeris/engine';
 import type { Group, PlotSpec } from '@flowmeris/model';
 import { axisTicks, formatLinear } from '@flowmeris/transforms';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { pool } from '../engine-client/pool.ts';
+import { getPool } from '../engine-client/pool.ts';
 import { factoryAxis } from '../lib/axisDefaults.ts';
 import { TILE_FIGURE } from '../lib/figure.ts';
 import { nearestColumns } from '../lib/fitSize.ts';
@@ -328,7 +328,7 @@ export function RidgeView() {
     setData({});
     for (const sid of sampleIds) {
       if (noData[sid]) continue;
-      pool
+      getPool()
         .histogram(ctx, sid, ui.popId, axis, hist as unknown as PlotSpec['style'])
         .then((h) => live && setData((d) => ({ ...d, [sid]: h })))
         .catch(() => {});

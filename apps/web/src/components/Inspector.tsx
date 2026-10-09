@@ -13,7 +13,7 @@ import {
 import { COLORMAPS } from '@flowmeris/render';
 import { asinhCofactor, asinhDefFromCofactor, makeScale, suggestLogicleW } from '@flowmeris/transforms';
 import { type ReactNode, useState } from 'react';
-import { pool } from '../engine-client/pool.ts';
+import { getPool } from '../engine-client/pool.ts';
 import {
   SCALE_KINDS,
   type ScaleKind,
@@ -496,7 +496,7 @@ export function AxisFields({
           type="button"
           onClick={async () => {
             const sid = ui.sampleId ?? group.sampleIds[0]!;
-            const vals = await pool.channelValues(
+            const vals = await getPool().channelValues(
               contextFor(ws, group),
               sid,
               { channel: axis.channel, comp: axis.comp },

@@ -25,7 +25,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { pool } from '../engine-client/pool.ts';
+import { getPool } from '../engine-client/pool.ts';
 import type { PlotHandle, PlotMargin } from '../lib/export/plot.ts';
 import { DEFAULT_FIGURE, figureText } from '../lib/figure.ts';
 import {
@@ -250,7 +250,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       is1d ? ['hist', key] : ['raster', key, width, height, dotColor, !!ovColor],
     );
     const opts = { key: dataKey, signal: ac.signal };
-    const hit = pool.cached<HistogramResponse & RasterResponse>(dataKey);
+    const hit = getPool().cached<HistogramResponse & RasterResponse>(dataKey);
     if (hit) {
       setError(null);
       setLoading(false);
@@ -263,10 +263,10 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     const run = async () => {
       try {
         if (is1d) {
-          const h = await pool.histogram(ctx, sampleId, plot.population, plot.x, plot.style, opts);
+          const h = await getPool().histogram(ctx, sampleId, plot.population, plot.x, plot.style, opts);
           if (id === reqId.current) setHist(h);
         } else {
-          const r = await pool.raster(
+          const r = await getPool().raster(
             ctx,
             { sampleId, plot: ovColor ? overlayDots(plot) : plot, width, height, dotColor },
             opts,
@@ -311,8 +311,8 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         // smoothing and every normalisation are linear, so one factor maps counts to heights.
         const style = { ...plot.style, histNorm: 'count' as const };
         const [base, sub] = await Promise.all([
-          pool.histogram(ctx, sampleId, plot.population, plot.x, style, { key: `${bgKey}|base` }),
-          pool.histogram(ctx, sampleId, bgPop.popId, plot.x, style, { key: `${bgKey}|sub` }),
+          getPool().histogram(ctx, sampleId, plot.population, plot.x, style, { key: `${bgKey}|base` }),
+          getPool().histogram(ctx, sampleId, bgPop.popId, plot.x, style, { key: `${bgKey}|sub` }),
         ]);
         if (live) setBgHist({ sub: sub.heights, base: base.heights });
       } else {
@@ -328,7 +328,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
           height: Math.round(ph * dpr),
           dotColor: bgPop.color,
         };
-        const r = await pool.raster(ctx, req, { key: `${bgKey}|raster|${req.width}|${req.height}` });
+        const r = await getPool().raster(ctx, req, { key: `${bgKey}|raster|${req.width}|${req.height}` });
         if (live) setBgRaster(r);
       }
     };
@@ -368,7 +368,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     const run = async () => {
       if (is1d) {
         const hs = await Promise.all(
-          ovSamples.map((o) => pool.histogram(ctx, o.sampleId, plot.population, plot.x, plot.style)),
+          ovSamples.map((o) => getPool().histogram(ctx, o.sampleId, plot.population, plot.x, plot.style)),
         );
         if (live) setOvHists(hs.map((h, i) => ({ color: ovSamples[i]!.color, heights: h.heights })));
         return;
@@ -377,7 +377,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       const h = Math.round(ph * dpr);
       const rs = await Promise.all(
         ovSamples.map((o) =>
-          pool.raster(ctx, {
+          getPool().raster(ctx, {
             sampleId: o.sampleId,
             plot: overlayDots(plot),
             width: w,
@@ -431,7 +431,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     let live = true;
     const ac = new AbortController();
     const popIds = gatePops.map((p) => p.id);
-    pool
+    getPool()
       .counts(ctx, sampleId, popIds, {
         key: JSON.stringify(['counts', popIds, countsKey]),
         signal: ac.signal,
@@ -497,7 +497,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     previewTimer.current = requestAnimationFrame(() => {
       const send = () => {
         previewBusy.current = true;
-        pool
+        getPool()
           .preview(ctx, { sampleId, gate: { ...gate, geometry: geom } })
           .then((r) => {
             if (epoch === previewEpoch.current)
@@ -542,7 +542,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     const raf = requestAnimationFrame(() => {
       const send = () => {
         hoverBusy.current = true;
-        pool
+        getPool()
           .preview(ctx, { sampleId, gate: { ...newGateBase(), id: '__hover', geometry: hoverGeom } })
           .then((r) => live && setHoverCounts({ parent: r.parentCount, regions: r.regions }))
           .catch(() => {})

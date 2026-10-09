@@ -12,7 +12,7 @@ import {
 } from '@flowmeris/model';
 import { type Cell, type ColumnDef, type Table, tableRows } from '@flowmeris/table';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { pool } from '../engine-client/pool.ts';
+import { getPool } from '../engine-client/pool.ts';
 import { download, safeName } from '../lib/download.ts';
 import { stripDataExt } from '../lib/files.ts';
 import { PLAIN_DECIMAL, fracDigits } from '../lib/format.ts';
@@ -930,7 +930,7 @@ export function StatsInspector() {
     if (!sid) return;
     const s = ws.samples[sid]!;
     const path = populationPath(group.template, popId);
-    const bytes = await pool.exportEvents(contextFor(ws, group), sid, popId, mode, format, {
+    const bytes = await getPool().exportEvents(contextFor(ws, group), sid, popId, mode, format, {
       FLOWMERIS_VERSION: `${APP_INFO.version} (${APP_INFO.commit})`,
       FLOWMERIS_SRC_SHA256: s.sha256,
       FLOWMERIS_SRC_FILE: s.fileName,

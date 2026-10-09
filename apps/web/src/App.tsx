@@ -15,7 +15,7 @@ import { RefPlots } from './components/RefPlots.tsx';
 import { RidgeCombinePanel, RidgeInspector } from './components/RidgeInspector.tsx';
 import { Sidebar } from './components/Sidebar.tsx';
 import { StatsInspector, StatsView } from './components/StatsView.tsx';
-import { pool } from './engine-client/pool.ts';
+import { getPool } from './engine-client/pool.ts';
 import { download, safeName } from './lib/download.ts';
 import { DATA_FILE_ACCEPT } from './lib/files.ts';
 import { filesFromDrop, filesFromInput } from './lib/ingest.ts';
@@ -245,7 +245,7 @@ function Header() {
       <a className="button" href="../" target="_blank" rel="noreferrer">
         Docs
       </a>
-      {!pool.opfs && (
+      {!getPool().opfs && (
         <span
           className="badge warn"
           title="The browser's private file storage (OPFS) is unavailable, e.g. in a private window: event data are kept in memory and must be re-added after a reload."

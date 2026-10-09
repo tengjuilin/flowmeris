@@ -11,7 +11,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { pool } from '../engine-client/pool.ts';
+import { getPool } from '../engine-client/pool.ts';
 import { DEFAULT_STYLE, withBaseFont } from '../lib/figure.ts';
 import { gateMatchesAxes } from '../lib/geometry.ts';
 import { lineageKey } from '../lib/keys.ts';
@@ -364,7 +364,7 @@ export function GatingPathView() {
   useEffect(() => {
     if (!group || !sampleId || missing) return;
     let live = true;
-    pool
+    getPool()
       .counts(
         contextFor(ws, group),
         sampleId,

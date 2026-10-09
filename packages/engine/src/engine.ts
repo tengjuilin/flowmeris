@@ -27,6 +27,7 @@ import {
 import { histogram, raster2d } from '@flowmeris/render';
 import { type ValueStat, summarize } from '@flowmeris/stats';
 import { makeScale } from '@flowmeris/transforms';
+import type { EventsMode } from './api.ts';
 import { LruCache } from './lru.ts';
 import type {
   AnalysisContext,
@@ -629,7 +630,7 @@ export class Engine {
     ctx: AnalysisContext,
     sampleId: string,
     popId: string,
-    mode: 'raw' | 'compensated',
+    mode: EventsMode,
   ): Promise<{ channels: string[]; columns: Float64Array[]; count: number }> {
     const s = await this.sample(sampleId);
     await this.ensureColumns(ctx, s, [popId]);
