@@ -2251,6 +2251,32 @@ button.chip:hover {
 .level-list li.drop-after {
   box-shadow: 0 2px 0 var(--accent);
 }
+/* The table fills the view's height and scrolls inside its box, so its header row and Sample column stay pinned. */
+.metadata-view.table-mode {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.metadata-view.table-mode > .table-wrap {
+  min-height: 0;
+}
+.meta-table tbody th,
+.meta-table thead th:first-child {
+  position: sticky;
+  left: 0;
+  border-right: 1px solid var(--border);
+}
+.meta-table tbody th {
+  z-index: 1;
+  background: var(--surface);
+}
+/* Header cells above the pinned sample names that scroll under them; the corner above both. */
+.meta-table thead th {
+  z-index: 2;
+}
+.meta-table thead th:first-child {
+  z-index: 3;
+}
 /* Columns fit their content (inputs get a min-width from their longest value) instead of filling the width. */
 table.meta-table {
   min-width: 0;
