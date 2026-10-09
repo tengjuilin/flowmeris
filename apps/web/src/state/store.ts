@@ -23,6 +23,19 @@ export type View =
   | 'compensation'
   | 'samples';
 
+export const VIEW_LABELS: Record<View, string> = {
+  gate: 'Gate',
+  plot: 'Plot',
+  tiles: 'Tiles',
+  path: 'Gating path',
+  metadata: 'Metadata',
+  stats: 'Statistics',
+  ridge: 'Ridge',
+  charts: 'Charts',
+  compensation: 'Compensation',
+  samples: 'Samples',
+};
+
 export interface IngestProgress {
   total: number;
   done: number;
@@ -55,6 +68,16 @@ interface UiState {
   toast: { text: string; action?: { label: string; run: () => void } } | null;
 }
 
+/** Where the user is: the tab and what it shows. Back and Forward return to one. */
+export interface NavLocation {
+  view: View;
+  groupId: string | null;
+  sampleId: string | null;
+  popId: string;
+  plotId: string | null;
+  gridCellId: string | null;
+}
+
 interface History {
   label: string;
   redo: Patch[];
@@ -67,6 +90,10 @@ interface Store {
   ui: UiState;
   past: History[];
   future: History[];
+  /** Tab history: locations left by switching tabs, for Back, and those left by Back, for Forward. */
+  nav: { back: NavLocation[]; forward: NavLocation[] };
+  /** Return to the location before the last tab switch (dir -1), or redo one undone by Back (dir 1). */
+  navigate: (dir: -1 | 1) => void;
   /**
    * Apply an undoable change to the workspace document. Changes sharing a
    * `merge` key less than a second apart (slider drags, colour picking,
@@ -133,6 +160,33 @@ export const useStore = create<Store>((set, get) => ({
   },
   past: [],
   future: [],
+  nav: { back: [], forward: [] },
+  navigate(dir) {
+    const { nav, ws, ui } = get();
+    const from = dir < 0 ? nav.back : nav.forward;
+    const to = from[from.length - 1];
+    if (!to) return;
+    const here = locationOf(ui);
+    const rest = from.slice(0, -1);
+    const g = ws.groups.find((x) => x.id === to.groupId);
+    // A location whose group or sample was removed since falls back to what still exists.
+    const loc: NavLocation = g
+      ? {
+          ...to,
+          sampleId: to.sampleId && g.sampleIds.includes(to.sampleId) ? to.sampleId : (g.sampleIds[0] ?? null),
+          plotId: g.plots.some((p) => p.id === to.plotId) ? to.plotId : null,
+        }
+      : { ...here, view: to.view };
+    navigating = true;
+    set((s) => ({
+      ui: { ...s.ui, ...loc, selectedGateId: null },
+      nav:
+        dir < 0
+          ? { back: rest, forward: [...nav.forward, here] }
+          : { back: [...nav.back, here], forward: rest },
+    }));
+    navigating = false;
+  },
   mutate(label, fn, merge) {
     const before = get().ws;
     let [next, redo, undo] = produceWithPatches(before, (draft) => {
@@ -186,6 +240,7 @@ export const useStore = create<Store>((set, get) => ({
       ws,
       past: [],
       future: [],
+      nav: { back: [], forward: [] },
       ui: {
         ...s.ui,
         groupId: ws.groups[0]?.id ?? null,
@@ -204,8 +259,22 @@ export const useStore = create<Store>((set, get) => ({
   },
 }));
 
+/** Set while Back or Forward moves, so the tab switch it makes is not recorded as a new one. */
+let navigating = false;
+
+function locationOf(ui: UiState): NavLocation {
+  const { view, groupId, sampleId, popId, plotId, gridCellId } = ui;
+  return { view, groupId, sampleId, popId, plotId, gridCellId };
+}
+
 useStore.subscribe((s, prev) => {
   if (s.ui.view === prev.ui.view) return;
+  if (!navigating) {
+    // A tab switch, by a tab or by a button that opens a sample in another tab: remember where it left from.
+    // Changes within a tab (another sample or population) are not steps of their own.
+    const back = [...s.nav.back.slice(-99), locationOf(prev.ui)];
+    useStore.setState({ nav: { back, forward: [] } });
+  }
   try {
     sessionStorage.setItem(VIEW_KEY, s.ui.view);
   } catch {}

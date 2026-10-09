@@ -224,6 +224,23 @@ code,
   overflow: auto;
   padding: 8px;
 }
+.nav-buttons {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding-top: 6px;
+}
+.nav-buttons button.icon {
+  display: flex;
+  padding: 3px;
+  border-radius: 4px;
+}
+.nav-buttons button.icon:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.nav-buttons button.icon:disabled {
+  opacity: 0.35;
+}
 .group-block {
   margin-bottom: 6px;
 }

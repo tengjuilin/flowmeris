@@ -18,20 +18,79 @@ import { pool } from './engine-client/pool.ts';
 import { download, safeName } from './lib/download.ts';
 import { checkMissing, filesFromDrop, filesFromInput, ingestFiles } from './lib/ingest.ts';
 import { workspaceToFile } from './state/persist.ts';
-import { APP_INFO, type Tool, type View, timestampName, toast, useGroup, useStore } from './state/store.ts';
+import {
+  APP_INFO,
+  type NavLocation,
+  type Tool,
+  VIEW_LABELS,
+  type View,
+  timestampName,
+  toast,
+  useGroup,
+  useStore,
+} from './state/store.ts';
 
-const VIEWS: { id: View; label: string }[] = [
-  { id: 'gate', label: 'Gate' },
-  { id: 'plot', label: 'Plot' },
-  { id: 'tiles', label: 'Tiles' },
-  { id: 'path', label: 'Gating path' },
-  { id: 'metadata', label: 'Metadata' },
-  { id: 'stats', label: 'Statistics' },
-  { id: 'ridge', label: 'Ridge' },
-  { id: 'charts', label: 'Charts' },
-  { id: 'compensation', label: 'Compensation' },
-  { id: 'samples', label: 'Samples' },
-];
+const VIEWS: { id: View; label: string }[] = (
+  [
+    'gate',
+    'plot',
+    'tiles',
+    'path',
+    'metadata',
+    'stats',
+    'ridge',
+    'charts',
+    'compensation',
+    'samples',
+  ] as const
+).map((id) => ({ id, label: VIEW_LABELS[id] }));
+
+/** A chevron pointing left (Back) or right (Forward). */
+function NavIcon({ dir }: { dir: -1 | 1 }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+      <path
+        d={dir < 0 ? 'M9 2.5 4.5 7 9 11.5' : 'M5 2.5 9.5 7 5 11.5'}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Back and Forward through the tabs visited, like a browser's. */
+function NavButtons() {
+  const nav = useStore((s) => s.nav);
+  const navigate = useStore((s) => s.navigate);
+  const label = (l: NavLocation | undefined) => (l ? ` to ${VIEW_LABELS[l.view]}` : '');
+  return (
+    <div className="nav-buttons">
+      <button
+        type="button"
+        className="icon"
+        title={`Back${label(nav.back[nav.back.length - 1])} (Alt+←)`}
+        aria-label="Back"
+        disabled={nav.back.length === 0}
+        onClick={() => navigate(-1)}
+      >
+        <NavIcon dir={-1} />
+      </button>
+      <button
+        type="button"
+        className="icon"
+        title={`Forward${label(nav.forward[nav.forward.length - 1])} (Alt+→)`}
+        aria-label="Forward"
+        disabled={nav.forward.length === 0}
+        onClick={() => navigate(1)}
+      >
+        <NavIcon dir={1} />
+      </button>
+    </div>
+  );
+}
 
 const TOOL_KEYS: Record<string, Tool> = {
   v: 'select',
@@ -263,6 +322,11 @@ export function App() {
         else useStore.getState().undo();
         return;
       }
+      if (e.altKey && !typing && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        useStore.getState().navigate(e.key === 'ArrowLeft' ? -1 : 1);
+        return;
+      }
       if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
       const tool = TOOL_KEYS[e.key.toLowerCase()];
       const view = useStore.getState().ui.view;
@@ -298,6 +362,7 @@ export function App() {
           <Sidebar />
           <section className="center">
             <div className="tabs-bar">
+              <NavButtons />
               <div className="tabs" role="tablist">
                 {VIEWS.map((v) => (
                   <button
