@@ -77,6 +77,25 @@ export const TILE_FIGURE: PlotFigure = PlotFigureSchema.parse({
 /** Settings of a new Tiles plot; its figure options are always saved, so resets keep the Tiles sizes. */
 export const TILE_STYLE: PlotStyle = { ...DEFAULT_STYLE, figure: TILE_FIGURE };
 
+/**
+ * `plot` drawn with a `px` base font: its other text sizes keep their ratio to the base (as when the base
+ * is edited); one without saved figure options is drawn with the Tiles defaults.
+ */
+export function withBaseFont(plot: PlotSpec, px: number): PlotSpec {
+  const f = plot.style.figure;
+  if (!f) return { ...plot, style: { ...plot.style, figure: TILE_FIGURE } };
+  const k = px / f.fontSize;
+  const figure: PlotFigure = {
+    ...f,
+    fontSize: px,
+    titleFontSize: f.titleFontSize * k,
+    tickFontSize: f.tickFontSize * k,
+    axisTitleFontSize: f.axisTitleFontSize * k,
+    gateFontSize: f.gateFontSize * k,
+  };
+  return { ...plot, style: { ...plot.style, figure } };
+}
+
 /** SVG text styling for one kind of plot text; color falls back to the base color. */
 export function figureText(fig: PlotFigure, t: TextStyle, size: number): CSSProperties {
   return {

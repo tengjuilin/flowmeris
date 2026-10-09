@@ -13,14 +13,35 @@ import {
 import { pool } from '../engine-client/pool.ts';
 import { lineageKey } from '../lib/analysis.ts';
 import { DEFAULT_STYLE } from '../lib/defaults.ts';
+import { withBaseFont } from '../lib/figure.ts';
 import { gateMatchesAxes } from '../lib/geometry.ts';
-import { contextFor, useGroup, useSampleNames, useStore } from '../state/store.ts';
+import { contextFor, useGroup, useStore } from '../state/store.ts';
 import { PlotCanvas } from './PlotCanvas.tsx';
 import { drill } from './PlotPanel.tsx';
+import { PopulationTree } from './PopulationTree.tsx';
+import { useSize } from './hooks.ts';
 
 type Count = { count: number; parent: number };
 type Counts = Record<string, Count>;
 type PlotChoice = { plot: PlotSpec; real: boolean; gateIds: string[] };
+
+/** Base font size (px) of the plots, as in Tiles. */
+const FONT_PX = 11;
+/** Space a card takes beyond its plot: padding and border (10), then its title (26). */
+const CARD_EXTRA = 10;
+const CARD_TITLE = 26;
+/** Width of a path step's arrow, with the gap before it. */
+const ARROW_W = 104;
+/** A tree card's horizontal room beyond its plot: padding and border, then its branch's padding. */
+const TREE_EXTRA = 22;
+const GAP = 12;
+/** Narrowest populations card (it spans as many columns as reach it), and the smallest plot offered. */
+const SIDE_MIN = 280;
+/** Room left of the populations card in the path, so the arrow before it doesn't seem to point at it. */
+const SIDE_GAP = 40;
+const MIN_PLOT = 160;
+const MIN_COLUMNS = 2;
+const MAX_COLUMNS = 6;
 
 const byName = (a: Population, b: Population) => a.name.localeCompare(b.name, undefined, { numeric: true });
 
@@ -180,6 +201,8 @@ const StepCard = memo(function StepCard({
   focusPopId,
   backgate,
 }: CardProps) {
+  // Drawn with the small base font; the saved plot itself (opened on click) keeps its own.
+  const shown = useMemo(() => withBaseFont(plot, FONT_PX), [plot]);
   return (
     <div className="path-card">
       <button
@@ -201,9 +224,10 @@ const StepCard = memo(function StepCard({
           ws={ws}
           group={group}
           sampleId={sampleId}
-          plot={plot}
+          plot={shown}
           width={size}
           height={size}
+          hideOffScaleNote
           {...(focusPopId ? { focusPopId } : {})}
           {...(backgate ? { backgate } : {})}
         />
@@ -254,14 +278,28 @@ export function GatingPathView() {
   const uiSampleId = useStore((s) => s.ui.sampleId);
   const uiPopId = useStore((s) => s.ui.popId);
   const uiMissing = useStore((s) => s.ui.missing);
+  const picked = useStore((s) => s.ui.pathColumns);
   const setUi = useStore((s) => s.setUi);
   const group = useGroup();
-  const names = useSampleNames(group);
   const [mode, setMode] = useState<'path' | 'tree'>('path');
   const [backgating, setBackgating] = useState(false);
-  const [sizeInput, setSizeInput] = useState(280);
-  // Plots are recomputed at the new size only once the slider rests, not for every step of a drag.
-  const size = useDebounced(sizeInput, 150);
+  // Plot sizes are discrete (as in Tiles): the slider picks the plots per row and the size fills the row.
+  // In the path, a column is a plot with its arrow; in the tree, a plot beside the populations card.
+  const body = useRef<HTMLDivElement>(null);
+  const { width } = useSize(body);
+  const [treeWidth, setTreeWidth] = useState(0);
+  const sideW = Math.max(SIDE_MIN, treeWidth);
+  const room = mode === 'path' ? width : width - sideW - GAP;
+  const extra = mode === 'path' ? CARD_EXTRA + ARROW_W : TREE_EXTRA;
+  const fit = Math.floor(room / (MIN_PLOT + extra));
+  // Until the width is measured, nothing limits the number (as in Tiles).
+  const maxColumns = width > 0 ? Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, fit)) : MAX_COLUMNS;
+  const columns = Math.max(MIN_COLUMNS, Math.min(maxColumns, picked));
+  const liveSize = width > 0 ? Math.max(MIN_PLOT, Math.floor(room / columns) - extra) : 0;
+  // Plots are recomputed at the new size only once the slider (or window) rests, not for every step.
+  const size = useDebounced(liveSize, 150);
+  const stepW = size + CARD_EXTRA + ARROW_W;
+  const span = size > 0 ? Math.min(columns, Math.ceil((sideW + SIDE_GAP) / stepW)) : 1;
   const [counts, setCounts] = useState<Counts>({});
   const [countError, setCountError] = useState<string | null>(null);
   const treeRef = useRef<HTMLDivElement>(null);
@@ -270,11 +308,6 @@ export function GatingPathView() {
     group && uiSampleId && group.sampleIds.includes(uiSampleId) ? uiSampleId : group?.sampleIds[0];
   const missing = !!(sampleId && uiMissing[sampleId]);
   const pops = useMemo(() => (group ? populationsDepthFirst(group.template) : []), [group]);
-  const depth = useMemo(() => {
-    const d = new Map<string, number>();
-    for (const p of pops) d.set(p.id, p.parent ? (d.get(p.parent) ?? 0) + 1 : 0);
-    return d;
-  }, [pops]);
   const target = group?.template.populations[uiPopId] ? uiPopId : 'root';
   const lineage = useMemo(() => (group ? populationLineage(group.template, target) : []), [group, target]);
   const targetPop = lineage[lineage.length - 1];
@@ -339,8 +372,27 @@ export function GatingPathView() {
     el.scrollLeft += r.left + r.width / 2 - (box.left + box.width / 2);
   }, [mode, target, templateKey, size]);
 
-  if (!group || !layout) return <div className="empty">Select a group.</div>;
-  if (!sampleId) return <div className="empty">This group has no samples.</div>;
+  // In the tree, the populations card is as tall as the root's plot card (measured: a square plot box
+  // leaves the plot shorter than it is wide).
+  const [rootCardH, setRootCardH] = useState(0);
+  useLayoutEffect(() => {
+    const el = mode === 'tree' ? treeRef.current?.querySelector<HTMLElement>('.path-card') : null;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setRootCardH(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [mode, templateKey, size]);
+
+  // The body stays mounted (and measured) whatever it shows.
+  const bare = (text: string) => (
+    <div className="path-view">
+      <div className="path-body" ref={body}>
+        <div className="empty">{text}</div>
+      </div>
+    </div>
+  );
+  if (!group || !layout) return bare('Select a group.');
+  if (!sampleId) return bare('This group has no samples.');
 
   /** Ancestor-of-target populations show the gate leading towards the target and the backgating overlay. */
   const nextOnPath = (popId: string) => {
@@ -366,9 +418,34 @@ export function GatingPathView() {
     );
   };
 
+  // Shows the counts in the selected sample; clicking a population makes it the path's target.
+  const side = (
+    <PopulationTree
+      popId={target}
+      sampleId={sampleId}
+      onWidth={setTreeWidth}
+      onPick={(popId) => setUi({ popId, plotId: null, selectedGateId: null })}
+    />
+  );
+  // Used only when no plot sets the height: the card spans the whole row, or the tree is not measured yet.
+  const cardH = size + CARD_EXTRA + CARD_TITLE;
+
   // --- path: one plot per ancestor, showing the gate that leads to the next step -------------
+  const noGates = pathSteps.length === 0 && finalPlots.length === 0;
   const renderPath = () => (
-    <div className="path-row">
+    <div className="path-row" style={{ gridTemplateColumns: `repeat(${columns}, ${stepW}px)` }}>
+      {/* The populations card takes the top-right columns (as in Tiles); the steps flow around it. */}
+      <div
+        className="plot-side path-side"
+        style={{
+          gridColumn: `${columns - span + 1} / span ${span}`,
+          gridRow: 1,
+          marginLeft: SIDE_GAP,
+          ...(span >= columns ? { minHeight: cardH } : {}),
+        }}
+      >
+        {side}
+      </div>
       {pathSteps.map(({ pop, next, r }) => (
         <div className="path-step" key={pop.id}>
           {r ? (
@@ -390,11 +467,21 @@ export function GatingPathView() {
           </div>
         </div>
       ))}
-      {targetPop && (
-        <div className="path-step">
-          {finalPlots.length > 0 ? (
-            finalPlots.map((f) => card(targetPop, f.plot, f.real, f.plot.id))
-          ) : (
+      {noGates && (
+        <div className="empty" style={{ gridColumn: `1 / span ${Math.max(1, columns - span)}`, gridRow: 1 }}>
+          No gates yet. Draw a gate in the Gate view, then choose its population here.
+        </div>
+      )}
+      {!noGates &&
+        targetPop &&
+        (finalPlots.length > 0 ? (
+          finalPlots.map((f) => (
+            <div className="path-step" key={f.plot.id}>
+              {card(targetPop, f.plot, f.real, f.plot.id)}
+            </div>
+          ))
+        ) : (
+          <div className="path-step">
             <div className="path-card path-end">
               <PopChip pop={targetPop} count={counts[targetPop.id]} on />
               <span className="muted small">
@@ -403,9 +490,8 @@ export function GatingPathView() {
                   : ''}
               </span>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        ))}
     </div>
   );
 
@@ -441,30 +527,6 @@ export function GatingPathView() {
   return (
     <div className="path-view">
       <div className="toolbar">
-        <label className="field">
-          Sample
-          <select value={sampleId} onChange={(e) => setUi({ sampleId: e.target.value })}>
-            {group.sampleIds.map((id) => (
-              <option key={id} value={id}>
-                {names[id] ?? ws.samples[id]?.fileName ?? id}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          Population
-          <select
-            value={target}
-            onChange={(e) => setUi({ popId: e.target.value, plotId: null, selectedGateId: null })}
-          >
-            {pops.map((p) => (
-              <option key={p.id} value={p.id}>
-                {'  '.repeat(depth.get(p.id) ?? 0)}
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
         <div className="seg" title="Layout">
           <button
             type="button"
@@ -498,48 +560,44 @@ export function GatingPathView() {
           Backgating
         </label>
         <div className="spacer" />
-        <label className="field">
-          Plot size
-          <input
-            type="range"
-            min={180}
-            max={480}
-            value={sizeInput}
-            onChange={(e) => setSizeInput(Number(e.target.value))}
-          />
-        </label>
+        <div className="tiles-controls">
+          <label className="field" title="Columns: the plots are sized to fill each row">
+            Columns
+            <input
+              type="range"
+              min={MIN_COLUMNS}
+              max={maxColumns}
+              step={1}
+              value={columns}
+              onChange={(e) => setUi({ pathColumns: Number(e.target.value) })}
+            />
+            <span className="muted">{columns}</span>
+          </label>
+        </div>
       </div>
-      <p className="muted small">
-        {mode === 'path'
-          ? 'Each plot shows the gate that leads to the next step (highlighted); arrows give the count and % of parent.'
-          : 'Every gated population; gates on the way to the selected population are highlighted.'}{' '}
-        {backgate && `${targetPop?.name} is overlaid in its colour on the plots above it. `}
-        Click a plot title to open it in the Gate view.
-      </p>
-      {countError && <div className="empty">Could not compute counts: {countError}</div>}
-      {missing && (
-        <div className="empty">Data not loaded for this sample: re-add its FCS file to view it.</div>
-      )}
-      {!missing &&
-        (mode === 'path' ? (
-          lineage.length <= 1 && finalPlots.length === 0 ? (
-            <div className="empty">
-              No gates yet. Draw a gate in the Gate view, then choose its population here.
-            </div>
-          ) : (
-            renderPath()
-          )
+      <div className="path-body" ref={body}>
+        {countError && <div className="empty">Could not compute counts: {countError}</div>}
+        {missing ? (
+          <div className="empty">Data not loaded for this sample: re-add its FCS file to view it.</div>
+        ) : size <= 0 ? null : mode === 'path' ? (
+          renderPath()
         ) : (
-          <ViewErrorBoundary resetKey={`${group.id}|${sampleId}|${key}`}>
-            {group.template.populations.root ? (
-              <div className="path-tree" ref={treeRef}>
-                <ul>{node(group.template.populations.root)}</ul>
-              </div>
-            ) : (
-              <div className="empty">This group's gating tree has no root population.</div>
-            )}
-          </ViewErrorBoundary>
-        ))}
+          <div className="path-split">
+            <ViewErrorBoundary resetKey={`${group.id}|${sampleId}|${key}`}>
+              {group.template.populations.root ? (
+                <div className="path-tree" ref={treeRef}>
+                  <ul>{node(group.template.populations.root)}</ul>
+                </div>
+              ) : (
+                <div className="empty">This group's gating tree has no root population.</div>
+              )}
+            </ViewErrorBoundary>
+            <div className="plot-side path-side" style={{ width: sideW, height: rootCardH || cardH }}>
+              {side}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
