@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { create } from 'zustand';
 import { gridCarry } from '../lib/gridCarry.ts';
 import { displayNames } from '../lib/names.ts';
+import { readSession, writeSession } from './prefs.ts';
 
 enablePatches();
 
@@ -115,7 +116,7 @@ interface Store {
   /**
    * Apply an undoable change to the workspace document. Changes sharing a
    * `merge` key less than a second apart (slider drags, colour picking,
-   * typing) collapse into one undo step.
+   * typing) collapse into one undo step. The rules in AFTER_EDIT then run on the result.
    */
   mutate: (label: string, fn: (ws: Workspace) => void, merge?: string) => void;
   /** Change the workspace without an undo step, for bookkeeping the user did not ask for (e.g. a view's plot made on first visit). */
@@ -123,6 +124,7 @@ interface Store {
   undo: () => void;
   redo: () => void;
   setWorkspace: (ws: Workspace) => void;
+  /** Change the UI state. Switching `view` records the location left for Back. */
   setUi: (patch: Partial<UiState>) => void;
 }
 
@@ -145,27 +147,16 @@ const VIEWS: readonly View[] = [
   'compensation',
   'samples',
 ];
-
-/** The view open before the last page reload, so a refresh stays on the same tab. */
-function savedView(): View {
-  try {
-    const v = sessionStorage.getItem(VIEW_KEY) as View | null;
-    return v && VIEWS.includes(v) ? v : 'gate';
-  } catch {
-    return 'gate';
-  }
-}
-
 const PATH_MODE_KEY = 'flowmeris.pathMode';
 
-/** The Gating path view's layout before the last page reload. */
-function savedPathMode(): 'path' | 'tree' {
-  try {
-    return sessionStorage.getItem(PATH_MODE_KEY) === 'tree' ? 'tree' : 'path';
-  } catch {
-    return 'path';
-  }
-}
+/**
+ * Rules applied after every workspace edit, in order: each sees the workspace before and after the edit
+ * and may return a further change, made in the same undo step. Then the edit time is stamped.
+ */
+const AFTER_EDIT: ((before: Workspace, after: Workspace) => ((w: Workspace) => void) | null)[] = [
+  // A grid plot's changed settings, made to the other grid plots too while the group carries them.
+  gridCarry,
+];
 
 export const useStore = create<Store>((set, get) => ({
   ws: newWorkspace(timestampName(), APP_INFO),
@@ -174,7 +165,8 @@ export const useStore = create<Store>((set, get) => ({
     sampleId: null,
     popId: 'root',
     plotId: null,
-    view: savedView(),
+    // A page reload stays on the same tab and Gating path layout.
+    view: readSession(VIEW_KEY, VIEWS, 'gate'),
     tool: 'select',
     editScope: 'template',
     selectedGateId: null,
@@ -183,7 +175,7 @@ export const useStore = create<Store>((set, get) => ({
     tilesSettings: false,
     tilesPlotSize: 260,
     pathPlotSize: 240,
-    pathMode: savedPathMode(),
+    pathMode: readSession(PATH_MODE_KEY, ['path', 'tree'] as const, 'path'),
     treePlotSize: 280,
     pathPanelHeight: 200,
     gridSettings: false,
@@ -215,7 +207,6 @@ export const useStore = create<Store>((set, get) => ({
           plotId: g.plots.some((p) => p.id === to.plotId) ? to.plotId : null,
         }
       : { ...here, view: to.view };
-    navigating = true;
     set((s) => ({
       ui: { ...s.ui, ...loc, selectedGateId: null },
       nav:
@@ -223,18 +214,18 @@ export const useStore = create<Store>((set, get) => ({
           ? { back: rest, forward: [...nav.forward, here] }
           : { back: [...nav.back, here], forward: rest },
     }));
-    navigating = false;
+    writeSession(VIEW_KEY, loc.view);
   },
   mutate(label, fn, merge) {
     const before = get().ws;
     let [next, redo, undo] = produceWithPatches(before, (draft) => void fn(draft as Workspace));
     // A change that changes nothing is no undo step (stamped only once the edit is known to change something).
     if (redo.length === 0) return;
-    // A grid plot's changed settings, made to the other grid plots too while the group carries them.
-    const carry = gridCarry(before, next);
-    if (carry) {
-      const [carried, r, u] = produceWithPatches(next, (draft) => void carry(draft as Workspace));
-      next = carried;
+    for (const rule of AFTER_EDIT) {
+      const more = rule(before, next);
+      if (!more) continue;
+      const [after, r, u] = produceWithPatches(next, (draft) => void more(draft as Workspace));
+      next = after;
       redo = [...redo, ...r];
       undo = [...u, ...undo];
     }
@@ -299,35 +290,24 @@ export const useStore = create<Store>((set, get) => ({
     }));
   },
   setUi(patch) {
-    set((s) => ({ ui: { ...s.ui, ...patch } }));
+    const prev = get().ui;
+    const ui = { ...prev, ...patch };
+    // A tab switch, by a tab or by a button that opens a sample in another tab, is a step Back returns
+    // from. Changes within a tab (another sample or population) are not steps of their own.
+    const switched = ui.view !== prev.view;
+    set((s) => ({
+      ui,
+      ...(switched && { nav: { back: [...s.nav.back.slice(-99), locationOf(prev)], forward: [] } }),
+    }));
+    if (switched) writeSession(VIEW_KEY, ui.view);
+    if (ui.pathMode !== prev.pathMode) writeSession(PATH_MODE_KEY, ui.pathMode);
   },
 }));
-
-/** Set while Back or Forward moves, so the tab switch it makes is not recorded as a new one. */
-let navigating = false;
 
 function locationOf(ui: UiState): NavLocation {
   const { view, groupId, sampleId, popId, plotId, gridCellId } = ui;
   return { view, groupId, sampleId, popId, plotId, gridCellId };
 }
-
-useStore.subscribe((s, prev) => {
-  if (s.ui.pathMode !== prev.ui.pathMode) {
-    try {
-      sessionStorage.setItem(PATH_MODE_KEY, s.ui.pathMode);
-    } catch {}
-  }
-  if (s.ui.view === prev.ui.view) return;
-  if (!navigating) {
-    // A tab switch, by a tab or by a button that opens a sample in another tab: remember where it left from.
-    // Changes within a tab (another sample or population) are not steps of their own.
-    const back = [...s.nav.back.slice(-99), locationOf(prev.ui)];
-    useStore.setState({ nav: { back, forward: [] } });
-  }
-  try {
-    sessionStorage.setItem(VIEW_KEY, s.ui.view);
-  } catch {}
-});
 
 export function useGroup(): Group | undefined {
   return useStore((s) => s.ws.groups.find((g) => g.id === s.ui.groupId));
