@@ -2,9 +2,11 @@ import type { Group, PlotCell, PlotKind, PlotSpec, Workspace } from '@flowmeris/
 import { newId, populationLineage, populationsDepthFirst } from '@flowmeris/model';
 import { CATEGORICAL } from '@flowmeris/render';
 import { useCallback, useRef, useState } from 'react';
-import { DEFAULT_STYLE, defaultAxis, defaultChannels } from '../lib/defaults.ts';
+import { defaultAxis, defaultChannels } from '../lib/defaults.ts';
 import { exportPlot } from '../lib/exportPlot.ts';
+import { TILE_FIGURE, TILE_STYLE } from '../lib/figure.ts';
 import { useGroup, useSampleNames, useStore } from '../state/store.ts';
+import { SettingsIcon } from './Inspector.tsx';
 import { type Anchor, type PickOption, PickerMenu } from './PickerMenu.tsx';
 import { PlotCanvas, type PlotHandle } from './PlotCanvas.tsx';
 import {
@@ -23,9 +25,6 @@ const KINDS: { id: PlotKind; label: string }[] = [
   { id: 'contour', label: 'Contour' },
   { id: 'histogram', label: 'Histogram' },
 ];
-
-/** Below this cell width plots drop their axes. */
-const COMPACT_BELOW = 240;
 
 function editGrid(groupId: string, label: string, fn: (g: Group, w: Workspace) => void) {
   useStore.getState().mutate(label, (w) => {
@@ -59,7 +58,7 @@ function addCell(groupId: string, slot: number, kind: PlotKind, population: stri
       overlay: [],
       kind,
       x: { ...defaultAxis(w, g, xc) },
-      style: { ...DEFAULT_STYLE },
+      style: structuredClone(TILE_STYLE),
     };
     if (kind !== 'histogram') c.y = { ...defaultAxis(w, g, yc) };
     while (g.grid.cells.length < slot) g.grid.cells.push(null);
@@ -76,6 +75,10 @@ function removeCell(groupId: string, cellId: string) {
     g.grid.cells = cells;
   });
 }
+
+/** Grid gap, and the narrowest cell offered (as for tiles), so plots keep room for their axes. */
+const GAP = 8;
+const MIN_CELL = 160;
 
 /** Open a cell's population, sample and axes in the Gate view, reusing a matching saved plot. */
 function openInGateView(group: Group, cell: PlotCell, sampleId: string | undefined) {
@@ -94,7 +97,8 @@ function openInGateView(group: Group, cell: PlotCell, sampleId: string | undefin
         kind: cell.kind,
         x: { ...cell.x },
         ...(cell.y ? { y: { ...cell.y } } : {}),
-        style: { ...cell.style },
+        // The grid's figure options (smaller text) stay with the grid plot.
+        style: { ...cell.style, figure: undefined },
       });
     });
     plotId = id;
@@ -162,13 +166,14 @@ function openOnPress(open: (el: HTMLElement) => void) {
   };
 }
 
+/** A cell as a plot to draw; one without saved figure options is drawn with the grid (Tiles) defaults. */
 function plotOf(cell: PlotCell): PlotSpec {
   return {
     id: cell.id,
     population: cell.population,
     kind: cell.kind,
     x: cell.x,
-    style: cell.style,
+    style: cell.style.figure ? cell.style : { ...cell.style, figure: TILE_FIGURE },
     ...(cell.y ? { y: cell.y } : {}),
   };
 }
@@ -185,12 +190,15 @@ export function PlotGridView() {
   const handle = useRef<PlotHandle>(null);
   if (!group) return <div className="empty">Select or add a group.</div>;
 
-  const { columns, cells } = group.grid;
+  const { cells } = group.grid;
+  // No more columns than fit at MIN_CELL; the saved number comes back when the window is wide enough.
+  const maxColumns = width > 0 ? Math.max(1, Math.min(6, Math.floor((width + GAP) / (MIN_CELL + GAP)))) : 6;
+  const columns = Math.min(group.grid.columns, maxColumns);
   const rows = Math.max(2, Math.ceil(cells.length / columns) + 1);
   const slots = Array.from({ length: rows * columns }, (_, i) => cells[i] ?? null);
   const active = cells.find((c) => c?.id === ui.gridCellId) ?? null;
   const activeSample = active ? cellSample(group, active, ui.sampleId) : undefined;
-  const gap = 8;
+  const gap = GAP;
   const cellW = width > 0 ? Math.floor((width - gap * (columns - 1)) / columns) : 0;
   const sampleName = (id: string) => names[id] ?? ws.samples[id]?.fileName ?? id;
 
@@ -210,25 +218,36 @@ export function PlotGridView() {
           <ToolButtons is1d={active?.kind === 'histogram'} />
           <EditScopeToggle />
           <div className="spacer" />
-          <label className="field">
-            Columns
-            <select
-              value={columns}
-              onChange={(e) =>
-                editGrid(
-                  group.id,
-                  'Change grid columns',
-                  (g) => void (g.grid.columns = Number(e.target.value)),
-                )
-              }
+          <div className="tiles-controls">
+            <label className="field">
+              Columns
+              <input
+                type="range"
+                min={1}
+                max={maxColumns}
+                step={1}
+                value={columns}
+                onChange={(e) =>
+                  editGrid(
+                    group.id,
+                    'Change grid columns',
+                    (g) => void (g.grid.columns = Number(e.target.value)),
+                  )
+                }
+              />
+              <span className="muted">{columns}</span>
+            </label>
+            <button
+              type="button"
+              className="tiles-settings"
+              aria-expanded={ui.gridSettings}
+              aria-label="Settings"
+              title={ui.gridSettings ? 'Hide settings' : 'Show settings'}
+              onClick={() => setUi({ gridSettings: !ui.gridSettings })}
             >
-              {[1, 2, 3, 4, 5, 6].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
+              <SettingsIcon />
+            </button>
+          </div>
         </div>
         {active ? (
           <CellControls
@@ -544,7 +563,6 @@ function GridCell({
               plot={plotOf(cell)}
               width={side}
               height={side}
-              compact={size < COMPACT_BELOW}
               hideOffScaleNote
               interactive={active}
               onDrill={onDrill}

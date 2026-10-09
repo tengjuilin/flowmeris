@@ -366,7 +366,7 @@ code,
   display: inline-flex;
   padding: 5px 7px;
 }
-/* At the end of the Tiles toolbar: tiles per row, then the settings panel toggle. Fixed widths, so the
+/* At the end of the Tiles and Plot toolbars: columns, then the settings panel toggle. Fixed widths, so the
    slider stays put under the pointer while the tiles re-lay out. */
 .tiles-controls {
   flex: 0 0 auto;

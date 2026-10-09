@@ -238,8 +238,8 @@ export function App() {
   // On narrow windows the settings panel is a drawer opened from the Settings button.
   const [drawer, setDrawer] = useState(false);
   const hasInspector = ui.view === 'gate' || ui.view === 'ridge';
-  // The Tiles view's settings panel is shown and hidden from its own toolbar.
-  const tilesPanel = ui.view === 'tiles' && ui.tilesSettings;
+  // The Tiles and Plot views' settings panels are shown and hidden from their own toolbars.
+  const tilesPanel = (ui.view === 'tiles' && ui.tilesSettings) || (ui.view === 'plot' && ui.gridSettings);
   useEffect(() => {
     if (!drawer) return;
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && setDrawer(false);
@@ -367,13 +367,19 @@ export function App() {
                 aria-label="Close settings"
                 tabIndex={-1}
                 data-open={tilesPanel || drawer}
-                onClick={() => (tilesPanel ? setUi({ tilesSettings: false }) : setDrawer(false))}
+                onClick={() =>
+                  tilesPanel
+                    ? setUi(ui.view === 'plot' ? { gridSettings: false } : { tilesSettings: false })
+                    : setDrawer(false)
+                }
               />
               <div className="inspector-drawer" data-open={tilesPanel || drawer}>
                 {ui.view === 'gate' ? (
                   <Inspector />
                 ) : ui.view === 'tiles' ? (
-                  <Inspector key="tiles" tiles />
+                  <Inspector key="tiles" target="tiles" />
+                ) : ui.view === 'plot' ? (
+                  <Inspector key="grid" target="grid" />
                 ) : (
                   <RidgeInspector />
                 )}

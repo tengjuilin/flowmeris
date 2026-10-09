@@ -27,7 +27,13 @@ import {
 } from '../lib/defaults.ts';
 import { DEFAULT_FIGURE, TILE_FIGURE } from '../lib/figure.ts';
 import { contextFor, toast, useGroup, useStore } from '../state/store.ts';
-import { axisChannelSetter, tilesEdit, usePlotForPopulation } from './PlotPanel.tsx';
+import {
+  type PlotTarget,
+  axisChannelSetter,
+  plotsOf,
+  targetEdit,
+  usePlotForPopulation,
+} from './PlotPanel.tsx';
 
 /** Reset: an undo arrow, an open arrowhead on a line that turns back on itself in a half circle. */
 export function ResetIcon() {
@@ -226,13 +232,13 @@ export function AxisEditor({
   panel,
   children,
   extra,
-  tiles,
+  target = 'gate',
 }: {
   which: 'x' | 'y';
   plot: PlotSpec;
   panel: Panel;
-  /** Edit the group's Tiles plot instead of a Gate-view plot; its scales never become the channel's defaults. */
-  tiles?: boolean;
+  /** Which plots to edit; only a Gate-view plot's scales become the channel's defaults. */
+  target?: PlotTarget;
   /** More settings for this axis, after the channel picker. */
   children?: ReactNode;
   /** Whether those settings differ from their defaults, and how to reset them with the axis. */
@@ -244,9 +250,9 @@ export function AxisEditor({
   const apply: ApplyAxis = (label, fn, shared) =>
     mutate(label, (w) => {
       const g = w.groups.find((x) => x.id === group.id)!;
-      const a = (tiles ? g.tilePlots : g.plots).find((x) => x.id === plot.id)![which]!;
+      const a = plotsOf(g, target).find((x) => x.id === plot.id)![which]!;
       fn(a, w, g);
-      if (shared && !tiles) g.axisDefaults[a.channel] = { ...a };
+      if (shared && target === 'gate') g.axisDefaults[a.channel] = { ...a };
     });
   const axis = plot[which] as AxisSpec;
   const factory = factoryAxis(ws, group, axis.channel);
@@ -286,7 +292,7 @@ export function AxisEditor({
             axisChannelSetter(
               group,
               plot,
-              tiles ? tilesEdit(group.id, plot.id) : undefined,
+              target === 'gate' ? undefined : targetEdit(group.id, plot.id, target),
             )(which, e.target.value)
           }
         >
@@ -509,13 +515,17 @@ export function AxisFields({
   );
 }
 
-export function StyleEditor({ plot, panel, tiles }: { plot: PlotSpec; panel: Panel; tiles?: boolean }) {
+export function StyleEditor({
+  plot,
+  panel,
+  target = 'gate',
+}: { plot: PlotSpec; panel: Panel; target?: PlotTarget }) {
   const group = useGroup()!;
   const mutate = useStore((s) => s.mutate);
   const set = (fn: (st: PlotSpec['style']) => void) =>
     mutate('Change plot style', (w) => {
       const g = w.groups.find((x) => x.id === group.id)!;
-      fn((tiles ? g.tilePlots : g.plots).find((x) => x.id === plot.id)!.style);
+      fn(plotsOf(g, target).find((x) => x.id === plot.id)!.style);
     });
   const st = plot.style;
   const showNote = st.figure?.showOffScaleNote ?? true;
@@ -647,7 +657,7 @@ export function StyleEditor({ plot, panel, tiles }: { plot: PlotSpec; panel: Pan
           checked={showNote}
           onChange={(e) =>
             set((s) => {
-              s.figure ??= structuredClone(tiles ? TILE_FIGURE : DEFAULT_FIGURE);
+              s.figure ??= structuredClone(target === 'gate' ? DEFAULT_FIGURE : TILE_FIGURE);
               s.figure.showOffScaleNote = e.target.checked;
             })
           }

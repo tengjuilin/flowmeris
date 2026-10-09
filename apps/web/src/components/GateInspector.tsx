@@ -36,7 +36,14 @@ import {
   Section,
   StyleEditor,
 } from './Inspector.tsx';
-import { PlotKindSelect, tilesEdit, usePlotForPopulation, useTilePlot } from './PlotPanel.tsx';
+import {
+  PlotKindSelect,
+  type PlotTarget,
+  targetEdit,
+  plotsOf as targetPlots,
+  usePlotForPopulation,
+  useTilePlot,
+} from './PlotPanel.tsx';
 import { FontSelect, TextStyleEditor, TicksEditor } from './RidgeInspector.tsx';
 
 type GateTab = 'settings' | 'gate' | 'figure' | 'axis' | 'text';
@@ -47,36 +54,48 @@ const GATE_TABS: { id: GateTab; label: string }[] = [
   { id: 'gate', label: 'Gate' },
   { id: 'settings', label: 'Settings' },
 ];
-const tabKey = (tiles: boolean) => (tiles ? 'flowmeris.tilesPanelTab' : 'flowmeris.gatePanelTab');
+const TAB_KEYS: Record<PlotTarget, string> = {
+  gate: 'flowmeris.gatePanelTab',
+  tiles: 'flowmeris.tilesPanelTab',
+  grid: 'flowmeris.gridPanelTab',
+};
+const NAMES: Record<PlotTarget, string> = { gate: 'Gate', tiles: 'Tiles', grid: 'Plot' };
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
-function loadTab(tiles: boolean): GateTab {
+function loadTab(target: PlotTarget): GateTab {
   try {
-    const t = localStorage.getItem(tabKey(tiles));
+    const t = localStorage.getItem(TAB_KEYS[target]);
     if (t && GATE_TABS.some((x) => x.id === t)) return t as GateTab;
   } catch {}
   return 'figure';
 }
 
 /**
- * The Gate view's settings: Figure / Axis / Text / Gate / Settings tabs of collapsible cards. With `tiles`,
- * the same panel for the Tiles view, editing the Tiles plots (never the Gate view's).
+ * The Gate view's settings: Figure / Axis / Text / Gate / Settings tabs of collapsible cards. With `target`
+ * 'tiles' or 'grid', the same panel for the Tiles view or the Plot view's selected grid plot, editing only
+ * those plots (never the Gate view's).
  */
-export function Inspector({ tiles = false }: { tiles?: boolean }) {
+export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
+  const tiles = target === 'tiles';
+  const grid = target === 'grid';
   const group = useGroup();
   const gatePlot = usePlotForPopulation();
   const tilePlot = useTilePlot(tiles ? group : undefined);
-  const plot = tiles ? tilePlot : gatePlot;
-  /** The plots this panel edits: the group's Tiles plots or its Gate-view plots. */
-  const plotsOf = (g: Group) => (tiles ? g.tilePlots : g.plots);
+  const cellId = useStore((s) => s.ui.gridCellId);
+  const gridPlot = grid ? group?.grid.cells.find((c) => c?.id === cellId) : undefined;
+  const plot: PlotSpec | undefined = tiles ? tilePlot : grid ? (gridPlot ?? undefined) : gatePlot;
+  /** The plots this panel edits: the group's Tiles plots, grid plots or Gate-view plots. */
+  const plotsOf = (g: Group) => targetPlots(g, target);
   const follow = (g: Group) => (tiles ? g.tilePlotStyleFollow : g.plotStyleFollow);
-  /** Defaults of the plots this panel edits: Tiles plots start with smaller text. */
-  const defStyle = tiles ? TILE_STYLE : DEFAULT_STYLE;
-  const defFig = tiles ? TILE_FIGURE : DEFAULT_FIGURE;
+  /** Defaults of the plots this panel edits: Tiles and grid plots start with smaller text. */
+  const defStyle = target === 'gate' ? DEFAULT_STYLE : TILE_STYLE;
+  const defFig = target === 'gate' ? DEFAULT_FIGURE : TILE_FIGURE;
+  const plotEdit = (g: Group, p: PlotSpec) =>
+    target === 'gate' ? undefined : targetEdit(g.id, p.id, target);
   const mutate = useStore((s) => s.mutate);
-  const [tab, setTabState] = useState<GateTab>(() => loadTab(tiles));
+  const [tab, setTabState] = useState<GateTab>(() => loadTab(target));
   // Every card starts open; collapsing one lasts for the session.
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   const panel: Panel = {
@@ -90,7 +109,7 @@ export function Inspector({ tiles = false }: { tiles?: boolean }) {
     if (!group || !plot) return;
     const prev = last.current;
     last.current = { groupId: group.id, plotId: plot.id };
-    if (!prev || prev.groupId !== group.id || prev.plotId === plot.id || !follow(group)) return;
+    if (grid || !prev || prev.groupId !== group.id || prev.plotId === plot.id || !follow(group)) return;
     const from = plotsOf(group).find((p) => p.id === prev.plotId);
     if (!from || !carryToPopulation(structuredClone(from), structuredClone(plot))) return;
     mutate('Carry settings to population', (w) => {
@@ -100,11 +119,16 @@ export function Inspector({ tiles = false }: { tiles?: boolean }) {
       if (src && dst) carryToPopulation(src, dst);
     });
   }, [group?.id, plot?.id]);
-  if (!group || !plot) return <aside className="inspector" />;
+  if (!group || !plot)
+    return (
+      <aside className="inspector ridge-inspector" aria-label={`${NAMES[target]} settings`}>
+        {grid && group && <p className="muted small">Select a plot in the grid to change its settings.</p>}
+      </aside>
+    );
   const setTab = (t: GateTab) => {
     setTabState(t);
     try {
-      localStorage.setItem(tabKey(tiles), t);
+      localStorage.setItem(TAB_KEYS[target], t);
     } catch {}
   };
   const fig = plot.style.figure ?? defFig;
@@ -166,13 +190,9 @@ export function Inspector({ tiles = false }: { tiles?: boolean }) {
   );
 
   return (
-    <aside className="inspector ridge-inspector" aria-label={tiles ? 'Tiles settings' : 'Gate settings'}>
+    <aside className="inspector ridge-inspector" aria-label={`${NAMES[target]} settings`}>
       <div className="ridge-inspector-head">
-        <div
-          className="tabs ridge-tabs"
-          role="tablist"
-          aria-label={tiles ? 'Tiles settings' : 'Gate settings'}
-        >
+        <div className="tabs ridge-tabs" role="tablist" aria-label={`${NAMES[target]} settings`}>
           {GATE_TABS.map((t) => (
             <button
               key={t.id}
@@ -195,12 +215,12 @@ export function Inspector({ tiles = false }: { tiles?: boolean }) {
             className="icon reset-all"
             title="Reset the settings in this panel for this plot"
             aria-label="Reset the settings in this panel"
-            disabled={panelAtDefaults(tab, plot, group, tiles)}
+            disabled={panelAtDefaults(tab, plot, group, target)}
             onClick={() =>
               mutate(`Reset ${tab} settings`, (w) => {
                 const g = w.groups.find((x) => x.id === group.id);
                 const p = g && plotsOf(g).find((x) => x.id === plot.id);
-                if (g && p) resetPanel(tab, p, g, w, tiles);
+                if (g && p) resetPanel(tab, p, g, w, target);
               })
             }
           >
@@ -209,7 +229,52 @@ export function Inspector({ tiles = false }: { tiles?: boolean }) {
         </div>
       </div>
       <div id="gate-tabpanel" role="tabpanel" aria-labelledby={`gate-tab-${tab}`}>
-        {tab === 'settings' && (
+        {tab === 'settings' && grid && (
+          <>
+            <Section id="apply" title="Apply settings" {...card('apply')}>
+              <ActionRow
+                label="Apply same settings for all grid plots"
+                title="Give every plot in the grid this plot's settings now (each keeps its title, ticks and axis titles)"
+                icon={<ApplyIcon />}
+                disabled={populationsMatch(plotsOf(group), plot.id)}
+                onClick={() =>
+                  mutate('Apply settings to all grid plots', (w) => {
+                    const g = w.groups.find((x) => x.id === group.id);
+                    if (g) applyToPopulations(plotsOf(g), plot.id);
+                  })
+                }
+              />
+            </Section>
+            <Section id="resetAll" title="Reset settings" {...card('resetAll')}>
+              <ActionRow
+                label="All settings in this plot"
+                title="Reset the settings of this grid plot"
+                icon={<ResetIcon />}
+                disabled={plotAtDefaults(plot, defStyle)}
+                onClick={() =>
+                  mutate('Reset the settings of this grid plot', (w) => {
+                    const g = w.groups.find((x) => x.id === group.id);
+                    const p = g && plotsOf(g).find((x) => x.id === plot.id);
+                    if (p) resetPlotStyles(p, defStyle);
+                  })
+                }
+              />
+              <ActionRow
+                label="All grid plots"
+                title="Reset the settings of every plot in the grid"
+                icon={<ResetIcon />}
+                disabled={plotsOf(group).every((x) => plotAtDefaults(x, defStyle))}
+                onClick={() =>
+                  mutate('Reset the settings of every grid plot', (w) => {
+                    const g = w.groups.find((x) => x.id === group.id);
+                    if (g) for (const x of plotsOf(g)) resetPlotStyles(x, defStyle);
+                  })
+                }
+              />
+            </Section>
+          </>
+        )}
+        {tab === 'settings' && !grid && (
           <>
             <Section id="apply" title="Apply settings" {...card('apply')}>
               <ActionRow
@@ -337,18 +402,14 @@ export function Inspector({ tiles = false }: { tiles?: boolean }) {
             gates.map((g) => <GateEditor key={g.id} gateId={g.id} panel={panel} />)
           ) : (
             <p className="muted small">
-              No gates on this plot yet. Draw one with the tools above the {tiles ? 'tiles' : 'plot'}.
+              No gates on this plot yet. Draw one with the tools above the{' '}
+              {tiles ? 'tiles' : grid ? 'grid' : 'plot'}.
             </p>
           ))}
         {tab === 'figure' && (
           <>
             <Section id="plot" title="Plot" {...resetOf(['title'], 'plot title')} {...card('plot')}>
-              <PlotKindSelect
-                group={group}
-                plot={plot}
-                edit={tiles ? tilesEdit(group.id, plot.id) : undefined}
-                label="Plot type"
-              />
+              <PlotKindSelect group={group} plot={plot} edit={plotEdit(group, plot)} label="Plot type" />
               <label className="field short-text">
                 Plot title
                 <input
@@ -359,7 +420,7 @@ export function Inspector({ tiles = false }: { tiles?: boolean }) {
                 />
               </label>
             </Section>
-            <StyleEditor tiles={tiles} plot={plot} panel={panel} />
+            <StyleEditor target={target} plot={plot} panel={panel} />
             <Section
               id="baseFont"
               title="Base font"
@@ -467,11 +528,11 @@ export function Inspector({ tiles = false }: { tiles?: boolean }) {
                 </button>
               </div>
             )}
-            <AxisEditor tiles={tiles} which="x" plot={plot} panel={panel} extra={titleReset('xTitle')}>
+            <AxisEditor target={target} which="x" plot={plot} panel={panel} extra={titleReset('xTitle')}>
               {titleField('xTitle', 'X axis title')}
             </AxisEditor>
             {is2d && (
-              <AxisEditor tiles={tiles} which="y" plot={plot} panel={panel} extra={titleReset('yTitle')}>
+              <AxisEditor target={target} which="y" plot={plot} panel={panel} extra={titleReset('yTitle')}>
                 {titleField('yTitle', 'Y axis title')}
               </AxisEditor>
             )}
@@ -669,32 +730,34 @@ const axisAtFactory = (p: PlotSpec, g: Group, ws: Parameters<typeof factoryAxis>
     return a.transform === f.transform && a.range[0] === f.range[0] && a.range[1] === f.range[1];
   });
 
-/** Whether the settings of tab `tab` are at the defaults for plot `p` (a Tiles plot with `tiles`). */
-function panelAtDefaults(tab: GateTab, p: PlotSpec, g: Group, tiles: boolean): boolean {
+/** Whether the settings of tab `tab` are at the defaults for plot `p` of `target`. */
+function panelAtDefaults(tab: GateTab, p: PlotSpec, g: Group, target: PlotTarget): boolean {
   if (tab === 'settings' || tab === 'gate') return true;
+  const gate = target === 'gate';
   const at = styleKeysAtDefaults(
     p.style,
     PANEL_FIGURE_KEYS[tab],
-    tab === 'figure' ? (tiles ? TILE_STYLE : DEFAULT_STYLE) : null,
-    tiles ? TILE_FIGURE : DEFAULT_FIGURE,
+    tab === 'figure' ? (gate ? DEFAULT_STYLE : TILE_STYLE) : null,
+    gate ? DEFAULT_FIGURE : TILE_FIGURE,
   );
   return tab === 'axis' ? at && axisAtFactory(p, g, useStore.getState().ws) : at;
 }
 
-/** Reset the settings of tab `tab` for plot `p` (inside a mutation); a Tiles plot's scales never become the channel's defaults. */
+/** Reset the settings of tab `tab` for plot `p` (inside a mutation); only a Gate-view plot's scales become the channel's defaults. */
 function resetPanel(
   tab: GateTab,
   p: PlotSpec,
   g: Group,
   w: Parameters<typeof factoryAxis>[0],
-  tiles: boolean,
+  target: PlotTarget,
 ) {
   if (tab === 'settings' || tab === 'gate') return;
+  const gate = target === 'gate';
   resetStyleKeys(
     p.style,
     PANEL_FIGURE_KEYS[tab],
-    tab === 'figure' ? (tiles ? TILE_STYLE : DEFAULT_STYLE) : null,
-    tiles ? TILE_FIGURE : DEFAULT_FIGURE,
+    tab === 'figure' ? (gate ? DEFAULT_STYLE : TILE_STYLE) : null,
+    gate ? DEFAULT_FIGURE : TILE_FIGURE,
   );
   if (tab !== 'axis') return;
   // The axes' scale and range, as each axis card's own reset does.
@@ -703,6 +766,6 @@ function resetPanel(
     const f = factoryAxis(w, g, a.channel);
     a.transform = f.transform;
     a.range = [...f.range];
-    if (!tiles) g.axisDefaults[a.channel] = { ...a };
+    if (gate) g.axisDefaults[a.channel] = { ...a };
   }
 }

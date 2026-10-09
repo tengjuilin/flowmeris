@@ -1,4 +1,4 @@
-import type { Group, PlotKind, PlotSpec, Workspace } from '@flowmeris/model';
+import type { Group, PlotCell, PlotKind, PlotSpec, Workspace } from '@flowmeris/model';
 import { type ReactNode, useEffect, useRef } from 'react';
 import {
   SCALE_KINDS,
@@ -160,25 +160,38 @@ export function drill(popId: string) {
 type PlotAxes = Pick<PlotSpec, 'kind' | 'x' | 'y'>;
 type EditAxes = (label: string, fn: (p: PlotAxes, g: Group, w: Workspace) => void) => void;
 
+/** Which of a group's plots a settings panel edits: the Gate view's, the Tiles view's, or the Plot view's grid. */
+export type PlotTarget = 'gate' | 'tiles' | 'grid';
+
+/** The group's plots of `target`; a grid cell is edited as a plot (its sample and overlays aside). */
+export function plotsOf(g: Group, target: PlotTarget): PlotSpec[] {
+  if (target === 'tiles') return g.tilePlots;
+  if (target === 'grid') return g.grid.cells.filter((c): c is PlotCell => c !== null);
+  return g.plots;
+}
+
 function editPlot(
   groupId: string,
   plotId: string,
   label: string,
   fn: (p: PlotSpec, g: Group, w: Workspace) => void,
-  tiles = false,
+  target: PlotTarget = 'gate',
 ) {
   useStore.getState().mutate(label, (w) => {
     const g = w.groups.find((x) => x.id === groupId);
-    const p = (tiles ? g?.tilePlots : g?.plots)?.find((x) => x.id === plotId);
+    const p = g && plotsOf(g, target).find((x) => x.id === plotId);
     if (g && p) fn(p, g, w);
   });
 }
 
-/** Edits the group's Tiles plot `plotId`, leaving the Gate view's plots alone. */
-export const tilesEdit =
-  (groupId: string, plotId: string): EditAxes =>
+/** Edits the group's plot `plotId` of `target` (the Tiles or grid plots leave the Gate view's alone). */
+export const targetEdit =
+  (groupId: string, plotId: string, target: PlotTarget): EditAxes =>
   (label, fn) =>
-    editPlot(groupId, plotId, label, fn, true);
+    editPlot(groupId, plotId, label, fn, target);
+
+/** Edits the group's Tiles plot `plotId`, leaving the Gate view's plots alone. */
+export const tilesEdit = (groupId: string, plotId: string): EditAxes => targetEdit(groupId, plotId, 'tiles');
 
 /** Put `channel` on a plot's axis with that channel's default scale. */
 export function setAxisChannel(edit: EditAxes, axis: 'x' | 'y', channel: string) {

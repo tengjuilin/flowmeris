@@ -213,8 +213,8 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
         <EditScopeToggle />
         <div className="spacer" />
         <div className="tiles-controls">
-          <label className="field" title="Tiles per row: the tiles are sized to fill each row">
-            Tiles per row
+          <label className="field" title="Columns: the tiles are sized to fill each row">
+            Columns
             <input
               type="range"
               min={1}

@@ -45,6 +45,8 @@ interface UiState {
   gridCellId: string | null;
   /** Whether the Tiles view's settings panel is shown. */
   tilesSettings: boolean;
+  /** Whether the Plot view's settings panel (for its selected grid plot) is shown. */
+  gridSettings: boolean;
   missing: Record<string, true>;
   /** Samples left out of the Tiles, Ridge and Statistics views (unchecked in the sidebar). */
   excluded: Record<string, true>;
@@ -122,6 +124,7 @@ export const useStore = create<Store>((set, get) => ({
     refPlotId: null,
     gridCellId: null,
     tilesSettings: false,
+    gridSettings: false,
     missing: {},
     excluded: {},
     ingest: null,

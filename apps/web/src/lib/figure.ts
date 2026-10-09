@@ -106,8 +106,8 @@ export function sharedStyle(from: PlotStyle, to: PlotStyle): PlotStyle {
 }
 
 /**
- * Apply plot `plotId`'s settings to every other population's plot in `plots` (a group's Gate-view or Tiles
- * plots) now; each keeps its title, ticks and axis titles.
+ * Apply plot `plotId`'s settings to every other population's plot in `plots` (a group's Gate-view, Tiles or
+ * grid plots) now; each keeps its title, ticks and axis titles.
  */
 export function applyToPopulations(plots: PlotSpec[], plotId: string) {
   const src = plots.find((p) => p.id === plotId);
