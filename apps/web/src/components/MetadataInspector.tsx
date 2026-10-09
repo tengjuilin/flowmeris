@@ -3,7 +3,7 @@ import { wellIndex } from '@flowmeris/table';
 import { useEffect, useState } from 'react';
 import { addVariable, coerce, distinctValues, retype, setValue } from '../lib/metadata.ts';
 import { toast, useGroup, useStore } from '../state/store.ts';
-import { Section } from './Inspector.tsx';
+import { DeleteIcon, Section } from './Inspector.tsx';
 import { samplesByWell } from './PlateMap.tsx';
 
 type MetaTab = 'variables' | 'values';
@@ -149,12 +149,6 @@ function VariableFields({ v }: { v: Variable }) {
           <LevelOrder v={v} levels={levels} />
         </div>
       )}
-      <div className="row">
-        <div className="spacer" />
-        <button type="button" className="danger" onClick={() => deleteVariable(v, mutate)}>
-          Delete variable
-        </button>
-      </div>
     </div>
   );
 }
@@ -396,7 +390,20 @@ export function MetadataInspector() {
               open={openId === v.id}
               // Closing leaves no card open ('' matches none); the plate map then shows the first variable.
               onToggle={() => setUi({ metaVarId: openId === v.id ? '' : v.id })}
-              actions={<span className="muted small var-type">{v.type === 'numeric' ? '#' : 'abc'}</span>}
+              actions={
+                <>
+                  <span className="muted small var-type">{v.type === 'numeric' ? '#' : 'abc'}</span>
+                  <button
+                    type="button"
+                    className="icon reset-btn danger-icon"
+                    title={`Delete variable ${v.name}`}
+                    aria-label={`Delete variable ${v.name}`}
+                    onClick={() => deleteVariable(v, mutate)}
+                  >
+                    <DeleteIcon />
+                  </button>
+                </>
+              }
             >
               <VariableFields v={v} />
             </Section>
