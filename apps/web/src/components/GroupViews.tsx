@@ -147,31 +147,19 @@ const Tile = memo(function Tile({
   );
 });
 
-/** Space a tile takes beyond its plot: padding and border (10), then its right margin (12). */
+/** Space a tile takes beyond its plot: padding and border (10), then the gap to the next tile (12). */
 const TILE_EXTRA = 22;
-/** Width of the populations card the tiles flow around, its bounds, and the smallest tile offered. */
-const TILES_SIDE = 320;
+const TILE_GAP = 12;
+/** Narrowest populations card (it spans as many tile columns as reach it), and the smallest tile offered. */
 const SIDE_MIN = 280;
-const SIDE_MAX = 500;
 const MIN_TILE = 160;
+const MIN_COLUMNS = 2;
+const MAX_COLUMNS = 7;
 const DEFAULT_COLUMNS = 5;
 
-/**
- * Plot size of `columns` tiles filling a row of the `width`-wide tiles area. The flow box is 12 px
- * wider than the area so the last tile's right margin hangs past its edge.
- */
+/** Plot size of `columns` tiles, with the gaps between them, filling a row of the `width`-wide tiles area. */
 function tileSizeFor(width: number, columns: number): number {
-  return Math.floor((width + 12) / columns) - TILE_EXTRA;
-}
-
-/**
- * Width of the populations card: as many whole tile slots as make it at least SIDE_MIN wide, so the
- * tiles beside it line up with the full rows below; the default width when that would be too wide.
- */
-function sideWidthFor(tile: number): number {
-  const slot = tile + TILE_EXTRA;
-  const w = Math.ceil((SIDE_MIN + 12) / slot) * slot - 12;
-  return tile > 0 && w <= SIDE_MAX ? w : TILES_SIDE;
+  return Math.floor((width + TILE_GAP) / columns) - TILE_EXTRA;
 }
 
 export function TilesView() {
@@ -198,10 +186,13 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
   const { width } = useSize(box);
   // Tile sizes are discrete: each fills a full-width row (below the populations card) with a whole
   // number of tiles, so the slider picks the number per row and the size follows the window.
-  const maxColumns = Math.max(1, Math.floor((width + 12) / (MIN_TILE + TILE_EXTRA)));
+  const fit = Math.floor((width + TILE_GAP) / (MIN_TILE + TILE_EXTRA));
+  const maxColumns = Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, fit));
   const [picked, setPicked] = useState(DEFAULT_COLUMNS);
-  const columns = Math.min(maxColumns, picked);
+  const columns = Math.max(MIN_COLUMNS, Math.min(maxColumns, picked));
   const tile = width > 0 ? Math.max(MIN_TILE, tileSizeFor(width, columns)) : 0;
+  // The populations card takes the top-right columns (as in the Plot view), as many as reach SIDE_MIN.
+  const span = tile > 0 ? Math.min(columns, Math.ceil((SIDE_MIN + TILE_GAP) / (tile + TILE_EXTRA))) : 1;
   // Tiles resize live; their plots are recomputed at the new size once the slider settles.
   const renderSize = useSettled(tile, 150);
   return (
@@ -215,7 +206,7 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
             Columns
             <input
               type="range"
-              min={1}
+              min={MIN_COLUMNS}
               max={maxColumns}
               step={1}
               value={columns}
@@ -236,12 +227,31 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
         </div>
       </div>
       <div className="tiles" ref={box}>
-        <div className="tiles-flow">
-          {/* Floated, so tiles fill the space beside it and run full width below it. */}
-          <div className="plot-side tiles-side" style={{ width: sideWidthFor(tile) }}>
+        <div
+          className="tiles-grid"
+          style={{
+            gridTemplateColumns: `repeat(${columns}, ${tile > 0 ? `${tile + 10}px` : 'minmax(0, 1fr)'})`,
+          }}
+        >
+          {/* Stretched to the height of the first row of tiles; the tiles fill the cells around it. */}
+          <div
+            className="plot-side tiles-side"
+            style={{
+              gridColumn: `${columns - span + 1} / span ${span}`,
+              gridRow: 1,
+              minHeight: tile || undefined,
+            }}
+          >
             <PopulationTree />
           </div>
-          {shown.length === 0 && <div className="empty">No samples selected: check some in the sidebar.</div>}
+          {shown.length === 0 && (
+            <div
+              className="empty"
+              style={{ gridColumn: `1 / span ${Math.max(1, columns - span)}`, gridRow: 1 }}
+            >
+              No samples selected: check some in the sidebar.
+            </div>
+          )}
           {tile > 0 &&
             shown.map((id) => (
               <Tile
