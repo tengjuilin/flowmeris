@@ -22,6 +22,9 @@ interface Target {
   type: Variable['type'];
 }
 
+/** Columns that identify samples (as in the Metadata view's export), left out unless ticked. */
+const SAMPLE_ID_HEADERS = new Set(['file_name', 'filename', 'file', 'sample', 'well']);
+
 function initialTargets(
   headers: string[],
   columns: string[][],
@@ -31,7 +34,10 @@ function initialTargets(
   return headers.map((h, i) => {
     const existing = variables.find((v) => v.name.toLowerCase() === h.trim().toLowerCase());
     return {
-      include: i !== skip && columns[i]!.some((x) => x.trim() !== ''),
+      include:
+        i !== skip &&
+        columns[i]!.some((x) => x.trim() !== '') &&
+        (!!existing || !SAMPLE_ID_HEADERS.has(h.trim().toLowerCase())),
       to: existing?.id ?? 'new',
       name: h,
       type: existing?.type ?? inferType(columns[i]!),

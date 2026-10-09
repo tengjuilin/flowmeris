@@ -3,6 +3,7 @@ import type { Group, Workspace } from '@flowmeris/model';
 import { PLATE_COLS, PLATE_ROWS, normalizeWell, parseDelimited, wellFromSample } from '@flowmeris/table';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { download, safeName } from '../lib/download.ts';
+import { PLAIN_DECIMAL, fracDigits } from '../lib/format.ts';
 import { type CellRect, coerce, distinctValues, normRect, pasteTargets, setValue } from '../lib/metadata.ts';
 import { type Sheet, TABLE_ACCEPT, readTableFile } from '../lib/sheets.ts';
 import { toast, useGroup, useSampleNames, useStore } from '../state/store.ts';
@@ -19,14 +20,6 @@ function display(x: number | string | undefined): string {
 /** Leading columns before the variables: the well, then its row and column (both edit the well). */
 const WELL_COLS = ['Well', 'Row', 'Column'] as const;
 const NW = WELL_COLS.length;
-
-const PLAIN_DECIMAL = /^(-?\d+)(\.\d+)?$/;
-
-/** Digits after the decimal point (0 if there is none or the number is not plain, e.g. 1e-7). */
-function fracDigits(text: string): number {
-  const m = PLAIN_DECIMAL.exec(text);
-  return m?.[2] ? m[2].length - 1 : 0;
-}
 
 /** A row or column typed while the other half is still missing, so there is no well to store yet. */
 type PartialWell = { row?: string; col?: number };
