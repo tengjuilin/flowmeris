@@ -23,17 +23,11 @@ import {
   scaleKindOf,
   transformOfKind,
 } from '../lib/axisDefaults.ts';
-import { DEFAULT_STYLE } from '../lib/figure.ts';
-import { DEFAULT_FIGURE, TILE_FIGURE } from '../lib/figure.ts';
+import { DEFAULT_FIGURE, DEFAULT_STYLE, TILE_FIGURE } from '../lib/figure.ts';
 import { deleteGate, promoteOverride, revertOverride, setGateGeometry } from '../state/commands/gates.ts';
+import { type PlotTarget, plotsOf, targetEdit } from '../state/commands/plots.ts';
 import { contextFor, toast, useGroup, useStore } from '../state/store.ts';
-import {
-  type PlotTarget,
-  axisChannelSetter,
-  plotsOf,
-  targetEdit,
-  usePlotForPopulation,
-} from './PlotPanel.tsx';
+import { axisChannelSetter } from './PlotPanel.tsx';
 
 /** Reset: an undo arrow, an open arrowhead on a line that turns back on itself in a half circle. */
 export function ResetIcon() {

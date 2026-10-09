@@ -349,6 +349,26 @@ export function useSelectedSampleIds(g: Group | undefined): string[] {
   return useMemo(() => (g ? g.sampleIds.filter((id) => !excluded[id]) : []), [g, excluded]);
 }
 
+/**
+ * `mutate` on one group: `fn` gets the group's draft and the workspace draft. Nothing happens when the
+ * group no longer exists.
+ */
+export function mutateGroup(
+  groupId: string,
+  label: string,
+  fn: (g: Group, ws: Workspace) => void,
+  merge?: string,
+) {
+  useStore.getState().mutate(
+    label,
+    (ws) => {
+      const g = ws.groups.find((x) => x.id === groupId);
+      if (g) fn(g, ws);
+    },
+    merge,
+  );
+}
+
 export function contextFor(ws: Workspace, g: Group): AnalysisContext {
   return { group: g, transforms: ws.transforms, compMatrices: ws.compMatrices };
 }

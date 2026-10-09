@@ -1,7 +1,7 @@
 import type { Group } from '@flowmeris/model';
 import { useRef, useState } from 'react';
+import { drill } from '../state/commands/plots.ts';
 import { useSampleNames, useStore } from '../state/store.ts';
-import { drill } from './PlotPanel.tsx';
 
 function SelectionControls({ g }: { g: Group }) {
   const excluded = useStore((s) => s.ui.excluded);

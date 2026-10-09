@@ -1,7 +1,7 @@
 import type { Gate, Geometry } from '@flowmeris/model';
 import { removeGateCascade } from '@flowmeris/model';
 import { addGate } from '../../lib/gates.ts';
-import { useStore } from '../store.ts';
+import { mutateGroup, useStore } from '../store.ts';
 
 /** Create a gate (and its population(s)) in the group template. Returns the first population id. */
 export function createGate(groupId: string, gate: Omit<Gate, 'id'>, baseName?: string): string {
@@ -22,10 +22,10 @@ export function setGateGeometry(
   /** Consecutive edits sharing this key coalesce into one undo step. */
   merge?: string,
 ) {
-  useStore.getState().mutate(
+  mutateGroup(
+    groupId,
     scope === 'template' ? 'Edit gate' : 'Override gate for sample',
-    (ws) => {
-      const g = ws.groups.find((x) => x.id === groupId)!;
+    (g) => {
       const gate = g.template.gates[gateId];
       if (!gate) return;
       if (scope === 'template' || !sampleId) {
@@ -43,15 +43,13 @@ export function setGateGeometry(
 }
 
 export function revertOverride(groupId: string, gateId: string, sampleId: string) {
-  useStore.getState().mutate('Revert override', (ws) => {
-    const g = ws.groups.find((x) => x.id === groupId)!;
+  mutateGroup(groupId, 'Revert override', (g) => {
     g.overrides = g.overrides.filter((o) => !(o.gateId === gateId && o.sampleId === sampleId));
   });
 }
 
 export function promoteOverride(groupId: string, gateId: string, sampleId: string) {
-  useStore.getState().mutate('Promote override to template', (ws) => {
-    const g = ws.groups.find((x) => x.id === groupId)!;
+  mutateGroup(groupId, 'Promote override to template', (g) => {
     const ov = g.overrides.find((o) => o.gateId === gateId && o.sampleId === sampleId);
     if (!ov) return;
     g.template.gates[gateId]!.geometry = ov.geometry;
@@ -60,23 +58,22 @@ export function promoteOverride(groupId: string, gateId: string, sampleId: strin
 }
 
 export function deleteGate(groupId: string, gateId: string) {
-  useStore.getState().mutate('Delete gate', (ws) => {
-    const g = ws.groups.find((x) => x.id === groupId)!;
+  mutateGroup(groupId, 'Delete gate', (g) => {
     removeGateCascade(g, gateId);
   });
 }
 
 export function renamePopulation(groupId: string, popId: string, name: string) {
-  useStore.getState().mutate('Rename population', (ws) => {
-    const p = ws.groups.find((x) => x.id === groupId)?.template.populations[popId];
+  mutateGroup(groupId, 'Rename population', (g) => {
+    const p = g.template.populations[popId];
     if (p) p.name = name;
   });
 }
 
 /** Move a population's label on its gate's plots; undefined puts it back in its default place. */
 export function setLabelOffset(groupId: string, popId: string, offset: [number, number] | undefined) {
-  useStore.getState().mutate(offset ? 'Move gate label' : 'Reset gate label', (ws) => {
-    const p = ws.groups.find((x) => x.id === groupId)?.template.populations[popId];
+  mutateGroup(groupId, offset ? 'Move gate label' : 'Reset gate label', (g) => {
+    const p = g.template.populations[popId];
     if (!p) return;
     p.labelOffset = offset;
   });

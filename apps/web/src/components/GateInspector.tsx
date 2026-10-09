@@ -25,6 +25,8 @@ import {
   withAxesChange,
 } from '../lib/figure.ts';
 import { gateMatchesAxes } from '../lib/geometry.ts';
+import { clearCellOverlay } from '../state/commands/grid.ts';
+import { type PlotTarget, targetEdit, plotsOf as targetPlots } from '../state/commands/plots.ts';
 import { useGroup, useStore } from '../state/store.ts';
 import {
   ActionRow,
@@ -37,15 +39,8 @@ import {
   Section,
   StyleEditor,
 } from './Inspector.tsx';
-import { CellOverlayFields, CellSourceFields, clearCellOverlay } from './PlotGridView.tsx';
-import {
-  PlotKindSelect,
-  type PlotTarget,
-  targetEdit,
-  plotsOf as targetPlots,
-  usePlotForPopulation,
-  useTilePlot,
-} from './PlotPanel.tsx';
+import { CellOverlayFields, CellSourceFields } from './PlotGridView.tsx';
+import { PlotKindSelect, usePlotForPopulation, useTilePlot } from './PlotPanel.tsx';
 import { FontSelect, TextStyleEditor, TicksEditor } from './RidgeInspector.tsx';
 
 type GateTab = 'settings' | 'gate' | 'figure' | 'axis' | 'text';

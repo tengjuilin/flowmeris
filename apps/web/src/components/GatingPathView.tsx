@@ -12,13 +12,12 @@ import {
   useState,
 } from 'react';
 import { pool } from '../engine-client/pool.ts';
-import { DEFAULT_STYLE } from '../lib/figure.ts';
-import { withBaseFont } from '../lib/figure.ts';
+import { DEFAULT_STYLE, withBaseFont } from '../lib/figure.ts';
 import { gateMatchesAxes } from '../lib/geometry.ts';
 import { lineageKey } from '../lib/keys.ts';
+import { drill } from '../state/commands/plots.ts';
 import { contextFor, useGroup, useStore } from '../state/store.ts';
 import { PlotCanvas, plotBox } from './PlotCanvas.tsx';
-import { drill } from './PlotPanel.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { useSize } from './hooks.ts';
 

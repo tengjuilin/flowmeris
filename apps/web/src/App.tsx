@@ -9,7 +9,7 @@ import { SettingsIcon } from './components/Inspector.tsx';
 import { MetadataInspector } from './components/MetadataInspector.tsx';
 import { MetadataView } from './components/MetadataView.tsx';
 import { PlotGridView } from './components/PlotGridView.tsx';
-import { GateExportCard, GateToolbar, PlotPanel, drill } from './components/PlotPanel.tsx';
+import { GateExportCard, GateToolbar, PlotPanel } from './components/PlotPanel.tsx';
 import { PopulationTree } from './components/PopulationTree.tsx';
 import { RefPlots } from './components/RefPlots.tsx';
 import { RidgeCombinePanel, RidgeInspector } from './components/RidgeInspector.tsx';
@@ -20,6 +20,7 @@ import { download, safeName } from './lib/download.ts';
 import { DATA_FILE_ACCEPT } from './lib/files.ts';
 import { filesFromDrop, filesFromInput } from './lib/ingest.ts';
 import { checkMissing, ingestFiles } from './state/commands/ingest.ts';
+import { drill } from './state/commands/plots.ts';
 import { workspaceToFile } from './state/persist.ts';
 import {
   APP_INFO,

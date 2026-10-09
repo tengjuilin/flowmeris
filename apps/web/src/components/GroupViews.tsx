@@ -11,21 +11,15 @@ import { scaleFor } from '../lib/geometry.ts';
 import { lineageKey } from '../lib/keys.ts';
 import { withRidgeChannel } from '../lib/ridgeStyle.ts';
 import { textMeasure, wrapText } from '../lib/text.ts';
+import { openTileInGrid } from '../state/commands/grid.ts';
+import { drill, tilesEdit } from '../state/commands/plots.ts';
 import { exportSvgFigure } from '../state/export.ts';
-import {
-  contextFor,
-  toast,
-  useGroup,
-  useSampleNames,
-  useSelectedSampleIds,
-  useStore,
-} from '../state/store.ts';
+import { contextFor, useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
 import { ExportMenu } from './ExportMenu.tsx';
 import { OpenInIcon, SettingsIcon } from './Inspector.tsx';
 import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './PickerMenu.tsx';
 import { PlotCanvas } from './PlotCanvas.tsx';
-import { openTileInGrid } from './PlotGridView.tsx';
-import { EditScopeToggle, ToolButtons, axisPickers, drill, tilesEdit, useTilePlot } from './PlotPanel.tsx';
+import { EditScopeToggle, ToolButtons, axisPickers, useTilePlot } from './PlotPanel.tsx';
 import { PlotSizeSlider } from './PlotSizeSlider.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { fontStack, ridgeColor, textCss, useRidge } from './RidgeInspector.tsx';
