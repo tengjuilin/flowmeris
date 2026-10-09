@@ -1165,6 +1165,18 @@ table.stats tbody th {
   text-align: left;
   font-weight: 500;
 }
+/* The statistics table fills the view's height (not 70vh) and scrolls in its own box, which ends inside
+   the view's padding so both of its scrollbars stay in sight; space is kept for the vertical one. */
+.stats-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.stats-view > .table-wrap.stats-scroll {
+  max-height: none;
+  min-height: 0;
+  scrollbar-gutter: stable;
+}
 /* Statistics view: the sample (or combine-by) columns stay pinned on horizontal scroll, opaque over the
    columns scrolling under them; header cells stack above them, and the pinned header corner above both. */
 .stats-view table.stats .pin {
