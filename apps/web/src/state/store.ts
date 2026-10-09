@@ -59,6 +59,8 @@ interface UiState {
   gridCellId: string | null;
   /** Whether the Tiles view's settings panel is shown. */
   tilesSettings: boolean;
+  /** Tiles per row picked with the Tiles view's slider (kept while other views are shown). */
+  tilesColumns: number;
   /** Whether the Plot view's settings panel (for its selected grid plot) is shown. */
   gridSettings: boolean;
   missing: Record<string, true>;
@@ -152,6 +154,7 @@ export const useStore = create<Store>((set, get) => ({
     refPlotId: null,
     gridCellId: null,
     tilesSettings: false,
+    tilesColumns: 5,
     gridSettings: false,
     missing: {},
     excluded: {},

@@ -156,7 +156,6 @@ const SIDE_MIN = 280;
 const MIN_TILE = 160;
 const MIN_COLUMNS = 2;
 const MAX_COLUMNS = 7;
-const DEFAULT_COLUMNS = 5;
 
 /** Plot size of `columns` tiles, with the gaps between them, filling a row of the `width`-wide tiles area. */
 function tileSizeFor(width: number, columns: number): number {
@@ -188,8 +187,9 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
   // Tile sizes are discrete: each fills a full-width row (below the populations card) with a whole
   // number of tiles, so the slider picks the number per row and the size follows the window.
   const fit = Math.floor((width + TILE_GAP) / (MIN_TILE + TILE_EXTRA));
-  const maxColumns = Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, fit));
-  const [picked, setPicked] = useState(DEFAULT_COLUMNS);
+  // Until the width is measured, nothing limits the number (as in the Plot view).
+  const maxColumns = width > 0 ? Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, fit)) : MAX_COLUMNS;
+  const picked = useStore((s) => s.ui.tilesColumns);
   const columns = Math.max(MIN_COLUMNS, Math.min(maxColumns, picked));
   const tile = width > 0 ? Math.max(MIN_TILE, tileSizeFor(width, columns)) : 0;
   // The populations card takes the top-right columns (as in the Plot view): as many as show its rows in
@@ -214,7 +214,7 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
               max={maxColumns}
               step={1}
               value={columns}
-              onChange={(e) => setPicked(Number(e.target.value))}
+              onChange={(e) => setUi({ tilesColumns: Number(e.target.value) })}
             />
             <span className="muted">{columns}</span>
           </label>
