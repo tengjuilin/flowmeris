@@ -10,7 +10,8 @@
       "coverage",
       "playwright-report",
       "test-results",
-      "tools/golden/python/.venv"
+      "tools/golden/python/.venv",
+      ".dependency-cruiser-known-violations.json"
     ]
   },
   "formatter": {
@@ -36,7 +37,13 @@
         "noParameterAssign": "off"
       },
       "complexity": {
-        "noForEach": "off"
+        "noForEach": "off",
+        "noExcessiveCognitiveComplexity": {
+          "level": "warn",
+          "options": {
+            "maxAllowedComplexity": 25
+          }
+        }
       },
       "suspicious": {
         "noAssignInExpressions": "off"

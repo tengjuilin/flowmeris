@@ -21,6 +21,8 @@ jobs:
       - name: Fetch large fixtures (SHA-256 verified)
         run: node tools/fetch-fixtures.mjs
       - run: pnpm lint
+      - run: pnpm lint:deps
+      - run: pnpm lint:size
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build:site
