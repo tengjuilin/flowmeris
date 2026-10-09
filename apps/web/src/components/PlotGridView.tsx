@@ -534,8 +534,8 @@ function GridCell({
       <div className="cell-title">
         <button
           type="button"
-          className="link"
-          title="Change the population this plot shows"
+          className="link cell-pop"
+          title={`${pop?.name ?? 'All events'}: change the population this plot shows`}
           aria-haspopup="dialog"
           aria-expanded={menu?.kind === 'population'}
           {...openOnPress((el) => setMenu({ kind: 'population', anchor: el }))}
@@ -547,7 +547,7 @@ function GridCell({
           <button
             type="button"
             className="link cell-sample"
-            title="Change the sample this plot shows"
+            title={`${sampleName(sampleId)}: change the sample this plot shows`}
             aria-haspopup="dialog"
             aria-expanded={menu?.kind === 'sample'}
             {...openOnPress((el) => setMenu({ kind: 'sample', anchor: el }))}

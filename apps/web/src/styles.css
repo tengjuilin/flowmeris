@@ -1570,7 +1570,8 @@ button.link:hover {
   font-size: 11px;
 }
 .cell-title > .spacer {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
 }
 .cell-title > .muted {
   overflow: hidden;
@@ -1758,12 +1759,23 @@ button.link:hover {
   text-decoration: underline;
   font-weight: normal;
 }
+/* Long names shorten with an ellipsis (the population first, down to a few characters) so the
+   badge and buttons keep their place. */
+.cell-title > * {
+  flex: none;
+}
+.cell-title > button.cell-pop,
 .cell-title > button.cell-sample {
   display: block;
+  flex: 0 1 auto;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.cell-title > button.cell-pop {
+  flex-shrink: 4;
+  min-width: 3em;
 }
 
 /* ---------------------------------------------------------------------------
