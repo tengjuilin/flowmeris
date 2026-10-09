@@ -1126,6 +1126,11 @@ table.matrix td {
   text-align: right;
   white-space: nowrap;
 }
+/* Separate borders: with collapsed ones, a pinned header's border stays behind and the rows scroll through it. */
+table.stats {
+  border-collapse: separate;
+  border-spacing: 0;
+}
 table.stats thead th {
   position: sticky;
   top: var(--head-top-0, 0);
