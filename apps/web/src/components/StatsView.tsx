@@ -10,20 +10,13 @@ import {
   newId,
   populationPath,
 } from '@flowmeris/model';
-import {
-  type Cell,
-  type ColumnDef,
-  EXPR_FUNCTIONS,
-  ExprError,
-  type Table,
-  exprRefs,
-  parseExpr,
-  tableRows,
-} from '@flowmeris/table';
+import { type Cell, type ColumnDef, type Table, tableRows } from '@flowmeris/table';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { download, safeName } from '../lib/download.ts';
-import { toSigFigs } from '../lib/format.ts';
+import { PLAIN_DECIMAL, fracDigits } from '../lib/format.ts';
+import { type Completion, type FormulaProblem, checkFormula, completionsAt } from '../lib/formula.ts';
+import { DEFAULT_SIG_FIGS, exportKeys, fmtStat as fmt, sectionOf } from '../lib/statsFormat.ts';
 import { type StatColumn, useAnalysisTable } from '../lib/statsTable.ts';
 import { APP_INFO, contextFor, toast, useGroup, useStore } from '../state/store.ts';
 import { ExportIcon } from './ExportMenu.tsx';
@@ -58,26 +51,6 @@ export const AGG_FUNCS: { id: AggFunc; label: string; title: string }[] = [
   { id: 'n', label: 'n', title: 'Number of rows in each group' },
 ];
 
-/** Significant figures of a derived column when its own are not set. */
-const DEFAULT_SIG_FIGS = 3;
-
-/**
- * Display formatting only; exports carry full double precision. `sig` (derived columns) sets the
- * significant figures of values; counts, n and percentages keep their own formats.
- */
-function fmt(v: Cell, stat: string | undefined, sig?: number): string {
-  if (v === undefined) return '';
-  if (typeof v === 'string') return v;
-  if (Number.isNaN(v)) return 'NaN';
-  if (stat === 'count' || stat === 'n') return String(Math.round(v));
-  if (stat?.startsWith('pct') || stat === 'cv' || stat === 'rcv') {
-    const r = Number(v.toPrecision(2)); // 99.96 → 100, which toPrecision would print as 1.0e+2
-    return Math.abs(r) >= 100 ? String(Math.round(r)) : r.toPrecision(2);
-  }
-  if (sig !== undefined) return toSigFigs(v, sig);
-  return String(Math.round(v));
-}
-
 /** Significant-figures input of the derived-column forms. */
 function SigFigsField({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   return (
@@ -98,14 +71,6 @@ function SigFigsField({ value, onChange }: { value: number; onChange: (n: number
   );
 }
 
-const PLAIN_DECIMAL = /^(-?\d+)(\.\d+)?$/;
-
-/** Digits after the decimal point of a formatted number (0 if it has none or is not plain). */
-function fracDigits(text: string): number {
-  const m = PLAIN_DECIMAL.exec(text);
-  return m?.[2] ? m[2].length - 1 : 0;
-}
-
 /** A formatted number with its decimal point aligned to the others of its column. */
 function alignedNumber(text: string, fracLen: number) {
   const m = PLAIN_DECIMAL.exec(text);
@@ -120,96 +85,15 @@ function alignedNumber(text: string, fracLen: number) {
   );
 }
 
-/** Header section of a column: a population, or one of the fixed sections. */
-function sectionOf(c: ColumnDef, byKey: Map<string, ColumnDef>): string {
-  if (c.pop) return `pop:${c.pop}`;
-  if (c.key === 'group:n') return 'group';
-  const src = c.source ? byKey.get(c.source) : undefined;
-  const kind = src?.kind ?? c.kind;
-  return kind === 'variable' ? 'variables' : kind === 'derived' ? 'derived' : kind;
-}
-
 function useGroupMutate(groupId: string) {
   const mutate = useStore((s) => s.mutate);
   return (label: string, fn: (g: Group) => void, merge?: string) =>
     mutate(label, (w) => fn(w.groups.find((x) => x.id === groupId)!), merge);
 }
 
-/**
- * Columns of `display` a "CSV (table)" export includes. `selected` lists
- * per-sample column keys (undefined = all); a grouped table keeps its grouping
- * columns and n, and the summaries of the selected columns.
- */
-function exportKeys(display: Table, grouped: boolean, selected: string[] | undefined): string[] {
-  const on = selected ? new Set(selected) : undefined;
-  return display.columns
-    .filter(
-      (c) => !on || on.has(c.source ?? c.key) || (grouped && (c.key === 'group:n' || c.kind === 'variable')),
-    )
-    .map((c) => c.key);
-}
-
 // ---------------------------------------------------------------------------
 // Derived columns
 // ---------------------------------------------------------------------------
-
-/** A suggestion for the formula at the caret: a column reference or a function. */
-interface Completion {
-  kind: 'column' | 'function';
-  label: string;
-  /** Text that replaces expr[from, to). */
-  insert: string;
-  from: number;
-  to: number;
-}
-
-const MAX_COMPLETIONS = 12;
-
-/** How each formula function is called, shown in the suggestions. */
-const FUNCTION_SIGNATURES: Record<string, string> = {
-  log: 'log(x, base)',
-  ln: 'ln(x)',
-  log2: 'log2(x)',
-  log10: 'log10(x)',
-  exp: 'exp(x)',
-  sqrt: 'sqrt(x)',
-  abs: 'abs(x)',
-  min: 'min(a, b, …)',
-  max: 'max(a, b, …)',
-};
-
-/** Completions for the word being typed at `caret`: inside `[`, columns; otherwise functions and columns. */
-function completionsAt(expr: string, caret: number, columns: ColumnDef[]): Completion[] {
-  const before = expr.slice(0, caret);
-  const open = before.lastIndexOf('[');
-  const numeric = columns.filter((c) => c.type === 'numeric');
-  if (open > before.lastIndexOf(']')) {
-    const q = before.slice(open + 1).toLowerCase();
-    // Replace through the closing bracket if one already follows.
-    const close = expr.indexOf(']', caret);
-    const nextOpen = expr.indexOf('[', caret);
-    const to = close >= 0 && (nextOpen < 0 || close < nextOpen) ? close + 1 : caret;
-    return numeric
-      .filter((c) => c.label.toLowerCase().includes(q))
-      .slice(0, MAX_COMPLETIONS)
-      .map((c) => ({ kind: 'column', label: c.label, insert: `[${c.label}]`, from: open, to }));
-  }
-  const word = /[A-Za-z_][A-Za-z0-9_]*$/.exec(before)?.[0];
-  if (!word) return [];
-  const q = word.toLowerCase();
-  const from = caret - word.length;
-  const fns: Completion[] = EXPR_FUNCTIONS.filter((f) => f.startsWith(q)).map((f) => ({
-    kind: 'function',
-    label: FUNCTION_SIGNATURES[f] ?? `${f}( )`,
-    insert: `${f}(`,
-    from,
-    to: caret,
-  }));
-  const cols: Completion[] = numeric
-    .filter((c) => c.label.toLowerCase().includes(q))
-    .map((c) => ({ kind: 'column', label: c.label, insert: `[${c.label}]`, from, to: caret }));
-  return [...fns, ...cols].slice(0, MAX_COMPLETIONS);
-}
 
 /** Formula input that suggests column names (typed, or after “[”) and function names at the caret. */
 function FormulaInput(props: {
@@ -327,43 +211,6 @@ function FormulaInput(props: {
       )}
     </div>
   );
-}
-
-/** A problem with a formula and the span of the formula it is about. */
-interface FormulaProblem {
-  message: string;
-  from: number;
-  to: number;
-}
-
-/** Span of the token at `pos`: a [column reference], a name, or one character. */
-function tokenAt(expr: string, pos: number): [number, number] {
-  if (pos >= expr.length) return [expr.length, expr.length];
-  if (expr[pos] === '[') {
-    const end = expr.indexOf(']', pos);
-    return [pos, end < 0 ? expr.length : end + 1];
-  }
-  const word = /^[A-Za-z_][A-Za-z0-9_]*/.exec(expr.slice(pos));
-  return [pos, pos + (word ? word[0].length : 1)];
-}
-
-/** The first problem with `expr` given the columns it may use, as the table would report it. */
-export function checkFormula(expr: string, columns: ColumnDef[]): FormulaProblem | null {
-  let refs: Set<string>;
-  try {
-    refs = exprRefs(parseExpr(expr));
-  } catch (err) {
-    if (!(err instanceof ExprError)) return { message: String((err as Error).message), from: 0, to: 0 };
-    const [from, to] = tokenAt(expr, err.pos);
-    return { message: err.message, from, to };
-  }
-  const known = new Set(columns.flatMap((c) => [c.label, c.key]));
-  for (const m of expr.matchAll(/\[([^\]]*)\]/g)) {
-    const name = m[1]!.trim();
-    if (refs.has(name) && !known.has(name))
-      return { message: `Unknown column [${name}]`, from: m.index, to: m.index + m[0].length };
-  }
-  return null;
 }
 
 /** The error message, and the formula with the part it is about marked. */
@@ -637,6 +484,7 @@ function DerivedPanel(props: {
                 type="button"
                 className="icon"
                 title="Edit"
+                aria-label="Edit derived column"
                 onClick={() => setForm({ kind: d.kind, id: d.id })}
               >
                 ✎
@@ -645,6 +493,7 @@ function DerivedPanel(props: {
                 type="button"
                 className="icon"
                 title="Remove derived column"
+                aria-label="Remove derived column"
                 onClick={() =>
                   edit('Remove derived column', (g) => dropColumns(g, new Set([`derived:${d.id}`])))
                 }
@@ -1327,11 +1176,19 @@ export function StatsView() {
     return statByKey.get(c.key)?.label ?? c.label;
   };
   const statOf = (c: ColumnDef): string | undefined =>
-    c.func === 'n' ? 'n' : c.func === 'cv' ? 'cv' : statByKey.get(c.source ?? c.key)?.stat;
-  // Derived columns (and their replicate summaries) show their own significant figures.
+    c.func === 'n'
+      ? 'n'
+      : c.func === 'cv'
+        ? 'cv'
+        : c.kind === 'variable'
+          ? 'value'
+          : statByKey.get(c.source ?? c.key)?.stat;
+  // Derived columns (and their replicate summaries) show their own significant figures; summaries of
+  // a sample variable (e.g. the mean dose of a group) the default ones.
   const derivedById = new Map(group.analysis.derived.map((d) => [d.id, d]));
   const sigOf = (c: ColumnDef): number | undefined => {
     const key = c.source ?? c.key;
+    if (byKey.get(key)?.kind === 'variable') return DEFAULT_SIG_FIGS;
     if (!key.startsWith('derived:')) return undefined;
     return derivedById.get(key.slice('derived:'.length))?.sigFigs ?? DEFAULT_SIG_FIGS;
   };
@@ -1416,6 +1273,7 @@ export function StatsView() {
                         type="button"
                         className="icon"
                         title="Remove statistic"
+                        aria-label="Remove statistic"
                         onClick={() =>
                           edit('Remove statistic', (g) => {
                             g.stats = g.stats.filter((s) => s.id !== specId);
