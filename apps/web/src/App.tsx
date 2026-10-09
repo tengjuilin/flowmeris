@@ -13,7 +13,7 @@ import { PopulationTree } from './components/PopulationTree.tsx';
 import { RefPlots } from './components/RefPlots.tsx';
 import { RidgeCombinePanel, RidgeInspector } from './components/RidgeInspector.tsx';
 import { Sidebar } from './components/Sidebar.tsx';
-import { StatsView } from './components/StatsView.tsx';
+import { StatsInspector, StatsView } from './components/StatsView.tsx';
 import { pool } from './engine-client/pool.ts';
 import { download, safeName } from './lib/download.ts';
 import { checkMissing, filesFromDrop, filesFromInput, ingestFiles } from './lib/ingest.ts';
@@ -293,7 +293,7 @@ export function App() {
   const [dragOver, setDragOver] = useState(false);
   // On narrow windows the settings panel is a drawer opened from the Settings button.
   const [drawer, setDrawer] = useState(false);
-  const hasInspector = ui.view === 'gate' || ui.view === 'ridge';
+  const hasInspector = ui.view === 'gate' || ui.view === 'ridge' || ui.view === 'stats';
   // The Tiles and Plot views' settings panels are shown and hidden from their own toolbars.
   const tilesPanel = (ui.view === 'tiles' && ui.tilesSettings) || (ui.view === 'plot' && ui.gridSettings);
   useEffect(() => {
@@ -445,6 +445,8 @@ export function App() {
                   <Inspector key="tiles" target="tiles" />
                 ) : ui.view === 'plot' ? (
                   <Inspector key="grid" target="grid" />
+                ) : ui.view === 'stats' ? (
+                  <StatsInspector />
                 ) : (
                   <RidgeInspector />
                 )}

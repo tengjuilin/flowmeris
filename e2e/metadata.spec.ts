@@ -46,11 +46,10 @@ test('sample variables from a CSV, replicate means, and a chart', async ({ page 
   await page.getByRole('tab', { name: 'Statistics' }).click();
   await page.locator('.add-stat label', { hasText: 'Channel' }).locator('select').selectOption('FL1-A');
   await page.getByRole('button', { name: 'Add statistic' }).click();
-  await page.locator('.analysis-section label', { hasText: 'Combine replicates' }).locator('input').check();
-  await page
-    .locator('.analysis-section label', { hasText: /^Dose$/ })
-    .locator('input')
-    .check();
+  const settings = page.getByRole('complementary', { name: 'Statistics settings' });
+  await settings.getByRole('tab', { name: 'Replicates' }).click();
+  await settings.getByRole('checkbox', { name: 'Combine replicates' }).check();
+  await settings.getByRole('checkbox', { name: 'Dose', exact: true }).check();
   const rows = page.locator('table.stats tbody tr');
   await expect(rows).toHaveCount(2);
   await expect(rows.nth(0)).toContainText('105');

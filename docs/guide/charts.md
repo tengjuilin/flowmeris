@@ -2,7 +2,10 @@
 
 ## Derived columns
 
-In the **Statistics** tab, **Derived columns** adds columns computed from the others, row by row:
+The **Statistics** view has a settings panel at its right with three tabs: **Statistics** (add a statistic,
+derived columns), **Replicates** and **Export**. On narrow windows it opens from the Settings button.
+
+In the panel's **Statistics** tab, **Derived columns** adds columns computed from the others, row by row:
 
 - **Formula:** an arithmetic expression over other columns, referenced by their header in brackets,
   e.g. `[CD4+ | Median PE-A] / [CD4+ | Median FITC-A]` or `log2([Fold])`. Operators `+ − * / ^` and
@@ -17,13 +20,13 @@ Definitions: [M-STAT-EXPR, M-STAT-NORM](/methods/statistics#derived-columns).
 
 ## Combining replicates
 
-**Combine replicates** groups the rows by the chosen variables (e.g. condition and dose) and summarises
-every numeric column with the chosen functions: mean, SD, SEM, 95% CI, median, CV, min, max and *n*.
+In the **Replicates** tab, **Combine replicates** groups the rows by the chosen variables (e.g. condition and dose) and summarises
+every numeric column with the functions ticked under **Summaries**: mean, SD, SEM, 95% CI, median, CV, min, max and *n*.
 Variables not grouped by (e.g. the replicate id) are dropped from the grouped table.
 
 ## Exporting
 
-**Columns** chooses the columns of the **CSV (table)** export, which writes the table as shown — one row
+In the **Export** tab, the checklist under **CSV (table)** chooses the columns of that export, which writes the table as shown — one row
 per sample, or one per group when replicates are combined (the grouping variables and *n* are always
 included). **CSV (tidy)** and **CSV (wide)** now also carry the sample variables after the sample's file
 identity.

@@ -11,12 +11,13 @@ import {
   populationPath,
 } from '@flowmeris/model';
 import { type Cell, type ColumnDef, EXPR_FUNCTIONS, type Table, tableRows } from '@flowmeris/table';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { download, safeName } from '../lib/download.ts';
 import { type StatColumn, useAnalysisTable } from '../lib/statsTable.ts';
 import { APP_INFO, contextFor, toast, useGroup, useStore } from '../state/store.ts';
-import { ExportListMenu } from './ExportMenu.tsx';
+import { ExportIcon } from './ExportMenu.tsx';
+import { ActionRow, Section } from './Inspector.tsx';
 
 const VALUE_STATS: { id: StatKind; label: string }[] = [
   { id: 'median', label: 'Median' },
@@ -140,7 +141,7 @@ function FormulaForm(props: {
         Name
         <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
       </label>
-      <label className="field grow">
+      <label className="field stack">
         Formula
         <input
           ref={ref}
@@ -167,24 +168,26 @@ function FormulaForm(props: {
       <span className="muted small" title="Operators: + − * / ^ and parentheses">
         Functions: {EXPR_FUNCTIONS.join(', ')}
       </span>
-      <button
-        type="button"
-        className="primary"
-        disabled={!expr.trim()}
-        onClick={() =>
-          props.onSave({
-            id: props.initial?.id ?? newId('dc_'),
-            name: name.trim() || 'Formula',
-            kind: 'formula',
-            expr,
-          })
-        }
-      >
-        {props.initial ? 'Save' : 'Add'}
-      </button>
-      <button type="button" onClick={props.onCancel}>
-        Cancel
-      </button>
+      <div className="row">
+        <button
+          type="button"
+          className="primary"
+          disabled={!expr.trim()}
+          onClick={() =>
+            props.onSave({
+              id: props.initial?.id ?? newId('dc_'),
+              name: name.trim() || 'Formula',
+              kind: 'formula',
+              expr,
+            })
+          }
+        >
+          {props.initial ? 'Save' : 'Add'}
+        </button>
+        <button type="button" onClick={props.onCancel}>
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }
@@ -269,7 +272,7 @@ function NormalizeForm(props: {
             ))}
         </select>
       </label>
-      <label className="field">
+      <label className="field stack">
         Relative to samples with
         <span className="row">
           <select
@@ -300,7 +303,7 @@ function NormalizeForm(props: {
         <legend title="The reference is the mean over reference samples that share these variables with the row (e.g. per replicate or per group)">
           Within the same
         </legend>
-        <span className="row">
+        <span className="row wrap">
           {variables
             .filter((v) => v.id !== d.refVariable)
             .map((v) => (
@@ -328,17 +331,19 @@ function NormalizeForm(props: {
           <option value="difference">difference (x − ref)</option>
         </select>
       </label>
-      <button
-        type="button"
-        className="primary"
-        disabled={!d.source || d.refValue === ''}
-        onClick={() => props.onSave({ ...d, name: d.name.trim() || autoName })}
-      >
-        {props.initial ? 'Save' : 'Add'}
-      </button>
-      <button type="button" onClick={props.onCancel}>
-        Cancel
-      </button>
+      <div className="row">
+        <button
+          type="button"
+          className="primary"
+          disabled={!d.source || d.refValue === ''}
+          onClick={() => props.onSave({ ...d, name: d.name.trim() || autoName })}
+        >
+          {props.initial ? 'Save' : 'Add'}
+        </button>
+        <button type="button" onClick={props.onCancel}>
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }
@@ -369,8 +374,10 @@ function DerivedPanel(props: {
     setForm(null);
   };
   return (
-    <section className="analysis-section">
-      <h4>Derived columns</h4>
+    <div className="derived-panel">
+      {derived.length === 0 && !form && (
+        <p className="muted small">Columns computed from the others, e.g. a ratio or a fold change.</p>
+      )}
       {derived.length > 0 && (
         <ul className="derived-list">
           {derived.map((d) => (
@@ -440,91 +447,171 @@ function DerivedPanel(props: {
           </button>
         </div>
       )}
-    </section>
+    </div>
   );
 }
 
-function GroupByPanel({ group }: { group: Group }) {
+function AddStatForm({
+  group,
+  pops,
+  marker,
+}: {
+  group: Group;
+  pops: { id: string }[];
+  marker: (c?: string) => string | undefined;
+}) {
+  const popId = useStore((s) => s.ui.popId);
+  const edit = useGroupMutate(group.id);
+  const [form, setForm] = useState<{ pop: string; stat: StatKind; channel: string; p: number }>({
+    pop: popId,
+    stat: 'median',
+    channel: '',
+    p: 50,
+  });
+  const addStat = () => {
+    if (!form.channel) {
+      toast('Choose a channel for this statistic.');
+      return;
+    }
+    const spec: StatSpec = {
+      id: newId('st_'),
+      population: form.pop,
+      stat: form.stat,
+      channel: form.channel,
+      space: 'linear',
+      ...(form.stat === 'percentile' ? { p: form.p } : {}),
+    };
+    edit('Add statistic', (g) => void g.stats.push(spec));
+  };
+  return (
+    <div className="add-stat">
+      <label className="field">
+        Population
+        <select value={form.pop} onChange={(e) => setForm({ ...form, pop: e.target.value })}>
+          {pops.map((p) => (
+            <option key={p.id} value={p.id}>
+              {populationPath(group.template, p.id)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field">
+        Statistic
+        <select value={form.stat} onChange={(e) => setForm({ ...form, stat: e.target.value as StatKind })}>
+          {VALUE_STATS.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      {form.stat === 'percentile' && (
+        <label className="field">
+          p
+          <input
+            type="number"
+            min={0}
+            max={100}
+            step="any"
+            value={form.p}
+            onChange={(e) => setForm({ ...form, p: Number(e.target.value) })}
+          />
+        </label>
+      )}
+      <label className="field">
+        Channel
+        <select value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value })}>
+          <option value="">—</option>
+          {group.channels.map((c) => (
+            <option key={c} value={c}>
+              {c}
+              {marker(c) ? ` (${marker(c)})` : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button type="button" className="primary" onClick={addStat}>
+        Add statistic
+      </button>
+      <p className="muted small">Remove a statistic with the ✕ in its column header.</p>
+    </div>
+  );
+}
+
+function GroupByFields({ group }: { group: Group }) {
   const variables = useStore((s) => s.ws.variables);
   const edit = useGroupMutate(group.id);
   const agg = group.analysis.aggregate;
   return (
-    <section className="analysis-section">
-      <h4>
-        <label className="field check">
-          <input
-            type="checkbox"
-            checked={agg.enabled}
-            onChange={(e) =>
-              edit('Toggle grouping', (g) => void (g.analysis.aggregate.enabled = e.target.checked))
-            }
-          />
-          Combine replicates
-        </label>
-      </h4>
+    <>
+      <label className="field check">
+        <input
+          type="checkbox"
+          checked={agg.enabled}
+          onChange={(e) =>
+            edit('Toggle grouping', (g) => void (g.analysis.aggregate.enabled = e.target.checked))
+          }
+        />
+        Combine replicates
+      </label>
       {variables.length === 0 ? (
-        <span className="muted small">Add sample variables in the Metadata tab to group by them.</span>
+        <p className="muted small">
+          Add sample variables (condition, dose…) in the Metadata tab; rows sharing their values are combined
+          into one.
+        </p>
       ) : (
-        <>
-          <div className="row wrap">
-            <span className="muted small">Group by</span>
-            {variables.map((v) => (
-              <label key={v.id} className="field check">
-                <input
-                  type="checkbox"
-                  checked={agg.by.includes(v.id)}
-                  onChange={(e) =>
-                    edit('Change grouping', (g) => {
-                      const a = g.analysis.aggregate;
-                      a.by = e.target.checked ? [...a.by, v.id] : a.by.filter((x) => x !== v.id);
-                      a.enabled = true;
-                    })
-                  }
-                />
-                {v.name}
-              </label>
-            ))}
-          </div>
-          <div className="row wrap">
-            <span className="muted small">Summaries</span>
-            {AGG_FUNCS.map((f) => (
-              <label key={f.id} className="field check" title={f.title}>
-                <input
-                  type="checkbox"
-                  checked={agg.funcs.includes(f.id)}
-                  onChange={(e) =>
-                    edit('Change summaries', (g) => {
-                      const a = g.analysis.aggregate;
-                      const on = new Set(
-                        e.target.checked ? [...a.funcs, f.id] : a.funcs.filter((x) => x !== f.id),
-                      );
-                      a.funcs = AGG_FUNCS.map((x) => x.id).filter((x) => on.has(x));
-                    })
-                  }
-                />
-                {f.label}
-              </label>
-            ))}
-          </div>
-        </>
+        <div className="stats-check-list sub-option">
+          <span className="muted small">Group by</span>
+          {variables.map((v) => (
+            <label key={v.id} className="field check">
+              <input
+                type="checkbox"
+                checked={agg.by.includes(v.id)}
+                onChange={(e) =>
+                  edit('Change grouping', (g) => {
+                    const a = g.analysis.aggregate;
+                    a.by = e.target.checked ? [...a.by, v.id] : a.by.filter((x) => x !== v.id);
+                    a.enabled = true;
+                  })
+                }
+              />
+              {v.name}
+            </label>
+          ))}
+        </div>
       )}
-    </section>
+    </>
   );
 }
 
-function ColumnsPicker({ group, table }: { group: Group; table: Table }) {
+function SummaryFields({ group }: { group: Group }) {
   const edit = useGroupMutate(group.id);
-  const menu = useRef<HTMLDetailsElement>(null);
-  const [open, setOpen] = useState(false);
-  // Close when clicking anywhere outside the card.
-  useEffect(() => {
-    if (!open) return;
-    const away = (e: PointerEvent) => {
-      if (menu.current && !menu.current.contains(e.target as Node)) menu.current.open = false;
-    };
-    document.addEventListener('pointerdown', away, true);
-    return () => document.removeEventListener('pointerdown', away, true);
-  }, [open]);
+  const agg = group.analysis.aggregate;
+  return (
+    <div className="stats-check-list">
+      {AGG_FUNCS.map((f) => (
+        <label key={f.id} className="field check" title={f.title}>
+          <input
+            type="checkbox"
+            checked={agg.funcs.includes(f.id)}
+            onChange={(e) =>
+              edit('Change summaries', (g) => {
+                const a = g.analysis.aggregate;
+                const on = new Set(e.target.checked ? [...a.funcs, f.id] : a.funcs.filter((x) => x !== f.id));
+                a.funcs = AGG_FUNCS.map((x) => x.id).filter((x) => on.has(x));
+              })
+            }
+          />
+          {f.label}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+/** The per-sample columns the "CSV (table)" export includes, as a checklist by section. */
+function ColumnsChecklist({ group, table }: { group: Group; table: Table }) {
+  const edit = useGroupMutate(group.id);
   const selected = group.analysis.exportColumns;
   const on = new Set(selected ?? table.columns.map((c) => c.key));
   const set = (keys: string[] | undefined) =>
@@ -551,78 +638,122 @@ function ColumnsPicker({ group, table }: { group: Group; table: Table }) {
   }
   const n = table.columns.filter((c) => on.has(c.key)).length;
   return (
-    <details ref={menu} className="overlay-picker" onToggle={(e) => setOpen(e.currentTarget.open)}>
-      <summary title="Columns included in the CSV (table) export">
-        Columns ({n}/{table.columns.length})
-      </summary>
-      <div className="overlay-menu columns-menu">
-        <div className="row">
-          <button type="button" className="link" onClick={() => set(undefined)}>
-            all
-          </button>
-          <button type="button" className="link" onClick={() => set(['sample:name'])}>
-            none
-          </button>
-        </div>
-        {sections.map((s) => (
-          <fieldset key={s.title + s.cols[0]!.key}>
-            <legend>
-              <label className="field check">
-                <input
-                  type="checkbox"
-                  checked={s.cols.every((c) => on.has(c.key))}
-                  onChange={(e) =>
-                    toggle(
-                      s.cols.map((c) => c.key),
-                      e.target.checked,
-                    )
-                  }
-                />
-                {s.title}
-              </label>
-            </legend>
-            {s.cols.map((c) => (
-              <label key={c.key} className="field check">
-                <input
-                  type="checkbox"
-                  checked={on.has(c.key)}
-                  onChange={(e) => toggle([c.key], e.target.checked)}
-                />
-                {c.pop ? c.label.slice(c.label.indexOf(' | ') + 3) : c.label}
-              </label>
-            ))}
-          </fieldset>
-        ))}
+    <div className="columns-menu">
+      <div className="row">
+        <span className="muted small">
+          Columns ({n}/{table.columns.length})
+        </span>
+        <div className="spacer" />
+        <button type="button" className="link" onClick={() => set(undefined)}>
+          all
+        </button>
+        <button type="button" className="link" onClick={() => set(['sample:name'])}>
+          none
+        </button>
       </div>
-    </details>
+      {sections.map((s) => (
+        <fieldset key={s.title + s.cols[0]!.key}>
+          <legend>
+            <label className="field check">
+              <input
+                type="checkbox"
+                checked={s.cols.every((c) => on.has(c.key))}
+                onChange={(e) =>
+                  toggle(
+                    s.cols.map((c) => c.key),
+                    e.target.checked,
+                  )
+                }
+              />
+              {s.title}
+            </label>
+          </legend>
+          {s.cols.map((c) => (
+            <label key={c.key} className="field check">
+              <input
+                type="checkbox"
+                checked={on.has(c.key)}
+                onChange={(e) => toggle([c.key], e.target.checked)}
+              />
+              {c.pop ? c.label.slice(c.label.indexOf(' | ') + 3) : c.label}
+            </label>
+          ))}
+        </fieldset>
+      ))}
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// View
+// Settings panel
 // ---------------------------------------------------------------------------
 
-export function StatsView() {
-  const samples = useStore((s) => s.ws.samples);
+type StatsTab = 'statistics' | 'replicates' | 'export';
+type StatsSectionId =
+  | 'addStat'
+  | 'derived'
+  | 'combine'
+  | 'summaries'
+  | 'tableCsv'
+  | 'statsCsv'
+  | 'gatingMl'
+  | 'events';
+
+const STATS_TABS: { id: StatsTab; label: string }[] = [
+  { id: 'statistics', label: 'Statistics' },
+  { id: 'replicates', label: 'Replicates' },
+  { id: 'export', label: 'Export' },
+];
+
+const STATS_PANEL_KEY = 'flowmeris.statsPanel';
+const STATS_DEFAULT_OPEN: Partial<Record<StatsSectionId, boolean>> = {
+  addStat: true,
+  derived: true,
+  combine: true,
+  summaries: true,
+  tableCsv: true,
+  statsCsv: true,
+  gatingMl: true,
+  events: true,
+};
+
+/** The last tab and open sections, remembered in this browser. */
+function loadStatsPanel(): { tab: StatsTab; open: Partial<Record<StatsSectionId, boolean>> } {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STATS_PANEL_KEY) ?? 'null');
+    if (saved && STATS_TABS.some((t) => t.id === saved.tab))
+      return { tab: saved.tab, open: { ...STATS_DEFAULT_OPEN, ...saved.open } };
+  } catch {}
+  return { tab: 'statistics', open: STATS_DEFAULT_OPEN };
+}
+
+function saveStatsPanel(panel: { tab: StatsTab; open: Partial<Record<StatsSectionId, boolean>> }) {
+  try {
+    localStorage.setItem(STATS_PANEL_KEY, JSON.stringify(panel));
+  } catch {}
+}
+
+/** Settings panel of the Statistics view: statistics and derived columns, replicates, exports. */
+export function StatsInspector() {
   const popId = useStore((s) => s.ui.popId);
   const selectedSample = useStore((s) => s.ui.sampleId);
-  const missing = useStore((s) => s.ui.missing);
   const group = useGroup();
   const { stats, perSample, aggregated, errors } = useAnalysisTable(group);
-  const { pops, columns: statCols, rows, busy, complete, marker, shown } = stats;
-  const edit = useGroupMutate(group?.id ?? '');
-  const [form, setForm] = useState<{ pop: string; stat: StatKind; channel: string; p: number }>({
-    pop: popId,
-    stat: 'median',
-    channel: '',
-    p: 50,
-  });
+  const { pops, rows, busy, complete, marker, shown } = stats;
+  const [panel, setPanel] = useState(loadStatsPanel);
+  const { tab, open } = panel;
+  const changePanel = (fn: (p: typeof panel) => typeof panel) =>
+    setPanel((p) => {
+      const next = fn(p);
+      saveStatsPanel(next);
+      return next;
+    });
+  const setTab = (t: StatsTab) => changePanel((p) => ({ ...p, tab: t }));
+  const toggle = (id: StatsSectionId) =>
+    changePanel((p) => ({ ...p, open: { ...p.open, [id]: !p.open[id] } }));
 
+  if (!group) return null;
   const display = aggregated ?? perSample;
-  const byKey = useMemo(() => new Map(perSample.columns.map((c) => [c.key, c])), [perSample]);
-  const statByKey = useMemo(() => new Map<string, StatColumn>(statCols.map((c) => [c.key, c])), [statCols]);
-  const overridden = useMemo(() => new Set(group?.overrides.map((o) => o.sampleId)), [group]);
-  const rowInfo = useMemo(() => new Map(rows.map((r) => [r.sid, r])), [rows]);
 
   const valuesOf = (variableId: string): Cell[] => {
     const seen = new Map<string, Cell>();
@@ -636,6 +767,230 @@ export function StatsView() {
         : String(a).localeCompare(String(b), undefined, { numeric: true }),
     );
   };
+
+  const exportTable = () => {
+    const keys = exportKeys(display, !!aggregated, group.analysis.exportColumns);
+    const kind = aggregated ? 'grouped' : 'samples';
+    download(
+      `${safeName(`${group.name}_statistics_${kind}`)}.csv`,
+      toCsv(tableRows(display, keys)),
+      'text/csv',
+    );
+  };
+
+  const exportStats = (kind: 'tidy' | 'wide') => {
+    const ws = useStore.getState().ws;
+    // Only the samples checked in the sidebar (cells are computed for those alone).
+    const g = { ...group, sampleIds: shown };
+    const cells = rows.flatMap((r) => (r.stale || !r.table ? [] : r.table.cells));
+    const out = kind === 'tidy' ? tidyRows(ws, g, cells, APP_INFO.version) : wideRows(ws, g, cells);
+    download(`${safeName(`${group.name}_statistics_${kind}`)}.csv`, toCsv(out), 'text/csv');
+  };
+
+  const exportGml = () => {
+    const ws = useStore.getState().ws;
+    download(
+      `${safeName(group.name)}_template.gating-ml.xml`,
+      exportGatingML(ws, group, { appVersion: APP_INFO.version }),
+      'application/xml',
+    );
+    const withOv = [...new Set(group.overrides.map((o) => o.sampleId))];
+    for (const sid of withOv)
+      download(
+        `${safeName(`${group.name}_${ws.samples[sid]?.fileName ?? sid}`)}_effective.gating-ml.xml`,
+        exportGatingML(ws, group, { appVersion: APP_INFO.version, sampleId: sid }),
+        'application/xml',
+      );
+  };
+
+  const exportEvents = async (format: 'fcs' | 'csv', mode: 'raw' | 'compensated') => {
+    const ws = useStore.getState().ws;
+    const sid = selectedSample ?? group.sampleIds[0];
+    if (!sid) return;
+    const s = ws.samples[sid]!;
+    const path = populationPath(group.template, popId);
+    const bytes = await pool.exportEvents(contextFor(ws, group), sid, popId, mode, format, {
+      FLOWMERIS_VERSION: `${APP_INFO.version} (${APP_INFO.commit})`,
+      FLOWMERIS_SRC_SHA256: s.sha256,
+      FLOWMERIS_SRC_FILE: s.fileName,
+      FLOWMERIS_POPULATION: path,
+      FLOWMERIS_VALUES: mode === 'raw' ? 'linearised, uncompensated' : 'linearised, compensated',
+    });
+    download(
+      `${safeName(`${s.fileName.replace(/\.(fcs|lmd)$/i, '')}_${group.template.populations[popId]?.name ?? 'population'}`)}.${format}`,
+      bytes,
+    );
+  };
+
+  const eventSample = useStore.getState().ws.samples[selectedSample ?? group.sampleIds[0] ?? ''];
+  const pending = complete ? '' : ' (statistics are still being computed)';
+
+  return (
+    <aside className="inspector ridge-inspector stats-inspector" aria-label="Statistics settings">
+      <div className="ridge-inspector-head">
+        <div className="tabs ridge-tabs" role="tablist" aria-label="Statistics settings">
+          {STATS_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              id={`stats-tab-${t.id}`}
+              aria-selected={tab === t.id}
+              aria-controls="stats-tabpanel"
+              className={tab === t.id ? 'on' : ''}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {(shown.length < group.sampleIds.length || busy > 0) && (
+          <p className="muted small stats-status">
+            {shown.length < group.sampleIds.length &&
+              `${shown.length} of ${group.sampleIds.length} samples (sidebar selection)`}
+            {shown.length < group.sampleIds.length && busy > 0 && ' · '}
+            {busy > 0 && `computing… ${busy} sample(s) left`}
+          </p>
+        )}
+      </div>
+      <div id="stats-tabpanel" role="tabpanel" aria-labelledby={`stats-tab-${tab}`}>
+        {tab === 'statistics' && (
+          <>
+            <Section
+              id="addStat"
+              title="New statistic"
+              open={!!open.addStat}
+              onToggle={() => toggle('addStat')}
+            >
+              <AddStatForm group={group} pops={pops} marker={marker} />
+            </Section>
+            <Section
+              id="derived"
+              title="Derived columns"
+              open={!!open.derived}
+              onToggle={() => toggle('derived')}
+            >
+              <DerivedPanel group={group} columns={perSample.columns} errors={errors} valuesOf={valuesOf} />
+            </Section>
+          </>
+        )}
+        {tab === 'replicates' && (
+          <>
+            <Section
+              id="combine"
+              title="Combine replicates"
+              open={!!open.combine}
+              onToggle={() => toggle('combine')}
+            >
+              <GroupByFields group={group} />
+            </Section>
+            <Section
+              id="summaries"
+              title="Summaries"
+              open={!!open.summaries}
+              onToggle={() => toggle('summaries')}
+            >
+              <p className="muted small">Shown for every numeric column when replicates are combined.</p>
+              <SummaryFields group={group} />
+            </Section>
+          </>
+        )}
+        {tab === 'export' && (
+          <>
+            <Section
+              id="tableCsv"
+              title="Statistics table"
+              open={!!open.tableCsv}
+              onToggle={() => toggle('tableCsv')}
+            >
+              <ActionRow
+                label="CSV (table)"
+                title={
+                  (aggregated
+                    ? 'Download the grouped table, with the chosen columns'
+                    : 'Download the table as shown, with the chosen columns') + pending
+                }
+                icon={<ExportIcon />}
+                disabled={!complete}
+                onClick={exportTable}
+              />
+              <ColumnsChecklist group={group} table={perSample} />
+            </Section>
+            <Section
+              id="statsCsv"
+              title="Statistics with provenance"
+              open={!!open.statsCsv}
+              onToggle={() => toggle('statsCsv')}
+            >
+              <ActionRow
+                label="CSV (tidy)"
+                title={`Download one row per sample × population × statistic, with provenance${pending}`}
+                icon={<ExportIcon />}
+                disabled={!complete}
+                onClick={() => exportStats('tidy')}
+              />
+              <ActionRow
+                label="CSV (wide)"
+                title={`Download one row per sample, one column per population × statistic${pending}`}
+                icon={<ExportIcon />}
+                disabled={!complete}
+                onClick={() => exportStats('wide')}
+              />
+            </Section>
+            <Section id="gatingMl" title="Gates" open={!!open.gatingMl} onToggle={() => toggle('gatingMl')}>
+              <ActionRow
+                label="Gating-ML"
+                title="Download Gating-ML 2.0 for the group template (+ effective gates of overridden samples)"
+                icon={<ExportIcon />}
+                disabled={false}
+                onClick={exportGml}
+              />
+            </Section>
+            <Section id="events" title="Events" open={!!open.events} onToggle={() => toggle('events')}>
+              <p className="muted small">
+                {group.template.populations[popId]?.name ?? 'The population'} of{' '}
+                {eventSample?.fileName ?? 'the selected sample'}
+              </p>
+              <ActionRow
+                label="FCS (raw)"
+                title="Download FCS 3.1 with linearised, uncompensated values; original keywords and $SPILLOVER kept"
+                icon={<ExportIcon />}
+                disabled={!eventSample}
+                onClick={() => void exportEvents('fcs', 'raw')}
+              />
+              <ActionRow
+                label="CSV (compensated)"
+                title="Download the events as CSV, linearised and compensated"
+                icon={<ExportIcon />}
+                disabled={!eventSample}
+                onClick={() => void exportEvents('csv', 'compensated')}
+              />
+            </Section>
+          </>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// View
+// ---------------------------------------------------------------------------
+
+export function StatsView() {
+  const samples = useStore((s) => s.ws.samples);
+  const selectedSample = useStore((s) => s.ui.sampleId);
+  const missing = useStore((s) => s.ui.missing);
+  const group = useGroup();
+  const { stats, perSample, aggregated } = useAnalysisTable(group);
+  const { columns: statCols, rows } = stats;
+  const edit = useGroupMutate(group?.id ?? '');
+
+  const display = aggregated ?? perSample;
+  const byKey = useMemo(() => new Map(perSample.columns.map((c) => [c.key, c])), [perSample]);
+  const statByKey = useMemo(() => new Map<string, StatColumn>(statCols.map((c) => [c.key, c])), [statCols]);
+  const overridden = useMemo(() => new Set(group?.overrides.map((o) => o.sampleId)), [group]);
+  const rowInfo = useMemo(() => new Map(rows.map((r) => [r.sid, r])), [rows]);
 
   if (!group) return <div className="empty">Select a group.</div>;
 
@@ -693,183 +1048,8 @@ export function StatsView() {
     fracLen.set(c.key, n);
   }
 
-  const addStat = () => {
-    if (!form.channel) {
-      toast('Choose a channel for this statistic.');
-      return;
-    }
-    const spec: StatSpec = {
-      id: newId('st_'),
-      population: form.pop,
-      stat: form.stat,
-      channel: form.channel,
-      space: 'linear',
-      ...(form.stat === 'percentile' ? { p: form.p } : {}),
-    };
-    edit('Add statistic', (g) => void g.stats.push(spec));
-  };
-
-  const exportTable = () => {
-    const keys = exportKeys(display, !!aggregated, group.analysis.exportColumns);
-    const kind = aggregated ? 'grouped' : 'samples';
-    download(
-      `${safeName(`${group.name}_statistics_${kind}`)}.csv`,
-      toCsv(tableRows(display, keys)),
-      'text/csv',
-    );
-  };
-
-  const exportStats = (kind: 'tidy' | 'wide') => {
-    const ws = useStore.getState().ws;
-    // Only the samples checked in the sidebar (cells are computed for those alone).
-    const g = { ...group, sampleIds: shown };
-    const cells = rows.flatMap((r) => (r.stale || !r.table ? [] : r.table.cells));
-    const out = kind === 'tidy' ? tidyRows(ws, g, cells, APP_INFO.version) : wideRows(ws, g, cells);
-    download(`${safeName(`${group.name}_statistics_${kind}`)}.csv`, toCsv(out), 'text/csv');
-  };
-
-  const exportGml = () => {
-    const ws = useStore.getState().ws;
-    download(
-      `${safeName(group.name)}_template.gating-ml.xml`,
-      exportGatingML(ws, group, { appVersion: APP_INFO.version }),
-      'application/xml',
-    );
-    const withOv = [...new Set(group.overrides.map((o) => o.sampleId))];
-    for (const sid of withOv)
-      download(
-        `${safeName(`${group.name}_${ws.samples[sid]?.fileName ?? sid}`)}_effective.gating-ml.xml`,
-        exportGatingML(ws, group, { appVersion: APP_INFO.version, sampleId: sid }),
-        'application/xml',
-      );
-  };
-
-  const exportEvents = async (format: 'fcs' | 'csv', mode: 'raw' | 'compensated') => {
-    const ws = useStore.getState().ws;
-    const sid = selectedSample ?? group.sampleIds[0];
-    if (!sid) return;
-    const s = ws.samples[sid]!;
-    const path = populationPath(group.template, popId);
-    const bytes = await pool.exportEvents(contextFor(ws, group), sid, popId, mode, format, {
-      FLOWMERIS_VERSION: `${APP_INFO.version} (${APP_INFO.commit})`,
-      FLOWMERIS_SRC_SHA256: s.sha256,
-      FLOWMERIS_SRC_FILE: s.fileName,
-      FLOWMERIS_POPULATION: path,
-      FLOWMERIS_VALUES: mode === 'raw' ? 'linearised, uncompensated' : 'linearised, compensated',
-    });
-    download(
-      `${safeName(`${s.fileName.replace(/\.(fcs|lmd)$/i, '')}_${group.template.populations[popId]?.name ?? 'population'}`)}.${format}`,
-      bytes,
-    );
-  };
-
   return (
     <div className="stats-view">
-      <div className="toolbar">
-        <strong>Statistics · {group.name}</strong>
-        {shown.length < group.sampleIds.length && (
-          <span className="muted">
-            {shown.length} of {group.sampleIds.length} samples (sidebar selection)
-          </span>
-        )}
-        {busy > 0 && <span className="muted">computing… {busy} sample(s) left</span>}
-        <div className="spacer" />
-        <ColumnsPicker group={group} table={perSample} />
-        <ExportListMenu
-          sections={[
-            {
-              items: [
-                {
-                  label: 'CSV (table)',
-                  title: aggregated
-                    ? 'The grouped table, with the chosen columns'
-                    : 'The table as shown, with the chosen columns',
-                  disabled: !complete,
-                  run: exportTable,
-                },
-                {
-                  label: 'CSV (tidy)',
-                  title: 'One row per sample × population × statistic, with provenance',
-                  disabled: !complete,
-                  run: () => exportStats('tidy'),
-                },
-                { label: 'CSV (wide)', disabled: !complete, run: () => exportStats('wide') },
-                {
-                  label: 'Gating-ML',
-                  title: 'Gating-ML 2.0 for the group template (+ effective gates of overridden samples)',
-                  run: exportGml,
-                },
-              ],
-            },
-            {
-              heading: `Events of ${group.template.populations[popId]?.name ?? 'the population'}, selected sample`,
-              items: [
-                {
-                  label: 'FCS (raw)',
-                  title:
-                    'FCS 3.1 with linearised, uncompensated values; original keywords and $SPILLOVER kept',
-                  run: () => void exportEvents('fcs', 'raw'),
-                },
-                { label: 'CSV (compensated)', run: () => void exportEvents('csv', 'compensated') },
-              ],
-            },
-          ]}
-        />
-      </div>
-      <div className="add-stat">
-        <label className="field">
-          Population
-          <select value={form.pop} onChange={(e) => setForm({ ...form, pop: e.target.value })}>
-            {pops.map((p) => (
-              <option key={p.id} value={p.id}>
-                {populationPath(group.template, p.id)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          Statistic
-          <select value={form.stat} onChange={(e) => setForm({ ...form, stat: e.target.value as StatKind })}>
-            {VALUE_STATS.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        {form.stat === 'percentile' && (
-          <label className="field">
-            p
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step="any"
-              value={form.p}
-              onChange={(e) => setForm({ ...form, p: Number(e.target.value) })}
-            />
-          </label>
-        )}
-        <label className="field">
-          Channel
-          <select value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value })}>
-            <option value="">—</option>
-            {group.channels.map((c) => (
-              <option key={c} value={c}>
-                {c}
-                {marker(c) ? ` (${marker(c)})` : ''}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="button" onClick={addStat}>
-          Add statistic
-        </button>
-      </div>
-      <div className="analysis-bar">
-        <DerivedPanel group={group} columns={perSample.columns} errors={errors} valuesOf={valuesOf} />
-        <GroupByPanel group={group} />
-      </div>
       <div className="table-wrap stats-scroll">
         <table
           className="stats"
