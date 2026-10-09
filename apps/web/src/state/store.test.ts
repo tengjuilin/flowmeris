@@ -140,9 +140,29 @@ describe('undo history', () => {
     expect(S().ws.name).toBe('test');
   });
 
-  it('a change that changes nothing adds no step', () => {
-    rename('test');
-    expect(S().past).toEqual([]);
+  it('a change that changes nothing adds no step, even in a later millisecond', () => {
+    vi.useFakeTimers({ now: Date.parse(S().ws.modifiedAt) + 5000, toFake: ['Date'] });
+    try {
+      const ws = S().ws;
+      rename('test');
+      expect(S().past).toEqual([]);
+      expect(S().ws).toBe(ws);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a change stamps the modification time, and undo restores it', () => {
+    const was = S().ws.modifiedAt;
+    vi.useFakeTimers({ now: Date.parse(was) + 5000, toFake: ['Date'] });
+    try {
+      rename('A');
+      expect(S().ws.modifiedAt).toBe(new Date(Date.parse(was) + 5000).toISOString());
+      S().undo();
+      expect(S().ws.modifiedAt).toBe(was);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('merges changes with the same key less than a second apart into one step', () => {

@@ -227,16 +227,22 @@ export const useStore = create<Store>((set, get) => ({
   },
   mutate(label, fn, merge) {
     const before = get().ws;
-    let [next, redo, undo] = produceWithPatches(before, (draft) => {
-      fn(draft as Workspace);
-      (draft as Workspace).modifiedAt = new Date().toISOString();
-    });
+    let [next, redo, undo] = produceWithPatches(before, (draft) => void fn(draft as Workspace));
+    // A change that changes nothing is no undo step (stamped only once the edit is known to change something).
     if (redo.length === 0) return;
     // A grid plot's changed settings, made to the other grid plots too while the group carries them.
     const carry = gridCarry(before, next);
     if (carry) {
       const [carried, r, u] = produceWithPatches(next, (draft) => void carry(draft as Workspace));
       next = carried;
+      redo = [...redo, ...r];
+      undo = [...u, ...undo];
+    }
+    {
+      const [stamped, r, u] = produceWithPatches(next, (draft) => {
+        (draft as Workspace).modifiedAt = new Date().toISOString();
+      });
+      next = stamped;
       redo = [...redo, ...r];
       undo = [...u, ...undo];
     }
