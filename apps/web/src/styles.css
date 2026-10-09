@@ -1625,6 +1625,7 @@ button.link:hover {
 }
 /* The toolbar stays put while the plots scroll under it (as in Tiles). */
 .path-view {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1651,12 +1652,26 @@ button.link:hover {
   gap: 8px;
   min-width: 0;
 }
-/* Populations panel along the bottom, below the scrolling plots; its top edge resizes it. */
+/* The plots reach the view's bottom edge, under the populations panel floating over its bottom right.
+   The tree scrolls both ways inside itself, and dragging its empty space pans it. */
+.path-view > .path-body {
+  margin-bottom: -10px;
+}
+.path-body.tree {
+  overflow: hidden;
+}
+.path-body.tree > .path-tree {
+  height: 100%;
+  cursor: grab;
+}
+.path-tree.panning {
+  cursor: grabbing;
+  user-select: none;
+}
+/* The populations panel's top edge: drag to resize it, double-click to fit or minimise it. */
 .path-resize {
   flex: none;
   height: 10px;
-  /* Sits in the view's gaps rather than adding to them. */
-  margin: -6px 0;
   cursor: row-resize;
   touch-action: none;
   position: relative;
@@ -1676,16 +1691,27 @@ button.link:hover {
 .path-resize:focus-visible::after {
   background: var(--accent);
 }
-/* Flush with the bottom and sides of the view (over its padding), its edges no more than a top border. */
+/* The resize grip and the panel below it: over the bottom right of the view, flush with its edges (over its
+   padding), and as wide as the rows need (measured), so each count stays near its name. */
+.path-dock {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  width: var(--pop-list-w, auto);
+  max-width: calc(100% + 20px);
+  margin: 0 -10px -10px;
+}
 .path-panel {
   flex: none;
-  margin: 0 -10px -10px;
 }
 .path-panel .pop-tree {
   flex: 1 1 auto;
   max-height: none;
-  border-width: 1px 0 0;
-  border-radius: 0;
+  border-width: 1px 0 0 1px;
+  border-radius: 8px 0 0 0;
   padding-top: 0;
 }
 /* The title stays in place while the populations scroll under it. */

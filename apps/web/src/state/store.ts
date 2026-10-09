@@ -63,6 +63,10 @@ interface UiState {
   tilesColumns: number;
   /** Plots per row picked with the Gating path view's slider (kept while other views are shown). */
   pathColumns: number;
+  /** Layout of the Gating path view: the path to the selected population, or the whole tree. */
+  pathMode: 'path' | 'tree';
+  /** Plot size (px) picked with the slider of the Gating path view's tree (sized freely, not by columns). */
+  treePlotSize: number;
   /** Height (px) of the Gating path view's populations panel. */
   pathPanelHeight: number;
   /** Whether the Plot view's settings panel (for its selected grid plot) is shown. */
@@ -144,6 +148,17 @@ function savedView(): View {
   }
 }
 
+const PATH_MODE_KEY = 'flowmeris.pathMode';
+
+/** The Gating path view's layout before the last page reload. */
+function savedPathMode(): 'path' | 'tree' {
+  try {
+    return sessionStorage.getItem(PATH_MODE_KEY) === 'tree' ? 'tree' : 'path';
+  } catch {
+    return 'path';
+  }
+}
+
 export const useStore = create<Store>((set, get) => ({
   ws: newWorkspace(timestampName(), APP_INFO),
   ui: {
@@ -160,6 +175,8 @@ export const useStore = create<Store>((set, get) => ({
     tilesSettings: false,
     tilesColumns: 5,
     pathColumns: 4,
+    pathMode: savedPathMode(),
+    treePlotSize: 280,
     pathPanelHeight: 200,
     gridSettings: false,
     missing: {},
@@ -277,6 +294,11 @@ function locationOf(ui: UiState): NavLocation {
 }
 
 useStore.subscribe((s, prev) => {
+  if (s.ui.pathMode !== prev.ui.pathMode) {
+    try {
+      sessionStorage.setItem(PATH_MODE_KEY, s.ui.pathMode);
+    } catch {}
+  }
   if (s.ui.view === prev.ui.view) return;
   if (!navigating) {
     // A tab switch, by a tab or by a button that opens a sample in another tab: remember where it left from.

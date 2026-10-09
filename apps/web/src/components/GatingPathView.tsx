@@ -1,6 +1,7 @@
 import type { Gate, Group, PlotSpec, Population, Workspace } from '@flowmeris/model';
 import { newId, populationLineage, populationsDepthFirst } from '@flowmeris/model';
 import {
+  type CSSProperties,
   Component,
   type ReactNode,
   memo,
@@ -35,8 +36,10 @@ const ARROW_W = 104;
 const TREE_EXTRA = 22;
 /** The smallest plot offered. */
 const MIN_PLOT = 160;
-/** Height limits of the populations panel at the bottom; the plots above keep at least MIN_BODY. */
-const MIN_PANEL = 60;
+/** Range of the tree's plot size slider (px). */
+const MIN_TREE_PLOT = 120;
+const MAX_TREE_PLOT = 800;
+/** The populations panel leaves at least MIN_BODY of the view above it. */
 const MIN_BODY = 120;
 const MIN_COLUMNS = 2;
 const MAX_COLUMNS = 6;
@@ -277,27 +280,30 @@ export function GatingPathView() {
   const uiPopId = useStore((s) => s.ui.popId);
   const uiMissing = useStore((s) => s.ui.missing);
   const picked = useStore((s) => s.ui.pathColumns);
+  const mode = useStore((s) => s.ui.pathMode);
+  const treeSize = useStore((s) => s.ui.treePlotSize);
+  const panelHeight = useStore((s) => s.ui.pathPanelHeight);
   const setUi = useStore((s) => s.setUi);
   const group = useGroup();
-  const [mode, setMode] = useState<'path' | 'tree'>('path');
   const [backgating, setBackgating] = useState(false);
-  // Plot sizes are discrete (as in Tiles): the slider picks the plots per row and the size fills the row.
-  // In the path, a column is a plot with its arrow; in the tree, a plot with its branch's padding.
+  // In the path, plot sizes are discrete (as in Tiles): the slider picks the steps (a plot with its arrow)
+  // per row and the size fills the row. The tree, wider than the view anyway, has a plot size slider.
   const body = useRef<HTMLDivElement>(null);
   const { width } = useSize(body);
-  const room = width;
-  const extra = mode === 'path' ? CARD_EXTRA + ARROW_W : TREE_EXTRA;
-  const fit = Math.floor(room / (MIN_PLOT + extra));
+  const extra = CARD_EXTRA + ARROW_W;
+  const fit = Math.floor(width / (MIN_PLOT + extra));
   // Until the width is measured, nothing limits the number (as in Tiles).
   const maxColumns = width > 0 ? Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, fit)) : MAX_COLUMNS;
   const columns = Math.max(MIN_COLUMNS, Math.min(maxColumns, picked));
-  const liveSize = width > 0 ? Math.max(MIN_PLOT, Math.floor(room / columns) - extra) : 0;
+  const liveSize =
+    mode === 'tree' ? treeSize : width > 0 ? Math.max(MIN_PLOT, Math.floor(width / columns) - extra) : 0;
   // Plots are recomputed at the new size only once the slider (or window) rests, not for every step.
   const size = useDebounced(liveSize, 150);
   const stepW = size + CARD_EXTRA + ARROW_W;
   const [counts, setCounts] = useState<Counts>({});
   const [countError, setCountError] = useState<string | null>(null);
   const treeRef = useRef<HTMLDivElement>(null);
+  const pan = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
 
   const sampleId =
     group && uiSampleId && group.sampleIds.includes(uiSampleId) ? uiSampleId : group?.sampleIds[0];
@@ -405,7 +411,11 @@ export function GatingPathView() {
   // --- path: one plot per ancestor, showing the gate that leads to the next step -------------
   const noGates = pathSteps.length === 0 && finalPlots.length === 0;
   const renderPath = () => (
-    <div className="path-row" style={{ gridTemplateColumns: `repeat(${columns}, ${stepW}px)` }}>
+    <div
+      className="path-row"
+      // Room below, so the last row can be scrolled out from under the populations panel.
+      style={{ gridTemplateColumns: `repeat(${columns}, ${stepW}px)`, paddingBottom: panelHeight + 24 }}
+    >
       {pathSteps.map(({ pop, next, r }) => (
         <div className="path-step" key={pop.id}>
           {r ? (
@@ -492,7 +502,7 @@ export function GatingPathView() {
             type="button"
             className={mode === 'path' ? 'on' : ''}
             aria-pressed={mode === 'path'}
-            onClick={() => setMode('path')}
+            onClick={() => setUi({ pathMode: 'path' })}
             title="Plots from All events to the selected population"
           >
             Path
@@ -501,7 +511,7 @@ export function GatingPathView() {
             type="button"
             className={mode === 'tree' ? 'on' : ''}
             aria-pressed={mode === 'tree'}
-            onClick={() => setMode('tree')}
+            onClick={() => setUi({ pathMode: 'tree' })}
             title="Every plot in the gating tree"
           >
             Tree
@@ -521,21 +531,35 @@ export function GatingPathView() {
         </label>
         <div className="spacer" />
         <div className="tiles-controls">
-          <label className="field" title="Columns: the plots are sized to fill each row">
-            Columns
-            <input
-              type="range"
-              min={MIN_COLUMNS}
-              max={maxColumns}
-              step={1}
-              value={columns}
-              onChange={(e) => setUi({ pathColumns: Number(e.target.value) })}
-            />
-            <span className="muted">{columns}</span>
-          </label>
+          {mode === 'path' ? (
+            <label className="field" title="Columns: the plots are sized to fill each row">
+              Columns
+              <input
+                type="range"
+                min={MIN_COLUMNS}
+                max={maxColumns}
+                step={1}
+                value={columns}
+                onChange={(e) => setUi({ pathColumns: Number(e.target.value) })}
+              />
+              <span className="muted">{columns}</span>
+            </label>
+          ) : (
+            <label className="field" title="Plot size">
+              Plot size
+              <input
+                type="range"
+                min={MIN_TREE_PLOT}
+                max={MAX_TREE_PLOT}
+                step={1}
+                value={treeSize}
+                onChange={(e) => setUi({ treePlotSize: Number(e.target.value) })}
+              />
+            </label>
+          )}
         </div>
       </div>
-      <div className="path-body" ref={body}>
+      <div className={`path-body${mode === 'tree' ? ' tree' : ''}`} ref={body}>
         {countError && <div className="empty">Could not compute counts: {countError}</div>}
         {missing ? (
           <div className="empty">Data not loaded for this sample: re-add its FCS file to view it.</div>
@@ -544,8 +568,39 @@ export function GatingPathView() {
         ) : (
           <ViewErrorBoundary resetKey={`${group.id}|${sampleId}|${key}`}>
             {group.template.populations.root ? (
-              <div className="path-tree" ref={treeRef}>
-                <ul>{node(group.template.populations.root)}</ul>
+              // Scrolls both ways, and dragging its empty space pans it.
+              <div
+                className="path-tree"
+                ref={treeRef}
+                onPointerDown={(e) => {
+                  const el = e.currentTarget;
+                  const t = e.target as Element;
+                  if (e.button !== 0 || t.closest('.path-card, .path-chip, button, input')) return;
+                  // Not when pressing the tree's own scrollbars.
+                  const r = el.getBoundingClientRect();
+                  if (e.clientX - r.left >= el.clientWidth || e.clientY - r.top >= el.clientHeight) return;
+                  e.preventDefault();
+                  el.setPointerCapture(e.pointerId);
+                  el.classList.add('panning');
+                  pan.current = { x: e.clientX, y: e.clientY, left: el.scrollLeft, top: el.scrollTop };
+                }}
+                onPointerMove={(e) => {
+                  const p = pan.current;
+                  if (!p) return;
+                  e.currentTarget.scrollLeft = p.left - (e.clientX - p.x);
+                  e.currentTarget.scrollTop = p.top - (e.clientY - p.y);
+                }}
+                onPointerUp={(e) => {
+                  pan.current = null;
+                  e.currentTarget.classList.remove('panning');
+                }}
+                onPointerCancel={(e) => {
+                  pan.current = null;
+                  e.currentTarget.classList.remove('panning');
+                }}
+              >
+                {/* Room below, so the bottom of the tree can be scrolled out from under the populations panel. */}
+                <ul style={{ paddingBottom: panelHeight + 24 }}>{node(group.template.populations.root)}</ul>
               </div>
             ) : (
               <div className="empty">This group's gating tree has no root population.</div>
@@ -563,8 +618,9 @@ export function GatingPathView() {
 }
 
 /**
- * The populations tree in a panel along the bottom of the view, below the scrolling plots; dragging (or
- * arrow keys on) its top edge sets its height, kept while other views are shown.
+ * The populations tree in a panel over the bottom right of the view, the plots showing beside it.
+ * Dragging (or arrow keys on) its top edge sets its height, kept while other views are shown;
+ * double-clicking it (or Enter) fits the panel to its rows, or, when it fits already, minimises it to its title.
  */
 function PopulationsPanel({
   popId,
@@ -574,17 +630,41 @@ function PopulationsPanel({
   const height = useStore((s) => s.ui.pathPanelHeight);
   const setUi = useStore((s) => s.setUi);
   const panel = useRef<HTMLDivElement>(null);
+  // The panel is as wide as the longest name and its counts need (plus a little room), not the full
+  // view, so each count stays close to its name.
+  const [listW, setListW] = useState(0);
   const drag = useRef<{ y: number; h: number; max: number } | null>(null);
+  const tree = () => panel.current?.querySelector<HTMLElement>('.pop-tree');
+  /** Shortest the panel may be: its title alone (with the top border). */
+  const minHeight = () => (tree()?.querySelector<HTMLElement>('.pane-title')?.offsetHeight ?? 29) + 1;
   /** Tallest the panel may be: the view's height less the toolbar and MIN_BODY of plots. */
   const maxHeight = () => {
-    const view = panel.current?.parentElement;
+    const view = panel.current?.closest<HTMLElement>('.path-view');
     const bar = view?.querySelector<HTMLElement>(':scope > .toolbar');
-    return view ? Math.max(MIN_PANEL, view.clientHeight - (bar?.offsetHeight ?? 0) - MIN_BODY) : 600;
+    return view ? view.clientHeight - (bar?.offsetHeight ?? 0) - MIN_BODY : 600;
   };
   const set = (h: number, max: number) =>
-    setUi({ pathPanelHeight: Math.round(Math.max(MIN_PANEL, Math.min(max, h))) });
+    setUi({ pathPanelHeight: Math.round(Math.max(minHeight(), Math.min(max, h))) });
+  /** Fit the panel to its rows (as far as the view allows), or minimise it when it fits already. */
+  const toggle = () => {
+    const t = tree();
+    if (!t) return;
+    const max = maxHeight();
+    // Its title and rows, measured as laid out (scrollHeight is the panel's own height when they are shorter).
+    const cs = getComputedStyle(t);
+    const content = [...t.children].reduce((h, c) => h + (c as HTMLElement).offsetHeight, 0);
+    const edges = ['paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth'] as const;
+    const fit = Math.max(
+      minHeight(),
+      Math.min(max, Math.ceil(content + edges.reduce((h, k) => h + Number.parseFloat(cs[k]), 0))),
+    );
+    set(Math.abs(height - fit) <= 1 ? minHeight() : fit, max);
+  };
   return (
-    <>
+    <div
+      className="path-dock"
+      style={listW > 0 ? ({ '--pop-list-w': `${listW + 24}px` } as CSSProperties) : undefined}
+    >
       <div
         className="path-resize"
         role="separator"
@@ -592,7 +672,8 @@ function PopulationsPanel({
         aria-label="Resize the populations panel"
         aria-valuenow={height}
         tabIndex={0}
-        title="Drag to resize the populations panel"
+        title="Drag to resize the populations panel; double-click to fit it to its rows or minimise it"
+        onDoubleClick={toggle}
         onPointerDown={(e) => {
           if (e.button !== 0) return;
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -610,15 +691,16 @@ function PopulationsPanel({
         }}
         onKeyDown={(e) => {
           const step = e.shiftKey ? 50 : 10;
-          if (e.key === 'ArrowUp') set(height + step, maxHeight());
+          if (e.key === 'Enter') toggle();
+          else if (e.key === 'ArrowUp') set(height + step, maxHeight());
           else if (e.key === 'ArrowDown') set(height - step, maxHeight());
           else return;
           e.preventDefault();
         }}
       />
       <div className="plot-side path-panel" ref={panel} style={{ height }}>
-        <PopulationTree popId={popId} sampleId={sampleId} onPick={onPick} />
+        <PopulationTree popId={popId} sampleId={sampleId} onPick={onPick} onWidth={setListW} />
       </div>
-    </>
+    </div>
   );
 }
