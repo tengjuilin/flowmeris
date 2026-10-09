@@ -46,14 +46,19 @@ grid is saved with the group in the workspace.
 - Add a plot by choosing its type in an empty cell. It starts on the population selected in the Gate view.
 - Click a plot to select it (blue border). The gating tools and **Edit template** / **This sample only**
   act on the selected plot, exactly as in the Gate view; gates belong to the same group template.
-- The bar above the grid edits the selected plot: **Population**, **Sample** (◀ ▶ step through the group's
-  samples; *Follow selected* tracks the sample selected in the sidebar), plot type and X/Y channels.
-- **Overlay** draws other samples on the same plot, each in its own colour with a legend: dots on 2D plots,
-  outlines on histograms. Gates and their percentages are those of the plotted sample.
+- The settings panel (the button right of **Columns**) edits the selected plot. Its **Figure › Plot** card
+  sets the plot type, title, **Population** and **Sample** (◀ ▶ step through the group's samples; *Follow
+  selected* tracks the sample selected in the sidebar); the **Axis** tab sets the X/Y channels and scales.
+- **Overlay**, at the bottom of the same card, draws other samples on the same plot, each in its own colour
+  with a legend: dots on 2D plots, outlines on histograms. Gates and their percentages are those of the
+  plotted sample.
+- The **Populations** card at the top right shows the selected plot's population tree and counts; click a
+  population to show it in the selected plot.
 - **Double-click inside a gate** to show its population in the next empty cell, with the same axes.
 - **Click the population or sample in a plot's title** to show another population or sample in that cell
   (or set the sample back to *Follow selected*).
-- **Open in Gate view** opens the selected plot's population, sample and pair of axes in the Gate view.
+- **Gate** and **Tiles** in a plot's title open it in that view; **Export** saves it as PDF, PNG, JPG or SVG.
+- **Delete** (or Backspace) removes the selected plot, unless a gate is selected (that removes the gate).
 - Deleting a gate moves plots of its populations back to the gate's parent population.
 
 ## Gating path

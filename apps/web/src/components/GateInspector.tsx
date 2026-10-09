@@ -36,6 +36,7 @@ import {
   Section,
   StyleEditor,
 } from './Inspector.tsx';
+import { CellSourceFields } from './PlotGridView.tsx';
 import {
   PlotKindSelect,
   type PlotTarget,
@@ -436,6 +437,7 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
                   onChange={(e) => set('title', e.target.value || undefined, 'Plot title', 'title')}
                 />
               </label>
+              {grid && gridPlot && <CellSourceFields group={group} cell={gridPlot} />}
             </Section>
             <StyleEditor target={target} plot={plot} panel={panel} />
             <Section

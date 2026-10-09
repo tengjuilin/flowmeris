@@ -1,21 +1,16 @@
 import type { Group, PlotCell, PlotKind, PlotSpec, Workspace } from '@flowmeris/model';
 import { newId, populationLineage, populationsDepthFirst } from '@flowmeris/model';
 import { CATEGORICAL } from '@flowmeris/render';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { defaultAxis, defaultChannels } from '../lib/defaults.ts';
 import { exportPlot } from '../lib/exportPlot.ts';
 import { TILE_FIGURE, TILE_STYLE } from '../lib/figure.ts';
 import { useGroup, useSampleNames, useStore } from '../state/store.ts';
+import { ExportMenu } from './ExportMenu.tsx';
 import { OpenInIcon, SettingsIcon } from './Inspector.tsx';
 import { type Anchor, type PickOption, PickerMenu } from './PickerMenu.tsx';
 import { PlotCanvas, type PlotHandle } from './PlotCanvas.tsx';
-import {
-  AxisSelects,
-  EditScopeToggle,
-  PlotKindSelect,
-  ToolButtons,
-  axisChannelSetter,
-} from './PlotPanel.tsx';
+import { EditScopeToggle, ToolButtons, axisChannelSetter } from './PlotPanel.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { useSize } from './hooks.ts';
 
@@ -190,8 +185,29 @@ export function PlotGridView() {
   const names = useSampleNames(group);
   const box = useRef<HTMLDivElement>(null);
   const { width } = useSize(box);
-  const handle = useRef<PlotHandle>(null);
   const [treeWidth, setTreeWidth] = useState(0);
+  // Delete (or Backspace) removes the selected plot, unless a gate is selected (then it removes the
+  // gate), a polygon is being drawn, or the key goes to a text field or menu.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      const t = e.target;
+      if (
+        t instanceof Element &&
+        t.closest('input, select, textarea, [contenteditable="true"], [role="dialog"]')
+      )
+        return;
+      const { ui: u, ws: w } = useStore.getState();
+      if (u.tool !== 'select' || u.selectedGateId || !u.gridCellId) return;
+      const g = w.groups.find((x) => x.id === u.groupId);
+      if (!g?.grid.cells.some((c) => c?.id === u.gridCellId)) return;
+      e.preventDefault();
+      removeCell(g.id, u.gridCellId);
+      useStore.getState().setUi({ gridCellId: null });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   if (!group) return <div className="empty">Select or add a group.</div>;
 
   const { cells } = group.grid;
@@ -258,23 +274,6 @@ export function PlotGridView() {
             </button>
           </div>
         </div>
-        {active && (
-          <CellControls
-            group={group}
-            cell={active}
-            sampleId={activeSample}
-            sampleName={sampleName}
-            onExport={(fmt) =>
-              handle.current &&
-              void exportPlot(
-                handle.current,
-                plotOf(active),
-                fmt,
-                ws.samples[activeSample ?? '']?.fileName ?? 'plot',
-              )
-            }
-          />
-        )}
       </div>
       <div
         className="plot-grid"
@@ -311,7 +310,6 @@ export function PlotGridView() {
               missing={ui.missing}
               onActivate={() => cell.id !== ui.gridCellId && setUi({ gridCellId: cell.id })}
               onDrill={onDrill}
-              handle={cell.id === active?.id ? handle : undefined}
             />
           ) : (
             <div key={`empty${i}`} className="grid-cell empty-cell" style={{ height: cellW || undefined }}>
@@ -336,24 +334,17 @@ export function PlotGridView() {
   );
 }
 
-/** Population, sample, overlay, plot type and axis controls of the active cell. */
-function CellControls({
-  group,
-  cell,
-  sampleId,
-  sampleName,
-  onExport,
-}: {
-  group: Group;
-  cell: PlotCell;
-  sampleId: string | undefined;
-  sampleName: (id: string) => string;
-  onExport: (fmt: 'svg' | 'png') => void;
-}) {
+/**
+ * Population, sample and overlay pickers of a grid plot, at the bottom of the Plot card in the Plot
+ * view's settings panel.
+ */
+export function CellSourceFields({ group, cell }: { group: Group; cell: PlotCell }) {
+  const ws = useStore((s) => s.ws);
   const selected = useStore((s) => s.ui.sampleId);
-  const edit = (label: string, fn: (c: PlotCell, g: Group, w: Workspace) => void) =>
-    editCell(group.id, cell.id, label, fn);
-  const plot = plotOf(cell);
+  const names = useSampleNames(group);
+  const sampleName = (id: string) => names[id] ?? ws.samples[id]?.fileName ?? id;
+  const sampleId = cellSample(group, cell, selected);
+  const edit = (label: string, fn: (c: PlotCell) => void) => editCell(group.id, cell.id, label, fn);
   const ids = group.sampleIds;
   const step = (d: number) => {
     if (!sampleId || ids.length < 2) return;
@@ -364,7 +355,7 @@ function CellControls({
   const followName = selected && ids.includes(selected) ? sampleName(selected) : '–';
 
   return (
-    <div className="cell-controls">
+    <>
       <label className="field">
         Population
         <select
@@ -373,41 +364,53 @@ function CellControls({
         >
           {populationsDepthFirst(group.template).map((p) => (
             <option key={p.id} value={p.id}>
-              {'  '.repeat(populationLineage(group.template, p.id).length - 1)}
+              {'\u00a0\u00a0'.repeat(populationLineage(group.template, p.id).length - 1)}
               {p.name}
             </option>
           ))}
         </select>
       </label>
-      <div className="field sample-step">
+      <div className="field">
         Sample
-        <button type="button" className="icon" title="Previous sample" onClick={() => step(-1)}>
-          ◀
-        </button>
-        <select
-          value={cell.sampleId ?? ''}
-          onChange={(e) => setCellSample(group.id, cell.id, e.target.value || undefined)}
-        >
-          <option value="">Follow selected ({followName})</option>
-          {ids.map((id) => (
-            <option key={id} value={id}>
-              {sampleName(id)}
-            </option>
-          ))}
-        </select>
-        <button type="button" className="icon" title="Next sample" onClick={() => step(1)}>
-          ▶
-        </button>
+        <div className="sample-step">
+          <button type="button" className="icon" title="Previous sample" onClick={() => step(-1)}>
+            ◀
+          </button>
+          <select
+            aria-label="Sample"
+            value={cell.sampleId ?? ''}
+            onChange={(e) => setCellSample(group.id, cell.id, e.target.value || undefined)}
+          >
+            <option value="">Follow selected ({followName})</option>
+            {ids.map((id) => (
+              <option key={id} value={id}>
+                {sampleName(id)}
+              </option>
+            ))}
+          </select>
+          <button type="button" className="icon" title="Next sample" onClick={() => step(1)}>
+            ▶
+          </button>
+        </div>
       </div>
-      <details className="overlay-picker">
-        <summary title="Overlay other samples on this plot, each in its own colour">
+      <div className="field" title="Overlay other samples on this plot, each in its own colour">
+        <span className="overlay-head">
           Overlay{colors?.samples.length ? ` (${colors.samples.length})` : ''}
-        </summary>
-        <div className="overlay-menu">
+          {cell.overlay.length > 0 && (
+            <button
+              type="button"
+              className="link"
+              onClick={() => edit('Clear grid plot overlay', (c) => void (c.overlay = []))}
+            >
+              Clear
+            </button>
+          )}
+        </span>
+        <div className="overlay-list">
           {ids.map((id) => {
             const isMain = id === sampleId;
             const on = isMain || cell.overlay.includes(id);
-            const color = isMain ? colors?.color : colors?.samples.find((s) => s.sampleId === id)?.color;
+            const color = isMain ? colors?.color : colors?.samples.find((x) => x.sampleId === id)?.color;
             return (
               <label key={id} className="field check">
                 <input
@@ -426,43 +429,9 @@ function CellControls({
               </label>
             );
           })}
-          {cell.overlay.length > 0 && (
-            <button
-              type="button"
-              className="link"
-              onClick={() => edit('Clear grid plot overlay', (c) => void (c.overlay = []))}
-            >
-              Clear overlay
-            </button>
-          )}
         </div>
-      </details>
-      <PlotKindSelect group={group} plot={plot} edit={edit} />
-      <AxisSelects group={group} plot={plot} edit={edit} />
-      <div className="spacer" />
-      <button
-        type="button"
-        onClick={() => openInGateView(group, cell, cell.sampleId)}
-        title="Open this plot in the Gate view"
-      >
-        Open in Gate view
-      </button>
-      <div className="seg">
-        <button type="button" onClick={() => onExport('svg')}>
-          SVG
-        </button>
-        <button type="button" onClick={() => onExport('png')}>
-          PNG
-        </button>
       </div>
-      <button
-        type="button"
-        title="Remove this plot from the grid"
-        onClick={() => removeCell(group.id, cell.id)}
-      >
-        Remove
-      </button>
-    </div>
+    </>
   );
 }
 
@@ -477,7 +446,6 @@ function GridCell({
   missing,
   onActivate,
   onDrill,
-  handle,
 }: {
   ws: Workspace;
   group: Group;
@@ -489,12 +457,12 @@ function GridCell({
   missing: Record<string, true>;
   onActivate: () => void;
   onDrill: (popId: string) => void;
-  handle: React.RefObject<PlotHandle> | undefined;
 }) {
   const pop = group.template.populations[cell.population];
   const selected = useStore((s) => s.ui.sampleId);
   const [menu, setMenu] = useState<{ kind: 'population' | 'sample'; anchor: Anchor } | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
+  const handle = useRef<PlotHandle>(null);
   const followName = selected && group.sampleIds.includes(selected) ? sampleName(selected) : '–';
   const overlay = sampleId ? overlayColors(cell, sampleId, group) : null;
   const overlaying = !!overlay && overlay.samples.length > 0;
@@ -578,6 +546,21 @@ function GridCell({
           <OpenInIcon />
           Tiles
         </button>
+        <ExportMenu
+          floating
+          className="cell-export"
+          onExport={(format, dpi) =>
+            handle.current
+              ? exportPlot(
+                  handle.current,
+                  plotOf(cell),
+                  format,
+                  ws.samples[sampleId ?? '']?.fileName ?? 'plot',
+                  dpi,
+                )
+              : undefined
+          }
+        />
       </div>
       {overlaying && overlay && sampleId && (
         <div className="cell-legend">

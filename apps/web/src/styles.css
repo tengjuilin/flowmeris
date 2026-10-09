@@ -1349,24 +1349,33 @@ button.link:hover {
 .grid-head .toolbar {
   margin-bottom: 0;
 }
-.cell-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  padding: 6px 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-.cell-controls select {
-  max-width: 220px;
-}
 .sample-step {
+  display: flex;
+  align-items: center;
   gap: 2px;
 }
 .sample-step > select {
+  flex: 1;
+  min-width: 0;
   margin: 0 2px;
+}
+.overlay-head {
+  display: flex;
+  justify-content: space-between;
+}
+/* The overlay's sample checklist in the settings panel; long sample lists scroll. */
+.overlay-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow: auto;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.overlay-list .field {
+  white-space: nowrap;
 }
 .overlay-picker {
   position: relative;
@@ -1535,7 +1544,8 @@ button.link:hover {
   white-space: nowrap;
   overflow: hidden;
 }
-.cell-title > button.icon.labeled {
+.cell-title > button.icon.labeled,
+.cell-export > button {
   display: flex;
   align-items: center;
   gap: 3px;
