@@ -1165,6 +1165,26 @@ table.stats tbody th {
   text-align: left;
   font-weight: 500;
 }
+/* Statistics view: the sample (or combine-by) columns stay pinned on horizontal scroll, opaque over the
+   columns scrolling under them; header cells stack above them, and the pinned header corner above both. */
+.stats-view table.stats .pin {
+  position: sticky;
+  z-index: 1;
+  background: var(--surface);
+}
+.stats-view table.stats .pin-last {
+  border-right: 1px solid var(--border);
+}
+.stats-view table.stats thead th {
+  z-index: 2;
+}
+.stats-view table.stats thead th.pin {
+  z-index: 3;
+  background: var(--surface-2);
+}
+.stats-view table.stats tr.on .pin {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
 table.stats tr.on {
   background: color-mix(in srgb, var(--accent) 10%, transparent);
 }

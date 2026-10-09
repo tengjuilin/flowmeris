@@ -1242,6 +1242,24 @@ export function StatsInspector() {
 // View
 // ---------------------------------------------------------------------------
 
+/**
+ * Offsets of the table's pinned parts: each header row sticks below the rows above it, and each pinned
+ * column (marked `.pin` in the first body row) sticks right of the pinned columns before it.
+ */
+function layoutPinned(t: HTMLTableElement) {
+  let top = 0;
+  for (const [i, row] of [...(t.tHead?.rows ?? [])].entries()) {
+    t.style.setProperty(`--head-top-${i}`, `${top}px`);
+    top += row.offsetHeight;
+  }
+  let left = 0;
+  for (const [i, cell] of [...(t.tBodies[0]?.rows[0]?.cells ?? [])].entries()) {
+    if (!cell.classList.contains('pin')) break;
+    t.style.setProperty(`--pin-left-${i}`, `${left}px`);
+    left += cell.getBoundingClientRect().width;
+  }
+}
+
 export function StatsView() {
   const samples = useStore((s) => s.ws.samples);
   const selectedSample = useStore((s) => s.ui.sampleId);
@@ -1252,6 +1270,15 @@ export function StatsView() {
   const edit = useGroupMutate(group?.id ?? '');
 
   const display = aggregated ?? perSample;
+  // Re-measure the pinned rows and columns when the table changes size without a re-render (window, fonts).
+  const tableRef = useRef<HTMLTableElement | null>(null);
+  useLayoutEffect(() => {
+    const t = tableRef.current;
+    if (!t) return;
+    const ro = new ResizeObserver(() => layoutPinned(t));
+    ro.observe(t);
+    return () => ro.disconnect();
+  }, [group?.id]);
   const byKey = useMemo(() => new Map(perSample.columns.map((c) => [c.key, c])), [perSample]);
   const statByKey = useMemo(() => new Map<string, StatColumn>(statCols.map((c) => [c.key, c])), [statCols]);
   const overridden = useMemo(() => new Set(group?.overrides.map((o) => o.sampleId)), [group]);
@@ -1320,20 +1347,29 @@ export function StatsView() {
     fracLen.set(c.key, n);
   }
 
+  // Columns pinned on horizontal scroll: the sample name, or every column the replicates are combined by.
+  const nPin = aggregated
+    ? Math.max(
+        1,
+        display.columns.findIndex((c) => c.kind === 'aggregate'),
+      )
+    : 1;
+  const pin = (i: number, cls?: string) =>
+    i < nPin
+      ? {
+          className: [cls, 'pin', i === nPin - 1 ? 'pin-last' : ''].filter(Boolean).join(' '),
+          style: { left: `var(--pin-left-${i}, 0px)` },
+        }
+      : { className: cls };
+
   return (
     <div className="stats-view">
       <div className="table-wrap stats-scroll">
         <table
           className="stats"
           ref={(t) => {
-            // Pinned header rows stack: each sticks below the rows above it.
-            const rows = t?.tHead?.rows;
-            if (!t || !rows) return;
-            let top = 0;
-            for (const [i, row] of [...rows].entries()) {
-              t.style.setProperty(`--head-top-${i}`, `${top}px`);
-              top += row.offsetHeight;
-            }
+            tableRef.current = t;
+            if (t) layoutPinned(t);
           }}
         >
           <thead>
@@ -1343,10 +1379,16 @@ export function StatsView() {
                   key={`${s.id}${i}`}
                   colSpan={s.span}
                   className={
-                    [s.id.startsWith('pop:') ? 'pop-head' : '', i > 0 ? 'sec-start' : '']
+                    [
+                      s.id.startsWith('pop:') ? 'pop-head' : '',
+                      i > 0 ? 'sec-start' : '',
+                      i === 0 && s.span <= nPin ? 'pin' : '',
+                      i === 0 && s.span === nPin ? 'pin-last' : '',
+                    ]
                       .filter(Boolean)
                       .join(' ') || undefined
                   }
+                  style={i === 0 && s.span <= nPin ? { left: 0 } : undefined}
                   title={s.id.startsWith('pop:') ? populationPath(group.template, s.id.slice(4)) : undefined}
                 >
                   {sectionHead(s.id)}
@@ -1366,7 +1408,7 @@ export function StatsView() {
                     title={summary ? undefined : c.label}
                     colSpan={span > 1 ? span : undefined}
                     rowSpan={aggregated && !summary ? 2 : undefined}
-                    className={sectionStart.has(c.key) ? 'sec-start' : undefined}
+                    {...pin(i, sectionStart.has(c.key) ? 'sec-start' : undefined)}
                   >
                     {summary ? shortLabel(byKey.get(c.source!) ?? c) : shortLabel(c)}
                     {specId && (
@@ -1421,6 +1463,7 @@ export function StatsView() {
                         key={c.key}
                         scope="row"
                         title={aggregated ? undefined : samples[r.id]?.relativePath}
+                        {...pin(i)}
                       >
                         {fmt(r.values[c.key], statOf(c), sigOf(c))}
                         {!aggregated && overridden.has(r.id) && <span className="badge warn">override</span>}
@@ -1429,14 +1472,15 @@ export function StatsView() {
                     ) : (
                       <td
                         key={c.key}
-                        className={
+                        {...pin(
+                          i,
                           [
                             c.type === 'categorical' ? 'text-cell' : '',
                             sectionStart.has(c.key) ? 'sec-start' : '',
                           ]
                             .filter(Boolean)
-                            .join(' ') || undefined
-                        }
+                            .join(' ') || undefined,
+                        )}
                       >
                         {alignedNumber(fmt(r.values[c.key], statOf(c), sigOf(c)), fracLen.get(c.key) ?? 0)}
                       </td>
