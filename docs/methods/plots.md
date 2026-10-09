@@ -4,7 +4,7 @@ Implementation: `packages/density`, `packages/render`. Tests: `packages/density/
 `packages/render/src/render.test.ts`.
 
 All plots are computed in display (transformed) units and rasterised on the CPU at the screen's pixel
-resolution ([ADR-0001](../adr/#adr-0001-cpu-rasterisation-in-workers)). Rendering is deterministic:
+resolution ([ADR-0001](../adr/0001-cpu-rasterisation)). Rendering is deterministic:
 identical inputs give byte-identical images.
 
 ## M-PLOT-BIN — binning and off-scale events

@@ -102,4 +102,4 @@ a ray may be classified differently by other tools' polygon tests; everywhere el
   population tree, tiles and statistics exports (`gate_overridden_on_path`, `overridden_gate_ids`).
 - Results are cached by a content fingerprint of everything they depend on (file hash, compensation
   matrix, transform parameters, effective gate geometry of every ancestor, kernel version), so a cached
-  result is valid by construction ([ADR-0004](../adr/#adr-0004-content-addressed-caching)).
+  result is valid by construction ([ADR-0004](../adr/0004-content-addressed-caching)).
