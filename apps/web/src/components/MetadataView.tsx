@@ -1,21 +1,14 @@
 import { toCsv } from '@flowmeris/export';
-import { type Group, type Variable, type Workspace, removeVariable } from '@flowmeris/model';
+import type { Group, Workspace } from '@flowmeris/model';
 import { PLATE_COLS, PLATE_ROWS, normalizeWell, parseDelimited, wellFromSample } from '@flowmeris/table';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { download, safeName } from '../lib/download.ts';
-import {
-  type CellRect,
-  addVariable,
-  coerce,
-  distinctValues,
-  normRect,
-  pasteTargets,
-  retype,
-  setValue,
-} from '../lib/metadata.ts';
+import { type CellRect, coerce, distinctValues, normRect, pasteTargets, setValue } from '../lib/metadata.ts';
 import { type Sheet, TABLE_ACCEPT, readTableFile } from '../lib/sheets.ts';
 import { toast, useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { ImportDialog } from './ImportDialog.tsx';
+import { SettingsIcon } from './Inspector.tsx';
+import { activeVariable, deleteVariable } from './MetadataInspector.tsx';
 import { PlateMap } from './PlateMap.tsx';
 
 function display(x: number | string | undefined): string {
@@ -39,119 +32,6 @@ type PartialWell = { row?: string; col?: number };
 
 function wellParts(well: string | undefined, partial: PartialWell | undefined): PartialWell {
   return well ? { row: well[0], col: Number(well.slice(1)) } : (partial ?? {});
-}
-
-/** Delete a variable and its values everywhere, after asking; true if deleted. */
-function deleteVariable(v: Variable, mutate: ReturnType<typeof useStore.getState>['mutate']): boolean {
-  if (!window.confirm(`Delete “${v.name}” and its values in all groups?`)) return false;
-  mutate('Delete variable', (w) => removeVariable(w, v.id));
-  return true;
-}
-
-/** Editing one variable's name, unit, type and category order. */
-function VariableEditor({ v, onClose }: { v: Variable; onClose: () => void }) {
-  const ws = useStore((s) => s.ws);
-  const mutate = useStore((s) => s.mutate);
-  const edit = (label: string, fn: (x: Variable) => void, merge?: string) =>
-    mutate(label, (w) => fn(w.variables.find((x) => x.id === v.id)!), merge);
-  const levels = v.type === 'categorical' ? distinctValues(ws, v, Object.keys(ws.samples)).map(String) : [];
-  const move = (i: number, d: number) =>
-    edit('Reorder categories', (x) => {
-      const order = [...levels];
-      const [item] = order.splice(i, 1);
-      order.splice(i + d, 0, item!);
-      x.levels = order;
-    });
-  return (
-    <div className="variable-editor">
-      <label className="field">
-        Name
-        <input
-          type="text"
-          value={v.name}
-          onChange={(e) => edit('Rename variable', (x) => void (x.name = e.target.value), `vname:${v.id}`)}
-        />
-      </label>
-      <label className="field">
-        Unit
-        <input
-          type="text"
-          value={v.unit ?? ''}
-          placeholder="e.g. nM"
-          onChange={(e) =>
-            edit(
-              'Change unit',
-              (x) => {
-                if (e.target.value) x.unit = e.target.value;
-                else x.unit = undefined;
-              },
-              `vunit:${v.id}`,
-            )
-          }
-        />
-      </label>
-      <label className="field">
-        Type
-        <select
-          value={v.type}
-          onChange={(e) => {
-            const type = e.target.value as Variable['type'];
-            let dropped = 0;
-            mutate('Change variable type', (w) => void (dropped = retype(w, v.id, type)));
-            if (dropped) toast(`${dropped} value(s) were not numbers and were cleared (undo to restore).`);
-          }}
-        >
-          <option value="numeric">numeric</option>
-          <option value="categorical">categorical</option>
-        </select>
-      </label>
-      {v.type === 'categorical' && levels.length > 1 && (
-        <div className="field">
-          Category order
-          <ol className="level-list">
-            {levels.map((l, i) => (
-              <li key={l}>
-                {l}
-                <button
-                  type="button"
-                  className="icon"
-                  disabled={i === 0}
-                  onClick={() => move(i, -1)}
-                  title="Move up"
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  className="icon"
-                  disabled={i === levels.length - 1}
-                  onClick={() => move(i, 1)}
-                  title="Move down"
-                >
-                  ↓
-                </button>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-      <div className="row">
-        <button
-          type="button"
-          className="danger"
-          onClick={() => {
-            if (deleteVariable(v, mutate)) onClose();
-          }}
-        >
-          Delete
-        </button>
-        <div className="spacer" />
-        <button type="button" onClick={onClose}>
-          Done
-        </button>
-      </div>
-    </div>
-  );
 }
 
 /**
@@ -549,23 +429,17 @@ export function MetadataView() {
   const ws = useStore((s) => s.ws);
   const mutate = useStore((s) => s.mutate);
   const names = useSampleNames(group);
-  const [mode, setMode] = useState<'table' | 'plate'>('table');
-  const [editing, setEditing] = useState<string | null>(null);
-  const [activeVar, setActiveVar] = useState<string | null>(null);
+  const mode = useStore((s) => s.ui.metaMode);
+  const metaVarId = useStore((s) => s.ui.metaVarId);
+  const settingsOpen = useStore((s) => s.ui.metaSettings);
+  const setUi = useStore((s) => s.setUi);
+  const setMode = (m: 'table' | 'plate') => setUi({ metaMode: m });
   const [sheets, setSheets] = useState<Sheet[] | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   if (!group) return <div className="empty">Select a group.</div>;
 
   const vars = ws.variables;
-  const active = vars.find((v) => v.id === activeVar) ?? vars[0];
-  const editingVar = vars.find((v) => v.id === editing);
-
-  const add = (type: Variable['type']) => {
-    let id = '';
-    mutate('Add variable', (w) => void (id = addVariable(w, type === 'numeric' ? 'Dose' : 'Group', type)));
-    setEditing(id);
-    setActiveVar(id);
-  };
+  const active = activeVariable(vars, metaVarId);
 
   const detectWells = () => {
     let n = 0;
@@ -635,6 +509,16 @@ export function MetadataView() {
         >
           Detect wells
         </button>
+        <button
+          type="button"
+          className="tiles-settings"
+          aria-expanded={settingsOpen}
+          aria-label="Settings"
+          title={settingsOpen ? 'Hide settings' : 'Show settings'}
+          onClick={() => setUi({ metaSettings: !settingsOpen })}
+        >
+          <SettingsIcon />
+        </button>
         <input
           ref={fileInput}
           type="file"
@@ -648,47 +532,30 @@ export function MetadataView() {
           data-testid="meta-input"
         />
       </div>
-      <div className="variable-bar">
-        <span className="muted small">Variables:</span>
-        {vars.map((v) => (
-          <span key={v.id} className={`chip${active?.id === v.id && mode === 'plate' ? ' on' : ''}`}>
+      {vars.length > 0 && (
+        <div className="variable-bar">
+          <span className="muted small">Variables:</span>
+          {vars.map((v) => (
             <button
+              key={v.id}
               type="button"
-              className="link"
-              aria-expanded={editing === v.id}
-              onClick={() => {
-                setActiveVar(v.id);
-                setEditing(editing === v.id ? null : v.id);
-              }}
+              className={`chip${active?.id === v.id ? ' on' : ''}`}
+              aria-pressed={active?.id === v.id}
+              onClick={() => setUi({ metaVarId: v.id })}
               onKeyDown={(e) => {
                 if (e.key !== 'Delete' && e.key !== 'Backspace') return;
                 e.preventDefault();
-                if (deleteVariable(v, mutate) && editing === v.id) setEditing(null);
+                deleteVariable(v, mutate);
               }}
-              title="Edit variable (Delete to remove)"
+              title="Select (Delete to remove)"
             >
               {v.name}
               {v.unit ? ` (${v.unit})` : ''}
               <span className="muted small">{v.type === 'numeric' ? '#' : 'abc'}</span>
             </button>
-            {editingVar?.id === v.id && <VariableEditor key={v.id} v={v} onClose={() => setEditing(null)} />}
-          </span>
-        ))}
-        <button
-          type="button"
-          onClick={() => add('numeric')}
-          title="A number per sample, e.g. dose, time, concentration"
-        >
-          + Numeric
-        </button>
-        <button
-          type="button"
-          onClick={() => add('categorical')}
-          title="A label per sample, e.g. replicate, condition, cell line"
-        >
-          + Categorical
-        </button>
-      </div>
+          ))}
+        </div>
+      )}
       {mode === 'table' ? <MetaTable group={group} /> : <PlateMap group={group} variable={active} />}
       {sheets && <ImportDialog group={group} sheets={sheets} onClose={() => setSheets(null)} />}
     </div>

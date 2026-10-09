@@ -2149,50 +2149,64 @@ table.stats td.text-cell {
 button.chip:hover {
   border-color: var(--accent);
 }
-/* A popover under its variable's chip, with an arrow pointing at the chip. */
-.variable-editor {
-  position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
-  z-index: 20;
-  width: max-content;
-  max-width: min(420px, 90vw);
+/* Metadata settings panel: add buttons pinned under the tabs, a card per variable. */
+.meta-add {
+  margin-top: 6px;
+  gap: 6px;
+}
+.meta-add button {
+  flex: 1;
+}
+.meta-inspector .var-type {
+  margin-left: auto;
+  padding-right: 4px;
+}
+.variable-fields {
   display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.meta-inspector .row input[type="text"] {
+  min-width: 0;
+  width: 100%;
+}
+.meta-selection {
+  margin: 0 0 8px;
+}
+.meta-inspector .grid2 .field {
   flex-wrap: wrap;
-  gap: 10px 14px;
-  align-items: flex-start;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
-  cursor: default;
 }
-.variable-editor::before {
-  content: "";
-  position: absolute;
-  top: -6px;
-  left: 18px;
-  width: 10px;
-  height: 10px;
-  background: var(--surface);
-  border-left: 1px solid var(--border);
-  border-top: 1px solid var(--border);
-  transform: rotate(45deg);
-}
-.variable-editor > .row,
-.variable-editor > p {
-  flex-basis: 100%;
-  margin: 0;
-}
+/* Category order: drag an item by any part of it; a line marks where it will land. */
 .level-list {
-  margin: 0;
-  padding-left: 18px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 .level-list li {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  cursor: grab;
+}
+.level-list li .grip {
+  color: var(--muted);
+  font-size: 11px;
+}
+.level-list li.dragging {
+  opacity: 0.4;
+}
+.level-list li.drop-before {
+  box-shadow: 0 -2px 0 var(--accent);
+}
+.level-list li.drop-after {
+  box-shadow: 0 2px 0 var(--accent);
 }
 /* Columns fit their content (inputs get a min-width from their longest value) instead of filling the width. */
 table.meta-table {
@@ -2305,30 +2319,6 @@ table.meta-table {
   margin: 0 6px;
   border-radius: 2px;
   vertical-align: middle;
-}
-.plate-actions {
-  flex: 0 1 300px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.plate-actions p {
-  margin: 0;
-}
-.plate-actions fieldset {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: var(--surface);
-}
-.plate-actions input[type="text"] {
-  min-width: 0;
-  width: 100%;
-}
-.plate-actions .grid2 .field {
-  flex-wrap: wrap;
 }
 .import-dialog {
   width: min(760px, calc(100vw - 32px));

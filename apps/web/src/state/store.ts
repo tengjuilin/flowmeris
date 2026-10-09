@@ -71,6 +71,14 @@ interface UiState {
   pathPanelHeight: number;
   /** Whether the Plot view's settings panel (for its selected grid plot) is shown. */
   gridSettings: boolean;
+  /** Whether the Metadata view's settings panel is shown. */
+  metaSettings: boolean;
+  /** Layout of the Metadata view: the sample table or the plate map. */
+  metaMode: 'table' | 'plate';
+  /** Variable selected in the Metadata view (open in its panel, coloured on the plate map). */
+  metaVarId: string | null;
+  /** Wells selected on the plate map. */
+  plateSel: string[];
   missing: Record<string, true>;
   /** Samples left out of the Tiles, Ridge and Statistics views (unchecked in the sidebar). */
   excluded: Record<string, true>;
@@ -179,6 +187,10 @@ export const useStore = create<Store>((set, get) => ({
     treePlotSize: 280,
     pathPanelHeight: 200,
     gridSettings: false,
+    metaSettings: true,
+    metaMode: 'table',
+    metaVarId: null,
+    plateSel: [],
     missing: {},
     excluded: {},
     ingest: null,

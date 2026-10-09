@@ -1,8 +1,8 @@
-import type { Group, Variable } from '@flowmeris/model';
+import type { Group, Variable, Workspace } from '@flowmeris/model';
 import { ALL_WELLS, PLATE_COLS, PLATE_ROWS, wellIndex, wellName } from '@flowmeris/table';
 import { useEffect, useMemo, useState } from 'react';
-import { coerce, distinctValues, inkOn, setValue, valueColors } from '../lib/metadata.ts';
-import { toast, useSampleNames, useStore } from '../state/store.ts';
+import { distinctValues, inkOn, valueColors } from '../lib/metadata.ts';
+import { useSampleNames, useStore } from '../state/store.ts';
 
 function fmtValue(x: unknown): string {
   if (typeof x !== 'number') return x === undefined ? '' : String(x);
@@ -20,16 +20,31 @@ function rect(a: string, b: string): string[] {
   return out;
 }
 
+/** Samples of each well, among the given samples. */
+export function samplesByWell(ws: Workspace, sampleIds: string[]): Map<string, string[]> {
+  const m = new Map<string, string[]>();
+  for (const id of sampleIds) {
+    const w = ws.samples[id]?.well;
+    if (!w) continue;
+    const list = m.get(w);
+    if (list) list.push(id);
+    else m.set(w, [id]);
+  }
+  return m;
+}
+
 /**
  * 96-well plate map: select wells (click, drag, shift/⌘-click, row and column
- * headers), then set a variable's value for the samples in them, or fill a
- * numeric series (e.g. a 2-fold dilution across columns).
+ * headers); the Values tab of the settings panel then sets a variable's value
+ * for the samples in them, or fills a numeric series.
  */
 export function PlateMap({ group, variable }: { group: Group; variable: Variable | undefined }) {
   const ws = useStore((s) => s.ws);
-  const mutate = useStore((s) => s.mutate);
+  const plateSel = useStore((s) => s.ui.plateSel);
+  const setUi = useStore((s) => s.setUi);
   const names = useSampleNames(group);
-  const [sel, setSel] = useState<Set<string>>(new Set());
+  const sel = useMemo(() => new Set(plateSel), [plateSel]);
+  const setSel = (next: Set<string>) => setUi({ plateSel: [...next] });
   const [drag, setDrag] = useState<{ anchor: string; base: Set<string> } | null>(null);
 
   useEffect(() => {
@@ -39,17 +54,7 @@ export function PlateMap({ group, variable }: { group: Group; variable: Variable
     return () => window.removeEventListener('pointerup', up);
   }, [drag]);
 
-  const byWell = useMemo(() => {
-    const m = new Map<string, string[]>();
-    for (const id of group.sampleIds) {
-      const w = ws.samples[id]?.well;
-      if (!w) continue;
-      const list = m.get(w);
-      if (list) list.push(id);
-      else m.set(w, [id]);
-    }
-    return m;
-  }, [group.sampleIds, ws.samples]);
+  const byWell = useMemo(() => samplesByWell(ws, group.sampleIds), [ws, group.sampleIds]);
   const unplaced = group.sampleIds.filter((id) => !ws.samples[id]?.well);
 
   const values = useMemo(
@@ -57,7 +62,6 @@ export function PlateMap({ group, variable }: { group: Group; variable: Variable
     [ws, variable, group.sampleIds],
   );
   const colors = useMemo(() => (variable ? valueColors(variable, values) : undefined), [variable, values]);
-  const selectedSamples = [...sel].flatMap((w) => byWell.get(w) ?? []);
 
   const pick = (wells: string[], e: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }) => {
     const add = e.shiftKey || e.metaKey || e.ctrlKey;
@@ -65,17 +69,6 @@ export function PlateMap({ group, variable }: { group: Group; variable: Variable
     const allOn = add && wells.every((w) => sel.has(w));
     for (const w of wells) allOn ? next.delete(w) : next.add(w);
     setSel(next);
-  };
-
-  const apply = (value: number | string | null, label: string) => {
-    if (!variable) return;
-    if (selectedSamples.length === 0) {
-      toast('Select wells that contain samples first.');
-      return;
-    }
-    mutate(label, (w) => {
-      for (const id of selectedSamples) setValue(w, id, variable.id, value);
-    });
   };
 
   return (
@@ -184,186 +177,6 @@ export function PlateMap({ group, variable }: { group: Group; variable: Variable
           )}
         </div>
       </div>
-      <PlateActions
-        variable={variable}
-        nWells={sel.size}
-        nSamples={selectedSamples.length}
-        levels={values}
-        selection={sel}
-        byWell={byWell}
-        onApply={apply}
-        onClearSelection={() => setSel(new Set())}
-      />
     </div>
-  );
-}
-
-function PlateActions(props: {
-  variable: Variable | undefined;
-  nWells: number;
-  nSamples: number;
-  levels: unknown[];
-  selection: Set<string>;
-  byWell: Map<string, string[]>;
-  onApply: (value: number | string | null, label: string) => void;
-  onClearSelection: () => void;
-}) {
-  const { variable } = props;
-  const mutate = useStore((s) => s.mutate);
-  const [raw, setRaw] = useState('');
-  const [series, setSeries] = useState({
-    start: '100',
-    factor: '0.5',
-    op: 'mul' as 'mul' | 'add',
-    along: 'cols' as 'cols' | 'rows',
-    reverse: false,
-  });
-  if (!variable)
-    return (
-      <aside className="plate-actions">
-        <p className="muted">Add a variable to assign values on the plate.</p>
-      </aside>
-    );
-
-  const set = () => {
-    const v = coerce(variable, raw);
-    if (v === undefined) {
-      toast(`“${raw}” is not a number.`);
-      return;
-    }
-    props.onApply(v, `Set ${variable.name}`);
-  };
-
-  const fillSeries = () => {
-    const start = Number(series.start);
-    const k = Number(series.factor);
-    if (!Number.isFinite(start) || !Number.isFinite(k)) {
-      toast('Series start and step must be numbers.');
-      return;
-    }
-    const axis = series.along === 'cols' ? 1 : 0;
-    const steps = [...new Set([...props.selection].map((w) => wellIndex(w)[axis]))].sort((a, b) => a - b);
-    if (series.reverse) steps.reverse();
-    const valueAt = (i: number) => (series.op === 'mul' ? start * k ** i : start + k * i);
-    mutate(`Fill ${variable.name} series`, (ws) => {
-      for (const w of props.selection) {
-        const i = steps.indexOf(wellIndex(w)[axis]);
-        for (const id of props.byWell.get(w) ?? []) {
-          const s = ws.samples[id];
-          if (s) s.meta[variable.id] = Number(valueAt(i).toPrecision(12));
-        }
-      }
-    });
-  };
-
-  return (
-    <aside className="plate-actions">
-      <p className="small">
-        <strong>{props.nWells}</strong> well(s) selected, <strong>{props.nSamples}</strong> sample(s).{' '}
-        {props.nWells > 0 && (
-          <button type="button" className="link" onClick={props.onClearSelection}>
-            clear selection
-          </button>
-        )}
-        <br />
-        <span className="muted">
-          Drag to select a block; shift/⌘-click to add; click row or column labels.
-        </span>
-      </p>
-      <fieldset>
-        <legend>Set {variable.name}</legend>
-        <div className="row">
-          <input
-            type="text"
-            list="plate-levels"
-            value={raw}
-            placeholder={variable.type === 'numeric' ? 'number' : 'value'}
-            onChange={(e) => setRaw(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && set()}
-            aria-label={`Value of ${variable.name}`}
-          />
-          <datalist id="plate-levels">
-            {props.levels.map((l) => (
-              <option key={String(l)} value={String(l)} />
-            ))}
-          </datalist>
-          <button type="button" className="primary" onClick={set} disabled={raw.trim() === ''}>
-            Set
-          </button>
-          <button type="button" onClick={() => props.onApply(null, `Clear ${variable.name}`)}>
-            Clear
-          </button>
-        </div>
-        {variable.type === 'categorical' && props.levels.length > 0 && (
-          <div className="row wrap">
-            {props.levels.map((l) => (
-              <button
-                key={String(l)}
-                type="button"
-                className="chip"
-                onClick={() => props.onApply(String(l), `Set ${variable.name}`)}
-              >
-                {String(l)}
-              </button>
-            ))}
-          </div>
-        )}
-      </fieldset>
-      {variable.type === 'numeric' && (
-        <fieldset>
-          <legend>Fill series</legend>
-          <div className="grid2">
-            <label className="field">
-              Start
-              <input
-                type="text"
-                value={series.start}
-                onChange={(e) => setSeries({ ...series, start: e.target.value })}
-              />
-            </label>
-            <label className="field">
-              <select
-                value={series.op}
-                onChange={(e) => setSeries({ ...series, op: e.target.value as 'mul' | 'add' })}
-                aria-label="Series kind"
-              >
-                <option value="mul">× factor</option>
-                <option value="add">+ step</option>
-              </select>
-              <input
-                type="text"
-                value={series.factor}
-                onChange={(e) => setSeries({ ...series, factor: e.target.value })}
-              />
-            </label>
-            <label className="field">
-              Along
-              <select
-                value={series.along}
-                onChange={(e) => setSeries({ ...series, along: e.target.value as 'cols' | 'rows' })}
-              >
-                <option value="cols">columns (→)</option>
-                <option value="rows">rows (↓)</option>
-              </select>
-            </label>
-            <label className="field check">
-              <input
-                type="checkbox"
-                checked={series.reverse}
-                onChange={(e) => setSeries({ ...series, reverse: e.target.checked })}
-              />
-              Reverse
-            </label>
-          </div>
-          <button type="button" onClick={fillSeries} disabled={props.nSamples === 0}>
-            Fill selection
-          </button>
-          <p className="muted small">
-            Each selected {series.along === 'cols' ? 'column' : 'row'} gets the next value, e.g. start 100, ×
-            0.5 → 100, 50, 25…
-          </p>
-        </fieldset>
-      )}
-    </aside>
   );
 }

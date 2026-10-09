@@ -6,6 +6,7 @@ import { Inspector } from './components/GateInspector.tsx';
 import { GatingPathView } from './components/GatingPathView.tsx';
 import { RidgeExportCard, RidgeView, TilesView } from './components/GroupViews.tsx';
 import { SettingsIcon } from './components/Inspector.tsx';
+import { MetadataInspector } from './components/MetadataInspector.tsx';
 import { MetadataView } from './components/MetadataView.tsx';
 import { PlotGridView } from './components/PlotGridView.tsx';
 import { GateExportCard, GateToolbar, PlotPanel, drill } from './components/PlotPanel.tsx';
@@ -294,8 +295,11 @@ export function App() {
   // On narrow windows the settings panel is a drawer opened from the Settings button.
   const [drawer, setDrawer] = useState(false);
   const hasInspector = ui.view === 'gate' || ui.view === 'ridge' || ui.view === 'stats';
-  // The Tiles and Plot views' settings panels are shown and hidden from their own toolbars.
-  const tilesPanel = (ui.view === 'tiles' && ui.tilesSettings) || (ui.view === 'plot' && ui.gridSettings);
+  // The Tiles, Plot and Metadata views' settings panels are shown and hidden from their own toolbars.
+  const tilesPanel =
+    (ui.view === 'tiles' && ui.tilesSettings) ||
+    (ui.view === 'plot' && ui.gridSettings) ||
+    (ui.view === 'metadata' && ui.metaSettings);
   useEffect(() => {
     if (!drawer) return;
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && setDrawer(false);
@@ -434,7 +438,13 @@ export function App() {
                 data-open={tilesPanel || drawer}
                 onClick={() =>
                   tilesPanel
-                    ? setUi(ui.view === 'plot' ? { gridSettings: false } : { tilesSettings: false })
+                    ? setUi(
+                        ui.view === 'plot'
+                          ? { gridSettings: false }
+                          : ui.view === 'metadata'
+                            ? { metaSettings: false }
+                            : { tilesSettings: false },
+                      )
                     : setDrawer(false)
                 }
               />
@@ -447,6 +457,8 @@ export function App() {
                   <Inspector key="grid" target="grid" />
                 ) : ui.view === 'stats' ? (
                   <StatsInspector />
+                ) : ui.view === 'metadata' ? (
+                  <MetadataInspector />
                 ) : (
                   <RidgeInspector />
                 )}
