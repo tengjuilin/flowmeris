@@ -110,6 +110,46 @@ function openInGateView(group: Group, cell: PlotCell, sampleId: string | undefin
   });
 }
 
+/**
+ * Open a Tiles plot of `sampleId` in the Plot view: select the grid plot already showing it (same
+ * population, type and axes, pinned to that sample), else put a copy pinned to the sample in the next
+ * empty cell, leaving the other grid plots as they are.
+ */
+export function openTileInGrid(group: Group, plot: PlotSpec, sampleId: string) {
+  const same = (c: PlotCell | null): c is PlotCell =>
+    !!c &&
+    c.sampleId === sampleId &&
+    c.population === plot.population &&
+    c.kind === plot.kind &&
+    c.x.channel === plot.x.channel &&
+    (plot.kind === 'histogram' || c.y?.channel === plot.y?.channel);
+  let id = group.grid.cells.find(same)?.id;
+  if (!id) {
+    const cellId = newId('cell_');
+    editGrid(group.id, 'Open tile in Plot view', (g) => {
+      const slot = g.grid.cells.findIndex((c) => c === null);
+      const c: PlotCell = {
+        id: cellId,
+        population: plot.population,
+        sampleId,
+        overlay: [],
+        kind: plot.kind,
+        x: { ...plot.x },
+        ...(plot.y && plot.kind !== 'histogram' ? { y: { ...plot.y } } : {}),
+        // A tile drawn with the Tiles defaults leaves the cell on the grid defaults (the same).
+        style:
+          plot.style.figure === TILE_FIGURE
+            ? structuredClone({ ...plot.style, figure: undefined })
+            : structuredClone(plot.style),
+      };
+      if (slot >= 0) g.grid.cells[slot] = c;
+      else g.grid.cells.push(c);
+    });
+    id = cellId;
+  }
+  useStore.getState().setUi({ view: 'plot', sampleId, gridCellId: id, selectedGateId: null });
+}
+
 /** The sample a cell gates and shows: its pinned sample, else the selected one. */
 function cellSample(group: Group, cell: PlotCell, selected: string | null): string | undefined {
   if (cell.sampleId && group.sampleIds.includes(cell.sampleId)) return cell.sampleId;

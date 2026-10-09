@@ -21,6 +21,7 @@ import { ExportMenu } from './ExportMenu.tsx';
 import { OpenInIcon, SettingsIcon } from './Inspector.tsx';
 import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './PickerMenu.tsx';
 import { PlotCanvas } from './PlotCanvas.tsx';
+import { openTileInGrid } from './PlotGridView.tsx';
 import {
   EditScopeToggle,
   ToolButtons,
@@ -109,9 +110,9 @@ const Tile = memo(function Tile({
         <button
           type="button"
           className="icon labeled"
-          title="Open in the Plot view"
+          title="Open in the Plot view (as a new plot unless it is already there)"
           aria-label={`Open ${name} in the Plot view`}
-          onClick={() => setUi({ sampleId, view: 'plot' })}
+          onClick={() => openTileInGrid(group, plot, sampleId)}
         >
           <OpenInIcon />
           Plot
