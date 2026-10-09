@@ -1,6 +1,6 @@
 import { type Group, type Variable, removeVariable } from '@flowmeris/model';
 import { wellIndex } from '@flowmeris/table';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { addVariable, coerce, distinctValues, retype, setValue } from '../lib/metadata.ts';
 import { toast, useGroup, useStore } from '../state/store.ts';
 import { Section } from './Inspector.tsx';
@@ -175,7 +175,7 @@ function ValuesTab({ group, variable }: { group: Group; variable: Variable | und
     reverse: false,
   });
 
-  if (!variable) return <p className="muted small">Add a variable to assign values on the plate.</p>;
+  if (!variable) return null;
 
   const byWell = samplesByWell(ws, group.sampleIds);
   const selected = plateSel.flatMap((w) => byWell.get(w) ?? []);
@@ -231,10 +231,6 @@ function ValuesTab({ group, variable }: { group: Group; variable: Variable | und
             clear
           </button>
         )}
-        <br />
-        <span className="muted">
-          Drag to select a block; shift/⌘-click to add; click row or column labels.
-        </span>
       </p>
       <Section
         id="setValue"
@@ -245,18 +241,13 @@ function ValuesTab({ group, variable }: { group: Group; variable: Variable | und
         <div className="row">
           <input
             type="text"
-            list="plate-levels"
+            autoComplete="off"
             value={raw}
             placeholder={variable.type === 'numeric' ? 'number' : 'value'}
             onChange={(e) => setRaw(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && set()}
             aria-label={`Value of ${variable.name}`}
           />
-          <datalist id="plate-levels">
-            {levels.map((l) => (
-              <option key={String(l)} value={String(l)} />
-            ))}
-          </datalist>
           <button type="button" className="primary" onClick={set} disabled={raw.trim() === ''}>
             Set
           </button>
@@ -279,69 +270,61 @@ function ValuesTab({ group, variable }: { group: Group; variable: Variable | und
           </div>
         )}
       </Section>
-      <Section
-        id="fillSeries"
-        title="Fill series"
-        open={open.series}
-        onToggle={() => setOpen({ ...open, series: !open.series })}
-      >
-        {variable.type !== 'numeric' ? (
-          <p className="muted small">For numeric variables; {variable.name} is categorical.</p>
-        ) : (
-          <>
-            <div className="grid2">
-              <label className="field">
-                Start
-                <input
-                  type="text"
-                  value={series.start}
-                  onChange={(e) => setSeries({ ...series, start: e.target.value })}
-                />
-              </label>
-              <label className="field">
-                <select
-                  value={series.op}
-                  onChange={(e) => setSeries({ ...series, op: e.target.value as 'mul' | 'add' })}
-                  aria-label="Series kind"
-                >
-                  <option value="mul">× factor</option>
-                  <option value="add">+ step</option>
-                </select>
-                <input
-                  type="text"
-                  value={series.factor}
-                  onChange={(e) => setSeries({ ...series, factor: e.target.value })}
-                />
-              </label>
-              <label className="field">
-                Along
-                <select
-                  value={series.along}
-                  onChange={(e) => setSeries({ ...series, along: e.target.value as 'cols' | 'rows' })}
-                >
-                  <option value="cols">columns (→)</option>
-                  <option value="rows">rows (↓)</option>
-                </select>
-              </label>
-              <label className="field check">
-                <input
-                  type="checkbox"
-                  checked={series.reverse}
-                  onChange={(e) => setSeries({ ...series, reverse: e.target.checked })}
-                />
-                Reverse
-              </label>
-            </div>
-            <button type="button" onClick={fillSeries} disabled={selected.length === 0}>
-              Fill selection
-            </button>
-            <p className="muted small">
-              Each selected {series.along === 'cols' ? 'column' : 'row'} gets the next value, e.g. start 100,
-              × 0.5 → 100, 50, 25…
-            </p>
-          </>
-        )}
-      </Section>
+      {variable.type === 'numeric' && (
+        <Section
+          id="fillSeries"
+          title="Fill series"
+          open={open.series}
+          onToggle={() => setOpen({ ...open, series: !open.series })}
+        >
+          <div className="grid2">
+            <label className="field">
+              Start
+              <input
+                type="text"
+                value={series.start}
+                onChange={(e) => setSeries({ ...series, start: e.target.value })}
+              />
+            </label>
+            <label className="field">
+              <select
+                value={series.op}
+                onChange={(e) => setSeries({ ...series, op: e.target.value as 'mul' | 'add' })}
+                aria-label="Series kind"
+              >
+                <option value="mul">× factor</option>
+                <option value="add">+ step</option>
+              </select>
+              <input
+                type="text"
+                value={series.factor}
+                onChange={(e) => setSeries({ ...series, factor: e.target.value })}
+              />
+            </label>
+            <label className="field">
+              Along
+              <select
+                value={series.along}
+                onChange={(e) => setSeries({ ...series, along: e.target.value as 'cols' | 'rows' })}
+              >
+                <option value="cols">columns (→)</option>
+                <option value="rows">rows (↓)</option>
+              </select>
+            </label>
+            <label className="field check">
+              <input
+                type="checkbox"
+                checked={series.reverse}
+                onChange={(e) => setSeries({ ...series, reverse: e.target.checked })}
+              />
+              Reverse
+            </label>
+          </div>
+          <button type="button" onClick={fillSeries} disabled={selected.length === 0}>
+            Fill selection
+          </button>
+        </Section>
+      )}
     </>
   );
 }
@@ -354,7 +337,9 @@ export function MetadataInspector() {
   const metaVarId = useStore((s) => s.ui.metaVarId);
   const setUi = useStore((s) => s.setUi);
   const mutate = useStore((s) => s.mutate);
-  const [tab, setTab] = useState<MetaTab>('variables');
+  // The plate map opens on Values (what it is for), the table on Variables.
+  const [tab, setTab] = useState<MetaTab>(mode === 'plate' ? 'values' : 'variables');
+  useEffect(() => setTab(mode === 'plate' ? 'values' : 'variables'), [mode]);
   if (!group) return null;
   // Values act on the plate map's selected wells, so that tab is for the plate map only.
   const shown: MetaTab = mode === 'plate' ? tab : 'variables';
@@ -408,23 +393,19 @@ export function MetadataInspector() {
       </div>
       <div id="meta-tabpanel" role="tabpanel" aria-labelledby={`meta-tab-${shown}`}>
         {shown === 'variables' ? (
-          vars.length === 0 ? (
-            <p className="muted small">No variables yet: add one above, or import a table.</p>
-          ) : (
-            vars.map((v) => (
-              <Section
-                key={v.id}
-                id={`var-${v.id}`}
-                title={`${v.name}${v.unit ? ` (${v.unit})` : ''}`}
-                open={openId === v.id}
-                // Closing leaves no card open ('' matches none); the plate map then shows the first variable.
-                onToggle={() => setUi({ metaVarId: openId === v.id ? '' : v.id })}
-                actions={<span className="muted small var-type">{v.type === 'numeric' ? '#' : 'abc'}</span>}
-              >
-                <VariableFields v={v} />
-              </Section>
-            ))
-          )
+          vars.map((v) => (
+            <Section
+              key={v.id}
+              id={`var-${v.id}`}
+              title={`${v.name}${v.unit ? ` (${v.unit})` : ''}`}
+              open={openId === v.id}
+              // Closing leaves no card open ('' matches none); the plate map then shows the first variable.
+              onToggle={() => setUi({ metaVarId: openId === v.id ? '' : v.id })}
+              actions={<span className="muted small var-type">{v.type === 'numeric' ? '#' : 'abc'}</span>}
+            >
+              <VariableFields v={v} />
+            </Section>
+          ))
         ) : (
           <ValuesTab group={group} variable={activeVariable(vars, metaVarId)} />
         )}
