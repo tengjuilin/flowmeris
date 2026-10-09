@@ -821,9 +821,6 @@ export function StatsView() {
         <button type="button" onClick={addStat}>
           Add statistic
         </button>
-        <span className="muted small">
-          Values in linear (compensated) units. Definitions: docs → Methods → Statistics.
-        </span>
       </div>
       <div className="analysis-bar">
         <DerivedPanel group={group} columns={perSample.columns} errors={errors} valuesOf={valuesOf} />
@@ -854,7 +851,7 @@ export function StatsView() {
                 if (summary && display.columns[i - 1]?.source === c.source) return null;
                 let span = 1;
                 if (summary) while (display.columns[i + span]?.source === c.source) span++;
-                const specId = !aggregated ? statByKey.get(c.key)?.specId : undefined;
+                const specId = statByKey.get(summary ? c.source! : c.key)?.specId;
                 return (
                   <th
                     key={c.key}
