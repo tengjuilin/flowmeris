@@ -47,6 +47,17 @@ export function PlateMap({ group, variable }: { group: Group; variable: Variable
   const setSel = (next: Set<string>) => setUi({ plateSel: [...next] });
   const [drag, setDrag] = useState<{ anchor: string; base: Set<string> } | null>(null);
 
+  // Esc clears the selection (unless typing, where Esc belongs to the field).
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (e.key !== 'Escape' || t?.closest('input, select, textarea')) return;
+      if (useStore.getState().ui.plateSel.length) setUi({ plateSel: [] });
+    };
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [setUi]);
+
   useEffect(() => {
     if (!drag) return;
     const up = () => setDrag(null);

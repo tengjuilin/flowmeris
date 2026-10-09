@@ -164,7 +164,6 @@ function ValuesTab({ group, variable }: { group: Group; variable: Variable | und
   const ws = useStore((s) => s.ws);
   const mutate = useStore((s) => s.mutate);
   const plateSel = useStore((s) => s.ui.plateSel);
-  const setUi = useStore((s) => s.setUi);
   const [open, setOpen] = useState({ set: true, series: true });
   const [raw, setRaw] = useState('');
   const [series, setSeries] = useState({
@@ -225,12 +224,8 @@ function ValuesTab({ group, variable }: { group: Group; variable: Variable | und
   return (
     <>
       <p className="small meta-selection">
-        <strong>{plateSel.length}</strong> well(s), <strong>{selected.length}</strong> sample(s) selected.{' '}
-        {plateSel.length > 0 && (
-          <button type="button" className="link" onClick={() => setUi({ plateSel: [] })}>
-            clear
-          </button>
-        )}
+        <strong>{plateSel.length}</strong> {plateSel.length === 1 ? 'well' : 'wells'},{' '}
+        <strong>{selected.length}</strong> {selected.length === 1 ? 'sample' : 'samples'}
       </p>
       <Section
         id="setValue"
