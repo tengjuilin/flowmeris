@@ -175,7 +175,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   ref,
 ) {
   // Narrow subscriptions: a plot (e.g. each of many tiles) re-renders only when what it shows changes.
-  const missingMap = useStore((s) => s.ui.missing);
+  const missingMap = useStore((s) => s.status.missing);
   const tool = useStore((s) => (interactive ? s.ui.tool : 'select'));
   const selectedGateId = useStore((s) => (interactive ? s.ui.selectedGateId : null));
   const setUi = useStore((s) => s.setUi);

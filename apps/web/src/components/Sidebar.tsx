@@ -33,6 +33,7 @@ function SelectionControls({ g }: { g: Group }) {
 export function Sidebar() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
+  const missing = useStore((s) => s.status.missing);
   const setUi = useStore((s) => s.setUi);
   const mutate = useStore((s) => s.mutate);
   const activeGroup = ws.groups.find((g) => g.id === ui.groupId);
@@ -188,7 +189,7 @@ export function Sidebar() {
                         >
                           <span className="name">{names[id] ?? s.fileName}</span>
                           <span className="badges">
-                            {ui.missing[id] && (
+                            {missing[id] && (
                               <span
                                 className="badge danger"
                                 title="Event data missing from browser storage — re-add the file"

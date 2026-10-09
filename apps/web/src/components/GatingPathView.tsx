@@ -302,12 +302,13 @@ export function GatingPathView() {
   const ws = useStore((s) => s.ws);
   const uiSampleId = useStore((s) => s.ui.sampleId);
   const uiPopId = useStore((s) => s.ui.popId);
-  const uiMissing = useStore((s) => s.ui.missing);
-  const picked = useStore((s) => s.ui.pathPlotSize);
-  const mode = useStore((s) => s.ui.pathMode);
-  const treeSize = useStore((s) => s.ui.treePlotSize);
-  const panelHeight = useStore((s) => s.ui.pathPanelHeight);
+  const uiMissing = useStore((s) => s.status.missing);
+  const picked = useStore((s) => s.views.pathPlotSize);
+  const mode = useStore((s) => s.views.pathMode);
+  const treeSize = useStore((s) => s.views.treePlotSize);
+  const panelHeight = useStore((s) => s.views.pathPanelHeight);
   const setUi = useStore((s) => s.setUi);
+  const setViews = useStore((s) => s.setViews);
   const group = useGroup();
   const [backgating, setBackgating] = useState(false);
   // Each layout has its own plot size, picked freely with the slider; the path wraps as many steps (a
@@ -553,7 +554,7 @@ export function GatingPathView() {
             type="button"
             className={mode === 'path' ? 'on' : ''}
             aria-pressed={mode === 'path'}
-            onClick={() => setUi({ pathMode: 'path' })}
+            onClick={() => setViews({ pathMode: 'path' })}
             title="Plots from All events to the selected population"
           >
             Path
@@ -562,7 +563,7 @@ export function GatingPathView() {
             type="button"
             className={mode === 'tree' ? 'on' : ''}
             aria-pressed={mode === 'tree'}
-            onClick={() => setUi({ pathMode: 'tree' })}
+            onClick={() => setViews({ pathMode: 'tree' })}
             title="Every plot in the gating tree"
           >
             Tree
@@ -591,7 +592,7 @@ export function GatingPathView() {
               step={1}
               value={mode === 'tree' ? treeSize : picked}
               onChange={(e) =>
-                setUi(
+                setViews(
                   mode === 'tree'
                     ? { treePlotSize: Number(e.target.value) }
                     : { pathPlotSize: Number(e.target.value) },
@@ -670,8 +671,9 @@ function PopulationsPanel({
   sampleId,
   onPick,
 }: { popId: string; sampleId: string; onPick: (popId: string) => void }) {
-  const height = useStore((s) => s.ui.pathPanelHeight);
+  const height = useStore((s) => s.views.pathPanelHeight);
   const setUi = useStore((s) => s.setUi);
+  const setViews = useStore((s) => s.setViews);
   const panel = useRef<HTMLDivElement>(null);
   // The panel is as wide as the longest name and its counts need (plus a little room), not the full
   // view, so each count stays close to its name.
@@ -687,7 +689,7 @@ function PopulationsPanel({
     return view ? view.clientHeight - (bar?.offsetHeight ?? 0) - MIN_BODY : 600;
   };
   const set = (h: number, max: number) =>
-    setUi({ pathPanelHeight: Math.round(Math.max(minHeight(), Math.min(max, h))) });
+    setViews({ pathPanelHeight: Math.round(Math.max(minHeight(), Math.min(max, h))) });
   /** Fit the panel to its rows (as far as the view allows), or minimise it when it fits already. */
   const toggle = () => {
     const t = tree();

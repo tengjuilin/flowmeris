@@ -44,6 +44,7 @@ export interface IngestProgress {
   errors: { file: string; message: string }[];
 }
 
+/** Where the user is and what is selected. */
 interface UiState {
   groupId: string | null;
   sampleId: string | null;
@@ -58,6 +59,16 @@ interface UiState {
   refPlotId: string | null;
   /** Active (gateable) cell of the Plot view's grid. */
   gridCellId: string | null;
+  /** Variable selected in the Metadata view (open in its panel, coloured on the plate map). */
+  metaVarId: string | null;
+  /** Wells selected on the plate map. */
+  plateSel: string[];
+  /** Samples left out of the Tiles, Ridge and Statistics views (unchecked in the sidebar). */
+  excluded: Record<string, true>;
+}
+
+/** Layout choices of the views: settings panels shown, plot sizes, modes. */
+interface ViewPrefs {
   /** Whether the Tiles view's settings panel is shown. */
   tilesSettings: boolean;
   /** Tile plot size (px) picked with the Tiles view's slider; the tiles per row follow the width. */
@@ -76,13 +87,12 @@ interface UiState {
   metaSettings: boolean;
   /** Layout of the Metadata view: the sample table or the plate map. */
   metaMode: 'table' | 'plate';
-  /** Variable selected in the Metadata view (open in its panel, coloured on the plate map). */
-  metaVarId: string | null;
-  /** Wells selected on the plate map. */
-  plateSel: string[];
+}
+
+/** What the app reports: samples without data, file loading progress, the message shown. */
+interface StatusState {
+  /** Samples whose decoded data is not in browser storage. */
   missing: Record<string, true>;
-  /** Samples left out of the Tiles, Ridge and Statistics views (unchecked in the sidebar). */
-  excluded: Record<string, true>;
   ingest: IngestProgress | null;
   toast: { text: string; action?: { label: string; run: () => void } } | null;
 }
@@ -107,6 +117,8 @@ interface History {
 interface Store {
   ws: Workspace;
   ui: UiState;
+  views: ViewPrefs;
+  status: StatusState;
   past: History[];
   future: History[];
   /** Tab history: locations left by switching tabs, for Back, and those left by Back, for Forward. */
@@ -126,6 +138,8 @@ interface Store {
   setWorkspace: (ws: Workspace) => void;
   /** Change the UI state. Switching `view` records the location left for Back. */
   setUi: (patch: Partial<UiState>) => void;
+  setViews: (patch: Partial<ViewPrefs>) => void;
+  setStatus: (patch: Partial<StatusState>) => void;
 }
 
 /** Default workspace name: the local date and time it was opened, ISO 8601 (YYYY-MM-DDTHH:mm:ss). */
@@ -165,13 +179,18 @@ export const useStore = create<Store>((set, get) => ({
     sampleId: null,
     popId: 'root',
     plotId: null,
-    // A page reload stays on the same tab and Gating path layout.
+    // A page reload stays on the same tab (and, in `views`, the same Gating path layout).
     view: readSession(VIEW_KEY, VIEWS, 'gate'),
     tool: 'select',
     editScope: 'template',
     selectedGateId: null,
     refPlotId: null,
     gridCellId: null,
+    metaVarId: null,
+    plateSel: [],
+    excluded: {},
+  },
+  views: {
     tilesSettings: false,
     tilesPlotSize: 260,
     pathPlotSize: 240,
@@ -181,13 +200,8 @@ export const useStore = create<Store>((set, get) => ({
     gridSettings: false,
     metaSettings: true,
     metaMode: 'table',
-    metaVarId: null,
-    plateSel: [],
-    missing: {},
-    excluded: {},
-    ingest: null,
-    toast: null,
   },
+  status: { missing: {}, ingest: null, toast: null },
   past: [],
   future: [],
   nav: { back: [], forward: [] },
@@ -300,7 +314,14 @@ export const useStore = create<Store>((set, get) => ({
       ...(switched && { nav: { back: [...s.nav.back.slice(-99), locationOf(prev)], forward: [] } }),
     }));
     if (switched) writeSession(VIEW_KEY, ui.view);
-    if (ui.pathMode !== prev.pathMode) writeSession(PATH_MODE_KEY, ui.pathMode);
+  },
+  setViews(patch) {
+    const prev = get().views.pathMode;
+    set((s) => ({ views: { ...s.views, ...patch } }));
+    if (patch.pathMode && patch.pathMode !== prev) writeSession(PATH_MODE_KEY, patch.pathMode);
+  },
+  setStatus(patch) {
+    set((s) => ({ status: { ...s.status, ...patch } }));
   },
 }));
 
@@ -333,9 +354,9 @@ export function contextFor(ws: Workspace, g: Group): AnalysisContext {
 }
 
 export function toast(text: string, action?: { label: string; run: () => void }) {
-  useStore.getState().setUi({ toast: action ? { text, action } : { text } });
-  const t = useStore.getState().ui.toast;
+  useStore.getState().setStatus({ toast: action ? { text, action } : { text } });
+  const t = useStore.getState().status.toast;
   setTimeout(() => {
-    if (useStore.getState().ui.toast === t) useStore.getState().setUi({ toast: null });
+    if (useStore.getState().status.toast === t) useStore.getState().setStatus({ toast: null });
   }, 6000);
 }

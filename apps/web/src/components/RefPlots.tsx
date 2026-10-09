@@ -59,6 +59,7 @@ function tabLabel(ws: Workspace, g: Group, r: RefPlot): string {
 export function RefPlots() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
+  const missing = useStore((s) => s.status.missing);
   const setUi = useStore((s) => s.setUi);
   const group = useGroup();
   const names = useSampleNames(group);
@@ -226,7 +227,7 @@ export function RefPlots() {
       </div>
       {!sampleId ? (
         <div className="empty">This group has no samples.</div>
-      ) : ui.missing[sampleId] ? (
+      ) : missing[sampleId] ? (
         <div className="empty">Data not loaded for this sample: re-add its FCS file to view it.</div>
       ) : (
         <RefCanvas

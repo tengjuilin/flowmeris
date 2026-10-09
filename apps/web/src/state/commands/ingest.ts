@@ -10,7 +10,7 @@ import { toast, useStore } from '../store.ts';
  */
 export async function ingestFiles(files: InputFile[]): Promise<void> {
   const fcs = files.filter((f) => DATA_FILE_RE.test(f.file.name));
-  const { setUi } = useStore.getState();
+  const { setUi, setStatus } = useStore.getState();
   if (fcs.length === 0) {
     toast('No .fcs or .lmd files found in the selection.');
     return;
@@ -21,14 +21,14 @@ export async function ingestFiles(files: InputFile[]): Promise<void> {
     current: '',
     errors: [] as { file: string; message: string }[],
   };
-  setUi({ ingest: { ...progress } });
+  setStatus({ ingest: { ...progress } });
   const results: IngestedFile[] = [];
   let cursor = 0;
   const workerLoop = async () => {
     while (cursor < fcs.length) {
       const f = fcs[cursor++]!;
       progress.current = f.path;
-      setUi({ ingest: { ...progress, errors: [...progress.errors] } });
+      setStatus({ ingest: { ...progress, errors: [...progress.errors] } });
       try {
         const r = await pool.ingest(f.file, f.path);
         results.push({ folder: folderOf(f.path), samples: r.samples });
@@ -36,7 +36,7 @@ export async function ingestFiles(files: InputFile[]): Promise<void> {
         progress.errors.push({ file: f.path, message: e instanceof Error ? e.message : String(e) });
       }
       progress.done++;
-      setUi({ ingest: { ...progress, errors: [...progress.errors] } });
+      setStatus({ ingest: { ...progress, errors: [...progress.errors] } });
     }
   };
   await Promise.all(Array.from({ length: pool.size }, workerLoop));
@@ -46,13 +46,12 @@ export async function ingestFiles(files: InputFile[]): Promise<void> {
     added = addIngested(ws, results);
   });
   const { relinked, firstNewGroup } = added;
-  const missing = { ...useStore.getState().ui.missing };
+  const missing = { ...useStore.getState().status.missing };
   for (const id of relinked) delete missing[id];
   const st = useStore.getState();
   const g = firstNewGroup ? st.ws.groups.find((x) => x.id === firstNewGroup) : undefined;
+  setStatus({ ingest: progress.errors.length ? { ...progress } : null, missing });
   setUi({
-    ingest: progress.errors.length ? { ...progress } : null,
-    missing,
     ...(g
       ? {
           groupId: g.id,
@@ -79,5 +78,5 @@ export async function checkMissing(): Promise<void> {
       if (!(await pool.hasSample(id))) missing[id] = true;
     }),
   );
-  useStore.getState().setUi({ missing });
+  useStore.getState().setStatus({ missing });
 }

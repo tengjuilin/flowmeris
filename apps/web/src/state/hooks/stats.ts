@@ -65,7 +65,7 @@ export function useSampleStats(group: Group | undefined) {
   const samples = useStore((s) => s.ws.samples);
   const transforms = useStore((s) => s.ws.transforms);
   const compMatrices = useStore((s) => s.ws.compMatrices);
-  const missing = useStore((s) => s.ui.missing);
+  const missing = useStore((s) => s.status.missing);
   const shown = useSelectedSampleIds(group);
   const [, setTick] = useState(0);
 

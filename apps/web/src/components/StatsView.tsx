@@ -1114,7 +1114,7 @@ function layoutPinned(t: HTMLTableElement) {
 export function StatsView() {
   const samples = useStore((s) => s.ws.samples);
   const selectedSample = useStore((s) => s.ui.sampleId);
-  const missing = useStore((s) => s.ui.missing);
+  const missing = useStore((s) => s.status.missing);
   const group = useGroup();
   const { stats, perSample, aggregated } = useAnalysisTable(group);
   const { columns: statCols, rows } = stats;

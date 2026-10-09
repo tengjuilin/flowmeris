@@ -225,6 +225,9 @@ function plotOf(cell: PlotCell): PlotSpec {
 export function PlotGridView() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
+  const missing = useStore((s) => s.status.missing);
+  const gridSettings = useStore((s) => s.views.gridSettings);
+  const setViews = useStore((s) => s.setViews);
   const setUi = useStore((s) => s.setUi);
   const group = useGroup();
   const names = useSampleNames(group);
@@ -329,10 +332,10 @@ export function PlotGridView() {
             <button
               type="button"
               className="tiles-settings"
-              aria-expanded={ui.gridSettings}
+              aria-expanded={gridSettings}
               aria-label="Settings"
-              title={ui.gridSettings ? 'Hide settings' : 'Show settings'}
-              onClick={() => setUi({ gridSettings: !ui.gridSettings })}
+              title={gridSettings ? 'Hide settings' : 'Show settings'}
+              onClick={() => setViews({ gridSettings: !gridSettings })}
             >
               <SettingsIcon />
             </button>
@@ -371,7 +374,7 @@ export function PlotGridView() {
               active={cell.id === active?.id}
               sampleId={cellSample(group, cell, ui.sampleId)}
               sampleName={sampleName}
-              missing={ui.missing}
+              missing={missing}
               onActivate={() => cell.id !== ui.gridCellId && setUi({ gridCellId: cell.id })}
               onDrill={onDrill}
               handle={cell.id === active?.id ? handle : undefined}

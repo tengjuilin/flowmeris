@@ -217,7 +217,7 @@ function Header() {
             const w = loadWorkspace(JSON.parse(await f.text()));
             setWorkspace(w);
             await checkMissing();
-            const n = Object.keys(useStore.getState().ui.missing).length;
+            const n = Object.keys(useStore.getState().status.missing).length;
             toast(
               n
                 ? `Workspace opened. ${n} sample(s) need their FCS files: add the folder(s) again to re-link by SHA-256.`
@@ -290,6 +290,10 @@ const hasFiles = (dt: DataTransfer) => Array.from(dt.types).includes('Files');
 
 export function App() {
   const ui = useStore((s) => s.ui);
+  const views = useStore((s) => s.views);
+  const status = useStore((s) => s.status);
+  const setViews = useStore((s) => s.setViews);
+  const setStatus = useStore((s) => s.setStatus);
   const setUi = useStore((s) => s.setUi);
   const ws = useStore((s) => s.ws);
   const group = useGroup();
@@ -299,9 +303,9 @@ export function App() {
   const hasInspector = ui.view === 'gate' || ui.view === 'ridge' || ui.view === 'stats';
   // The Tiles, Plot and Metadata views' settings panels are shown and hidden from their own toolbars.
   const tilesPanel =
-    (ui.view === 'tiles' && ui.tilesSettings) ||
-    (ui.view === 'plot' && ui.gridSettings) ||
-    (ui.view === 'metadata' && ui.metaSettings);
+    (ui.view === 'tiles' && views.tilesSettings) ||
+    (ui.view === 'plot' && views.gridSettings) ||
+    (ui.view === 'metadata' && views.metaSettings);
   useEffect(() => {
     if (!drawer) return;
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && setDrawer(false);
@@ -440,7 +444,7 @@ export function App() {
                 data-open={tilesPanel || drawer}
                 onClick={() =>
                   tilesPanel
-                    ? setUi(
+                    ? setViews(
                         ui.view === 'plot'
                           ? { gridSettings: false }
                           : ui.view === 'metadata'
@@ -469,43 +473,43 @@ export function App() {
           )}
         </div>
       )}
-      {ui.ingest && (
+      {status.ingest && (
         <output className="ingest">
-          {ui.ingest.done < ui.ingest.total ? (
+          {status.ingest.done < status.ingest.total ? (
             <>
-              Reading {ui.ingest.done + 1}/{ui.ingest.total}:{' '}
-              <span className="mono">{ui.ingest.current}</span>
-              <progress max={ui.ingest.total} value={ui.ingest.done} />
+              Reading {status.ingest.done + 1}/{status.ingest.total}:{' '}
+              <span className="mono">{status.ingest.current}</span>
+              <progress max={status.ingest.total} value={status.ingest.done} />
             </>
           ) : (
             <>
-              <strong>{ui.ingest.errors.length} file(s) could not be read:</strong>
+              <strong>{status.ingest.errors.length} file(s) could not be read:</strong>
               <ul>
-                {ui.ingest.errors.map((e) => (
+                {status.ingest.errors.map((e) => (
                   <li key={e.file}>
                     <span className="mono">{e.file}</span>: {e.message}
                   </li>
                 ))}
               </ul>
-              <button type="button" onClick={() => setUi({ ingest: null })}>
+              <button type="button" onClick={() => setStatus({ ingest: null })}>
                 Dismiss
               </button>
             </>
           )}
         </output>
       )}
-      {ui.toast && (
+      {status.toast && (
         <output className="toast">
-          {ui.toast.text}
-          {ui.toast.action && (
+          {status.toast.text}
+          {status.toast.action && (
             <button
               type="button"
               onClick={() => {
-                ui.toast?.action?.run();
-                setUi({ toast: null });
+                status.toast?.action?.run();
+                setStatus({ toast: null });
               }}
             >
-              {ui.toast.action.label}
+              {status.toast.action.label}
             </button>
           )}
         </output>
