@@ -3,6 +3,7 @@ import type { PlotHandle } from '../components/PlotCanvas.tsx';
 import { pool } from '../engine-client/pool.ts';
 import { APP_INFO, contextFor, toast, useStore } from '../state/store.ts';
 import { download, encodePngCompressed, safeName } from './download.ts';
+import { stripDataExt } from './files.ts';
 
 /**
  * Plot export (method M-EXPORT-PLOT). Axes, gates, labels, contours and
@@ -324,7 +325,7 @@ export async function exportPlot(
   dpi = 300,
 ) {
   const svg = await buildSvg(h, plot, dpi);
-  const name = baseName.replace(/\.(fcs|lmd)$/i, '');
+  const name = stripDataExt(baseName);
   if (format === 'svg') return download(`${safeName(name)}.svg`, svg, 'image/svg+xml');
   // The rasterisers and PDF writer read computed styles, so the figure is laid out off-screen first.
   const host = document.createElement('div');

@@ -6,6 +6,8 @@
  * whenever the result would be empty or ambiguous. The full path stays in tooltips.
  */
 
+import { stripDataExt } from './files.ts';
+
 export interface NameInput {
   id: string;
   fileName: string;
@@ -14,7 +16,6 @@ export interface NameInput {
   datasetIndex: number;
 }
 
-const EXT_RE = /\.(fcs|lmd)$/i;
 const SEP = /[\s_.-]/;
 const SEP_RUN = /[\s_.-]+/g;
 
@@ -55,7 +56,7 @@ function commonSuffix(xs: string[]): number {
 
 export function displayNames(samples: NameInput[]): Record<string, string> {
   const out: Record<string, string> = {};
-  const full = samples.map((s) => s.fileName.replace(EXT_RE, ''));
+  const full = samples.map((s) => stripDataExt(s.fileName));
   let names = samples.map((s, i) => {
     const parts = s.relativePath.split('/');
     const folder = parts.length > 1 ? parts[parts.length - 2]! : '';

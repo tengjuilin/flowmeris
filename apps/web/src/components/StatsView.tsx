@@ -14,6 +14,7 @@ import { type Cell, type ColumnDef, type Table, tableRows } from '@flowmeris/tab
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { download, safeName } from '../lib/download.ts';
+import { stripDataExt } from '../lib/files.ts';
 import { PLAIN_DECIMAL, fracDigits } from '../lib/format.ts';
 import { type Completion, type FormulaProblem, checkFormula, completionsAt } from '../lib/formula.ts';
 import { DEFAULT_SIG_FIGS, exportKeys, fmtStat as fmt, sectionOf } from '../lib/statsFormat.ts';
@@ -937,7 +938,7 @@ export function StatsInspector() {
       FLOWMERIS_VALUES: mode === 'raw' ? 'linearised, uncompensated' : 'linearised, compensated',
     });
     download(
-      `${safeName(`${s.fileName.replace(/\.(fcs|lmd)$/i, '')}_${group.template.populations[popId]?.name ?? 'population'}`)}.${format}`,
+      `${safeName(`${stripDataExt(s.fileName)}_${group.template.populations[popId]?.name ?? 'population'}`)}.${format}`,
       bytes,
     );
   };

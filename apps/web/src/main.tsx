@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.tsx';
 import { pool } from './engine-client/pool.ts';
-import { checkMissing } from './lib/ingest.ts';
+import { checkMissing } from './state/commands/ingest.ts';
 import { loadAutosave, startAutosave } from './state/persist.ts';
 import { useStore } from './state/store.ts';
 import './styles.css';
@@ -16,7 +16,7 @@ async function boot() {
   if (saved) await checkMissing();
   if (import.meta.env.DEV) {
     // Development/testing hook (not in production builds): load files by URL.
-    const { ingestFiles } = await import('./lib/ingest.ts');
+    const { ingestFiles } = await import('./state/commands/ingest.ts');
     (window as unknown as Record<string, unknown>).__flowmeris = {
       store: useStore,
       async loadUrls(urls: string[], folder: string) {
