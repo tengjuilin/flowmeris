@@ -10,12 +10,17 @@ const wellButton = (page: Page, well: string) =>
   page.locator('.plate .well').filter({ has: page.locator(`xpath=self::*[starts-with(@title, "${well}")]`) });
 const toast = (page: Page, text: string | RegExp) => expect(page.locator('.toast').filter({ hasText: text }));
 
-/** Paste text into an element as a clipboard paste does. */
+/**
+ * Paste text into an element as a clipboard paste does. A plain event carrying the text: Firefox
+ * drops the data of a script-made ClipboardEvent.
+ */
 async function paste(page: Page, target: ReturnType<Page['locator']>, text: string) {
   await target.evaluate((el, text) => {
-    const dt = new DataTransfer();
-    dt.setData('text/plain', text);
-    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    const e = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(e, 'clipboardData', {
+      value: { getData: (type: string) => (type === 'text/plain' ? text : ''), setData: () => {} },
+    });
+    el.dispatchEvent(e);
   }, text);
 }
 

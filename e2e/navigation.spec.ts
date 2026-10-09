@@ -68,8 +68,9 @@ test('the workspace, tab and settings are restored after a reload', async ({ pag
   await page.waitForTimeout(1500);
 
   await page.reload();
-  // Same tab and workspace.
-  await expect(current(page)).toHaveText('Statistics');
+  // Same tab and workspace. The app renders once the autosave is read and each sample's event data
+  // found in browser storage, which takes a few seconds in Firefox on CI.
+  await expect(current(page)).toHaveText('Statistics', { timeout: 20_000 });
   const rows = page.locator('table.stats tbody tr');
   await expect(rows).toHaveCount(4);
   // Event data is kept in the origin-private file system where the browser offers one (not in

@@ -206,5 +206,8 @@ test('gating path: steps, plot size, Path and Tree each with their own size, pan
   await expect(page.getByRole('button', { name: 'Tree', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
+    {
+      timeout: 20_000,
+    },
   );
 });

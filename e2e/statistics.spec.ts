@@ -338,7 +338,9 @@ test('the settings panel remembers its tab and closed sections', async ({ page }
   await panel.getByRole('tab', { name: 'Export' }).click();
   await waitForAutosave(page, 4);
   await page.reload();
-  await expect(panel.getByRole('tab', { name: 'Export' })).toHaveAttribute('aria-selected', 'true');
+  await expect(panel.getByRole('tab', { name: 'Export' })).toHaveAttribute('aria-selected', 'true', {
+    timeout: 20_000,
+  });
   await panel.getByRole('tab', { name: 'Statistics' }).click();
   await expect(panel.getByRole('button', { name: '+ Formula' })).toHaveCount(0);
   await expect(panel.getByRole('button', { name: 'Add statistic' })).toBeVisible();
