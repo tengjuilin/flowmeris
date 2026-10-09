@@ -15,12 +15,10 @@ import { pool } from '../engine-client/pool.ts';
 import { lineageKey } from '../lib/analysis.ts';
 import { DEFAULT_STYLE } from '../lib/defaults.ts';
 import { withBaseFont } from '../lib/figure.ts';
-import { nearestColumns } from '../lib/fitSize.ts';
 import { gateMatchesAxes } from '../lib/geometry.ts';
 import { contextFor, useGroup, useStore } from '../state/store.ts';
 import { PlotCanvas, plotBox } from './PlotCanvas.tsx';
 import { drill } from './PlotPanel.tsx';
-import { PlotSizeSlider } from './PlotSizeSlider.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { useSize } from './hooks.ts';
 
@@ -36,15 +34,11 @@ const CARD_EXTRA = 10;
 const ARROW_W = 104;
 /** A tree card's horizontal room beyond its plot: padding and border, then its branch's padding. */
 const TREE_EXTRA = 22;
-/** The smallest plot offered. */
-const MIN_PLOT = 160;
-/** Range of the tree's plot size slider (px). */
-const MIN_TREE_PLOT = 120;
-const MAX_TREE_PLOT = 800;
+/** Range of the plot size slider (px). */
+const MIN_PLOT = 120;
+const MAX_PLOT = 800;
 /** The populations panel leaves at least MIN_BODY of the view above it. */
 const MIN_BODY = 120;
-const MIN_COLUMNS = 2;
-const MAX_COLUMNS = 12;
 
 const byName = (a: Population, b: Population) => a.name.localeCompare(b.name, undefined, { numeric: true });
 
@@ -199,6 +193,7 @@ interface CardProps {
   plot: PlotSpec;
   real: boolean;
   size: number;
+  renderSize: number;
   count: Count | undefined;
   focusPopId?: string;
   backgate?: { popId: string; color: string };
@@ -213,6 +208,7 @@ const StepCard = memo(function StepCard({
   plot,
   real,
   size,
+  renderSize,
   count: c,
   focusPopId,
   backgate,
@@ -238,17 +234,28 @@ const StepCard = memo(function StepCard({
         </span>
       </button>
       <WhenVisible width={box.width} height={box.height}>
-        <PlotCanvas
-          ws={ws}
-          group={group}
-          sampleId={sampleId}
-          plot={shown}
-          width={size}
-          height={size}
-          hideOffScaleNote
-          {...(focusPopId ? { focusPopId } : {})}
-          {...(backgate ? { backgate } : {})}
-        />
+        {/* While the size changes, the last render is stretched to the live size (as in Tiles). */}
+        <div style={{ width: size, height: size, overflow: 'hidden' }}>
+          <div
+            style={
+              size === renderSize
+                ? undefined
+                : { transform: `scale(${size / renderSize})`, transformOrigin: '0 0' }
+            }
+          >
+            <PlotCanvas
+              ws={ws}
+              group={group}
+              sampleId={sampleId}
+              plot={shown}
+              width={renderSize}
+              height={renderSize}
+              hideOffScaleNote
+              {...(focusPopId ? { focusPopId } : {})}
+              {...(backgate ? { backgate } : {})}
+            />
+          </div>
+        </div>
       </WhenVisible>
     </div>
   );
@@ -303,22 +310,21 @@ export function GatingPathView() {
   const setUi = useStore((s) => s.setUi);
   const group = useGroup();
   const [backgating, setBackgating] = useState(false);
-  // In the path, plot sizes are discrete (as in Tiles): each fills a row with a whole number of steps (a
-  // plot with its arrow). The slider picks one; as the window changes, the steps per row change to keep
-  // the size near it. The tree, wider than the view anyway, has a free plot size slider.
+  // Each layout has its own plot size, picked freely with the slider; the path wraps as many steps (a
+  // plot with its arrow) per row as fit, and a plot is never wider than the view.
   const body = useRef<HTMLDivElement>(null);
   const { width } = useSize(body);
   const extra = CARD_EXTRA + ARROW_W;
-  const fit = Math.floor(width / (MIN_PLOT + extra));
-  const maxColumns = Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, fit));
-  const sizeFor = (n: number) => Math.max(MIN_PLOT, Math.floor(width / n) - extra);
-  const columns = width > 0 ? nearestColumns(picked, sizeFor, MIN_COLUMNS, maxColumns) : MIN_COLUMNS;
-  // Plots are recomputed at the new size only once the slider (or window) rests, not for every step.
-  // Each layout keeps its own settled size, so switching between them draws the plots once, at their size.
-  const pathSize = useDebounced(width > 0 ? sizeFor(columns) : 0, 150, 0);
-  const treeSettled = useDebounced(treeSize, 150, 0);
-  const size = mode === 'tree' ? treeSettled : pathSize;
-  const stepW = size + CARD_EXTRA + ARROW_W;
+  const pathSize = width > 0 ? Math.max(MIN_PLOT, Math.min(picked, width - extra)) : 0;
+  const size = mode === 'tree' ? treeSize : pathSize;
+  const stepW = size + extra;
+  const columns = Math.max(1, Math.floor(width / stepW));
+  // Cards resize live; their plots are recomputed at the new size only once the slider (or window)
+  // rests, and stretched to the live size meanwhile. Each layout keeps its own settled size, so
+  // switching between them draws the plots once, at their size.
+  const pathRender = useDebounced(pathSize, 150, 0);
+  const treeRender = useDebounced(treeSize, 150, 0);
+  const renderSize = mode === 'tree' ? treeRender : pathRender;
   const [counts, setCounts] = useState<Counts>({});
   const [countError, setCountError] = useState<string | null>(null);
   const treeRef = useRef<HTMLDivElement>(null);
@@ -445,6 +451,7 @@ export function GatingPathView() {
         plot={plot}
         real={real}
         size={size}
+        renderSize={renderSize || size}
         count={counts[pop.id]}
         {...(focus ? { focusPopId: focus } : {})}
         {...(focus && backgate ? { backgate } : {})}
@@ -575,27 +582,23 @@ export function GatingPathView() {
         </label>
         <div className="spacer" />
         <div className="tiles-controls">
-          {mode === 'path' ? (
-            <PlotSizeSlider
-              columns={columns}
-              min={MIN_COLUMNS}
-              max={maxColumns}
-              sizeFor={sizeFor}
-              onPick={(pathPlotSize) => setUi({ pathPlotSize })}
+          <label className="field" title="Plot size">
+            Plot size
+            <input
+              type="range"
+              min={MIN_PLOT}
+              max={MAX_PLOT}
+              step={1}
+              value={mode === 'tree' ? treeSize : picked}
+              onChange={(e) =>
+                setUi(
+                  mode === 'tree'
+                    ? { treePlotSize: Number(e.target.value) }
+                    : { pathPlotSize: Number(e.target.value) },
+                )
+              }
             />
-          ) : (
-            <label className="field" title="Plot size">
-              Plot size
-              <input
-                type="range"
-                min={MIN_TREE_PLOT}
-                max={MAX_TREE_PLOT}
-                step={1}
-                value={treeSize}
-                onChange={(e) => setUi({ treePlotSize: Number(e.target.value) })}
-              />
-            </label>
-          )}
+          </label>
         </div>
       </div>
       <div className={`path-body${mode === 'tree' ? ' tree' : ''}`} ref={body}>

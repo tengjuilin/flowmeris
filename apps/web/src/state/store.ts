@@ -61,11 +61,11 @@ interface UiState {
   tilesSettings: boolean;
   /** Tile plot size (px) picked with the Tiles view's slider; the tiles per row follow the width. */
   tilesPlotSize: number;
-  /** Plot size (px) picked with the slider of the Gating path view's path; the steps per row follow the width. */
+  /** Plot size (px) picked with the slider of the Gating path view's path (as many steps per row as fit). */
   pathPlotSize: number;
   /** Layout of the Gating path view: the path to the selected population, or the whole tree. */
   pathMode: 'path' | 'tree';
-  /** Plot size (px) picked with the slider of the Gating path view's tree (sized freely, not by columns). */
+  /** Plot size (px) picked with the slider of the Gating path view's tree. */
   treePlotSize: number;
   /** Height (px) of the Gating path view's populations panel. */
   pathPanelHeight: number;

@@ -83,6 +83,8 @@ sample and a population in its toolbar (they follow the current sample and popul
 - **Tree** shows every plot in the gating tree, branching where a population has several child gates;
   populations without gates of their own appear as labelled chips. Gates on the way to the chosen
   population are highlighted.
+- **Plot size** sets the size of the plots in each layout (kept separately); the path wraps as many
+  steps per row as fit.
 - **Backgating** overlays the chosen population's events, in its colour, on every plot above it, with
   the plotted population greyed out. On histograms the overlay is drawn in the same units as the
   histogram (so its area is the fraction of the plotted population it represents).
