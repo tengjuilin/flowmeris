@@ -17,7 +17,7 @@ import { DEFAULT_STYLE } from '../lib/defaults.ts';
 import { withBaseFont } from '../lib/figure.ts';
 import { gateMatchesAxes } from '../lib/geometry.ts';
 import { contextFor, useGroup, useStore } from '../state/store.ts';
-import { PlotCanvas } from './PlotCanvas.tsx';
+import { PlotCanvas, plotBox } from './PlotCanvas.tsx';
 import { drill } from './PlotPanel.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { useSize } from './hooks.ts';
@@ -118,21 +118,34 @@ function pct(x: Count | undefined): string {
   return x && x.parent > 0 ? `${((100 * x.count) / x.parent).toFixed(2)}%` : '…';
 }
 
-/** `value`, updated only once it has stopped changing for `ms` (avoids recomputing plots mid-drag). */
-function useDebounced<T>(value: T, ms: number): T {
+/**
+ * `value`, updated only once it has stopped changing for `ms` (avoids recomputing plots mid-drag).
+ * The first measured value (after `unset`) takes effect at once.
+ */
+function useDebounced<T>(value: T, ms: number, unset: T): T {
   const [v, setV] = useState(value);
   useEffect(() => {
+    if (v === unset) {
+      setV(value);
+      return;
+    }
     const t = setTimeout(() => setV(value), ms);
     return () => clearTimeout(t);
   }, [value, ms]);
-  return v;
+  return v === unset ? value : v;
 }
+
+/** Where a tree is scrolled to, with its scrollable size then. */
+type TreeView = { left: number; top: number; sw: number; sh: number };
+/** Where each group's tree was scrolled to, kept while the Path layout or other views are shown. */
+const treeScroll = new Map<string, TreeView>();
 
 /**
  * Renders `children` once the placeholder comes within a margin of the viewport, then keeps them
  * mounted. A large tree then computes and draws only the plots that are (or have been) on screen.
+ * The placeholder takes the plot's own size, so nothing moves when the plot replaces it.
  */
-function WhenVisible({ size, children }: { size: number; children: ReactNode }) {
+function WhenVisible({ width, height, children }: { width: number; height: number; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [seen, setSeen] = useState(() => typeof IntersectionObserver === 'undefined');
   useEffect(() => {
@@ -153,7 +166,7 @@ function WhenVisible({ size, children }: { size: number; children: ReactNode }) 
   return seen ? (
     <>{children}</>
   ) : (
-    <div ref={ref} className="path-placeholder" style={{ width: size, height: size }} aria-hidden="true" />
+    <div ref={ref} className="path-placeholder" style={{ width, height }} aria-hidden="true" />
   );
 }
 
@@ -204,6 +217,7 @@ const StepCard = memo(function StepCard({
 }: CardProps) {
   // Drawn with the small base font; the saved plot itself (opened on click) keeps its own.
   const shown = useMemo(() => withBaseFont(plot, FONT_PX), [plot]);
+  const box = plotBox(shown, size, size);
   return (
     <div className="path-card">
       <button
@@ -216,11 +230,12 @@ const StepCard = memo(function StepCard({
           <span className="swatch" style={{ background: pop.color }} aria-hidden="true" /> {pop.name}
         </span>
         <span className="muted num">
-          {c ? c.count.toLocaleString() : ''}
+          {/* A space until the count arrives, so the title keeps its height. */}
+          {c ? c.count.toLocaleString() : '\u00a0'}
           {pop.parent && c ? ` · ${pct(c)}` : ''}
         </span>
       </button>
-      <WhenVisible size={size}>
+      <WhenVisible width={box.width} height={box.height}>
         <PlotCanvas
           ws={ws}
           group={group}
@@ -295,10 +310,15 @@ export function GatingPathView() {
   // Until the width is measured, nothing limits the number (as in Tiles).
   const maxColumns = width > 0 ? Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, fit)) : MAX_COLUMNS;
   const columns = Math.max(MIN_COLUMNS, Math.min(maxColumns, picked));
-  const liveSize =
-    mode === 'tree' ? treeSize : width > 0 ? Math.max(MIN_PLOT, Math.floor(width / columns) - extra) : 0;
   // Plots are recomputed at the new size only once the slider (or window) rests, not for every step.
-  const size = useDebounced(liveSize, 150);
+  // Each layout keeps its own settled size, so switching between them draws the plots once, at their size.
+  const pathSize = useDebounced(
+    width > 0 ? Math.max(MIN_PLOT, Math.floor(width / columns) - extra) : 0,
+    150,
+    0,
+  );
+  const treeSettled = useDebounced(treeSize, 150, 0);
+  const size = mode === 'tree' ? treeSettled : pathSize;
   const stepW = size + CARD_EXTRA + ARROW_W;
   const [counts, setCounts] = useState<Counts>({});
   const [countError, setCountError] = useState<string | null>(null);
@@ -357,21 +377,46 @@ export function GatingPathView() {
   }, [key, sampleId, missing]);
 
   // A wide tree overflows sideways with its plots centred over the leaves; starting at scrollLeft 0
-  // would show only connectors and leaf chips, so bring the selected population (or the root) into view.
-  const templateKey = group
-    ? JSON.stringify([group.template.populations, Object.keys(group.template.gates)])
-    : '';
+  // would show only connectors and leaf chips. It first opens on All events, then where it was left
+  // (noted as it scrolls: by the time it closes it is no longer in the page to read from).
+  const groupId = group?.id;
+  const view = useRef<TreeView | null>(null);
+  const note = (el: HTMLElement) => {
+    view.current = { left: el.scrollLeft, top: el.scrollTop, sw: el.scrollWidth, sh: el.scrollHeight };
+    if (groupId) treeScroll.set(groupId, view.current);
+  };
   useLayoutEffect(() => {
     const el = treeRef.current;
-    if (mode !== 'tree' || !el || el.scrollWidth <= el.clientWidth) return;
-    const node =
-      el.querySelector<HTMLElement>('.path-node.on, .path-chip.on') ??
-      el.querySelector<HTMLElement>('.path-node');
-    if (!node) return;
-    const box = el.getBoundingClientRect();
-    const r = node.getBoundingClientRect();
-    el.scrollLeft += r.left + r.width / 2 - (box.left + box.width / 2);
-  }, [mode, target, templateKey, size]);
+    if (mode !== 'tree' || !el || !groupId) return;
+    const saved = treeScroll.get(groupId);
+    if (saved) {
+      el.scrollLeft = saved.left;
+      el.scrollTop = saved.top;
+    } else {
+      el.scrollTop = 0;
+      const node = el.querySelector<HTMLElement>('.path-node');
+      if (node) {
+        const box = el.getBoundingClientRect();
+        const r = node.getBoundingClientRect();
+        el.scrollLeft += r.left + r.width / 2 - (box.left + box.width / 2);
+      }
+    }
+    note(el);
+  }, [mode, groupId, size > 0]);
+  // A new plot size keeps the same part of the tree in the middle of the view.
+  const shown = useRef({ mode, size });
+  useLayoutEffect(() => {
+    const el = treeRef.current;
+    const was = shown.current;
+    const v = view.current;
+    shown.current = { mode, size };
+    if (mode !== 'tree' || was.mode !== 'tree' || was.size === size || !el || !v) return;
+    el.scrollLeft = ((v.left + el.clientWidth / 2) / v.sw) * el.scrollWidth - el.clientWidth / 2;
+    // A tree seen from its top (All events) stays so.
+    if (v.top > 0)
+      el.scrollTop = ((v.top + el.clientHeight / 2) / v.sh) * el.scrollHeight - el.clientHeight / 2;
+    note(el);
+  }, [mode, size]);
 
   // The body stays mounted (and measured) whatever it shows.
   const bare = (text: string) => (
@@ -572,6 +617,7 @@ export function GatingPathView() {
               <div
                 className="path-tree"
                 ref={treeRef}
+                onScroll={(e) => note(e.currentTarget)}
                 onPointerDown={(e) => {
                   const el = e.currentTarget;
                   const t = e.target as Element;
