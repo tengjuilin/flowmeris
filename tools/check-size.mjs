@@ -39,11 +39,12 @@ for (const f of files) {
     if (n > MAX_LINES) errors.push(`${f}: ${n} lines (limit ${MAX_LINES}); split it by responsibility`);
   } else if (n > cap) {
     errors.push(`${f}: ${n} lines, grew past its allowlisted ${cap}; split it rather than adding to it`);
+    next[f] = cap; // --tighten never raises a cap
   } else if (n > MAX_LINES) {
     next[f] = n;
   }
 }
-const stale = Object.keys(allow).filter((f) => !(f in next) && !errors.some((e) => e.startsWith(`${f}:`)));
+const stale = Object.keys(allow).filter((f) => !(f in next));
 
 if (process.argv.includes('--tighten')) {
   writeFileSync(allowFile, `${JSON.stringify(next, null, 2)}\n`);

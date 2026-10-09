@@ -1,6 +1,6 @@
 # ADR-0008 Web app layout and import layering
 
-**Status.** Proposed. It is being adopted in phases; [`apps/web/CLAUDE.md`](https://github.com/tengjuilin/flowmeris/blob/main/apps/web/CLAUDE.md) shows the current layout.
+**Status.** Proposed. It is being adopted in phases (`lib/` is pure since P1); [`apps/web/CLAUDE.md`](https://github.com/tengjuilin/flowmeris/blob/main/apps/web/CLAUDE.md) shows the current layout.
 
 **Decision.** `apps/web/src` is organised in layers, and imports only point down:
 
