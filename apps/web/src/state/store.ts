@@ -59,10 +59,10 @@ interface UiState {
   gridCellId: string | null;
   /** Whether the Tiles view's settings panel is shown. */
   tilesSettings: boolean;
-  /** Tiles per row picked with the Tiles view's slider (kept while other views are shown). */
-  tilesColumns: number;
-  /** Plots per row picked with the Gating path view's slider (kept while other views are shown). */
-  pathColumns: number;
+  /** Tile plot size (px) picked with the Tiles view's slider; the tiles per row follow the width. */
+  tilesPlotSize: number;
+  /** Plot size (px) picked with the slider of the Gating path view's path; the steps per row follow the width. */
+  pathPlotSize: number;
   /** Layout of the Gating path view: the path to the selected population, or the whole tree. */
   pathMode: 'path' | 'tree';
   /** Plot size (px) picked with the slider of the Gating path view's tree (sized freely, not by columns). */
@@ -181,8 +181,8 @@ export const useStore = create<Store>((set, get) => ({
     refPlotId: null,
     gridCellId: null,
     tilesSettings: false,
-    tilesColumns: 5,
-    pathColumns: 4,
+    tilesPlotSize: 260,
+    pathPlotSize: 240,
     pathMode: savedPathMode(),
     treePlotSize: 280,
     pathPanelHeight: 200,

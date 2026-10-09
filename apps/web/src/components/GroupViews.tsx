@@ -7,6 +7,7 @@ import { lineageKey } from '../lib/analysis.ts';
 import { factoryAxis } from '../lib/defaults.ts';
 import { exportSvgFigure } from '../lib/exportPlot.ts';
 import { TILE_FIGURE } from '../lib/figure.ts';
+import { nearestColumns } from '../lib/fitSize.ts';
 import { scaleFor } from '../lib/geometry.ts';
 import { type RidgeCurve, combineCounts, textMeasure, withRidgeChannel, wrapText } from '../lib/ridge.ts';
 import {
@@ -23,6 +24,7 @@ import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './Picker
 import { PlotCanvas } from './PlotCanvas.tsx';
 import { openTileInGrid } from './PlotGridView.tsx';
 import { EditScopeToggle, ToolButtons, axisPickers, drill, tilesEdit, useTilePlot } from './PlotPanel.tsx';
+import { PlotSizeSlider } from './PlotSizeSlider.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { fontStack, ridgeColor, textCss, useRidge } from './RidgeInspector.tsx';
 import { SupLabel } from './SupLabel.tsx';
@@ -148,7 +150,7 @@ const TILE_GAP = 12;
 const SIDE_MIN = 280;
 const MIN_TILE = 160;
 const MIN_COLUMNS = 2;
-const MAX_COLUMNS = 7;
+const MAX_COLUMNS = 12;
 
 /** Plot size of `columns` tiles, with the gaps between them, filling a row of the `width`-wide tiles area. */
 function tileSizeFor(width: number, columns: number): number {
@@ -178,12 +180,13 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
   const box = useRef<HTMLDivElement>(null);
   const { width } = useSize(box);
   // Tile sizes are discrete: each fills a full-width row (below the populations card) with a whole
-  // number of tiles, so the slider picks the number per row and the size follows the window.
+  // number of tiles. The slider picks one; as the window changes, the number per row changes to keep
+  // the size near it.
   const fit = Math.floor((width + TILE_GAP) / (MIN_TILE + TILE_EXTRA));
-  // Until the width is measured, nothing limits the number (as in the Plot view).
-  const maxColumns = width > 0 ? Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, fit)) : MAX_COLUMNS;
-  const picked = useStore((s) => s.ui.tilesColumns);
-  const columns = Math.max(MIN_COLUMNS, Math.min(maxColumns, picked));
+  const maxColumns = Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, fit));
+  const picked = useStore((s) => s.ui.tilesPlotSize);
+  const sizeFor = (n: number) => tileSizeFor(width, n);
+  const columns = width > 0 ? nearestColumns(picked, sizeFor, MIN_COLUMNS, maxColumns) : MIN_COLUMNS;
   const tile = width > 0 ? Math.max(MIN_TILE, tileSizeFor(width, columns)) : 0;
   // The populations card takes the top-right columns (as in the Plot view): as many as show its rows in
   // full, and at least SIDE_MIN.
@@ -199,18 +202,13 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
         <EditScopeToggle />
         <div className="spacer" />
         <div className="tiles-controls">
-          <label className="field" title="Columns: the tiles are sized to fill each row">
-            Columns
-            <input
-              type="range"
-              min={MIN_COLUMNS}
-              max={maxColumns}
-              step={1}
-              value={columns}
-              onChange={(e) => setUi({ tilesColumns: Number(e.target.value) })}
-            />
-            <span className="muted">{columns}</span>
-          </label>
+          <PlotSizeSlider
+            columns={columns}
+            min={MIN_COLUMNS}
+            max={maxColumns}
+            sizeFor={sizeFor}
+            onPick={(tilesPlotSize) => setUi({ tilesPlotSize })}
+          />
           <button
             type="button"
             className="tiles-settings"

@@ -47,13 +47,14 @@ e.g. a fluorescence pair while gating on scatter. Add one with **+**; each opens
 ## Plot grid
 
 The **Plot** tab lays plots out in a fixed grid, e.g. scatter, singlets and every marker of a panel side by
-side. **Columns** sets the grid width (3 by default); the grid always ends with a row of empty cells. The
-grid is saved with the group in the workspace.
+side. **Plot size** steps through the sizes that fill a row (3 columns by default); when the window is
+resized, the number of columns changes to keep the plots near that size. The grid always ends with a row
+of empty cells, and is saved with the group in the workspace.
 
 - Add a plot by choosing its type in an empty cell. It starts on the population selected in the Gate view.
 - Click a plot to select it (blue border). The gating tools and **Edit template** / **This sample only**
   act on the selected plot, exactly as in the Gate view; gates belong to the same group template.
-- The settings panel (the button right of **Columns**) edits the selected plot. Its **Figure › Plot** card
+- The settings panel (the button right of **Plot size**) edits the selected plot. Its **Figure › Plot** card
   sets the plot type, title, **Population** and **Sample** (◀ ▶ step through the group's samples; *Follow
   selected* tracks the sample selected in the sidebar); the **Axis** tab sets the X/Y channels and scales.
 - The **Sample overlay** card below it draws other samples on the same plot, each in its own colour with a

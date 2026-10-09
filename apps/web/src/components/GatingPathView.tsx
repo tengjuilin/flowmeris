@@ -15,10 +15,12 @@ import { pool } from '../engine-client/pool.ts';
 import { lineageKey } from '../lib/analysis.ts';
 import { DEFAULT_STYLE } from '../lib/defaults.ts';
 import { withBaseFont } from '../lib/figure.ts';
+import { nearestColumns } from '../lib/fitSize.ts';
 import { gateMatchesAxes } from '../lib/geometry.ts';
 import { contextFor, useGroup, useStore } from '../state/store.ts';
 import { PlotCanvas, plotBox } from './PlotCanvas.tsx';
 import { drill } from './PlotPanel.tsx';
+import { PlotSizeSlider } from './PlotSizeSlider.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { useSize } from './hooks.ts';
 
@@ -42,7 +44,7 @@ const MAX_TREE_PLOT = 800;
 /** The populations panel leaves at least MIN_BODY of the view above it. */
 const MIN_BODY = 120;
 const MIN_COLUMNS = 2;
-const MAX_COLUMNS = 6;
+const MAX_COLUMNS = 12;
 
 const byName = (a: Population, b: Population) => a.name.localeCompare(b.name, undefined, { numeric: true });
 
@@ -294,29 +296,26 @@ export function GatingPathView() {
   const uiSampleId = useStore((s) => s.ui.sampleId);
   const uiPopId = useStore((s) => s.ui.popId);
   const uiMissing = useStore((s) => s.ui.missing);
-  const picked = useStore((s) => s.ui.pathColumns);
+  const picked = useStore((s) => s.ui.pathPlotSize);
   const mode = useStore((s) => s.ui.pathMode);
   const treeSize = useStore((s) => s.ui.treePlotSize);
   const panelHeight = useStore((s) => s.ui.pathPanelHeight);
   const setUi = useStore((s) => s.setUi);
   const group = useGroup();
   const [backgating, setBackgating] = useState(false);
-  // In the path, plot sizes are discrete (as in Tiles): the slider picks the steps (a plot with its arrow)
-  // per row and the size fills the row. The tree, wider than the view anyway, has a plot size slider.
+  // In the path, plot sizes are discrete (as in Tiles): each fills a row with a whole number of steps (a
+  // plot with its arrow). The slider picks one; as the window changes, the steps per row change to keep
+  // the size near it. The tree, wider than the view anyway, has a free plot size slider.
   const body = useRef<HTMLDivElement>(null);
   const { width } = useSize(body);
   const extra = CARD_EXTRA + ARROW_W;
   const fit = Math.floor(width / (MIN_PLOT + extra));
-  // Until the width is measured, nothing limits the number (as in Tiles).
-  const maxColumns = width > 0 ? Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, fit)) : MAX_COLUMNS;
-  const columns = Math.max(MIN_COLUMNS, Math.min(maxColumns, picked));
+  const maxColumns = Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, fit));
+  const sizeFor = (n: number) => Math.max(MIN_PLOT, Math.floor(width / n) - extra);
+  const columns = width > 0 ? nearestColumns(picked, sizeFor, MIN_COLUMNS, maxColumns) : MIN_COLUMNS;
   // Plots are recomputed at the new size only once the slider (or window) rests, not for every step.
   // Each layout keeps its own settled size, so switching between them draws the plots once, at their size.
-  const pathSize = useDebounced(
-    width > 0 ? Math.max(MIN_PLOT, Math.floor(width / columns) - extra) : 0,
-    150,
-    0,
-  );
+  const pathSize = useDebounced(width > 0 ? sizeFor(columns) : 0, 150, 0);
   const treeSettled = useDebounced(treeSize, 150, 0);
   const size = mode === 'tree' ? treeSettled : pathSize;
   const stepW = size + CARD_EXTRA + ARROW_W;
@@ -577,18 +576,13 @@ export function GatingPathView() {
         <div className="spacer" />
         <div className="tiles-controls">
           {mode === 'path' ? (
-            <label className="field" title="Columns: the plots are sized to fill each row">
-              Columns
-              <input
-                type="range"
-                min={MIN_COLUMNS}
-                max={maxColumns}
-                step={1}
-                value={columns}
-                onChange={(e) => setUi({ pathColumns: Number(e.target.value) })}
-              />
-              <span className="muted">{columns}</span>
-            </label>
+            <PlotSizeSlider
+              columns={columns}
+              min={MIN_COLUMNS}
+              max={maxColumns}
+              sizeFor={sizeFor}
+              onPick={(pathPlotSize) => setUi({ pathPlotSize })}
+            />
           ) : (
             <label className="field" title="Plot size">
               Plot size

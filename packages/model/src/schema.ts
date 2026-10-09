@@ -368,9 +368,14 @@ export const PlotCellSchema = z.object({
 });
 export type PlotCell = z.infer<typeof PlotCellSchema>;
 
-/** The Plot view's fixed grid: `cells` fill it row by row; null = empty cell. */
+/**
+ * The Plot view's fixed grid: `cells` fill it row by row; null = empty cell. `size` is the plot size
+ * picked (px); the number of columns follows the view's width to keep the plots near it. `columns` is
+ * the number shown when it was picked, used for workspaces saved before `size`.
+ */
 export const PlotGridSchema = z.object({
-  columns: z.number().int().min(1).max(6).default(3),
+  columns: z.number().int().min(1).max(12).default(3),
+  size: z.number().int().positive().optional(),
   cells: z.array(PlotCellSchema.nullable()).default([]),
 });
 export type PlotGrid = z.infer<typeof PlotGridSchema>;

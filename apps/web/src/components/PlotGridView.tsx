@@ -5,12 +5,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { defaultAxis, defaultChannels } from '../lib/defaults.ts';
 import { exportPlot } from '../lib/exportPlot.ts';
 import { TILE_FIGURE, TILE_STYLE } from '../lib/figure.ts';
+import { nearestColumns } from '../lib/fitSize.ts';
 import { toast, useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { ExportMenu } from './ExportMenu.tsx';
 import { OpenInIcon, SettingsIcon } from './Inspector.tsx';
 import { type Anchor, type PickOption, PickerMenu } from './PickerMenu.tsx';
 import { PlotCanvas, type PlotHandle } from './PlotCanvas.tsx';
 import { EditScopeToggle, ToolButtons, axisPickers } from './PlotPanel.tsx';
+import { PlotSizeSlider } from './PlotSizeSlider.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { useSize } from './hooks.ts';
 
@@ -75,6 +77,8 @@ function removeCell(groupId: string, cellId: string) {
 /** Grid gap, and the narrowest cell offered (as for tiles), so plots keep room for their axes. */
 const GAP = 8;
 const MIN_CELL = 160;
+const MIN_COLUMNS = 2;
+const MAX_COLUMNS = 12;
 /** Narrowest populations card; it spans as many cells as reach this width, or its rows' width (as in Tiles). */
 const SIDE_MIN = 280;
 
@@ -252,14 +256,24 @@ export function PlotGridView() {
   if (!group) return <div className="empty">Select or add a group.</div>;
 
   const { cells } = group.grid;
-  // Two to six columns, no more than fit at MIN_CELL; the saved number comes back when the window is
-  // wide enough.
-  const maxColumns = width > 0 ? Math.max(2, Math.min(6, Math.floor((width + GAP) / (MIN_CELL + GAP)))) : 6;
-  const columns = Math.max(2, Math.min(group.grid.columns, maxColumns));
+  // Cell sizes are discrete (as in Tiles): each fills the row with a whole number of cells, at least
+  // MIN_CELL wide. The slider picks one; as the window changes, the number of columns changes to keep
+  // the size near it.
+  const maxColumns = Math.max(
+    MIN_COLUMNS,
+    Math.min(MAX_COLUMNS, Math.floor((width + GAP) / (MIN_CELL + GAP))),
+  );
+  const sizeFor = (n: number) => Math.floor((width - GAP * (n - 1)) / n);
+  const columns =
+    width <= 0
+      ? Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, group.grid.columns))
+      : group.grid.size
+        ? nearestColumns(group.grid.size, sizeFor, MIN_COLUMNS, maxColumns)
+        : Math.max(MIN_COLUMNS, Math.min(maxColumns, group.grid.columns));
   const active = cells.find((c) => c?.id === ui.gridCellId) ?? null;
   const activeSample = active ? cellSample(group, active, ui.sampleId) : undefined;
   const gap = GAP;
-  const cellW = width > 0 ? Math.floor((width - gap * (columns - 1)) / columns) : 0;
+  const cellW = width > 0 ? sizeFor(columns) : 0;
   // The populations card takes the top-right cells (as in Tiles), as many as show its rows in full;
   // the plot slots flow around it.
   const sideW = Math.max(SIDE_MIN, treeWidth);
@@ -299,24 +313,18 @@ export function PlotGridView() {
           />
           <div className="spacer" />
           <div className="tiles-controls">
-            <label className="field">
-              Columns
-              <input
-                type="range"
-                min={2}
-                max={maxColumns}
-                step={1}
-                value={columns}
-                onChange={(e) =>
-                  editGrid(
-                    group.id,
-                    'Change grid columns',
-                    (g) => void (g.grid.columns = Number(e.target.value)),
-                  )
-                }
-              />
-              <span className="muted">{columns}</span>
-            </label>
+            <PlotSizeSlider
+              columns={columns}
+              min={MIN_COLUMNS}
+              max={maxColumns}
+              sizeFor={sizeFor}
+              onPick={(size) =>
+                editGrid(group.id, 'Change plot size', (g) => {
+                  g.grid.size = size;
+                  g.grid.columns = nearestColumns(size, sizeFor, MIN_COLUMNS, maxColumns);
+                })
+              }
+            />
             <button
               type="button"
               className="tiles-settings"
