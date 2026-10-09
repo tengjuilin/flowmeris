@@ -61,8 +61,8 @@ export const DEFAULT_STYLE: PlotStyle = {
   histSmooth: false,
 };
 
-/** Figure options of a plot that has none saved. */
-export const DEFAULT_FIGURE: PlotFigure = PlotFigureSchema.parse({});
+/** Figure options of a plot that has none saved; the plot box is square. */
+export const DEFAULT_FIGURE: PlotFigure = PlotFigureSchema.parse({ boxAspect: 1 });
 
 /** Figure options of a new Tiles plot: an 11 px base font, the other sizes scaled with it. */
 export const TILE_FIGURE: PlotFigure = PlotFigureSchema.parse({
@@ -71,6 +71,7 @@ export const TILE_FIGURE: PlotFigure = PlotFigureSchema.parse({
   tickFontSize: 11,
   axisTitleFontSize: 12,
   gateFontSize: 11.5,
+  boxAspect: 1,
 });
 
 /** Settings of a new Tiles plot; its figure options are always saved, so resets keep the Tiles sizes. */
