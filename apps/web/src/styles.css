@@ -845,9 +845,17 @@ code,
   min-width: 0;
 }
 .ref-box {
+  /* Square from the first layout (the canvas sits out of flow, so drawing it can't grow the card and
+     squeeze the population tree frame by frame); taller panels grow it further. */
   flex: 1;
+  aspect-ratio: 1;
   min-height: 200px;
   position: relative;
+}
+.ref-box > * {
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 .pop-tree ul {
   list-style: none;
@@ -1280,6 +1288,7 @@ table.matrix input {
     min-height: 460px;
   }
   .ref-box {
+    aspect-ratio: auto;
     min-height: 320px;
   }
 }

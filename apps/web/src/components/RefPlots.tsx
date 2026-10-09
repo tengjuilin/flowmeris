@@ -241,8 +241,8 @@ export function RefPlots() {
   );
 }
 
-/** Plot filling the rest of the panel: square when there is room, wider than tall when the panel is short
- * (own component so the size observer mounts with its box). */
+/** Plot filling its box, which CSS keeps square (wider than tall when stacked) so the side column is laid
+ * out before the plot draws (own component so the size observer mounts with its box). */
 function RefCanvas({
   ws,
   group,
