@@ -5,6 +5,13 @@ import { deleteGate, lineageKey, renamePopulation } from '../lib/analysis.ts';
 import { contextFor, useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { drill } from './PlotPanel.tsx';
 
+let ctx: CanvasRenderingContext2D | null = null;
+/** A canvas context to measure text with (shared). */
+function textContext(): CanvasRenderingContext2D {
+  ctx ??= document.createElement('canvas').getContext('2d')!;
+  return ctx;
+}
+
 /**
  * The group's population tree with each population's counts in one sample. By default it shows the
  * current population in the selected sample and clicking a population opens it; the Plot view passes
@@ -65,13 +72,22 @@ export function PopulationTree({
     const el = box.current;
     if (!el || !onWidth) return;
     let need = 0;
+    const measure = textContext();
     for (const row of el.querySelectorAll<HTMLElement>('.pop-row')) {
       // A row being renamed has an input that fills whatever width the card has: not counted.
       const name = row.querySelector<HTMLElement>('.pop-name');
       if (!name) continue;
       const range = document.createRange();
       range.selectNodeContents(name);
-      let w = row.clientWidth + Math.ceil(range.getBoundingClientRect().width) + 4 - name.clientWidth;
+      // Every name is measured as bold, as the selected row shows it, so selecting a population never
+      // changes the card's width (and the cells it spans).
+      const cs = getComputedStyle(name);
+      measure.font = `600 ${cs.fontSize} ${cs.fontFamily}`;
+      const text = Math.max(
+        range.getBoundingClientRect().width,
+        measure.measureText(name.textContent ?? '').width,
+      );
+      let w = row.clientWidth + Math.ceil(text) + 4 - name.clientWidth;
       for (const n of row.querySelectorAll<HTMLElement>('.num'))
         w += Math.max(0, n.scrollWidth - n.clientWidth);
       need = Math.max(need, w);
