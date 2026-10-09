@@ -2693,6 +2693,21 @@ table.stats.import-map td {
   left: 0;
   right: auto;
 }
+.export-list {
+  min-width: 180px;
+}
+.export-list .export-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.export-list .export-section + .export-section {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.export-list .export-section > button {
+  text-align: left;
+}
 .export-pop .field {
   justify-content: space-between;
 }

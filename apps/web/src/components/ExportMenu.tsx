@@ -2,6 +2,21 @@ import { useEffect, useRef, useState } from 'react';
 import type { ImageFormat } from '../lib/exportPlot.ts';
 import { toast } from '../state/store.ts';
 
+export function ExportIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        d="M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 11v2.5h11V11"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Export button: opens a small form to choose the file format (and DPI for raster formats). */
 export function ExportMenu({
   onExport,
@@ -36,16 +51,7 @@ export function ExportMenu({
   return (
     <div className={className ? `export-menu ${className}` : 'export-menu'} ref={ref}>
       <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
-          <path
-            d="M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 11v2.5h11V11"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <ExportIcon />
         Export
       </button>
       {open && (
@@ -75,6 +81,58 @@ export function ExportMenu({
           <button type="button" className="primary" disabled={busy} onClick={run}>
             {busy ? 'Exporting…' : 'Download'}
           </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Export button whose popup lists the files to download; `run` is called for the chosen item. */
+export function ExportListMenu({
+  sections,
+}: {
+  sections: {
+    heading?: string;
+    items: { label: string; title?: string; disabled?: boolean; run: () => void }[];
+  }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', away);
+    return () => document.removeEventListener('mousedown', away);
+  }, [open]);
+  return (
+    <div className="export-menu" ref={ref}>
+      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <ExportIcon />
+        Export
+      </button>
+      {open && (
+        <div className="export-pop export-list" aria-label="Export options">
+          {sections.map((sec, i) => (
+            <div key={sec.heading ?? i} className="export-section">
+              {sec.heading && <span className="muted small">{sec.heading}</span>}
+              {sec.items.map((it) => (
+                <button
+                  key={it.label}
+                  type="button"
+                  title={it.title}
+                  disabled={it.disabled}
+                  onClick={() => {
+                    setOpen(false);
+                    it.run();
+                  }}
+                >
+                  {it.label}
+                </button>
+              ))}
+            </div>
+          ))}
         </div>
       )}
     </div>

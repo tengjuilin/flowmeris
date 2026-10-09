@@ -16,6 +16,7 @@ import { pool } from '../engine-client/pool.ts';
 import { download, safeName } from '../lib/download.ts';
 import { type StatColumn, useAnalysisTable } from '../lib/statsTable.ts';
 import { APP_INFO, contextFor, toast, useGroup, useStore } from '../state/store.ts';
+import { ExportListMenu } from './ExportMenu.tsx';
 
 const VALUE_STATS: { id: StatKind; label: string }[] = [
   { id: 'median', label: 'Median' },
@@ -774,36 +775,46 @@ export function StatsView() {
         {busy > 0 && <span className="muted">computing… {busy} sample(s) left</span>}
         <div className="spacer" />
         <ColumnsPicker group={group} table={perSample} />
-        <button
-          type="button"
-          onClick={exportTable}
-          disabled={!complete}
-          title={
-            aggregated
-              ? 'The grouped table, with the chosen columns'
-              : 'The table as shown, with the chosen columns'
-          }
-        >
-          CSV (table)
-        </button>
-        <button
-          type="button"
-          onClick={() => exportStats('tidy')}
-          disabled={!complete}
-          title="One row per sample × population × statistic, with provenance"
-        >
-          CSV (tidy)
-        </button>
-        <button type="button" onClick={() => exportStats('wide')} disabled={!complete}>
-          CSV (wide)
-        </button>
-        <button
-          type="button"
-          onClick={exportGml}
-          title="Gating-ML 2.0 for the group template (+ effective gates of overridden samples)"
-        >
-          Gating-ML
-        </button>
+        <ExportListMenu
+          sections={[
+            {
+              items: [
+                {
+                  label: 'CSV (table)',
+                  title: aggregated
+                    ? 'The grouped table, with the chosen columns'
+                    : 'The table as shown, with the chosen columns',
+                  disabled: !complete,
+                  run: exportTable,
+                },
+                {
+                  label: 'CSV (tidy)',
+                  title: 'One row per sample × population × statistic, with provenance',
+                  disabled: !complete,
+                  run: () => exportStats('tidy'),
+                },
+                { label: 'CSV (wide)', disabled: !complete, run: () => exportStats('wide') },
+                {
+                  label: 'Gating-ML',
+                  title: 'Gating-ML 2.0 for the group template (+ effective gates of overridden samples)',
+                  run: exportGml,
+                },
+              ],
+            },
+            {
+              heading: `Events of ${group.template.populations[popId]?.name ?? 'the population'}, selected sample`,
+              items: [
+                {
+                  label: 'FCS (raw)',
+                  title:
+                    'FCS 3.1 with linearised, uncompensated values; original keywords and $SPILLOVER kept',
+                  run: () => void exportEvents('fcs', 'raw'),
+                },
+                { label: 'CSV (compensated)', run: () => void exportEvents('csv', 'compensated') },
+              ],
+            },
+          ]}
+        />
       </div>
       <div className="add-stat">
         <label className="field">
@@ -972,22 +983,6 @@ export function StatsView() {
             })}
           </tbody>
         </table>
-      </div>
-      <div className="toolbar">
-        <span className="muted">
-          Export events of the current population ({group.template.populations[popId]?.name}) for the selected
-          sample:
-        </span>
-        <button
-          type="button"
-          onClick={() => void exportEvents('fcs', 'raw')}
-          title="FCS 3.1 with linearised, uncompensated values; original keywords and $SPILLOVER kept"
-        >
-          FCS (raw)
-        </button>
-        <button type="button" onClick={() => void exportEvents('csv', 'compensated')}>
-          CSV (compensated)
-        </button>
       </div>
     </div>
   );
