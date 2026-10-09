@@ -165,13 +165,14 @@ function ValuesTab({ group, variable }: { group: Group; variable: Variable | und
     factor: '0.5',
     op: 'mul' as 'mul' | 'add',
     along: 'cols' as 'cols' | 'rows',
-    reverse: false,
   });
 
   if (!variable) return null;
 
   const byWell = samplesByWell(ws, group.sampleIds);
   const selected = plateSel.flatMap((w) => byWell.get(w) ?? []);
+  // Nothing to act on: actions are disabled rather than failing with a message.
+  const none = selected.length === 0;
   const levels = distinctValues(ws, variable, group.sampleIds);
 
   const apply = (value: number | string | null, label: string) => {
@@ -193,23 +194,26 @@ function ValuesTab({ group, variable }: { group: Group; variable: Variable | und
     apply(v, `Set ${variable.name}`);
   };
 
+  const start = Number(series.start);
+  const k = Number(series.factor);
+  const seriesOk = series.start.trim() !== '' && series.factor.trim() !== '' && Number.isFinite(start + k);
+  const axis = series.along === 'cols' ? 1 : 0;
+  // Selected columns (or rows), left to right (or top to bottom): each gets the next value of the series.
+  const steps = [...new Set(plateSel.map((w) => wellIndex(w)[axis]))].sort((a, b) => a - b);
+  const valueAt = (i: number) =>
+    Number((series.op === 'mul' ? start * k ** i : start + k * i).toPrecision(12));
+
   const fillSeries = () => {
-    const start = Number(series.start);
-    const k = Number(series.factor);
-    if (!Number.isFinite(start) || !Number.isFinite(k)) {
+    if (!seriesOk) {
       toast('Series start and step must be numbers.');
       return;
     }
-    const axis = series.along === 'cols' ? 1 : 0;
-    const steps = [...new Set(plateSel.map((w) => wellIndex(w)[axis]))].sort((a, b) => a - b);
-    if (series.reverse) steps.reverse();
-    const valueAt = (i: number) => (series.op === 'mul' ? start * k ** i : start + k * i);
     mutate(`Fill ${variable.name} series`, (w) => {
       for (const well of plateSel) {
         const i = steps.indexOf(wellIndex(well)[axis]);
         for (const id of byWell.get(well) ?? []) {
           const s = w.samples[id];
-          if (s) s.meta[variable.id] = Number(valueAt(i).toPrecision(12));
+          if (s) s.meta[variable.id] = valueAt(i);
         }
       }
     });
@@ -227,30 +231,37 @@ function ValuesTab({ group, variable }: { group: Group; variable: Variable | und
         open={open.set}
         onToggle={() => setOpen({ ...open, set: !open.set })}
       >
-        <div className="row">
+        <div className="row value-row">
           <input
             type="text"
             autoComplete="off"
             value={raw}
-            placeholder={variable.type === 'numeric' ? 'number' : 'value'}
+            placeholder={variable.type === 'numeric' ? 'Number' : 'Value'}
             onChange={(e) => setRaw(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && set()}
+            onKeyDown={(e) => e.key === 'Enter' && raw.trim() !== '' && !none && set()}
             aria-label={`Value of ${variable.name}`}
           />
-          <button type="button" className="primary" onClick={set} disabled={raw.trim() === ''}>
+          <button type="button" className="primary" onClick={set} disabled={raw.trim() === '' || none}>
             Set
           </button>
-          <button type="button" onClick={() => apply(null, `Clear ${variable.name}`)}>
+          <button
+            type="button"
+            disabled={none}
+            title={`Remove ${variable.name} from the selected samples`}
+            onClick={() => apply(null, `Clear ${variable.name}`)}
+          >
             Clear
           </button>
         </div>
         {variable.type === 'categorical' && levels.length > 0 && (
-          <div className="row wrap">
+          <div className="level-picks">
             {levels.map((l) => (
               <button
                 key={String(l)}
                 type="button"
                 className="chip"
+                disabled={none}
+                title={`Set ${variable.name} to ${String(l)}`}
                 onClick={() => apply(String(l), `Set ${variable.name}`)}
               >
                 {String(l)}
@@ -266,50 +277,65 @@ function ValuesTab({ group, variable }: { group: Group; variable: Variable | und
           open={open.series}
           onToggle={() => setOpen({ ...open, series: !open.series })}
         >
-          <div className="grid2">
-            <label className="field">
-              Start
+          <label className="field">
+            Start
+            <input
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              value={series.start}
+              onChange={(e) => setSeries({ ...series, start: e.target.value })}
+            />
+          </label>
+          <div className="field">
+            Step
+            <div className="step-input">
+              <div className="seg">
+                {(['mul', 'add'] as const).map((op) => (
+                  <button
+                    key={op}
+                    type="button"
+                    className={series.op === op ? 'on' : ''}
+                    aria-pressed={series.op === op}
+                    title={op === 'mul' ? 'Multiply by' : 'Add'}
+                    onClick={() => setSeries({ ...series, op })}
+                  >
+                    {op === 'mul' ? '×' : '+'}
+                  </button>
+                ))}
+              </div>
               <input
                 type="text"
-                value={series.start}
-                onChange={(e) => setSeries({ ...series, start: e.target.value })}
-              />
-            </label>
-            <label className="field">
-              <select
-                value={series.op}
-                onChange={(e) => setSeries({ ...series, op: e.target.value as 'mul' | 'add' })}
-                aria-label="Series kind"
-              >
-                <option value="mul">× factor</option>
-                <option value="add">+ step</option>
-              </select>
-              <input
-                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                aria-label={series.op === 'mul' ? 'Factor' : 'Step'}
                 value={series.factor}
                 onChange={(e) => setSeries({ ...series, factor: e.target.value })}
               />
-            </label>
-            <label className="field">
-              Along
-              <select
-                value={series.along}
-                onChange={(e) => setSeries({ ...series, along: e.target.value as 'cols' | 'rows' })}
-              >
-                <option value="cols">columns (→)</option>
-                <option value="rows">rows (↓)</option>
-              </select>
-            </label>
-            <label className="field check">
-              <input
-                type="checkbox"
-                checked={series.reverse}
-                onChange={(e) => setSeries({ ...series, reverse: e.target.checked })}
-              />
-              Reverse
-            </label>
+            </div>
           </div>
-          <button type="button" onClick={fillSeries} disabled={selected.length === 0}>
+          <div className="field">
+            Along
+            <div className="seg">
+              {(['cols', 'rows'] as const).map((along) => (
+                <button
+                  key={along}
+                  type="button"
+                  className={series.along === along ? 'on' : ''}
+                  aria-pressed={series.along === along}
+                  onClick={() => setSeries({ ...series, along })}
+                >
+                  {along === 'cols' ? 'Columns →' : 'Rows ↓'}
+                </button>
+              ))}
+            </div>
+          </div>
+          {seriesOk && steps.length > 0 && (
+            <p className="series-preview small" aria-label="Series preview">
+              Values: {steps.map((_, i) => valueAt(i)).join(', ')}
+            </p>
+          )}
+          <button type="button" className="primary wide" onClick={fillSeries} disabled={none || !seriesOk}>
             Fill selection
           </button>
         </Section>
