@@ -71,6 +71,7 @@ export function newGroup(name: string, sampleIds: string[], channels: string[]):
     ridgeStyleFollow: true,
     plotStyleFollow: true,
     tilePlotStyleFollow: true,
+    gridStyleFollow: false,
     stats: [],
     analysis: { derived: [], aggregate: { enabled: false, by: [], funcs: ['mean', 'sd', 'n'] } },
     statPlots: [],

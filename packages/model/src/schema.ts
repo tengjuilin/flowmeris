@@ -705,6 +705,11 @@ export const GroupSchema = z.object({
   plotStyleFollow: z.boolean().default(false),
   /** The same as `plotStyleFollow`, for the Tiles plots. */
   tilePlotStyleFollow: z.boolean().default(true),
+  /**
+   * A change to one grid plot's settings is made to every grid plot too: only the settings changed (each
+   * keeps its title, ticks and axis titles; an axis scale and range go to plots showing the same channel).
+   */
+  gridStyleFollow: z.boolean().default(false),
   stats: z.array(StatSpecSchema),
   /** Derived columns, grouping and export columns of the statistics table. */
   analysis: StatAnalysisSchema.default({}),

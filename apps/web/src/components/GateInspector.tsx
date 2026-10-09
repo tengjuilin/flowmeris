@@ -244,6 +244,23 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
                   })
                 }
               />
+              <label
+                className="field check"
+                title="On: a setting you change on a grid plot changes on every grid plot too; only that setting (each keeps its title, ticks and axis titles; an axis scale and range go to plots showing the same channel). Nothing changes when you tick it."
+              >
+                <input
+                  type="checkbox"
+                  checked={group.gridStyleFollow}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    mutate(on ? 'Carry settings to all grid plots' : 'Settings per grid plot', (w) => {
+                      const g = w.groups.find((x) => x.id === group.id);
+                      if (g) g.gridStyleFollow = on;
+                    });
+                  }}
+                />
+                Carry settings to all grid plots
+              </label>
             </Section>
             <Section id="resetAll" title="Reset settings" {...card('resetAll')}>
               <ActionRow

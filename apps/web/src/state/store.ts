@@ -3,6 +3,7 @@ import { type Group, type Workspace, newWorkspace } from '@flowmeris/model';
 import { type Patch, applyPatches, enablePatches, produce, produceWithPatches } from 'immer';
 import { useMemo } from 'react';
 import { create } from 'zustand';
+import { gridCarry } from '../lib/gridCarry.ts';
 import { displayNames } from '../lib/names.ts';
 
 enablePatches();
@@ -133,11 +134,20 @@ export const useStore = create<Store>((set, get) => ({
   past: [],
   future: [],
   mutate(label, fn, merge) {
-    const [next, redo, undo] = produceWithPatches(get().ws, (draft) => {
+    const before = get().ws;
+    let [next, redo, undo] = produceWithPatches(before, (draft) => {
       fn(draft as Workspace);
       (draft as Workspace).modifiedAt = new Date().toISOString();
     });
     if (redo.length === 0) return;
+    // A grid plot's changed settings, made to the other grid plots too while the group carries them.
+    const carry = gridCarry(before, next);
+    if (carry) {
+      const [carried, r, u] = produceWithPatches(next, (draft) => void carry(draft as Workspace));
+      next = carried;
+      redo = [...redo, ...r];
+      undo = [...u, ...undo];
+    }
     const now = Date.now();
     set((s) => {
       const last = s.past[s.past.length - 1];
