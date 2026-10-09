@@ -194,9 +194,10 @@ export function PlotGridView() {
   if (!group) return <div className="empty">Select or add a group.</div>;
 
   const { cells } = group.grid;
-  // No more columns than fit at MIN_CELL; the saved number comes back when the window is wide enough.
-  const maxColumns = width > 0 ? Math.max(1, Math.min(6, Math.floor((width + GAP) / (MIN_CELL + GAP)))) : 6;
-  const columns = Math.min(group.grid.columns, maxColumns);
+  // Two to six columns, no more than fit at MIN_CELL; the saved number comes back when the window is
+  // wide enough.
+  const maxColumns = width > 0 ? Math.max(2, Math.min(6, Math.floor((width + GAP) / (MIN_CELL + GAP)))) : 6;
+  const columns = Math.max(2, Math.min(group.grid.columns, maxColumns));
   const active = cells.find((c) => c?.id === ui.gridCellId) ?? null;
   const activeSample = active ? cellSample(group, active, ui.sampleId) : undefined;
   const gap = GAP;
@@ -228,7 +229,7 @@ export function PlotGridView() {
               Columns
               <input
                 type="range"
-                min={1}
+                min={2}
                 max={maxColumns}
                 step={1}
                 value={columns}

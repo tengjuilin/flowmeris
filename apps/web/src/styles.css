@@ -946,6 +946,8 @@ code,
   flex: 1;
   min-height: 0;
   overflow: auto;
+  /* Tiles are sized from the width too: keep the scrollbar's room so they don't flip-flop. */
+  scrollbar-gutter: stable;
 }
 /* 12 px wider than the scroll area, so each row's last tile margin hangs past its edge. */
 .tiles-flow {
@@ -1500,6 +1502,11 @@ button.link:hover {
 }
 .plot-grid {
   display: grid;
+}
+/* The scrollbar's room is kept even when the grid fits: cells are sized from the width, so a
+   scrollbar coming and going would resize them and flip back and forth as the columns change. */
+.view:has(> .grid-view) {
+  scrollbar-gutter: stable;
 }
 /* The populations card fills its grid slot; the tree scrolls inside when it is taller. */
 .grid-side .pop-tree {
