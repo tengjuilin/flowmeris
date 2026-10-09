@@ -52,11 +52,10 @@ function fmt(v: Cell, stat: string | undefined): string {
   if (typeof v === 'string') return v;
   if (Number.isNaN(v)) return 'NaN';
   if (stat === 'count' || stat === 'n') return String(Math.round(v));
-  if (stat?.startsWith('pct')) {
+  if (stat?.startsWith('pct') || stat === 'cv' || stat === 'rcv') {
     const r = Number(v.toPrecision(2)); // 99.96 → 100, which toPrecision would print as 1.0e+2
     return Math.abs(r) >= 100 ? String(Math.round(r)) : r.toPrecision(2);
   }
-  if (stat === 'cv' || stat === 'rcv') return v.toFixed(2);
   return String(Math.round(v));
 }
 
