@@ -981,6 +981,12 @@ code,
   display: flex;
   padding: 2px;
 }
+.tile .tile-title button.icon.labeled {
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  white-space: nowrap;
+}
 .tile .gate-label {
   font-size: 10px;
 }

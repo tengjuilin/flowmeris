@@ -98,7 +98,7 @@ const Tile = memo(function Tile({
         {ov && <span className="badge warn">override</span>}
         <button
           type="button"
-          className="icon"
+          className="icon labeled"
           title="Open in the Gate view"
           aria-label={`Open ${name} in the Gate view`}
           onClick={() => setUi({ sampleId, view: 'gate' })}
@@ -117,6 +117,30 @@ const Tile = memo(function Tile({
             <path d="M3.5 12.5V3.5h13v13h-9" />
             <path d="M3.5 16.5l7-7M7 9.5h3.5V13" />
           </svg>
+          Gate
+        </button>
+        <button
+          type="button"
+          className="icon labeled"
+          title="Open in the Plot view"
+          aria-label={`Open ${name} in the Plot view`}
+          onClick={() => setUi({ sampleId, view: 'plot' })}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3.5 12.5V3.5h13v13h-9" />
+            <path d="M3.5 16.5l7-7M7 9.5h3.5V13" />
+          </svg>
+          Plot
         </button>
       </div>
       <div style={{ width: size, height: size, overflow: 'hidden' }}>
