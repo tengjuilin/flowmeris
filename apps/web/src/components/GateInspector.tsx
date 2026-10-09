@@ -27,6 +27,7 @@ import {
 import { gateMatchesAxes } from '../lib/geometry.ts';
 import { clearCellOverlay } from '../state/commands/grid.ts';
 import { type PlotTarget, targetEdit, plotsOf as targetPlots } from '../state/commands/plots.ts';
+import { useRememberedTab } from '../state/prefs.ts';
 import { useGroup, useStore } from '../state/store.ts';
 import {
   ActionRow,
@@ -61,14 +62,6 @@ const NAMES: Record<PlotTarget, string> = { gate: 'Gate', tiles: 'Tiles', grid: 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
-function loadTab(target: PlotTarget): GateTab {
-  try {
-    const t = localStorage.getItem(TAB_KEYS[target]);
-    if (t && GATE_TABS.some((x) => x.id === t)) return t as GateTab;
-  } catch {}
-  return 'figure';
-}
-
 /**
  * The Gate view's settings: Figure / Axis / Text / Gate / Settings tabs of collapsible cards. With `target`
  * 'tiles' or 'grid', the same panel for the Tiles view or the Plot view's selected grid plot, editing only
@@ -92,7 +85,11 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
   const plotEdit = (g: Group, p: PlotSpec) =>
     target === 'gate' ? undefined : targetEdit(g.id, p.id, target);
   const mutate = useStore((s) => s.mutate);
-  const [tab, setTabState] = useState<GateTab>(() => loadTab(target));
+  const [tab, setTab] = useRememberedTab<GateTab>(
+    TAB_KEYS[target],
+    GATE_TABS.map((t) => t.id),
+    'figure',
+  );
   // Every card starts open; collapsing one lasts for the session.
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   const panel: Panel = {
@@ -122,12 +119,6 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
         {grid && group && <p className="muted small">Select a plot in the grid to change its settings.</p>}
       </aside>
     );
-  const setTab = (t: GateTab) => {
-    setTabState(t);
-    try {
-      localStorage.setItem(TAB_KEYS[target], t);
-    } catch {}
-  };
   const fig = plot.style.figure ?? defFig;
   /** Edit the plot's figure options, creating them on first edit. Edits sharing `merge` coalesce into one undo step. */
   const edit = (label: string, fn: (f: PlotFigure, p: PlotSpec) => void, merge?: string) =>

@@ -10,12 +10,10 @@ import {
   newId,
 } from '@flowmeris/model';
 import { CATEGORICAL } from '@flowmeris/render';
-import { formatLinear, makeScale } from '@flowmeris/transforms';
 import {
   type CSSProperties,
   type ComponentProps,
   type MouseEvent,
-  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -45,6 +43,7 @@ import {
   setRidgeChannelStyles,
   withRidgeChannel,
 } from '../lib/ridgeStyle.ts';
+import { usePanelState } from '../state/prefs.ts';
 import { useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
 import { GroupPicker, toggleIds } from './GroupPicker.tsx';
 import { ActionRow, ApplyIcon, AxisFields, NumInput, ResetIcon, Section } from './Inspector.tsx';
@@ -599,22 +598,6 @@ function PercentSlider({
 
 const PANEL_KEY = 'flowmeris.ridgePanel';
 
-/** The last tab and open sections, remembered in this browser. */
-function loadPanel(): { tab: RidgeTab; open: Partial<Record<SectionId, boolean>> } {
-  try {
-    const saved = JSON.parse(localStorage.getItem(PANEL_KEY) ?? 'null');
-    if (saved && RIDGE_TABS.some((t) => t.id === saved.tab))
-      return { tab: saved.tab, open: { apply: true, resetAll: true, ...saved.open } };
-  } catch {}
-  return { tab: 'figure', open: DEFAULT_OPEN };
-}
-
-function savePanel(panel: { tab: RidgeTab; open: Partial<Record<SectionId, boolean>> }) {
-  try {
-    localStorage.setItem(PANEL_KEY, JSON.stringify(panel));
-  } catch {}
-}
-
 export function RidgeInspector() {
   const popId = useStore((s) => s.ui.popId);
   const { group, layout, style, combine, overlap, axis, rows, allIds, update } = useRidge();
@@ -626,16 +609,13 @@ export function RidgeInspector() {
   const anchor = useRef<string | null>(null);
   const [dragIds, setDragIds] = useState<string[] | null>(null);
   const [drop, setDrop] = useState<{ id: string; after: boolean } | null>(null);
-  const [panel, setPanel] = useState(loadPanel);
-  const { tab, open } = panel;
-  const changePanel = (fn: (p: typeof panel) => typeof panel) =>
-    setPanel((p) => {
-      const next = fn(p);
-      savePanel(next);
-      return next;
-    });
-  const setTab = (t: RidgeTab) => changePanel((p) => ({ ...p, tab: t }));
-  const toggle = (id: SectionId) => changePanel((p) => ({ ...p, open: { ...p.open, [id]: !p.open[id] } }));
+  // The last tab and open sections, remembered in this browser.
+  const { tab, open, setTab, toggle } = usePanelState<RidgeTab, SectionId>(
+    PANEL_KEY,
+    RIDGE_TABS.map((t) => t.id),
+    { tab: 'figure', open: DEFAULT_OPEN },
+    { apply: true, resetAll: true },
+  );
   // While settings are carried across populations, the population opened next takes the ridge settings
   // of the one left (keeping its own ticks and axis title).
   const last = useRef<{ groupId: string; popId: string; layoutId: string } | null>(null);
