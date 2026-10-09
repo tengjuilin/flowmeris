@@ -8,6 +8,7 @@ import {
   type Workspace,
 } from '@flowmeris/model';
 import { type Cell, compareCells } from '@flowmeris/table';
+import { jsonClone, sameJson } from './json.ts';
 
 /** One ridge: a single sample, or replicates combined. `id` keys the ridge's order, colour and label. */
 export interface RidgeRow {
@@ -201,19 +202,10 @@ export const DEFAULT_RIDGE_STYLE: RidgeStyle = RidgeStyleSchema.parse({});
 export const DEFAULT_OVERLAP = 0.6;
 
 /** Deep equality of plain JSON values, independent of key order. */
-export function sameJson(a: unknown, b: unknown): boolean {
-  const norm = (_: string, v: unknown) =>
-    v && typeof v === 'object' && !Array.isArray(v)
-      ? Object.fromEntries(Object.entries(v).sort(([x], [y]) => (x < y ? -1 : 1)))
-      : v;
-  return JSON.stringify(a, norm) === JSON.stringify(b, norm);
-}
-
 /** Style keys that stay with each population's ridge plot when settings are carried or applied across populations. */
 const PER_POPULATION = ['ticks', 'axisTitle'] as const;
 
-const copy = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
-const settingsOf = (l: RidgeLayout): RidgeSettings => ({ style: copy(l.style), overlap: l.overlap });
+const settingsOf = (l: RidgeLayout): RidgeSettings => ({ style: jsonClone(l.style), overlap: l.overlap });
 const DEFAULT_SETTINGS: RidgeSettings = { style: DEFAULT_RIDGE_STYLE, overlap: DEFAULT_OVERLAP };
 
 /** Whether `s` is the default ridge settings. */
@@ -222,16 +214,16 @@ export const isDefaultRidge = (s: RidgeSettings) =>
 
 /** `from`'s settings with `to`'s per-population ones. */
 function sharedRidge(from: RidgeLayout, to: RidgeLayout): RidgeSettings {
-  const style = copy(from.style);
+  const style = jsonClone(from.style);
   for (const k of PER_POPULATION) {
     if (to.style[k] === undefined) delete style[k];
-    else (style as Record<string, unknown>)[k] = copy(to.style[k]);
+    else (style as Record<string, unknown>)[k] = jsonClone(to.style[k]);
   }
   return { style, overlap: from.overlap };
 }
 
 const setSettings = (l: RidgeLayout, s: RidgeSettings) => {
-  l.style = copy(s.style);
+  l.style = jsonClone(s.style);
   l.overlap = s.overlap;
 };
 
@@ -317,7 +309,7 @@ export function resetRidgeChannel(g: Group, ch: string) {
   for (const l of ridgeLayouts(g)) {
     if (l.axis.channel === ch) setSettings(l, DEFAULT_SETTINGS);
     else if (l.styleFollow === false || l.stylesByChannel?.[ch])
-      (l.stylesByChannel ??= {})[ch] = copy(DEFAULT_SETTINGS);
+      (l.stylesByChannel ??= {})[ch] = jsonClone(DEFAULT_SETTINGS);
   }
 }
 

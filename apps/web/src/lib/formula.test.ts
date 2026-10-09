@@ -1,6 +1,6 @@
-import type { ColumnDef } from '@flowmeris/table';
+import { type ColumnDef, EXPR_FUNCTIONS } from '@flowmeris/table';
 import { describe, expect, it } from 'vitest';
-import { MAX_COMPLETIONS, checkFormula, completionsAt, tokenAt } from './formula.ts';
+import { FUNCTION_SIGNATURES, MAX_COMPLETIONS, checkFormula, completionsAt, tokenAt } from './formula.ts';
 
 const col = (label: string, type: ColumnDef['type'] = 'numeric', key = label): ColumnDef => ({
   key,
@@ -124,5 +124,11 @@ describe('formula problems', () => {
     expect(tokenAt('abc_1(2)', 0)).toEqual([0, 5]);
     expect(tokenAt('1+2', 1)).toEqual([1, 2]);
     expect(tokenAt('12', 5)).toEqual([2, 2]);
+  });
+});
+
+describe('function signatures', () => {
+  it('cover exactly the functions formulas can call', () => {
+    expect(Object.keys(FUNCTION_SIGNATURES).sort()).toEqual([...EXPR_FUNCTIONS].sort());
   });
 });

@@ -6,6 +6,7 @@ import {
   type TextStyle,
 } from '@flowmeris/model';
 import type { CSSProperties } from 'react';
+import { jsonClone, sortedJson } from './json.ts';
 
 export const FONT_GROUPS: { label: string; fonts: { id: string; label: string; stack: string }[] }[] = [
   {
@@ -113,13 +114,13 @@ export const PER_PLOT = ['title', 'xTicks', 'yTicks', 'xTitle', 'yTitle'] as con
 
 /** `from`'s shareable settings over `to`'s per-plot ones. */
 export function sharedStyle(from: PlotStyle, to: PlotStyle): PlotStyle {
-  const style = JSON.parse(JSON.stringify(from)) as PlotStyle;
+  const style = jsonClone(from);
   const own = to.figure;
   if (style.figure || own) {
     const f = (style.figure ??= structuredClone(DEFAULT_FIGURE));
     for (const k of PER_PLOT) {
       if (own?.[k] === undefined) delete f[k];
-      else (f as Record<string, unknown>)[k] = JSON.parse(JSON.stringify(own[k]));
+      else (f as Record<string, unknown>)[k] = jsonClone(own[k]);
     }
   }
   return style;
@@ -139,7 +140,8 @@ export function applyToPopulations(plots: PlotSpec[], plotId: string) {
 export function populationsMatch(plots: PlotSpec[], plotId: string): boolean {
   const src = plots.find((p) => p.id === plotId);
   return (
-    !src || plots.every((p) => p.id === plotId || canon(sharedStyle(src.style, p.style)) === canon(p.style))
+    !src ||
+    plots.every((p) => p.id === plotId || sortedJson(sharedStyle(src.style, p.style)) === sortedJson(p.style))
   );
 }
 
@@ -149,7 +151,7 @@ export function populationsMatch(plots: PlotSpec[], plotId: string): boolean {
  */
 export function carryToPopulation(from: PlotSpec, to: PlotSpec): boolean {
   const next = sharedStyle(from.style, to.style);
-  if (canon(next) === canon(to.style)) return false;
+  if (sortedJson(next) === sortedJson(to.style)) return false;
   to.style = next;
   return true;
 }
@@ -172,7 +174,7 @@ export const axesKey = (p: Restylable) =>
  */
 export function withAxesChange(p: Restylable, fn: () => void): boolean {
   const before = axesKey(p);
-  const style = p.style && (JSON.parse(JSON.stringify(p.style)) as PlotStyle);
+  const style = p.style && jsonClone(p.style);
   fn();
   const after = axesKey(p);
   if (!style || after === before) return false;
@@ -180,24 +182,24 @@ export function withAxesChange(p: Restylable, fn: () => void): boolean {
   p.stylesByAxes[before] = style;
   if (p.styleFollow !== false) return false;
   const from = p.stylesByAxes[after] ?? p.styleBase;
-  p.style = from ? (JSON.parse(JSON.stringify(from)) as PlotStyle) : structuredClone(DEFAULT_STYLE);
+  p.style = from ? jsonClone(from) : structuredClone(DEFAULT_STYLE);
   return true;
 }
 
 /** Apply `p`'s current settings to every channel pair of its population now, including pairs not used yet. */
 export function applyToPairs(p: PlotSpec) {
   p.stylesByAxes = undefined;
-  p.styleBase = JSON.parse(JSON.stringify(p.style)) as PlotStyle;
+  p.styleBase = jsonClone(p.style);
 }
 
 /** Whether every channel pair of `p`'s population already has its current settings. */
 export function pairsMatch(p: PlotSpec): boolean {
-  const cur = canon(p.style);
+  const cur = sortedJson(p.style);
   const key = axesKey(p);
   return (
-    Object.entries(p.stylesByAxes ?? {}).every(([k, s]) => k === key || canon(s) === cur) &&
+    Object.entries(p.stylesByAxes ?? {}).every(([k, s]) => k === key || sortedJson(s) === cur) &&
     (p.styleFollow !== false ||
-      (p.styleBase ? canon(p.styleBase) === cur : isDefaultStyle(p.style, DEFAULT_STYLE)))
+      (p.styleBase ? sortedJson(p.styleBase) === cur : isDefaultStyle(p.style, DEFAULT_STYLE)))
   );
 }
 
@@ -286,11 +288,11 @@ export function styleKeysAtDefaults(
   base: PlotFigure = DEFAULT_FIGURE,
 ) {
   const f = style.figure ?? base;
-  if (keys.some((k) => canon(f[k]) !== canon(base[k]))) return false;
+  if (keys.some((k) => sortedJson(f[k]) !== sortedJson(base[k]))) return false;
   if (!display) return true;
   const { figure: _a, ...rest } = style;
   const { figure: _b, ...shown } = display;
-  return canon(rest) === canon(shown);
+  return sortedJson(rest) === sortedJson(shown);
 }
 
 /** Default settings for channel pair `key` in every plot of `plots`, current or saved. */
@@ -302,19 +304,14 @@ export function resetPairStyles(plots: PlotSpec[], key: string, defaults: PlotSt
   }
 }
 
-/** JSON with object keys sorted, so equal settings compare equal whatever order they were set in. */
-const canon = (v: unknown) =>
-  JSON.stringify(v, (_, x) =>
-    x && typeof x === 'object' && !Array.isArray(x)
-      ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : 1)))
-      : x,
-  );
-
 /** Whether `s` equals `defaults`, counting figure options left at their defaults as unset. */
 export function isDefaultStyle(s: PlotStyle, defaults: PlotStyle): boolean {
   const { figure, ...rest } = s;
   const { figure: baseFigure, ...base } = defaults;
-  return canon(rest) === canon(base) && (!figure || canon(figure) === canon(baseFigure ?? DEFAULT_FIGURE));
+  return (
+    sortedJson(rest) === sortedJson(base) &&
+    (!figure || sortedJson(figure) === sortedJson(baseFigure ?? DEFAULT_FIGURE))
+  );
 }
 
 /** The settings pair `key` of `p` would show: current, saved, or those an unused pair starts from. */

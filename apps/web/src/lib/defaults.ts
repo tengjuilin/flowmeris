@@ -11,7 +11,7 @@ import {
   transformId,
 } from '@flowmeris/model';
 import { CATEGORICAL } from '@flowmeris/render';
-import { asinhDefFromCofactor } from '@flowmeris/transforms';
+import { asinhDefFromCofactor, linearDef, logDef, logicleDef } from '@flowmeris/transforms';
 import { DEFAULT_STYLE, TILE_STYLE } from './figure.ts';
 
 export { DEFAULT_STYLE };
@@ -54,9 +54,9 @@ export function scaleKindOf(t: Transform): ScaleKind {
 
 /** Default transform of scale kind `k` with top of scale `top`. */
 export function transformOfKind(k: ScaleKind, top: number): Transform {
-  if (k === 'linear') return { kind: 'flin', T: top, A: 0 };
-  if (k === 'log') return { kind: 'flog', T: top, M: Math.max(1, Math.round(Math.log10(top))) };
-  if (k === 'logicle') return { kind: 'logicle', T: top, W: 0.5, M: 4.5, A: 0 };
+  if (k === 'linear') return linearDef(top);
+  if (k === 'log') return logDef(top, Math.max(1, Math.round(Math.log10(top))));
+  if (k === 'logicle') return logicleDef(top);
   return asinhDefFromCofactor(150, top);
 }
 
@@ -78,9 +78,8 @@ export function factoryAxis(ws: Workspace, g: Group, channel: string): AxisSpec 
     else if (Number.isFinite(step) && step > 0) top = Math.max(top * step, Number.MIN_VALUE);
   }
   let t: Transform;
-  if (!ch || ch.kind === 'scatter' || ch.kind === 'time' || ch.kind === 'other')
-    t = { kind: 'flin', T: top, A: 0 };
-  else t = { kind: 'logicle', T: Math.max(top, 1024), W: 0.5, M: 4.5, A: 0 };
+  if (!ch || ch.kind === 'scatter' || ch.kind === 'time' || ch.kind === 'other') t = linearDef(top);
+  else t = logicleDef(Math.max(top, 1024));
   return { channel, comp: 'group', transform: registerTransform(ws, t), range: [0, 1] };
 }
 

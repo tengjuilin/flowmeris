@@ -12,8 +12,8 @@ export interface Completion {
 
 export const MAX_COMPLETIONS = 12;
 
-/** How each formula function is called, shown in the suggestions. */
-const FUNCTION_SIGNATURES: Record<string, string> = {
+/** How each formula function is called, shown in the suggestions. One entry per @flowmeris/table EXPR_FUNCTIONS. */
+export const FUNCTION_SIGNATURES: Record<string, string> = {
   log: 'log(x, base)',
   ln: 'ln(x)',
   log2: 'log2(x)',

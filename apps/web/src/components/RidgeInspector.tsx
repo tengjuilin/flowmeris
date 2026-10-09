@@ -24,6 +24,7 @@ import {
 } from 'react';
 import { defaultChannels, factoryAxis } from '../lib/defaults.ts';
 import { FONT_GROUPS, FONT_STACKS, fontStack } from '../lib/figure.ts';
+import { sameJson } from '../lib/json.ts';
 import {
   DEFAULT_OVERLAP,
   DEFAULT_RIDGE_STYLE,
@@ -43,7 +44,6 @@ import {
   ridgeChannelAtDefaults,
   ridgeChannelsMatch,
   ridgePopulationsMatch,
-  sameJson,
   selectRidges,
   setRidgeChannelStyles,
   withRidgeChannel,
