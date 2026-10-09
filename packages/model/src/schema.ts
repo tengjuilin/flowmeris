@@ -557,9 +557,18 @@ export type Variable = z.infer<typeof VariableSchema>;
  */
 export type ColumnKey = string;
 
+const SigFigs = z.number().int().min(1).max(15);
+
 export const DerivedColumnSchema = z.discriminatedUnion('kind', [
   /** Per-row arithmetic over other columns, e.g. `[Median PE] / [Median FITC]`. */
-  z.object({ id: Id, name: z.string(), kind: z.literal('formula'), expr: z.string() }),
+  z.object({
+    id: Id,
+    name: z.string(),
+    kind: z.literal('formula'),
+    expr: z.string(),
+    /** Significant figures the table shows (display only; exports keep full precision). Omitted = 3. */
+    sigFigs: SigFigs.optional(),
+  }),
   /**
    * `source` relative to the mean of `source` over the reference rows
    * (`refVariable` = `refValue`) that share the row's `within` variable values.
@@ -573,6 +582,7 @@ export const DerivedColumnSchema = z.discriminatedUnion('kind', [
     refValue: z.union([Num, z.string()]),
     within: z.array(Id).default([]),
     mode: z.enum(['ratio', 'percent', 'difference']),
+    sigFigs: SigFigs.optional(),
   }),
 ]);
 export type DerivedColumn = z.infer<typeof DerivedColumnSchema>;

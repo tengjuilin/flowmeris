@@ -8,8 +8,8 @@
  *   power  := atom ('^' unary)?
  *   atom   := number | '[' column label ']' | name '(' expr (',' expr)* ')' | '(' expr ')'
  *
- * Functions: log10, ln, log2, exp, sqrt, abs, min, max. Any missing or
- * non-numeric input gives NaN.
+ * Functions: ln (natural log), log2, log10, log(x, base) for any base, exp,
+ * sqrt, abs, min, max. Any missing or non-numeric input gives NaN.
  */
 
 export type Expr =
@@ -29,6 +29,7 @@ export class ExprError extends Error {
 }
 
 const FUNCS: Record<string, { arity: [number, number]; f: (...x: number[]) => number }> = {
+  log: { arity: [2, 2], f: (x, base) => Math.log(x) / Math.log(base!) },
   log10: { arity: [1, 1], f: Math.log10 },
   ln: { arity: [1, 1], f: Math.log },
   log2: { arity: [1, 1], f: Math.log2 },
@@ -91,8 +92,14 @@ export function parseExpr(src: string): Expr {
         args.push(expr());
       }
       expect(')');
+      // log() has no default base: ln, log2 and log10 name theirs.
+      if (fn === 'log' && args.length === 1)
+        throw new ExprError('log() needs a base: log(x, base); use ln(x) for the natural log', start);
       if (args.length < spec.arity[0] || args.length > spec.arity[1])
-        throw new ExprError(`${fn}() takes ${spec.arity[0]} argument(s)`, start);
+        throw new ExprError(
+          `${fn}() takes ${spec.arity[0] === spec.arity[1] ? spec.arity[0] : `${spec.arity[0]} to ${spec.arity[1]}`} argument(s)`,
+          start,
+        );
       return { t: 'call', fn, args };
     }
     throw new ExprError(`Unexpected “${c}”`, i);

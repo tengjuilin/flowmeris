@@ -1933,12 +1933,25 @@ button.link:hover {
   gap: 6px;
   min-width: 0;
 }
-.derived-list li .mono {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
+.derived-list li {
+  padding: 3px 0;
+}
+.derived-list li + li {
+  border-top: 1px solid var(--border);
+}
+.derived-list .derived-name {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* The whole formula (or normalization), smaller, on its own line under the name. */
+.derived-list .derived-detail {
+  flex-basis: 100%;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--text-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .derived-form {
   display: flex;

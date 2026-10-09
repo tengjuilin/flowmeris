@@ -9,14 +9,18 @@ In the panel's **Statistics** tab, **Derived columns** adds columns computed fro
 
 - **Formula:** an arithmetic expression over other columns, referenced by their header in brackets,
   e.g. `[CD4+ | Median PE-A] / [CD4+ | Median FITC-A]` or `log2([Fold])`. Operators `+ − * / ^` and
-  the functions `log10`, `ln`, `log2`, `exp`, `sqrt`, `abs`, `min`, `max` are available. While
-  you type, matching column names and functions are suggested (after `[`, columns only); ↑/↓ choose, Enter or
+  the functions `log`, `ln`, `log2`, `log10`, `exp`, `sqrt`, `abs`, `min`, `max` are available:
+  `ln(x)` is the natural log and `log(x, b)` the log to base *b*, e.g. `log([Fold], 1.5)` (the base is
+  required). While you type, matching column names and functions are suggested (after `[`, columns only); ↑/↓ choose, Enter or
   Tab inserts. A mistake (unknown column or function, unbalanced brackets) is reported under the box,
   with the formula shown and the faulty part marked. A formula may use earlier derived columns.
 - **Normalization:** a column relative to reference samples — those whose variable has a given value (dose
   0, condition "untreated"). The reference is the mean over the reference samples; tick **Within the same**
   variables to take it per replicate, per cell line, etc. Ratio (x / ref), percent (100 · x / ref) or
   difference (x − ref).
+
+Each derived column has its own **Significant figures** (3 by default): how many digits the table shows
+for the column and its replicate summaries. Exports keep full precision.
 
 Definitions: [M-STAT-EXPR, M-STAT-NORM](/methods/statistics#derived-columns).
 

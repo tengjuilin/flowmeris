@@ -46,8 +46,9 @@ Implementation: `packages/table`. Tests: `packages/table/src/table.test.ts`.
 
 **M-STAT-EXPR — formulas.** A formula is evaluated per row by a recursive-descent parser (no code
 evaluation): numbers, `+ − * / ^` (`^` binds tighter than unary minus and associates to the right, so
-`-2^2 = −4` and `2^3^2 = 512`), parentheses, `log10 ln log2 exp sqrt abs min max`, and column references
-`[header]`. A missing or non-numeric input gives NaN; division by zero follows IEEE 754 (±Inf, NaN).
+`-2^2 = −4` and `2^3^2 = 512`), parentheses, `log ln log2 log10 exp sqrt abs min max`, and column references
+`[header]`. `ln(x)` is the natural logarithm; `log(x, b)` is the logarithm to base
+$b$, computed as $\ln x / \ln b$. A missing or non-numeric input gives NaN; division by zero follows IEEE 754 (±Inf, NaN).
 
 **M-STAT-NORM — normalisation.** For a row $i$ and source column $x$, the reference is
 

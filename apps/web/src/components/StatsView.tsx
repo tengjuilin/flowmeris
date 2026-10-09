@@ -23,6 +23,7 @@ import {
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { download, safeName } from '../lib/download.ts';
+import { toSigFigs } from '../lib/format.ts';
 import { type StatColumn, useAnalysisTable } from '../lib/statsTable.ts';
 import { APP_INFO, contextFor, toast, useGroup, useStore } from '../state/store.ts';
 import { ExportIcon } from './ExportMenu.tsx';
@@ -57,8 +58,14 @@ export const AGG_FUNCS: { id: AggFunc; label: string; title: string }[] = [
   { id: 'n', label: 'n', title: 'Number of rows in each group' },
 ];
 
-/** Display formatting only; exports carry full double precision. */
-function fmt(v: Cell, stat: string | undefined): string {
+/** Significant figures of a derived column when its own are not set. */
+const DEFAULT_SIG_FIGS = 3;
+
+/**
+ * Display formatting only; exports carry full double precision. `sig` (derived columns) sets the
+ * significant figures of values; counts, n and percentages keep their own formats.
+ */
+function fmt(v: Cell, stat: string | undefined, sig?: number): string {
   if (v === undefined) return '';
   if (typeof v === 'string') return v;
   if (Number.isNaN(v)) return 'NaN';
@@ -67,7 +74,28 @@ function fmt(v: Cell, stat: string | undefined): string {
     const r = Number(v.toPrecision(2)); // 99.96 → 100, which toPrecision would print as 1.0e+2
     return Math.abs(r) >= 100 ? String(Math.round(r)) : r.toPrecision(2);
   }
+  if (sig !== undefined) return toSigFigs(v, sig);
   return String(Math.round(v));
+}
+
+/** Significant-figures input of the derived-column forms. */
+function SigFigsField({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  return (
+    <label className="field" title="Digits the table shows for this column; exports keep full precision">
+      Significant figures
+      <input
+        type="number"
+        min={1}
+        max={15}
+        step={1}
+        value={value}
+        onChange={(e) => {
+          const n = Math.round(Number(e.target.value));
+          if (Number.isFinite(n) && n >= 1) onChange(Math.min(15, n));
+        }}
+      />
+    </label>
+  );
 }
 
 const PLAIN_DECIMAL = /^(-?\d+)(\.\d+)?$/;
@@ -137,6 +165,19 @@ interface Completion {
 
 const MAX_COMPLETIONS = 12;
 
+/** How each formula function is called, shown in the suggestions. */
+const FUNCTION_SIGNATURES: Record<string, string> = {
+  log: 'log(x, base)',
+  ln: 'ln(x)',
+  log2: 'log2(x)',
+  log10: 'log10(x)',
+  exp: 'exp(x)',
+  sqrt: 'sqrt(x)',
+  abs: 'abs(x)',
+  min: 'min(a, b, …)',
+  max: 'max(a, b, …)',
+};
+
 /** Completions for the word being typed at `caret`: inside `[`, columns; otherwise functions and columns. */
 function completionsAt(expr: string, caret: number, columns: ColumnDef[]): Completion[] {
   const before = expr.slice(0, caret);
@@ -157,9 +198,9 @@ function completionsAt(expr: string, caret: number, columns: ColumnDef[]): Compl
   if (!word) return [];
   const q = word.toLowerCase();
   const from = caret - word.length;
-  const fns: Completion[] = EXPR_FUNCTIONS.filter((f) => f.startsWith(q) && f !== q).map((f) => ({
+  const fns: Completion[] = EXPR_FUNCTIONS.filter((f) => f.startsWith(q)).map((f) => ({
     kind: 'function',
-    label: `${f}( )`,
+    label: FUNCTION_SIGNATURES[f] ?? `${f}( )`,
     insert: `${f}(`,
     from,
     to: caret,
@@ -351,6 +392,7 @@ function FormulaForm(props: {
 }) {
   const [name, setName] = useState(props.initial?.name ?? 'Formula');
   const [expr, setExpr] = useState(props.initial?.expr ?? '');
+  const [sigFigs, setSigFigs] = useState(props.initial?.sigFigs ?? DEFAULT_SIG_FIGS);
   // The problem is shown once the user leaves the box or tries to add; after that it updates as they type.
   const [checked, setChecked] = useState(!!props.initial);
   const problem = expr.trim() ? checkFormula(expr, props.columns) : null;
@@ -372,6 +414,7 @@ function FormulaForm(props: {
         />
       </div>
       {shown && <FormulaError id="formula-error" expr={expr} problem={shown} />}
+      <SigFigsField value={sigFigs} onChange={setSigFigs} />
       <div className="row">
         <button
           type="button"
@@ -385,6 +428,7 @@ function FormulaForm(props: {
               name: name.trim() || 'Formula',
               kind: 'formula',
               expr,
+              sigFigs,
             });
           }}
         >
@@ -537,12 +581,15 @@ function NormalizeForm(props: {
           <option value="difference">difference (x − ref)</option>
         </select>
       </label>
+      <SigFigsField value={d.sigFigs ?? DEFAULT_SIG_FIGS} onChange={(n) => setD({ ...d, sigFigs: n })} />
       <div className="row">
         <button
           type="button"
           className="primary"
           disabled={!d.source || d.refValue === ''}
-          onClick={() => props.onSave({ ...d, name: d.name.trim() || autoName })}
+          onClick={() =>
+            props.onSave({ ...d, name: d.name.trim() || autoName, sigFigs: d.sigFigs ?? DEFAULT_SIG_FIGS })
+          }
         >
           {props.initial ? 'Save' : 'Add'}
         </button>
@@ -585,15 +632,7 @@ function DerivedPanel(props: {
         <ul className="derived-list">
           {derived.map((d) => (
             <li key={d.id}>
-              <strong>{d.name}</strong>{' '}
-              <span className="muted small mono">
-                {d.kind === 'formula'
-                  ? `= ${d.expr}`
-                  : `${d.mode} to ${variables.find((v) => v.id === d.refVariable)?.name ?? '?'} = ${d.refValue}${d.within.length ? ` within ${d.within.map((w) => variables.find((v) => v.id === w)?.name ?? '?').join(', ')}` : ''}`}
-              </span>
-              {props.errors[d.id] && d.kind !== 'formula' && (
-                <span className="badge danger">{props.errors[d.id]}</span>
-              )}
+              <strong className="derived-name">{d.name}</strong>
               <button
                 type="button"
                 className="icon"
@@ -612,6 +651,16 @@ function DerivedPanel(props: {
               >
                 ✕
               </button>
+              {!(props.errors[d.id] && d.kind === 'formula') && (
+                <div className="derived-detail mono">
+                  {d.kind === 'formula'
+                    ? `= ${d.expr}`
+                    : `${d.mode} to ${variables.find((v) => v.id === d.refVariable)?.name ?? '?'} = ${d.refValue}${d.within.length ? ` within ${d.within.map((w) => variables.find((v) => v.id === w)?.name ?? '?').join(', ')}` : ''}`}
+                </div>
+              )}
+              {props.errors[d.id] && d.kind !== 'formula' && (
+                <span className="badge danger">{props.errors[d.id]}</span>
+              )}
               {props.errors[d.id] && d.kind === 'formula' && (
                 <FormulaError
                   expr={d.expr}
@@ -1252,6 +1301,13 @@ export function StatsView() {
   };
   const statOf = (c: ColumnDef): string | undefined =>
     c.func === 'n' ? 'n' : c.func === 'cv' ? 'cv' : statByKey.get(c.source ?? c.key)?.stat;
+  // Derived columns (and their replicate summaries) show their own significant figures.
+  const derivedById = new Map(group.analysis.derived.map((d) => [d.id, d]));
+  const sigOf = (c: ColumnDef): number | undefined => {
+    const key = c.source ?? c.key;
+    if (!key.startsWith('derived:')) return undefined;
+    return derivedById.get(key.slice('derived:'.length))?.sigFigs ?? DEFAULT_SIG_FIGS;
+  };
   // Longest fractional part of each column, so its decimal points line up.
   const fracLen = new Map<string, number>();
   for (const c of display.columns) {
@@ -1259,7 +1315,7 @@ export function StatsView() {
     let n = 0;
     for (const row of display.rows) {
       const v = row.values[c.key];
-      if (typeof v === 'number') n = Math.max(n, fracDigits(fmt(v, statOf(c))));
+      if (typeof v === 'number') n = Math.max(n, fracDigits(fmt(v, statOf(c), sigOf(c))));
     }
     fracLen.set(c.key, n);
   }
@@ -1366,7 +1422,7 @@ export function StatsView() {
                         scope="row"
                         title={aggregated ? undefined : samples[r.id]?.relativePath}
                       >
-                        {fmt(r.values[c.key], statOf(c))}
+                        {fmt(r.values[c.key], statOf(c), sigOf(c))}
                         {!aggregated && overridden.has(r.id) && <span className="badge warn">override</span>}
                         {!aggregated && missing[r.id] && <span className="badge danger">missing</span>}
                       </th>
@@ -1382,7 +1438,7 @@ export function StatsView() {
                             .join(' ') || undefined
                         }
                       >
-                        {alignedNumber(fmt(r.values[c.key], statOf(c)), fracLen.get(c.key) ?? 0)}
+                        {alignedNumber(fmt(r.values[c.key], statOf(c), sigOf(c)), fracLen.get(c.key) ?? 0)}
                       </td>
                     ),
                   )}

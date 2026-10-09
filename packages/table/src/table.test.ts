@@ -34,6 +34,12 @@ describe('formulas', () => {
     expect(run('[Median PE] / [Median FITC]', { 'Median PE': 30, 'Median FITC': 10 })).toBe(3);
     expect(run('log10([x])', { x: 1000 })).toBeCloseTo(3, 12);
     expect(run('max(1, [a], 3)', { a: 5 })).toBe(5);
+    expect(run('ln([x])', { x: Math.E })).toBeCloseTo(1, 12);
+    expect(run('log([x], 3)', { x: 81 })).toBeCloseTo(4, 12);
+    expect(run('log(1000, 10)')).toBeCloseTo(3, 12);
+    expect(run('log(8, [b])', { b: 2 })).toBeCloseTo(3, 12);
+    expect(run('log(5, 1)')).toBe(Number.POSITIVE_INFINITY); // base 1: ln 5 / 0
+    expect(run('log(-1, 2)')).toBeNaN();
     expect(run('[missing] + 1')).toBeNaN();
   });
 
@@ -43,6 +49,8 @@ describe('formulas', () => {
     expect(() => parseExpr('[a')).toThrow(/Unclosed/);
     expect(() => parseExpr('1 2')).toThrow(/Unexpected/);
     expect(() => parseExpr('sqrt(1, 2)')).toThrow(/argument/);
+    expect(() => parseExpr('log(1, 2, 3)')).toThrow(/takes 2 argument/);
+    expect(() => parseExpr('log(8)')).toThrow(/needs a base/);
   });
 });
 
