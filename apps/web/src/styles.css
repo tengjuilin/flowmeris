@@ -1366,12 +1366,13 @@ button.link:hover {
   gap: 2px;
   max-height: 200px;
   overflow: auto;
-  padding: 4px 6px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
 }
-.overlay-list .field {
+.inspector .overlay-list .field {
+  margin: 0;
   white-space: nowrap;
+}
+.overlay-list input[type="checkbox"] {
+  margin: 3px 4px 3px 0;
 }
 .overlay-picker {
   position: relative;

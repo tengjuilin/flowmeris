@@ -440,7 +440,8 @@ export function CellOverlayFields({ group, cell }: { group: Group; cell: PlotCel
                 })
               }
             />
-            <span className="swatch" style={{ background: on ? color : 'transparent' }} />
+            {/* Hidden while off, keeping the names aligned. */}
+            <span className="swatch" style={on ? { background: color } : { visibility: 'hidden' }} />
             {sampleName(id)}
             {isMain && <span className="muted"> (plotted)</span>}
           </label>
