@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { defaultAxis, defaultChannels } from '../lib/defaults.ts';
 import { exportPlot } from '../lib/exportPlot.ts';
 import { TILE_FIGURE, TILE_STYLE } from '../lib/figure.ts';
-import { useGroup, useSampleNames, useStore } from '../state/store.ts';
+import { toast, useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { ExportMenu } from './ExportMenu.tsx';
 import { OpenInIcon, SettingsIcon } from './Inspector.tsx';
 import { type Anchor, type PickOption, PickerMenu } from './PickerMenu.tsx';
@@ -185,6 +185,7 @@ export function PlotGridView() {
   const names = useSampleNames(group);
   const box = useRef<HTMLDivElement>(null);
   const { width } = useSize(box);
+  const handle = useRef<PlotHandle>(null);
   const [treeWidth, setTreeWidth] = useState(0);
   // Delete (or Backspace) removes the selected plot, unless a gate is selected (then it removes the
   // gate), a polygon is being drawn, or the key goes to a text field or menu.
@@ -242,6 +243,20 @@ export function PlotGridView() {
         <div className="toolbar" role="toolbar" aria-label="Gating tools">
           <ToolButtons is1d={active?.kind === 'histogram'} />
           <EditScopeToggle />
+          <ExportMenu
+            className="side-export"
+            onExport={(format, dpi) =>
+              !active || !handle.current
+                ? void toast('Select a plot to export it.')
+                : exportPlot(
+                    handle.current,
+                    plotOf(active),
+                    format,
+                    ws.samples[activeSample ?? '']?.fileName ?? 'plot',
+                    dpi,
+                  )
+            }
+          />
           <div className="spacer" />
           <div className="tiles-controls">
             <label className="field">
@@ -310,6 +325,7 @@ export function PlotGridView() {
               missing={ui.missing}
               onActivate={() => cell.id !== ui.gridCellId && setUi({ gridCellId: cell.id })}
               onDrill={onDrill}
+              handle={cell.id === active?.id ? handle : undefined}
             />
           ) : (
             <div key={`empty${i}`} className="grid-cell empty-cell" style={{ height: cellW || undefined }}>
@@ -334,10 +350,7 @@ export function PlotGridView() {
   );
 }
 
-/**
- * Population, sample and overlay pickers of a grid plot, at the bottom of the Plot card in the Plot
- * view's settings panel.
- */
+/** Population and sample pickers of a grid plot, at the bottom of the Plot card of its settings panel. */
 export function CellSourceFields({ group, cell }: { group: Group; cell: PlotCell }) {
   const ws = useStore((s) => s.ws);
   const selected = useStore((s) => s.ui.sampleId);
@@ -351,7 +364,6 @@ export function CellSourceFields({ group, cell }: { group: Group; cell: PlotCell
     const next = ids[(ids.indexOf(sampleId) + d + ids.length) % ids.length]!;
     edit('Change grid plot sample', (c) => void (c.sampleId = next));
   };
-  const colors = sampleId ? overlayColors(cell, sampleId, group) : null;
   const followName = selected && ids.includes(selected) ? sampleName(selected) : '–';
 
   return (
@@ -393,45 +405,48 @@ export function CellSourceFields({ group, cell }: { group: Group; cell: PlotCell
           </button>
         </div>
       </div>
-      <div className="field" title="Overlay other samples on this plot, each in its own colour">
-        <span className="overlay-head">
-          Overlay{colors?.samples.length ? ` (${colors.samples.length})` : ''}
-          {cell.overlay.length > 0 && (
-            <button
-              type="button"
-              className="link"
-              onClick={() => edit('Clear grid plot overlay', (c) => void (c.overlay = []))}
-            >
-              Clear
-            </button>
-          )}
-        </span>
-        <div className="overlay-list">
-          {ids.map((id) => {
-            const isMain = id === sampleId;
-            const on = isMain || cell.overlay.includes(id);
-            const color = isMain ? colors?.color : colors?.samples.find((x) => x.sampleId === id)?.color;
-            return (
-              <label key={id} className="field check">
-                <input
-                  type="checkbox"
-                  checked={on}
-                  disabled={isMain}
-                  onChange={(e) =>
-                    edit('Change grid plot overlay', (c) => {
-                      c.overlay = e.target.checked ? [...c.overlay, id] : c.overlay.filter((x) => x !== id);
-                    })
-                  }
-                />
-                <span className="swatch" style={{ background: on ? color : 'transparent' }} />
-                {sampleName(id)}
-                {isMain && <span className="muted"> (plotted)</span>}
-              </label>
-            );
-          })}
-        </div>
-      </div>
     </>
+  );
+}
+
+export function clearCellOverlay(groupId: string, cellId: string) {
+  editCell(groupId, cellId, 'Clear grid plot overlay', (c) => void (c.overlay = []));
+}
+
+/** Checklist of the samples drawn over a grid plot, each in its own colour: its Sample overlay card. */
+export function CellOverlayFields({ group, cell }: { group: Group; cell: PlotCell }) {
+  const ws = useStore((s) => s.ws);
+  const selected = useStore((s) => s.ui.sampleId);
+  const names = useSampleNames(group);
+  const sampleName = (id: string) => names[id] ?? ws.samples[id]?.fileName ?? id;
+  const sampleId = cellSample(group, cell, selected);
+  const edit = (label: string, fn: (c: PlotCell) => void) => editCell(group.id, cell.id, label, fn);
+  const colors = sampleId ? overlayColors(cell, sampleId, group) : null;
+  return (
+    <div className="overlay-list" title="Overlay other samples on this plot, each in its own colour">
+      {group.sampleIds.map((id) => {
+        const isMain = id === sampleId;
+        const on = isMain || cell.overlay.includes(id);
+        const color = isMain ? colors?.color : colors?.samples.find((x) => x.sampleId === id)?.color;
+        return (
+          <label key={id} className="field check">
+            <input
+              type="checkbox"
+              checked={on}
+              disabled={isMain}
+              onChange={(e) =>
+                edit('Change grid plot overlay', (c) => {
+                  c.overlay = e.target.checked ? [...c.overlay, id] : c.overlay.filter((x) => x !== id);
+                })
+              }
+            />
+            <span className="swatch" style={{ background: on ? color : 'transparent' }} />
+            {sampleName(id)}
+            {isMain && <span className="muted"> (plotted)</span>}
+          </label>
+        );
+      })}
+    </div>
   );
 }
 
@@ -446,6 +461,7 @@ function GridCell({
   missing,
   onActivate,
   onDrill,
+  handle,
 }: {
   ws: Workspace;
   group: Group;
@@ -457,12 +473,12 @@ function GridCell({
   missing: Record<string, true>;
   onActivate: () => void;
   onDrill: (popId: string) => void;
+  handle: React.RefObject<PlotHandle> | undefined;
 }) {
   const pop = group.template.populations[cell.population];
   const selected = useStore((s) => s.ui.sampleId);
   const [menu, setMenu] = useState<{ kind: 'population' | 'sample'; anchor: Anchor } | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
-  const handle = useRef<PlotHandle>(null);
   const followName = selected && group.sampleIds.includes(selected) ? sampleName(selected) : '–';
   const overlay = sampleId ? overlayColors(cell, sampleId, group) : null;
   const overlaying = !!overlay && overlay.samples.length > 0;
@@ -546,21 +562,6 @@ function GridCell({
           <OpenInIcon />
           Tiles
         </button>
-        <ExportMenu
-          floating
-          className="cell-export"
-          onExport={(format, dpi) =>
-            handle.current
-              ? exportPlot(
-                  handle.current,
-                  plotOf(cell),
-                  format,
-                  ws.samples[sampleId ?? '']?.fileName ?? 'plot',
-                  dpi,
-                )
-              : undefined
-          }
-        />
       </div>
       {overlaying && overlay && sampleId && (
         <div className="cell-legend">

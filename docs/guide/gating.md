@@ -49,15 +49,16 @@ grid is saved with the group in the workspace.
 - The settings panel (the button right of **Columns**) edits the selected plot. Its **Figure › Plot** card
   sets the plot type, title, **Population** and **Sample** (◀ ▶ step through the group's samples; *Follow
   selected* tracks the sample selected in the sidebar); the **Axis** tab sets the X/Y channels and scales.
-- **Overlay**, at the bottom of the same card, draws other samples on the same plot, each in its own colour
-  with a legend: dots on 2D plots, outlines on histograms. Gates and their percentages are those of the
-  plotted sample.
+- The **Sample overlay** card below it draws other samples on the same plot, each in its own colour with a
+  legend: dots on 2D plots, outlines on histograms. Gates and their percentages are those of the plotted
+  sample.
 - The **Populations** card at the top right shows the selected plot's population tree and counts; click a
   population to show it in the selected plot.
 - **Double-click inside a gate** to show its population in the next empty cell, with the same axes.
 - **Click the population or sample in a plot's title** to show another population or sample in that cell
   (or set the sample back to *Follow selected*).
-- **Gate** and **Tiles** in a plot's title open it in that view; **Export** saves it as PDF, PNG, JPG or SVG.
+- **Export**, next to **Edit template** / **This sample only**, saves the selected plot as PDF, PNG, JPG or SVG.
+- **Gate** and **Tiles** in a plot's title open it in that view.
 - **Delete** (or Backspace) removes the selected plot, unless a gate is selected (that removes the gate).
 - Deleting a gate moves plots of its populations back to the gate's parent population.
 

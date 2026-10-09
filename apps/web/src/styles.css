@@ -1359,10 +1359,6 @@ button.link:hover {
   min-width: 0;
   margin: 0 2px;
 }
-.overlay-head {
-  display: flex;
-  justify-content: space-between;
-}
 /* The overlay's sample checklist in the settings panel; long sample lists scroll. */
 .overlay-list {
   display: flex;
@@ -1544,8 +1540,7 @@ button.link:hover {
   white-space: nowrap;
   overflow: hidden;
 }
-.cell-title > button.icon.labeled,
-.cell-export > button {
+.cell-title > button.icon.labeled {
   display: flex;
   align-items: center;
   gap: 3px;

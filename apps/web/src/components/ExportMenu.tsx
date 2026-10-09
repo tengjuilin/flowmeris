@@ -6,15 +6,12 @@ import { toast } from '../state/store.ts';
 export function ExportMenu({
   onExport,
   className,
-  floating,
 }: {
   /** Write the figure as `format`; `dpi` applies to PNG and JPEG. Returns nothing when there is no figure yet. */
   onExport: (format: ImageFormat, dpi: number) => Promise<void> | undefined;
   className?: string;
-  /** Place the form in the window under the button, so a clipping parent (a grid plot) doesn't cut it off. */
-  floating?: boolean;
 }) {
-  const [open, setOpen] = useState<false | { top: number; right: number }>(false);
+  const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<ImageFormat>('pdf');
   const [dpi, setDpi] = useState(300);
   const [busy, setBusy] = useState(false);
@@ -25,14 +22,8 @@ export function ExportMenu({
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener('mousedown', away);
-    // A floating form would stay put while its button scrolls away: close it instead.
-    const scroll = (e: Event) => floating && !ref.current?.contains(e.target as Node) && setOpen(false);
-    document.addEventListener('scroll', scroll, true);
-    return () => {
-      document.removeEventListener('mousedown', away);
-      document.removeEventListener('scroll', scroll, true);
-    };
-  }, [open, floating]);
+    return () => document.removeEventListener('mousedown', away);
+  }, [open]);
   const run = () => {
     const job = onExport(format, Math.min(1200, Math.max(72, dpi || 300)));
     if (!job) return;
@@ -44,14 +35,7 @@ export function ExportMenu({
   };
   return (
     <div className={className ? `export-menu ${className}` : 'export-menu'} ref={ref}>
-      <button
-        type="button"
-        aria-expanded={!!open}
-        onClick={(e) => {
-          const r = e.currentTarget.getBoundingClientRect();
-          setOpen((o) => (o ? false : { top: r.bottom + 4, right: window.innerWidth - r.right }));
-        }}
-      >
+      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
           <path
             d="M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 11v2.5h11V11"
@@ -65,11 +49,7 @@ export function ExportMenu({
         Export
       </button>
       {open && (
-        <div
-          className="export-pop"
-          aria-label="Export options"
-          style={floating ? { position: 'fixed', top: open.top, right: open.right, left: 'auto' } : undefined}
-        >
+        <div className="export-pop" aria-label="Export options">
           <label className="field">
             Format
             <select value={format} onChange={(e) => setFormat(e.target.value as ImageFormat)}>

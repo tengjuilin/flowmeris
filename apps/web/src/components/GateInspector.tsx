@@ -36,7 +36,7 @@ import {
   Section,
   StyleEditor,
 } from './Inspector.tsx';
-import { CellSourceFields } from './PlotGridView.tsx';
+import { CellOverlayFields, CellSourceFields, clearCellOverlay } from './PlotGridView.tsx';
 import {
   PlotKindSelect,
   type PlotTarget,
@@ -439,6 +439,17 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
               </label>
               {grid && gridPlot && <CellSourceFields group={group} cell={gridPlot} />}
             </Section>
+            {grid && gridPlot && (
+              <Section
+                id="overlay"
+                title="Sample overlay"
+                changed={gridPlot.overlay.length > 0}
+                onReset={() => clearCellOverlay(group.id, gridPlot.id)}
+                {...card('overlay')}
+              >
+                <CellOverlayFields group={group} cell={gridPlot} />
+              </Section>
+            )}
             <StyleEditor target={target} plot={plot} panel={panel} />
             <Section
               id="baseFont"
