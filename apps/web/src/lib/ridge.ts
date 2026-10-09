@@ -9,6 +9,21 @@ import {
 } from '@flowmeris/model';
 import { type Cell, compareCells } from '@flowmeris/table';
 import { jsonClone, sameJson } from './json.ts';
+import {
+  type StyleScopes,
+  applyShared,
+  applyToScopes,
+  carryShared,
+  resetAllScopes,
+  resetCurrentScope,
+  resetScopeEverywhere,
+  scopeAtDefaults,
+  scopesAtDefaults,
+  scopesMatch,
+  setPerScope,
+  sharedMatch,
+  withScopeChange,
+} from './styleScope.ts';
 
 /** One ridge: a single sample, or replicates combined. `id` keys the ridge's order, colour and label. */
 export interface RidgeRow {
@@ -201,7 +216,6 @@ export function textMeasure(
 export const DEFAULT_RIDGE_STYLE: RidgeStyle = RidgeStyleSchema.parse({});
 export const DEFAULT_OVERLAP = 0.6;
 
-/** Deep equality of plain JSON values, independent of key order. */
 /** Style keys that stay with each population's ridge plot when settings are carried or applied across populations. */
 const PER_POPULATION = ['ticks', 'axisTitle'] as const;
 
@@ -222,9 +236,16 @@ function sharedRidge(from: RidgeLayout, to: RidgeLayout): RidgeSettings {
   return { style, overlap: from.overlap };
 }
 
-const setSettings = (l: RidgeLayout, s: RidgeSettings) => {
-  l.style = jsonClone(s.style);
-  l.overlap = s.overlap;
+/** A ridge plot's settings (style and overlap) are kept per axis channel (lib/styleScope.ts). */
+const RIDGE_SCOPES: StyleScopes<RidgeLayout, RidgeSettings> = {
+  scope: (l) => l.axis.channel,
+  get: settingsOf,
+  set: (l, s) => {
+    l.style = jsonClone(s.style);
+    l.overlap = s.overlap;
+  },
+  saved: (l) => l.stylesByChannel,
+  setSaved: (l, saved) => void (l.stylesByChannel = saved),
 };
 
 /**
@@ -232,25 +253,19 @@ const setSettings = (l: RidgeLayout, s: RidgeSettings) => {
  * takes `from`'s settings, keeping its own ticks and axis title. Returns whether anything changed.
  */
 export function carryRidge(from: RidgeLayout, to: RidgeLayout): boolean {
-  const next = sharedRidge(from, to);
-  if (sameJson(next, settingsOf(to))) return false;
-  setSettings(to, next);
-  return true;
+  return carryShared(RIDGE_SCOPES, sharedRidge, from, to);
 }
 
 const ridgeLayouts = (g: Group) => g.layouts.filter((l): l is RidgeLayout => l.kind === 'ridge');
 
 /** Apply ridge plot `id`'s settings to every other population's ridge plot now (each keeps its ticks and axis title). */
 export function applyRidgeToPopulations(g: Group, id: string) {
-  const src = ridgeLayouts(g).find((l) => l.id === id);
-  if (!src) return;
-  for (const l of ridgeLayouts(g)) if (l.id !== id) setSettings(l, sharedRidge(src, l));
+  applyShared(RIDGE_SCOPES, sharedRidge, ridgeLayouts(g), id);
 }
 
 /** Whether every other population's ridge plot already has ridge plot `id`'s settings. */
 export function ridgePopulationsMatch(g: Group, id: string): boolean {
-  const src = ridgeLayouts(g).find((l) => l.id === id);
-  return !src || ridgeLayouts(g).every((l) => l.id === id || sameJson(sharedRidge(src, l), settingsOf(l)));
+  return sharedMatch(RIDGE_SCOPES, sharedRidge, ridgeLayouts(g), id);
 }
 
 /**
@@ -260,57 +275,37 @@ export function ridgePopulationsMatch(g: Group, id: string): boolean {
  * the defaults). Returns whether `l`'s settings were replaced.
  */
 export function withRidgeChannel(l: RidgeLayout, fn: () => void): boolean {
-  const before = l.axis.channel;
-  const saved = settingsOf(l);
-  fn();
-  const after = l.axis.channel;
-  if (after === before) return false;
-  l.stylesByChannel ??= {};
-  l.stylesByChannel[before] = saved;
-  if (l.styleFollow !== false) return false;
-  setSettings(l, l.stylesByChannel[after] ?? l.styleBase ?? DEFAULT_SETTINGS);
-  return true;
+  return withScopeChange(RIDGE_SCOPES, l, DEFAULT_SETTINGS, fn);
 }
 
 /** Apply `l`'s current settings to every axis channel of its population now, including channels not used yet. */
 export function applyRidgeToChannels(l: RidgeLayout) {
-  l.stylesByChannel = undefined;
-  l.styleBase = settingsOf(l);
+  applyToScopes(RIDGE_SCOPES, l);
 }
 
 /** Whether every axis channel of `l`'s population already has its current settings. */
 export function ridgeChannelsMatch(l: RidgeLayout): boolean {
-  const cur = settingsOf(l);
-  return (
-    Object.entries(l.stylesByChannel ?? {}).every(([c, s]) => c === l.axis.channel || sameJson(s, cur)) &&
-    (l.styleFollow !== false || sameJson(l.styleBase ?? DEFAULT_SETTINGS, cur))
-  );
+  return scopesMatch(RIDGE_SCOPES, l, isDefaultRidge);
 }
 
 /** Carry the settings in use to the channels opened next (on), or let each channel keep its own (off). */
 export function setRidgeChannelStyles(l: RidgeLayout, perChannel: boolean) {
-  l.styleFollow = perChannel ? false : undefined;
+  setPerScope(l, perChannel);
 }
 
 /** Default settings for `l`'s current channel only. */
 export function resetRidgeCurrent(l: RidgeLayout) {
-  setSettings(l, DEFAULT_SETTINGS);
+  resetCurrentScope(RIDGE_SCOPES, l, DEFAULT_SETTINGS);
 }
 
 /** Default settings for `l` with every channel's saved settings dropped. */
 export function resetRidgeLayout(l: RidgeLayout) {
-  setSettings(l, DEFAULT_SETTINGS);
-  l.stylesByChannel = undefined;
-  l.styleBase = undefined;
+  resetAllScopes(RIDGE_SCOPES, l, DEFAULT_SETTINGS);
 }
 
 /** Default settings for axis channel `ch` in every population's ridge plot, current or saved. */
 export function resetRidgeChannel(g: Group, ch: string) {
-  for (const l of ridgeLayouts(g)) {
-    if (l.axis.channel === ch) setSettings(l, DEFAULT_SETTINGS);
-    else if (l.styleFollow === false || l.stylesByChannel?.[ch])
-      (l.stylesByChannel ??= {})[ch] = jsonClone(DEFAULT_SETTINGS);
-  }
+  resetScopeEverywhere(RIDGE_SCOPES, ridgeLayouts(g), ch, DEFAULT_SETTINGS);
 }
 
 /** Default settings for every ridge plot of `g`. */
@@ -319,22 +314,11 @@ export function resetAllRidges(g: Group) {
 }
 
 /** Whether `l` is at the defaults for its current, every saved and every unused channel. */
-export const ridgeAtDefaults = (l: RidgeLayout) =>
-  [settingsOf(l), l.styleBase, ...Object.values(l.stylesByChannel ?? {})].every(
-    (s) => !s || isDefaultRidge(s),
-  );
+export const ridgeAtDefaults = (l: RidgeLayout) => scopesAtDefaults(RIDGE_SCOPES, l, isDefaultRidge);
 
 /** Whether axis channel `ch` is at the defaults in every population's ridge plot. */
 export const ridgeChannelAtDefaults = (g: Group, ch: string) =>
-  ridgeLayouts(g).every((l) => {
-    const s =
-      l.axis.channel === ch
-        ? settingsOf(l)
-        : l.styleFollow === false
-          ? (l.stylesByChannel?.[ch] ?? l.styleBase)
-          : settingsOf(l);
-    return !s || isDefaultRidge(s);
-  });
+  scopeAtDefaults(RIDGE_SCOPES, ridgeLayouts(g), ch, isDefaultRidge);
 
 /** Every ridge plot of `g` at the defaults. */
 export const allRidgesAtDefaults = (g: Group) => ridgeLayouts(g).every(ridgeAtDefaults);
