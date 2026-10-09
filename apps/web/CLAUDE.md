@@ -81,12 +81,16 @@ before assuming where it lives.
 
 ## Worker pool rules
 
-- Plot requests (`raster`, `histogram`, `counts`) take `{ key, signal }`. `key` must identify the result
-  completely, typically `plotKey` from `lib/keys.ts` plus size and colours. Results with the same key
-  are shared and cached, so never mutate a result.
-- Other methods (`table`, `preview`, `channelValues`, `exportEvents`) are not queued or cached.
-- Adding a worker method means editing `packages/engine`, `workers/compute.worker.ts` and
-  `engine-client/pool.ts`. Keep the three signatures identical.
+- Get the pool with `getPool()` (`engine-client/pool.ts`); tests can replace it with `setPool()`.
+- Plot requests (`raster`, `histogram`, `counts`) take `{ key, signal }` and go through the
+  `Scheduler` (`engine-client/scheduler.ts`). `key` must identify the result completely, typically
+  `plotKey` from `lib/keys.ts` plus size and colours. Results with the same key are shared and cached, so
+  never mutate a result.
+- Other requests (`table`, `preview`, `channelValues`, `exportEvents`) go to the worker at once, so a
+  gate preview never waits behind queued plots (ADR-0010).
+- To add a worker method, add it to `Engine`, pass it through in `workers/compute.worker.ts` with
+  `Parameters<Engine['name']>`, and add the pool method. Types that are not Engine's own go in
+  `packages/engine/src/api.ts`.
 
 ## Tests
 

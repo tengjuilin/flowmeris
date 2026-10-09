@@ -14,7 +14,7 @@ Each record states a decision and why it was made. Code comments cite them by nu
 | [0007](./0007-local-only-data) | Local-only data handling | Accepted |
 | [0008](./0008-web-layout-and-layering) | Web app layout and import layering | Proposed |
 | [0009](./0009-store-commands) | Store commands and explicit side effects | Proposed |
-| [0010](./0010-worker-api) | Worker API contract | Proposed |
+| [0010](./0010-worker-api) | Worker API contract | Accepted |
 
 To add a record, copy the shape of an existing one (title, status, decision, why) into the next number
 and add it to this table and to the sidebar in `docs/.vitepress/config.ts`.
