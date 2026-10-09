@@ -1128,7 +1128,8 @@ table.matrix td {
 }
 table.stats thead th {
   position: sticky;
-  top: 0;
+  top: var(--head-top-0, 0);
+  z-index: 1;
   background: var(--surface-2);
   font-weight: 600;
   text-align: center;
@@ -1139,6 +1140,16 @@ table.stats td .frac {
 }
 table.stats .sec-start {
   border-left: 1px solid var(--border);
+}
+table.stats thead tr:nth-child(2) th {
+  top: var(--head-top-1, 0);
+}
+table.stats thead tr:nth-child(3) th {
+  top: var(--head-top-2, 0);
+}
+/* Scrolls inside its box so the pinned header rows stay in view. */
+.table-wrap.stats-scroll {
+  max-height: 70vh;
 }
 table.stats tbody th {
   text-align: left;

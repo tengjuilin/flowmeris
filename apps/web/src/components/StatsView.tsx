@@ -870,8 +870,20 @@ export function StatsView() {
         <DerivedPanel group={group} columns={perSample.columns} errors={errors} valuesOf={valuesOf} />
         <GroupByPanel group={group} />
       </div>
-      <div className="table-wrap">
-        <table className="stats">
+      <div className="table-wrap stats-scroll">
+        <table
+          className="stats"
+          ref={(t) => {
+            // Pinned header rows stack: each sticks below the rows above it.
+            const rows = t?.tHead?.rows;
+            if (!t || !rows) return;
+            let top = 0;
+            for (const [i, row] of [...rows].entries()) {
+              t.style.setProperty(`--head-top-${i}`, `${top}px`);
+              top += row.offsetHeight;
+            }
+          }}
+        >
           <thead>
             <tr>
               {sections.map((s, i) => (
