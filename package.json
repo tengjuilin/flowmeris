@@ -14,6 +14,8 @@
     "preview": "vitepress preview docs --port 4174 --strictPort",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "biome check .",
+    "lint:deps": "depcruise packages apps/web/src e2e --ignore-known",
+    "lint:size": "node tools/check-size.mjs",
     "format": "biome format --write .",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -25,12 +27,13 @@
     "fixtures:fetch": "node tools/fetch-fixtures.mjs",
     "golden:inputs": "GOLDEN_WRITE=1 vitest run packages/export/test/golden-inputs.test.ts",
     "golden": "corepack pnpm golden:inputs && uv run --project tools/golden/python python tools/golden/python/generate.py",
-    "check": "corepack pnpm lint && corepack pnpm typecheck && corepack pnpm test"
+    "check": "corepack pnpm lint && corepack pnpm lint:deps && corepack pnpm lint:size && corepack pnpm typecheck && corepack pnpm test"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9",
     "@playwright/test": "^1.48",
     "@types/node": "^22",
+    "dependency-cruiser": "^16",
     "fast-check": "^3.22",
     "markdown-it-mathjax3": "^4",
     "typescript": "~5.6",

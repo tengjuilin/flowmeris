@@ -14,7 +14,6 @@
     "@flowmeris/compensation": "workspace:*",
     "@flowmeris/gating": "workspace:*",
     "@flowmeris/stats": "workspace:*",
-    "@flowmeris/density": "workspace:*",
     "@flowmeris/render": "workspace:*"
   },
   "devDependencies": {

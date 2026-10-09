@@ -6,8 +6,8 @@ import { z } from 'zod';
  * The workspace is plain JSON. Every analysis decision (compensation,
  * transforms, gates, per-sample overrides, plots, statistics) is stored here so
  * that a workspace file plus the original FCS files fully reproduces an
- * analysis. See docs/schema/ for the generated JSON Schema and docs/adr/ for
- * the rationale behind the shape.
+ * analysis. See docs/methods/workspace.md for the format and docs/adr/ for the
+ * rationale behind the shape.
  */
 
 export const SCHEMA_VERSION = 1 as const;

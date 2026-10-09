@@ -67,12 +67,17 @@ corepack pnpm build:site && corepack pnpm preview   # docs + app (at /app/), as 
 
 ### Layout
 
+Notes for coding agents (layering, tests, conventions) are in [`CLAUDE.md`](CLAUDE.md).
+
+
 | Path | Contents |
 |---|---|
 | `packages/model` | workspace schema (zod), canonical JSON, fingerprints |
 | `packages/fcs` | FCS parser and writer |
 | `packages/transforms`, `compensation`, `gating`, `stats`, `density`, `render` | numerical kernels |
 | `packages/gatingml`, `export` | Gating-ML reader/evaluator; CSV and Gating-ML export |
+| `packages/table` | statistics table: derived columns, formulas, replicate summaries, table import |
+| `packages/testkit` | test-only helpers: fixture paths, tolerances, synthetic data |
 | `packages/engine`, `storage` | cached analysis pipeline; OPFS persistence |
 | `apps/web` | React app and compute workers |
 | `docs` | VitePress site: guide, methods, validation, decision records |
