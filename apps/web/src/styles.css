@@ -191,9 +191,6 @@ code,
   align-items: center;
   gap: 6px;
 }
-.logo {
-  color: var(--accent);
-}
 .ws-name {
   width: 220px;
   border-color: transparent !important;
@@ -203,13 +200,6 @@ code,
 .ws-name:hover,
 .ws-name:focus {
   border-color: var(--border) !important;
-}
-.privacy {
-  font-size: 12px;
-  color: var(--text-2);
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--surface-2);
 }
 
 .main {

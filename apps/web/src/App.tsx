@@ -160,9 +160,11 @@ function Header() {
   return (
     <header className="app-header">
       <div className="brand">
-        <span className="logo" aria-hidden="true">
-          ●
-        </span>
+        <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
+          <circle cx="11" cy="19" r="6" fill="#2a78d6" />
+          <circle cx="21" cy="12" r="5" fill="#eb6834" />
+          <circle cx="22" cy="23" r="3" fill="#1baf7a" />
+        </svg>
         Flowmeris
       </div>
       <input
@@ -247,12 +249,6 @@ function Header() {
           memory only
         </span>
       )}
-      <span
-        className="privacy"
-        title="All parsing, gating and statistics run in this browser tab. Files are never uploaded."
-      >
-        🔒 local only
-      </span>
     </header>
   );
 }
