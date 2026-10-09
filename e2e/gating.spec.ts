@@ -62,8 +62,8 @@ test('ingest an FCS file, draw a gate, see statistics', async ({ page }) => {
 
   await page.getByRole('tab', { name: 'Statistics' }).click();
   const row = page.locator('table.stats tbody tr').first();
-  await expect(row).toContainText('13,367');
-  await expect(row).toContainText(expected.toLocaleString('en-US'));
+  await expect(row).toContainText('13367');
+  await expect(row).toContainText(String(expected));
 });
 
 test('gating path shows each step and backgating for one sample', async ({ page }) => {
