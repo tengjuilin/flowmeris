@@ -5,15 +5,26 @@ import { deleteGate, lineageKey, renamePopulation } from '../lib/analysis.ts';
 import { contextFor, useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { drill } from './PlotPanel.tsx';
 
-export function PopulationTree() {
+/**
+ * The group's population tree with each population's counts in one sample. By default it shows the
+ * current population in the selected sample and clicking a population opens it; the Plot view passes
+ * its selected plot's population and sample, and sets that plot's population on click.
+ */
+export function PopulationTree({
+  popId: shownPop,
+  sampleId: shownSample,
+  onPick,
+}: { popId?: string; sampleId?: string | undefined; onPick?: (popId: string) => void } = {}) {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
   const group = useGroup();
   const names = useSampleNames(group);
   const [counts, setCounts] = useState<Record<string, { count: number; parent: number }>>({});
   const [editing, setEditing] = useState<string | null>(null);
-  const sampleId =
-    group && ui.sampleId && group.sampleIds.includes(ui.sampleId) ? ui.sampleId : group?.sampleIds[0];
+  const wanted = shownSample ?? ui.sampleId;
+  const sampleId = group && wanted && group.sampleIds.includes(wanted) ? wanted : group?.sampleIds[0];
+  const current = shownPop ?? ui.popId;
+  const pick = onPick ?? drill;
 
   const pops = useMemo(() => (group ? Object.values(group.template.populations) : []), [group]);
   const key = useMemo(
@@ -50,7 +61,7 @@ export function PopulationTree() {
     );
     return (
       <li key={p.id}>
-        <div className={`pop-row${ui.popId === p.id ? ' on' : ''}`} style={{ paddingLeft: 8 + depth * 14 }}>
+        <div className={`pop-row${current === p.id ? ' on' : ''}`} style={{ paddingLeft: 8 + depth * 14 }}>
           <span className="swatch" style={{ background: p.color }} aria-hidden="true" />
           {editing === p.id ? (
             <input
@@ -70,9 +81,15 @@ export function PopulationTree() {
             <button
               type="button"
               className="pop-name"
-              onClick={() => drill(p.id)}
+              onClick={() => pick(p.id)}
               onDoubleClick={() => p.gate && setEditing(p.id)}
-              title={p.gate ? 'Click to open; double-click to rename' : 'All events'}
+              title={
+                onPick
+                  ? `Click to show in the selected plot${p.gate ? '; double-click to rename' : ''}`
+                  : p.gate
+                    ? 'Click to open; double-click to rename'
+                    : 'All events'
+              }
             >
               {p.name}
             </button>
@@ -100,6 +117,7 @@ export function PopulationTree() {
                 onClick={() => {
                   deleteGate(group.id, p.gate!);
                   if (ui.popId === p.id) drill('root');
+                  if (onPick && current === p.id) onPick('root');
                 }}
               >
                 ✕

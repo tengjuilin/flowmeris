@@ -16,6 +16,7 @@ import {
   ToolButtons,
   axisChannelSetter,
 } from './PlotPanel.tsx';
+import { PopulationTree } from './PopulationTree.tsx';
 import { useSize } from './hooks.ts';
 
 const KINDS: { id: PlotKind; label: string }[] = [
@@ -79,6 +80,8 @@ function removeCell(groupId: string, cellId: string) {
 /** Grid gap, and the narrowest cell offered (as for tiles), so plots keep room for their axes. */
 const GAP = 8;
 const MIN_CELL = 160;
+/** Narrowest populations card; it spans as many cells as reach this width (as in Tiles). */
+const SIDE_MIN = 280;
 
 /** Open a cell's population, sample and axes in the Gate view, reusing a matching saved plot. */
 function openInGateView(group: Group, cell: PlotCell, sampleId: string | undefined) {
@@ -194,12 +197,14 @@ export function PlotGridView() {
   // No more columns than fit at MIN_CELL; the saved number comes back when the window is wide enough.
   const maxColumns = width > 0 ? Math.max(1, Math.min(6, Math.floor((width + GAP) / (MIN_CELL + GAP)))) : 6;
   const columns = Math.min(group.grid.columns, maxColumns);
-  const rows = Math.max(2, Math.ceil(cells.length / columns) + 1);
-  const slots = Array.from({ length: rows * columns }, (_, i) => cells[i] ?? null);
   const active = cells.find((c) => c?.id === ui.gridCellId) ?? null;
   const activeSample = active ? cellSample(group, active, ui.sampleId) : undefined;
   const gap = GAP;
   const cellW = width > 0 ? Math.floor((width - gap * (columns - 1)) / columns) : 0;
+  // The populations card takes the top-right cells (as in Tiles); the plot slots flow around it.
+  const span = cellW > 0 ? Math.min(columns, Math.ceil((SIDE_MIN + gap) / (cellW + gap))) : 1;
+  const rows = Math.max(2, Math.ceil((cells.length + span) / columns) + 1);
+  const slots = Array.from({ length: rows * columns - span }, (_, i) => cells[i] ?? null);
   const sampleName = (id: string) => names[id] ?? ws.samples[id]?.fileName ?? id;
 
   const onDrill = (popId: string) => {
@@ -278,6 +283,21 @@ export function PlotGridView() {
         ref={box}
         style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gap }}
       >
+        <div
+          className="plot-side grid-side"
+          style={{
+            gridColumn: `${columns - span + 1} / span ${span}`,
+            gridRow: 1,
+            height: cellW || undefined,
+          }}
+        >
+          {/* Shows the selected plot's population and sample; clicking a population sets the plot's. */}
+          <PopulationTree
+            popId={active?.population}
+            sampleId={activeSample}
+            {...(active ? { onPick: (popId: string) => setCellPopulation(group.id, active.id, popId) } : {})}
+          />
+        </div>
         {slots.map((cell, i) =>
           cell ? (
             <GridCell
