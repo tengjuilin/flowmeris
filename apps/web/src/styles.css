@@ -183,6 +183,7 @@ code,
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
+  position: relative;
 }
 .brand {
   font-weight: 700;
@@ -192,6 +193,10 @@ code,
   gap: 6px;
 }
 .ws-name {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
   width: 220px;
   border-color: transparent !important;
   background: transparent !important;
