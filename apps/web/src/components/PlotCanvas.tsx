@@ -26,6 +26,7 @@ import {
   useState,
 } from 'react';
 import { pool } from '../engine-client/pool.ts';
+import type { PlotHandle, PlotMargin } from '../lib/export/plot.ts';
 import { DEFAULT_FIGURE, figureText } from '../lib/figure.ts';
 import {
   type DimMap,
@@ -49,19 +50,6 @@ const QUAD_CORNERS: Partial<Record<Region, (pw: number, ph: number) => [number, 
   Q3: (pw, ph) => [pw - 6, ph - 8, 'end'],
   Q4: (_pw, ph) => [6, ph - 8, 'start'],
 };
-
-export interface PlotHandle {
-  svg: SVGSVGElement | null;
-  raster: RasterResponse | null;
-  size: { width: number; height: number; margin: Margin };
-}
-
-interface Margin {
-  l: number;
-  r: number;
-  t: number;
-  b: number;
-}
 
 interface Props {
   ws: Workspace;
@@ -146,7 +134,7 @@ export function plotBox(plot: PlotSpec, availWidth: number, availHeight: number,
   const xTitleY = (fig.showTickLabels ? tickY : 4) + 10 + fig.axisTitleFontSize;
   const yTitleX = -(fig.showTickLabels ? 19 + 3 * fig.tickFontSize : 14);
   const title = fig.title?.trim();
-  const margin: Margin = compact
+  const margin: PlotMargin = compact
     ? { l: 6, r: 4, t: 4, b: 6 }
     : {
         l: -yTitleX + fig.axisTitleFontSize + 2,

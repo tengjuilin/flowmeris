@@ -11,11 +11,12 @@ import {
   scaleKindOf,
   transformOfKind,
 } from '../lib/defaults.ts';
-import { exportPlot } from '../lib/exportPlot.ts';
+import type { PlotHandle } from '../lib/export/plot.ts';
 import { withAxesChange } from '../lib/figure.ts';
+import { exportPlot } from '../state/export.ts';
 import { type Tool, useGroup, useStore } from '../state/store.ts';
 import { ExportMenu } from './ExportMenu.tsx';
-import { PlotCanvas, type PlotHandle } from './PlotCanvas.tsx';
+import { PlotCanvas } from './PlotCanvas.tsx';
 import { useSize } from './hooks.ts';
 
 const TOOLS: { id: Tool; label: string; key: string; title: string; oneD?: boolean; twoD?: boolean }[] = [

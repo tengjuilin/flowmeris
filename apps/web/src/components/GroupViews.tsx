@@ -4,12 +4,12 @@ import { axisTicks, formatLinear } from '@flowmeris/transforms';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { factoryAxis } from '../lib/defaults.ts';
-import { exportSvgFigure } from '../lib/exportPlot.ts';
 import { TILE_FIGURE } from '../lib/figure.ts';
 import { nearestColumns } from '../lib/fitSize.ts';
 import { scaleFor } from '../lib/geometry.ts';
 import { lineageKey } from '../lib/keys.ts';
 import { type RidgeCurve, combineCounts, textMeasure, withRidgeChannel, wrapText } from '../lib/ridge.ts';
+import { exportSvgFigure } from '../state/export.ts';
 import {
   contextFor,
   toast,
