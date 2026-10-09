@@ -6,6 +6,7 @@ import { download, safeName } from '../lib/download.ts';
 import { type CellRect, coerce, distinctValues, normRect, pasteTargets, setValue } from '../lib/metadata.ts';
 import { type Sheet, TABLE_ACCEPT, readTableFile } from '../lib/sheets.ts';
 import { toast, useGroup, useSampleNames, useStore } from '../state/store.ts';
+import { ExportIcon, ImportIcon } from './ExportMenu.tsx';
 import { ImportDialog } from './ImportDialog.tsx';
 import { SettingsIcon } from './Inspector.tsx';
 import { activeVariable, deleteVariable } from './MetadataInspector.tsx';
@@ -490,17 +491,21 @@ export function MetadataView() {
         <div className="spacer" />
         <button
           type="button"
+          className="icon-text"
           onClick={() => fileInput.current?.click()}
           title="CSV, TSV or Excel: one row per sample, or plate-layout blocks"
         >
-          Import…
+          <ImportIcon />
+          Import
         </button>
         <button
           type="button"
+          className="icon-text"
           onClick={exportTemplate}
           title="CSV of the samples with their wells and variables, to fill in and import"
         >
-          Export CSV
+          <ExportIcon />
+          Export
         </button>
         <button
           type="button"
@@ -534,7 +539,6 @@ export function MetadataView() {
       </div>
       {vars.length > 0 && (
         <div className="variable-bar">
-          <span className="muted small">Variables:</span>
           {vars.map((v) => (
             <button
               key={v.id}

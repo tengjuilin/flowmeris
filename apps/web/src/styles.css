@@ -2883,7 +2883,8 @@ table.stats.import-map td {
   margin-bottom: 8px;
 }
 .swap-axes > button,
-.export-menu > button {
+.export-menu > button,
+button.icon-text {
   display: inline-flex;
   align-items: center;
   gap: 6px;
