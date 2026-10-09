@@ -26,14 +26,6 @@ import {
   useState,
 } from 'react';
 import { pool } from '../engine-client/pool.ts';
-import {
-  createGate,
-  deleteGate,
-  lineageKey,
-  plotKey,
-  setGateGeometry,
-  setLabelOffset,
-} from '../lib/analysis.ts';
 import { DEFAULT_FIGURE, figureText } from '../lib/figure.ts';
 import {
   type DimMap,
@@ -45,6 +37,8 @@ import {
   rayEnd,
   scaleFor,
 } from '../lib/geometry.ts';
+import { lineageKey, plotKey } from '../lib/keys.ts';
+import { createGate, deleteGate, setGateGeometry, setLabelOffset } from '../state/commands/gates.ts';
 import { contextFor, useStore } from '../state/store.ts';
 import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './PickerMenu.tsx';
 

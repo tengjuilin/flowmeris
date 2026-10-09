@@ -14,7 +14,6 @@ import { COLORMAPS } from '@flowmeris/render';
 import { asinhCofactor, asinhDefFromCofactor, makeScale, suggestLogicleW } from '@flowmeris/transforms';
 import { type ReactNode, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
-import { deleteGate, promoteOverride, revertOverride, setGateGeometry } from '../lib/analysis.ts';
 import {
   DEFAULT_STYLE,
   SCALE_KINDS,
@@ -26,6 +25,7 @@ import {
   transformOfKind,
 } from '../lib/defaults.ts';
 import { DEFAULT_FIGURE, TILE_FIGURE } from '../lib/figure.ts';
+import { deleteGate, promoteOverride, revertOverride, setGateGeometry } from '../state/commands/gates.ts';
 import { contextFor, toast, useGroup, useStore } from '../state/store.ts';
 import {
   type PlotTarget,

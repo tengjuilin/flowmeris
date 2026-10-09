@@ -1,7 +1,8 @@
 import { type Population, childPopulations, isOverridden } from '@flowmeris/model';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
-import { deleteGate, lineageKey, renamePopulation } from '../lib/analysis.ts';
+import { lineageKey } from '../lib/keys.ts';
+import { deleteGate, renamePopulation } from '../state/commands/gates.ts';
 import { contextFor, useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { drill } from './PlotPanel.tsx';
 
