@@ -30,9 +30,12 @@ The group template, and for every sample with overrides its *effective* gates, a
 2.0 XML with all transforms and (for named matrices) the spectrum matrix. Population ids become gate and
 quadrant ids, so parent references follow the population tree. Compensation references are `FCS` (each
 sample's `$SPILLOVER`), `uncompensated`, or the exported matrix. Spider gates are exported as four polygon
-gates plus a `flowmeris:spider` extension element ([M-GATE-SPIDER](./gating#m-gate-spider-spider)).
+gates plus a `flowmeris:spider` extension element ([M-GATE-SPIDER](./gating#m-gate-spider-spider)), and
+bisectors as one-divider quadrant gates ([M-GATE-SPLIT](./gating#m-gate-split-bisector)). The schema
+allows no `custom_info` inside a `Quadrant`, so the names of a quadrant gate's populations are written in
+the gate's own `custom_info`, one `flowmeris:name` element per quadrant.
 
-Round-trip test: for rectangle, polygon, ellipse, quadrant and spider gates on `data1.fcs`, evaluating
+Round-trip test: for rectangle, polygon, ellipse, quadrant, spider and bisector gates on `data1.fcs`, evaluating
 the exported XML with the independent Gating-ML evaluator gives membership identical to the engine.
 An end-to-end check exported gates drawn in the app on three 8-colour samples; FlowKit 1.2.3 reproduced
 every population count, including those of a sample with an override.

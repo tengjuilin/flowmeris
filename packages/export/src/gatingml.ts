@@ -14,7 +14,8 @@ import {
  * Gating-ML 2.0 export (method M-EXPORT-GML).
  *
  * Population ids become Gating-ML gate/quadrant ids, so parent references
- * follow the population tree. Spider gates have no Gating-ML equivalent and
+ * follow the population tree. Split (bisector) gates are quadrant gates with one
+ * divider. Spider gates have no Gating-ML equivalent and
  * are written as four PolygonGates (one per region; the outer vertices lie far
  * outside any plausible data range) plus a Flowmeris extension element that
  * preserves the exact definition for re-import.
@@ -71,6 +72,9 @@ export function exportGatingML(ws: Workspace, g: Group, opts: GmlExportOptions):
     const pops = populationsOfGate(t, gate.id);
     const geom = geomOf(gate);
     const name = (id: string) => esc(t.populations[id]?.name ?? id);
+    // The schema allows custom_info on the gate but not on a Quadrant, so each region's name goes here.
+    const quadrantNames = (ps: { id: string }[]) =>
+      `    <data-type:custom_info>${ps.map((p) => `<flowmeris:name quadrant="${esc(p.id)}">${name(p.id)}</flowmeris:name>`).join('')}</data-type:custom_info>\n`;
     switch (geom.kind) {
       case 'rect': {
         const pop = pops[0]!;
@@ -113,6 +117,7 @@ export function exportGatingML(ws: Workspace, g: Group, opts: GmlExportOptions):
       case 'quadrant': {
         const [dx, dy] = gate.dims as [GateDim, GateDim];
         body += `  <gating:QuadrantGate gating:id="${esc(gate.id)}"${parentAttr(gate)}>\n`;
+        body += quadrantNames(pops);
         body += `    <gating:divider gating:id="${esc(gate.id)}_x" ${dimAttrs(dx)}>${fcsDim(dx)}<gating:value>${num(geom.center[0])}</gating:value></gating:divider>\n`;
         body += `    <gating:divider gating:id="${esc(gate.id)}_y" ${dimAttrs(dy)}>${fcsDim(dy)}<gating:value>${num(geom.center[1])}</gating:value></gating:divider>\n`;
         const loc = { lo: (c: number) => c - 1, hi: (c: number) => c + 1 };
@@ -120,9 +125,22 @@ export function exportGatingML(ws: Workspace, g: Group, opts: GmlExportOptions):
           const xp = p.region === 'Q2' || p.region === 'Q3';
           const yp = p.region === 'Q1' || p.region === 'Q2';
           body += `    <gating:Quadrant gating:id="${esc(p.id)}">\n`;
-          body += `      <data-type:custom_info><flowmeris:name>${name(p.id)}</flowmeris:name></data-type:custom_info>\n`;
           body += `      <gating:position gating:divider_ref="${esc(gate.id)}_x" gating:location="${num(xp ? loc.hi(geom.center[0]) : loc.lo(geom.center[0]))}" />\n`;
           body += `      <gating:position gating:divider_ref="${esc(gate.id)}_y" gating:location="${num(yp ? loc.hi(geom.center[1]) : loc.lo(geom.center[1]))}" />\n`;
+          body += '    </gating:Quadrant>\n';
+        }
+        body += '  </gating:QuadrantGate>\n';
+        break;
+      }
+      case 'split': {
+        // A quadrant gate with one divider: the two Quadrants are [−∞, at) and [at, +∞).
+        const dx = gate.dims[0]!;
+        body += `  <gating:QuadrantGate gating:id="${esc(gate.id)}"${parentAttr(gate)}>\n`;
+        body += quadrantNames(pops);
+        body += `    <gating:divider gating:id="${esc(gate.id)}_x" ${dimAttrs(dx)}>${fcsDim(dx)}<gating:value>${num(geom.at)}</gating:value></gating:divider>\n`;
+        for (const p of pops) {
+          body += `    <gating:Quadrant gating:id="${esc(p.id)}">\n`;
+          body += `      <gating:position gating:divider_ref="${esc(gate.id)}_x" gating:location="${num(p.region === 'hi' ? geom.at + 1 : geom.at - 1)}" />\n`;
           body += '    </gating:Quadrant>\n';
         }
         body += '  </gating:QuadrantGate>\n';

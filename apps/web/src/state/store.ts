@@ -10,7 +10,7 @@ enablePatches();
 
 export const APP_INFO = { version: __APP_VERSION__, commit: __APP_COMMIT__, kernels: 'ts-1' };
 
-export type Tool = 'select' | 'rect' | 'range' | 'ellipse' | 'polygon' | 'quadrant' | 'spider';
+export type Tool = 'select' | 'rect' | 'range' | 'split' | 'ellipse' | 'polygon' | 'quadrant' | 'spider';
 export type View =
   | 'gate'
   | 'plot'

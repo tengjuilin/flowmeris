@@ -30,7 +30,7 @@ function setup() {
   const lg: Transform = { kind: 'logicle', T: 1024, W: 0.5, M: 4.5, A: 0 };
   const tid = transformId(lg);
   ws.transforms[tid] = lg;
-  const add = (gate: Gate, regions: ('in' | 'Q1' | 'Q2' | 'Q3' | 'Q4')[]) => {
+  const add = (gate: Gate, regions: ('in' | 'Q1' | 'Q2' | 'Q3' | 'Q4' | 'lo' | 'hi')[]) => {
     g.template.gates[gate.id] = gate;
     for (const r of regions)
       g.template.populations[`${gate.id}_${r}`] = {
@@ -116,6 +116,10 @@ function setup() {
     },
     ['Q1', 'Q2', 'Q3', 'Q4'],
   );
+  add({ id: 'split', parentPop: 'quad_Q2', dims: [d('SSC-H')], geometry: { kind: 'split', at: 0.35 } }, [
+    'lo',
+    'hi',
+  ]);
   return { ws, g, sampleId: meta.id };
 }
 
@@ -123,6 +127,8 @@ describe('M-EXPORT-GML: Gating-ML export round trip', () => {
   it('exported gates evaluate to the same membership as the engine', () => {
     const { ws, g, sampleId } = setup();
     const xml = exportGatingML(ws, g, { appVersion: 'test' });
+    // The Gating-ML 2.0 schema allows no custom_info inside a Quadrant (FlowKit rejects such files).
+    expect(xml).not.toMatch(/<gating:Quadrant [^>]*>\s*<data-type:custom_info/);
     const doc = parseGatingML(xml);
     const res = evaluateGatingML(doc, {
       channels: ds.channels.map((c) => c.pnn),

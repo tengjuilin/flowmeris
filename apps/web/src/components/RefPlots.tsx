@@ -4,7 +4,7 @@ import { useRef } from 'react';
 import { DEFAULT_STYLE, defaultAxis, defaultChannels, groupSample } from '../lib/defaults.ts';
 import { useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { PlotCanvas } from './PlotCanvas.tsx';
-import { AxisSelects, PlotKindSelect, axisChannelSetter } from './PlotPanel.tsx';
+import { AxisSelects, PlotKindSelect, axisPickers } from './PlotPanel.tsx';
 import { useSize } from './hooks.ts';
 
 function editRef(
@@ -234,7 +234,7 @@ export function RefPlots() {
           sampleId={sampleId}
           plot={plot}
           backgate={backgate}
-          onPickChannel={axisChannelSetter(group, plot, edit)}
+          pickers={axisPickers(group, plot, edit)}
         />
       )}
     </div>
@@ -249,14 +249,14 @@ function RefCanvas({
   sampleId,
   plot,
   backgate,
-  onPickChannel,
+  pickers,
 }: {
   ws: Workspace;
   group: Group;
   sampleId: string;
   plot: PlotSpec;
   backgate: { popId: string; color: string } | undefined;
-  onPickChannel: (axis: 'x' | 'y', channel: string) => void;
+  pickers: ReturnType<typeof axisPickers>;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const size = useSize(box);
@@ -271,7 +271,7 @@ function RefCanvas({
           plot={plot}
           width={size.width}
           height={height}
-          onPickChannel={onPickChannel}
+          {...pickers}
           {...(backgate ? { backgate } : {})}
         />
       )}

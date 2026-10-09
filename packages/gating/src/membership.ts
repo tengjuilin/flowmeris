@@ -9,8 +9,10 @@ export interface GateResult {
 }
 
 const QUADRANT_REGIONS: Region[] = ['Q1', 'Q2', 'Q3', 'Q4'];
+const SPLIT_REGIONS: Region[] = ['lo', 'hi'];
 
 export function regionsOf(g: Geometry): Region[] {
+  if (g.kind === 'split') return SPLIT_REGIONS;
   return g.kind === 'quadrant' || g.kind === 'spider' ? QUADRANT_REGIONS : ['in'];
 }
 
@@ -209,6 +211,29 @@ export function evaluateGate(
         for (let k = 0; k < 4; k++) (q[k] as Bitset)[w] = o[k] as number;
       }
       return { regions: { Q1: q[0], Q2: q[1], Q3: q[2], Q4: q[3] } };
+    }
+    case 'split': {
+      const at = geometry.at;
+      const lo = emptyBitset(n);
+      const hi = emptyBitset(n);
+      for (let w = 0; w < words; w++) {
+        let v = par[w] as number;
+        if (v === 0) continue;
+        let ol = 0;
+        let oh = 0;
+        const base = w << 5;
+        while (v !== 0) {
+          const t = v & -v;
+          v ^= t;
+          const xv = x[base + (31 - Math.clz32(t))] as number;
+          // Gating-ML quadrant with one divider: [−∞, at) and [at, +∞); NaN is in neither.
+          if (xv >= at) oh |= t;
+          else if (xv < at) ol |= t;
+        }
+        lo[w] = ol;
+        hi[w] = oh;
+      }
+      return { regions: { lo, hi } };
     }
   }
 }

@@ -46,7 +46,7 @@ export function plotKey(ws: Workspace, g: Group, sampleId: string, plot: PlotSpe
   ]);
 }
 
-const QUAD_LABEL: Record<Exclude<Region, 'in'>, [boolean, boolean]> = {
+const QUAD_LABEL: Record<'Q1' | 'Q2' | 'Q3' | 'Q4', [boolean, boolean]> = {
   Q1: [false, true],
   Q2: [true, true],
   Q3: [true, false],
@@ -87,6 +87,11 @@ export function createGate(groupId: string, gate: Omit<Gate, 'id'>, baseName?: s
         const p = mk(r, `${r}: ${xn}${xp ? '+' : '−'} ${yn}${yp ? '+' : '−'}`);
         if (r === 'Q1') firstPop = p.id;
       }
+    } else if (gate.geometry.kind === 'split') {
+      // FlowJo's bisector naming: the marker followed by − or +.
+      const xn = shortName(ws, g, gate.dims[0]!.channel);
+      firstPop = mk('lo', `${xn}−`).id;
+      mk('hi', `${xn}+`);
     } else {
       firstPop = mk('in', baseName ?? `Gate ${existing + 1}`).id;
     }

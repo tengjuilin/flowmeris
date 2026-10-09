@@ -22,14 +22,7 @@ import { OpenInIcon, SettingsIcon } from './Inspector.tsx';
 import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './PickerMenu.tsx';
 import { PlotCanvas } from './PlotCanvas.tsx';
 import { openTileInGrid } from './PlotGridView.tsx';
-import {
-  EditScopeToggle,
-  ToolButtons,
-  axisChannelSetter,
-  drill,
-  tilesEdit,
-  useTilePlot,
-} from './PlotPanel.tsx';
+import { EditScopeToggle, ToolButtons, axisPickers, drill, tilesEdit, useTilePlot } from './PlotPanel.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { fontStack, ridgeColor, textCss, useRidge } from './RidgeInspector.tsx';
 import { SupLabel } from './SupLabel.tsx';
@@ -139,7 +132,7 @@ const Tile = memo(function Tile({
               hideOffScaleNote
               interactive={current}
               onDrill={drill}
-              onPickChannel={axisChannelSetter(group, plot, tilesEdit(group.id, plot.id))}
+              {...axisPickers(group, plot, tilesEdit(group.id, plot.id))}
             />
           </div>
         )}

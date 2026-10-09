@@ -167,6 +167,11 @@ export const GeometrySchema = z.discriminatedUnion('kind', [
    * not invariant under axis rescaling.
    */
   z.object({ kind: z.literal('spider'), center: Point, arms: z.tuple([Point, Point, Point, Point]) }),
+  /**
+   * 1D split (FlowJo's bisector): one divider at `at` cuts the axis into two mutually exclusive
+   * regions, 'lo' = [−∞, at) and 'hi' = [at, +∞), as a Gating-ML quadrant gate with one divider.
+   */
+  z.object({ kind: z.literal('split'), at: Num }),
 ]);
 export type Geometry = z.infer<typeof GeometrySchema>;
 export type GeometryKind = Geometry['kind'];
@@ -182,9 +187,10 @@ export type Gate = z.infer<typeof GateSchema>;
 /**
  * Region of a gate a population represents. Quadrant/spider regions follow
  * FlowJo's convention: Q1 top-left (x−, y+), Q2 top-right (x+, y+), Q3
- * bottom-right (x+, y−), Q4 bottom-left (x−, y−).
+ * bottom-right (x+, y−), Q4 bottom-left (x−, y−). A split gate has 'lo'
+ * (below the divider, x−) and 'hi' (at or above it, x+).
  */
-export const RegionSchema = z.enum(['in', 'Q1', 'Q2', 'Q3', 'Q4']);
+export const RegionSchema = z.enum(['in', 'Q1', 'Q2', 'Q3', 'Q4', 'lo', 'hi']);
 export type Region = z.infer<typeof RegionSchema>;
 
 export const PopulationSchema = z.object({

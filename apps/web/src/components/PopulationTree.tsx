@@ -157,7 +157,7 @@ export function PopulationTree({
               <button
                 type="button"
                 className="icon"
-                title={`Delete gate${group.template.gates[p.gate]?.geometry.kind === 'quadrant' || group.template.gates[p.gate]?.geometry.kind === 'spider' ? ' (all four regions)' : ''} and its subpopulations`}
+                title={`Delete gate${regionsNote(group.template.gates[p.gate]?.geometry.kind)} and its subpopulations`}
                 onClick={() => {
                   deleteGate(group.id, p.gate!);
                   if (ui.popId === p.id) drill('root');
@@ -185,4 +185,11 @@ export function PopulationTree({
       <ul>{root && row(root, 0)}</ul>
     </div>
   );
+}
+
+/** What deleting a gate that makes several populations also deletes. */
+function regionsNote(kind: string | undefined): string {
+  if (kind === 'quadrant' || kind === 'spider') return ' (all four regions)';
+  if (kind === 'split') return ' (both sides)';
+  return '';
 }

@@ -94,7 +94,18 @@ interface Props {
   overlay?: { color: string; samples: { sampleId: string; color: string }[] };
   /** Makes the axis titles clickable, to pick another channel for that axis. */
   onPickChannel?: (axis: 'x' | 'y', channel: string) => void;
+  /** Makes a histogram's y-axis title clickable, to pick what the y axis shows. */
+  onPickHistNorm?: (norm: HistNorm) => void;
 }
+
+type HistNorm = PlotSpec['style']['histNorm'];
+
+/** What a histogram's y axis can show: FlowJo's Count, Normalized to Mode and Unit Area. */
+const HIST_NORMS: { value: HistNorm; label: string; detail: string }[] = [
+  { value: 'count', label: 'Count', detail: 'events per bin' },
+  { value: 'mode', label: '% of max', detail: 'normalised to mode' },
+  { value: 'area', label: 'Fraction', detail: 'unit area' },
+];
 
 type Drag =
   | { kind: 'create'; tool: 'rect' | 'range' | 'ellipse'; start: [number, number]; cur: [number, number] }
@@ -125,6 +136,8 @@ function translate(g: Geometry, dx: number, dy: number): Geometry {
         center: [g.center[0] + dx, g.center[1] + dy],
         arms: g.arms.map(([x, y]) => [x + dx, y + dy]) as typeof g.arms,
       };
+    case 'split':
+      return { ...g, at: g.at + dx };
   }
 }
 
@@ -175,6 +188,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     backgate,
     overlay,
     onPickChannel,
+    onPickHistNorm,
   },
   ref,
 ) {
@@ -525,12 +539,16 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   // Gate labels can be dragged off the events they cover on any full-size plot, unless a gate is being drawn.
   const labelsMovable = !compact && !missing && tool === 'select' && !poly;
 
-  // the quadrant / spider gate that a click would place now
-  const hoverGeom: Extract<Geometry, { kind: 'quadrant' | 'spider' }> | null =
-    hover && !is1d && !drag && (tool === 'quadrant' || tool === 'spider')
-      ? tool === 'quadrant'
+  // the quadrant / spider / split gate that a click would place now
+  const hoverGeom: Extract<Geometry, { kind: 'quadrant' | 'spider' | 'split' }> | null =
+    hover && !drag
+      ? !is1d && tool === 'quadrant'
         ? { kind: 'quadrant', center: hover }
-        : { kind: 'spider', center: hover, arms: edgeArms() }
+        : !is1d && tool === 'spider'
+          ? { kind: 'spider', center: hover, arms: edgeArms() }
+          : is1d && tool === 'split'
+            ? { kind: 'split', at: hover[0] }
+            : null
       : null;
   const hoverKey = hoverGeom && canDraw ? JSON.stringify(hoverGeom) : '';
   const hoverBusy = useRef(false);
@@ -633,6 +651,9 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       case 'range':
         if (is1d) setDrag({ kind: 'create', tool: 'range', start: p, cur: p });
         return;
+      case 'split':
+        if (is1d) finishCreate({ kind: 'split', at: p[0] });
+        return;
       case 'polygon': {
         if (is1d) return;
         if (poly && poly.length >= 3) {
@@ -669,7 +690,11 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     const p = toData(px, py);
     // The cursor position only drives the polygon draft and the quadrant / spider preview;
     // tracking it otherwise would re-render the whole plot on every pointer move.
-    if (poly || ((tool === 'quadrant' || tool === 'spider') && !is1d && canDraw))
+    if (
+      poly ||
+      ((tool === 'quadrant' || tool === 'spider') && !is1d && canDraw) ||
+      (tool === 'split' && is1d && canDraw)
+    )
       setHover(px >= 0 && py >= 0 && px <= pw && py <= ph ? p : null);
     else if (hover) setHover(null);
     if (!drag) return;
@@ -848,6 +873,8 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         const arms = base.arms.map((q, k) => (k === i ? clampPt(p) : q)) as typeof base.arms;
         return validateSpider(base.center, arms) === null ? { ...base, arms } : null;
       }
+      case 'split':
+        return { ...base, at: p[0] };
     }
   }
 
@@ -875,6 +902,10 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         if (Math.hypot(px - cx, py - cy) < 12) return gate;
         continue;
       }
+      if (geom.kind === 'split') {
+        if (Math.abs(px - X(maps(gate)[0]!.f(geom.at))) < 6) return gate;
+        continue;
+      }
       if (is1d && geom.kind === 'rect') {
         const m = maps(gate)[0]!;
         const a = X(m.f(geom.min[0] ?? -SPAN));
@@ -891,6 +922,11 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     for (const gate of [...gates].reverse()) {
       const geom = geomOf(gate);
       const pops = populationsOfGate(group.template, gate.id);
+      if (geom.kind === 'split') {
+        // Either side of the divider is one of the two populations.
+        const v = maps(gate)[0]!.inv(toData(px, py)[0]);
+        return pops.find((p) => p.region === (v >= geom.at ? 'hi' : 'lo'))?.id;
+      }
       if (geom.kind === 'quadrant' || geom.kind === 'spider') {
         const m = maps(gate);
         const [dx, dy] = toData(px, py);
@@ -942,15 +978,25 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   const lineCss = { strokeWidth: fig.tickWidth, ...(fig.axisColor ? { stroke: fig.axisColor } : {}) };
   const [axisMenu, setAxisMenu] = useState<{ axis: 'x' | 'y'; anchor: Anchor } | null>(null);
   const closeAxisMenu = useCallback(() => setAxisMenu(null), []);
+  const histNormTitle = HIST_NORMS.find((o) => o.value === plot.style.histNorm)?.label ?? 'Count';
   const axisTitle = (axis: 'x' | 'y') =>
-    onPickChannel
-      ? {
-          className: 'axis-title pickable',
-          ...pickerTrigger(`${axis.toUpperCase()} axis: ${label(plot[axis]!)}. Change channel`, (anchor) =>
-            setAxisMenu({ axis, anchor }),
-          ),
-        }
-      : { className: 'axis-title' };
+    is1d && axis === 'y'
+      ? onPickHistNorm
+        ? {
+            className: 'axis-title pickable',
+            ...pickerTrigger(`Y axis: ${histNormTitle}. Change what the y axis shows`, (anchor) =>
+              setAxisMenu({ axis, anchor }),
+            ),
+          }
+        : { className: 'axis-title' }
+      : onPickChannel
+        ? {
+            className: 'axis-title pickable',
+            ...pickerTrigger(`${axis.toUpperCase()} axis: ${label(plot[axis]!)}. Change channel`, (anchor) =>
+              setAxisMenu({ axis, anchor }),
+            ),
+          }
+        : { className: 'axis-title' };
 
   const histPath = useMemo(() => {
     if (!hist || !is1d) return null;
@@ -1033,7 +1079,28 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     }[] = [];
     let body: JSX.Element | null = null;
 
-    if (is1d && geom.kind === 'rect') {
+    if (geom.kind === 'split') {
+      // FlowJo's bisector: one vertical divider and a bar across the plot; the two populations are
+      // labelled in the top corners, − on the left and + on the right.
+      const a = X(m[0]!.f(geom.at));
+      const barY = ph * 0.12;
+      body = (
+        <g>
+          <line x1={a} x2={a} y1={0} y2={ph} className={cls} style={{ stroke: color }} />
+          <line x1={0} x2={pw} y1={barY} y2={barY} className={cls} style={{ stroke: color }} />
+        </g>
+      );
+      handles.push({ id: 'c', x: a, y: barY });
+      for (const p of pops)
+        labels.push({
+          popId: p.id,
+          text: `${p.name} ${fmtPct(p.id, p.region, gate.id)}%`,
+          x: p.region === 'hi' ? pw - 6 : 6,
+          y: barY - 6,
+          anchor: p.region === 'hi' ? 'end' : 'start',
+          focus: p.id === focusPopId,
+        });
+    } else if (is1d && geom.kind === 'rect') {
       const a = X(m[0]!.f(geom.min[0] ?? -SPAN));
       const b = X(m[0]!.f(geom.max[0] ?? SPAN));
       const ca = Math.max(0, a);
@@ -1290,7 +1357,26 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
 
   // quadrant / spider: preview the gate and its region percentages under the cursor before it is placed
   let hoverDraft: JSX.Element | null = null;
-  if (hoverGeom) {
+  const hoverPct = (r: Region) =>
+    hoverCounts && hoverCounts.parent > 0
+      ? `${((100 * (hoverCounts.regions[r] ?? 0)) / hoverCounts.parent).toFixed(2)}%`
+      : '…';
+  if (hoverGeom?.kind === 'split') {
+    const a = X(hoverGeom.at);
+    const barY = ph * 0.12;
+    hoverDraft = (
+      <g className="hover-draft" pointerEvents="none">
+        <line x1={a} y1={0} x2={a} y2={ph} className="draft" />
+        <line x1={0} y1={barY} x2={pw} y2={barY} className="draft" />
+        <text x={6} y={barY - 6} textAnchor="start" className="gate-label draft-label">
+          {hoverPct('lo')}
+        </text>
+        <text x={pw - 6} y={barY - 6} textAnchor="end" className="gate-label draft-label">
+          {hoverPct('hi')}
+        </text>
+      </g>
+    );
+  } else if (hoverGeom) {
     const cx = X(hoverGeom.center[0]);
     const cy = Y(hoverGeom.center[1]);
     const far = 4 * (pw + ph);
@@ -1308,10 +1394,6 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
             const n = Math.hypot(dx, dy) || 1;
             return [cx + (dx / n) * far, cy + (dy / n) * far];
           });
-    const pct = (r: Region) =>
-      hoverCounts && hoverCounts.parent > 0
-        ? `${((100 * (hoverCounts.regions[r] ?? 0)) / hoverCounts.parent).toFixed(2)}%`
-        : '…';
     hoverDraft = (
       <g className="hover-draft" pointerEvents="none">
         {ends.map(([ex, ey], i) => (
@@ -1322,7 +1404,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
           const [x, y, anchor] = QUAD_CORNERS[r]!(pw, ph);
           return (
             <text key={r} x={x} y={y} textAnchor={anchor} className="gate-label draft-label">
-              {pct(r)}
+              {hoverPct(r)}
             </text>
           );
         })}
@@ -1466,18 +1548,12 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
                       </g>
                     ))}
                 <text
-                  {...(is1d ? { className: 'axis-title' } : axisTitle('y'))}
+                  {...axisTitle('y')}
                   transform={`translate(${yTitleX},${ph / 2}) rotate(-90)`}
                   textAnchor="middle"
                   style={axisTitleCss}
                 >
-                  {is1d
-                    ? plot.style.histNorm === 'mode'
-                      ? '% of max'
-                      : plot.style.histNorm === 'area'
-                        ? 'fraction'
-                        : 'count'
-                    : label(plot.y!)}
+                  {is1d ? histNormTitle : label(plot.y!)}
                 </text>
               </g>
             </>
@@ -1508,7 +1584,17 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         </div>
       )}
       {nonIdentityWarning && !compact && <div className="plot-warning">{nonIdentityWarning}</div>}
-      {axisMenu && onPickChannel && (
+      {axisMenu && is1d && axisMenu.axis === 'y' && onPickHistNorm && (
+        <PickerMenu
+          anchor={axisMenu.anchor}
+          title="Y axis shows"
+          options={HIST_NORMS}
+          value={plot.style.histNorm}
+          onPick={(v) => onPickHistNorm(v as HistNorm)}
+          onClose={closeAxisMenu}
+        />
+      )}
+      {axisMenu && !(is1d && axisMenu.axis === 'y') && onPickChannel && (
         <PickerMenu
           anchor={axisMenu.anchor}
           title={`${axisMenu.axis.toUpperCase()} axis channel`}

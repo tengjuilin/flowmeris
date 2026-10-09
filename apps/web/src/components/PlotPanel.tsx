@@ -50,6 +50,13 @@ const TOOLS: { id: Tool; label: string; key: string; title: string; oneD?: boole
     title: 'Range gate on a histogram: drag horizontally (H)',
     oneD: true,
   },
+  {
+    id: 'split',
+    label: 'Bisector',
+    key: 'B',
+    title: 'Bisector on a histogram: click to split the events into − and + at that value (B)',
+    oneD: true,
+  },
 ];
 
 /** Line icons for the gate drawing tools, drawn on a 20×20 grid in the button's text colour. */
@@ -87,6 +94,12 @@ const TOOL_ICONS: Record<Tool, ReactNode> = {
     <>
       <path d="M2.5 17c3.5 0 4.5-8 7.5-8s4 8 7.5 8" strokeOpacity="0.45" />
       <path d="M5 3.5v5M15 3.5v5M5 6h10" />
+    </>
+  ),
+  split: (
+    <>
+      <path d="M2.5 17c3.5 0 4.5-8 7.5-8s4 8 7.5 8" strokeOpacity="0.45" />
+      <path d="M10 2.5v15M3 6h14" />
     </>
   ),
 };
@@ -157,7 +170,7 @@ export function drill(popId: string) {
 }
 
 /** The fields the plot-type and axis pickers edit; shared by saved plots and reference plots. */
-type PlotAxes = Pick<PlotSpec, 'kind' | 'x' | 'y'>;
+type PlotAxes = Pick<PlotSpec, 'kind' | 'x' | 'y' | 'style'>;
 type EditAxes = (label: string, fn: (p: PlotAxes, g: Group, w: Workspace) => void) => void;
 
 /** Which of a group's plots a settings panel edits: the Gate view's, the Tiles view's, or the Plot view's grid. */
@@ -204,8 +217,22 @@ export function setAxisChannel(edit: EditAxes, axis: 'x' | 'y', channel: string)
 
 /** Changes the axis channel of the population's plot, or of `edit`'s target (for clickable axis titles). */
 export function axisChannelSetter(group: Group, plot: PlotSpec, edit?: EditAxes) {
+  return axisPickers(group, plot, edit).onPickChannel;
+}
+
+/**
+ * Props making a plot's axis titles clickable: the x / y channel, or what a histogram's y axis shows
+ * (`histNorm`), of the population's plot or of `edit`'s target.
+ */
+export function axisPickers(group: Group, plot: PlotSpec, edit?: EditAxes) {
   const ed: EditAxes = edit ?? ((label, fn) => editPlot(group.id, plot.id, label, fn));
-  return (axis: 'x' | 'y', channel: string) => setAxisChannel(ed, axis, channel);
+  return {
+    onPickChannel: (axis: 'x' | 'y', channel: string) => setAxisChannel(ed, axis, channel),
+    onPickHistNorm: (norm: PlotSpec['style']['histNorm']) =>
+      ed('Change histogram y axis', (p) => {
+        p.style.histNorm = norm;
+      }),
+  };
 }
 
 /** Plot type picker; edits the population's Gate-view plot, or `edit`'s target. */
@@ -452,7 +479,7 @@ export function PlotPanel() {
             height={Math.min(size.height, size.width)}
             interactive
             onDrill={drill}
-            onPickChannel={axisChannelSetter(group, plot)}
+            {...axisPickers(group, plot)}
           />
         )}
       </div>

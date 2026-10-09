@@ -10,7 +10,7 @@ import { ExportMenu } from './ExportMenu.tsx';
 import { OpenInIcon, SettingsIcon } from './Inspector.tsx';
 import { type Anchor, type PickOption, PickerMenu } from './PickerMenu.tsx';
 import { PlotCanvas, type PlotHandle } from './PlotCanvas.tsx';
-import { EditScopeToggle, ToolButtons, axisChannelSetter } from './PlotPanel.tsx';
+import { EditScopeToggle, ToolButtons, axisPickers } from './PlotPanel.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { useSize } from './hooks.ts';
 
@@ -631,9 +631,7 @@ function GridCell({
               hideOffScaleNote
               interactive={active}
               onDrill={onDrill}
-              onPickChannel={axisChannelSetter(group, plotOf(cell), (label, fn) =>
-                editCell(group.id, cell.id, label, fn),
-              )}
+              {...axisPickers(group, plotOf(cell), (label, fn) => editCell(group.id, cell.id, label, fn))}
               {...(overlaying && overlay ? { overlay } : {})}
             />
           )

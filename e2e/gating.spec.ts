@@ -152,6 +152,51 @@ test('a gate label can be dragged off the events and put back', async ({ page })
   expect(reset.y).toBeCloseTo(before.y, 0);
 });
 
+test('histogram: y axis picked on its title; a bisector splits the events in two', async ({ page }) => {
+  await page.goto('/');
+  await page
+    .getByTestId('file-input')
+    .first()
+    .setInputFiles([fixture('flowkit/gate_ref/data1.fcs')]);
+  await expect(page.getByText('All events')).toBeVisible({ timeout: 20_000 });
+
+  // FSC-H on a linear axis (flin, T = $PnR = 1024), as in the ISAC "Range1" compliance gate (FSC-H ≥ 100).
+  await page.getByLabel('Plot type').selectOption('histogram');
+  await page.getByRole('tab', { name: 'Axis' }).click();
+  const xCard = page
+    .locator('.inspector .ridge-section')
+    .filter({ has: page.getByRole('button', { name: 'X axis', exact: true }) });
+  await xCard.getByLabel('Channel').selectOption('FSC-H');
+  await xCard.getByLabel('Scale').selectOption('linear');
+
+  const svg = page.locator('svg.plot-overlay');
+  // By keyboard: WebKit misplaces the hit box of rotated SVG text.
+  await svg.getByRole('button', { name: /^Y axis: % of max/ }).press('Enter');
+  await page
+    .getByRole('dialog', { name: 'Y axis shows' })
+    .getByRole('button', { name: /^Count/ })
+    .click();
+  await expect(svg.locator('text.axis-title', { hasText: /^Count$/ })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Bisector' }).click();
+  const box = (await svg.boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  const lo = page.locator('.pop-row', { hasText: 'FSC-Height−' });
+  const hi = page.locator('.pop-row', { hasText: 'FSC-Height+' });
+  await expect(lo).toBeVisible();
+  await expect(hi).toBeVisible();
+
+  await page.getByRole('tablist', { name: 'Gate settings' }).getByRole('tab', { name: 'Gate' }).click();
+  const at = page.getByLabel('FSC-H divider', { exact: true });
+  await at.fill(String(100 / 1024));
+  await at.press('Enter');
+
+  // The + side is [100, ∞), exactly the Range1 gate; the − side is every other event.
+  const plus = truthCount('Range1');
+  await expect(hi).toContainText(plus.toLocaleString('en-US'));
+  await expect(lo).toContainText((13_367 - plus).toLocaleString('en-US'));
+});
+
 test('privacy: production build declares a restrictive CSP', async ({ page }) => {
   await page.goto('/');
   const csp = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');

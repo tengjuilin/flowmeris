@@ -49,6 +49,27 @@ A quadrant gate with centre $(c_x, c_y)$ produces four populations, named as in 
 Ties go to the upper side, as for Gating-ML quadrant dividers ($[\,c, +\infty)$). The four counts sum
 to the parent count unless some events have NaN coordinates ([M-TR-LOGNP](./transforms#m-tr-lognp-non-positive-values-on-a-log-scale)).
 
+## M-GATE-SPLIT — bisector
+
+A bisector (FlowJo "bisector" gate) on a histogram is one divider at $t$ on a single dimension. It
+produces two populations, named after FlowJo with the marker and its sign:
+
+| Region | x |
+|---|---|
+| `<marker>−` (lo) | $x < t$ |
+| `<marker>+` (hi) | $x \ge t$ |
+
+Ties go to the upper side, as for every Gating-ML quadrant divider. Events with a NaN coordinate are in
+neither ([M-TR-LOGNP](./transforms#m-tr-lognp-non-positive-values-on-a-log-scale)), so otherwise the two
+counts always sum to the parent count and the two percentages to 100%. Off-scale events piled on the plot
+edges are assigned by their value, like any other. Each population is reported, as for every gate, as its
+count and its percentage of the parent; a property test checks that every non-NaN event falls in exactly one region.
+
+Export writes a Gating-ML 2.0 `QuadrantGate` with one divider and two `Quadrant`s, the standard's own
+form of this gate. Evaluated by FlowKit 1.2.3 on `data1.fcs` with $t$ = 100 on FSC-H, the + population is
+identical, event by event, to the ISAC compliance suite's `Range1` gate (FSC-H ≥ 100), and the two
+populations are disjoint and together hold all 13,367 events.
+
 ## M-GATE-SPIDER — spider
 
 A spider gate is a quadrant gate whose four dividers are rays from the centre through four arm points

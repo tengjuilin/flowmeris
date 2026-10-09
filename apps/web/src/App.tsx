@@ -100,6 +100,7 @@ const TOOL_KEYS: Record<string, Tool> = {
   q: 'quadrant',
   s: 'spider',
   h: 'range',
+  b: 'split',
 };
 
 function FolderButtons() {

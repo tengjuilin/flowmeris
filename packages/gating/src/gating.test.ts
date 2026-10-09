@@ -245,6 +245,11 @@ describe('evaluateGate kernels agree with the per-event predicates', () => {
         const r = (k: number) => keep((i) => spiderRegion(cx, cy, geometry.arms, x[i]!, y[i]!) === k);
         return { Q1: r(1), Q2: r(2), Q3: r(3), Q4: r(4) };
       }
+      case 'split':
+        return {
+          lo: keep((i) => inRange(x[i]!, null, geometry.at)),
+          hi: keep((i) => inRange(x[i]!, geometry.at, null)),
+        };
     }
   }
 
@@ -322,6 +327,21 @@ describe('evaluateGate kernels agree with the per-event predicates', () => {
           );
         },
       ),
+    );
+  });
+
+  it('split: the two regions are disjoint and cover every non-NaN parent event', () => {
+    fc.assert(
+      fc.property(events, fc.constantFrom(-1, -0.5, 0, 0.5, 1), ([x, , , par], at) => {
+        check({ kind: 'split', at }, [x], par);
+        const r = evaluateGate({ kind: 'split', at }, [x], par.length, fromBooleans(par)).regions;
+        par.forEach((p, i) => {
+          const lo = getBit(r.lo!, i);
+          const hi = getBit(r.hi!, i);
+          expect(lo && hi).toBe(false);
+          expect(lo || hi).toBe(p && !Number.isNaN(x[i]!));
+        });
+      }),
     );
   });
 

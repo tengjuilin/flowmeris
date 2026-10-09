@@ -721,9 +721,13 @@ export function GateEditor({ gateId, panel }: { gateId: string; panel: Panel }) 
   const pops = populationsOfGate(group.template, gate.id);
   const commit = (g: Geometry) =>
     setGateGeometry(group.id, gate.id, g, ui.editScope, sampleId, `gate:${gate.id}:${ui.editScope}`);
-  // A quadrant or spider gate makes several populations; name the card by its kind rather than list them all.
+  // A quadrant, spider or bisector gate makes several populations; name the card by its kind rather than list them all.
   const name =
-    pops.length > 1 ? `${geom.kind[0]!.toUpperCase()}${geom.kind.slice(1)}` : (pops[0]?.name ?? 'Gate');
+    geom.kind === 'split'
+      ? 'Bisector'
+      : pops.length > 1
+        ? `${geom.kind[0]!.toUpperCase()}${geom.kind.slice(1)}`
+        : (pops[0]?.name ?? 'Gate');
 
   return (
     <Section
@@ -765,6 +769,17 @@ export function GateEditor({ gateId, panel }: { gateId: string; panel: Panel }) 
               />
             </div>
           ))}
+        </div>
+      )}
+      {geom.kind === 'split' && (
+        <div className="grid2">
+          <NumInput
+            live
+            label={`${gate.dims[0]!.channel} divider`}
+            value={geom.at}
+            onCommit={(v) => commit({ ...geom, at: v })}
+            title="Events below this value are in the − population, events at or above it in the + population"
+          />
         </div>
       )}
       {(geom.kind === 'quadrant' || geom.kind === 'spider') && (

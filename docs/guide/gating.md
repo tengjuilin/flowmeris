@@ -8,6 +8,7 @@
 | Quadrant (Q) | click the centre | drag the centre |
 | Spider (S) | click the centre | drag the centre or any arm end; arms keep their order around the centre |
 | Range (H, histograms) | drag horizontally | drag either edge |
+| Bisector (B, histograms) | click where to split; the percentages on each side are shown before you click | drag the vertical line |
 
 - The inspector shows the selected gate's exact coordinates, in the gate's own units, and lets you type them.
 - Labels show the percentage of the parent population for the current sample, updated live while dragging.
@@ -18,6 +19,12 @@
   view. Arrow keys and Enter pick from the list; long lists can be filtered by typing.
 - Quadrant and spider gates create four populations, Q1 (top-left) to Q4 (bottom-left) clockwise, named
   by marker sign (e.g. `CD4+ CD8−`). Rename any population by double-clicking it in the population tree.
+- A bisector (FlowJo's binary histogram gate) splits the histogram's events into two populations that
+  never overlap and together hold every event: `CD4−` left of the line and `CD4+` at or right of it. Their
+  percentages, labelled in the plot's top corners, add up to 100% of the parent
+  ([M-GATE-SPLIT](../methods/gating#m-gate-split-bisector)).
+- **Click a histogram's y-axis title** to choose what it shows: **Count** (events per bin), **% of max**
+  (FlowJo's "normalised to mode") or **Fraction** (unit area, bins sum to 1).
 - Deleting a gate removes its populations and everything below them. Undo restores them.
 
 Gates are defined in the scale of the axes they were drawn on. If you later change an axis scale, the
