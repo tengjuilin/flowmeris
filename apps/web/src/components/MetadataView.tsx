@@ -23,7 +23,7 @@ function display(x: number | string | undefined): string {
 }
 
 /** Editing one variable's name, unit, type and category order. */
-function VariableEditor({ v, group, onClose }: { v: Variable; group: Group; onClose: () => void }) {
+function VariableEditor({ v, onClose }: { v: Variable; onClose: () => void }) {
   const ws = useStore((s) => s.ws);
   const mutate = useStore((s) => s.mutate);
   const edit = (label: string, fn: (x: Variable) => void, merge?: string) =>
@@ -126,9 +126,6 @@ function VariableEditor({ v, group, onClose }: { v: Variable; group: Group; onCl
           Done
         </button>
       </div>
-      <p className="muted small">
-        Variables are shared by all groups of the workspace; values are per sample ({group.name} shown).
-      </p>
     </div>
   );
 }
@@ -353,10 +350,6 @@ function MetaTable({ group }: { group: Group }) {
             ))}
           </datalist>
         ))}
-      <p className="muted small">
-        Enter / ↓ moves down. Drag across cells (or shift-click) to select a block, then paste: one value
-        fills the block, a copied block is repeated across it. ⌘C copies the block, Delete clears it.
-      </p>
     </div>
   );
 }
@@ -422,7 +415,6 @@ export function MetadataView() {
   return (
     <div className="metadata-view">
       <div className="toolbar">
-        <strong>Sample variables · {group.name}</strong>
         <div className="seg">
           <button type="button" className={mode === 'table' ? 'on' : ''} onClick={() => setMode('table')}>
             Table
@@ -473,21 +465,18 @@ export function MetadataView() {
             <button
               type="button"
               className="link"
-              onClick={() => setActiveVar(v.id)}
-              title={mode === 'plate' ? 'Show and edit on the plate' : undefined}
+              aria-expanded={editing === v.id}
+              onClick={() => {
+                setActiveVar(v.id);
+                setEditing(editing === v.id ? null : v.id);
+              }}
+              title="Edit variable"
             >
               {v.name}
               {v.unit ? ` (${v.unit})` : ''}
+              <span className="muted small">{v.type === 'numeric' ? '#' : 'abc'}</span>
             </button>
-            <span className="muted small">{v.type === 'numeric' ? '#' : 'abc'}</span>
-            <button
-              type="button"
-              className="icon"
-              title="Edit variable"
-              onClick={() => setEditing(editing === v.id ? null : v.id)}
-            >
-              ✎
-            </button>
+            {editingVar?.id === v.id && <VariableEditor key={v.id} v={v} onClose={() => setEditing(null)} />}
           </span>
         ))}
         <button
@@ -505,9 +494,6 @@ export function MetadataView() {
           + Categorical
         </button>
       </div>
-      {editingVar && (
-        <VariableEditor key={editingVar.id} v={editingVar} group={group} onClose={() => setEditing(null)} />
-      )}
       {mode === 'table' ? <MetaTable group={group} /> : <PlateMap group={group} variable={active} />}
       {sheets && <ImportDialog group={group} sheets={sheets} onClose={() => setSheets(null)} />}
     </div>

@@ -32,11 +32,11 @@ import {
 
 const VIEWS: { id: View; label: string }[] = (
   [
+    'metadata',
     'gate',
     'plot',
     'tiles',
     'path',
-    'metadata',
     'stats',
     'ridge',
     'charts',

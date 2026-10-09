@@ -2126,13 +2126,21 @@ table.stats td.text-cell {
   margin-bottom: 8px;
 }
 .chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+/* The whole chip is the button; the popover sits beside it, not inside. */
+.chip > button.link {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  border: 1px solid var(--border);
   border-radius: 999px;
-  background: var(--surface);
 }
 .chip.on {
   border-color: var(--accent);
@@ -2141,16 +2149,36 @@ table.stats td.text-cell {
 button.chip:hover {
   border-color: var(--accent);
 }
+/* A popover under its variable's chip, with an arrow pointing at the chip. */
 .variable-editor {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  z-index: 20;
+  width: max-content;
+  max-width: min(420px, 90vw);
   display: flex;
   flex-wrap: wrap;
   gap: 10px 14px;
   align-items: flex-start;
   padding: 10px;
-  margin-bottom: 8px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  cursor: default;
+}
+.variable-editor::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 18px;
+  width: 10px;
+  height: 10px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+  transform: rotate(45deg);
 }
 .variable-editor > .row,
 .variable-editor > p {
@@ -2166,10 +2194,12 @@ button.chip:hover {
   align-items: center;
   gap: 4px;
 }
+/* Same row height as the statistics table: 4px + text for its cells, 3px + the input's 1px border here. */
 .meta-table td {
-  padding: 1px 2px;
+  padding: 3px 2px;
 }
 .meta-table input {
+  padding: 0 6px;
   width: 100%;
   min-width: 70px;
   border-color: transparent;
