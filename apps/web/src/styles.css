@@ -425,6 +425,20 @@ code,
   height: 100%;
   min-height: 480px;
 }
+/* Gate view: the gating tools above the plot and its side column (as in the Plot view). */
+.gate-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+}
+.gate-view > .toolbar {
+  margin-bottom: 0;
+}
+.gate-view > .plot-layout {
+  flex: 1;
+  height: auto;
+}
 .plot-panel {
   display: flex;
   flex-direction: column;
@@ -1254,6 +1268,13 @@ table.matrix input {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto;
     height: auto;
+  }
+  /* Stacked, the Gate view grows with its plot and side column and the view scrolls. */
+  .gate-view {
+    height: auto;
+  }
+  .gate-view > .plot-layout {
+    flex: none;
   }
   .plot-box {
     min-height: 460px;

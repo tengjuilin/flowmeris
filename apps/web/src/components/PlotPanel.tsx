@@ -405,6 +405,19 @@ export function GateExportCard() {
   );
 }
 
+/** The Gate view's gating tools, above its plot and side column (as in the Plot view). */
+export function GateToolbar() {
+  const group = useGroup();
+  const plot = usePlotForPopulation();
+  if (!group || !plot) return null;
+  return (
+    <div className="toolbar" role="toolbar" aria-label="Gating tools">
+      <ToolButtons is1d={plot.kind === 'histogram'} />
+      <EditScopeToggle />
+    </div>
+  );
+}
+
 export function PlotPanel() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
@@ -425,13 +438,8 @@ export function PlotPanel() {
       </div>
     );
   }
-  const is1d = plot.kind === 'histogram';
   return (
     <div className="plot-panel">
-      <div className="toolbar" role="toolbar" aria-label="Gating tools">
-        <ToolButtons is1d={is1d} />
-        <EditScopeToggle />
-      </div>
       <div className="plot-box" ref={box}>
         {size.width > 0 && (
           <PlotCanvas

@@ -8,7 +8,7 @@ import { RidgeExportCard, RidgeView, TilesView } from './components/GroupViews.t
 import { SettingsIcon } from './components/Inspector.tsx';
 import { MetadataView } from './components/MetadataView.tsx';
 import { PlotGridView } from './components/PlotGridView.tsx';
-import { GateExportCard, PlotPanel, drill } from './components/PlotPanel.tsx';
+import { GateExportCard, GateToolbar, PlotPanel, drill } from './components/PlotPanel.tsx';
 import { PopulationTree } from './components/PopulationTree.tsx';
 import { RefPlots } from './components/RefPlots.tsx';
 import { RidgeCombinePanel, RidgeInspector } from './components/RidgeInspector.tsx';
@@ -395,12 +395,15 @@ export function App() {
             </div>
             <div className="view">
               {ui.view === 'gate' && (
-                <div className="plot-layout">
-                  <PlotPanel />
-                  <div className="plot-side">
-                    <GateExportCard />
-                    <PopulationTree />
-                    <RefPlots />
+                <div className="gate-view">
+                  <GateToolbar />
+                  <div className="plot-layout">
+                    <PlotPanel />
+                    <div className="plot-side">
+                      <GateExportCard />
+                      <PopulationTree />
+                      <RefPlots />
+                    </div>
                   </div>
                 </div>
               )}
