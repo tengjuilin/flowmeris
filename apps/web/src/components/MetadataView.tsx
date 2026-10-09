@@ -41,6 +41,13 @@ function wellParts(well: string | undefined, partial: PartialWell | undefined): 
   return well ? { row: well[0], col: Number(well.slice(1)) } : (partial ?? {});
 }
 
+/** Delete a variable and its values everywhere, after asking; true if deleted. */
+function deleteVariable(v: Variable, mutate: ReturnType<typeof useStore.getState>['mutate']): boolean {
+  if (!window.confirm(`Delete “${v.name}” and its values in all groups?`)) return false;
+  mutate('Delete variable', (w) => removeVariable(w, v.id));
+  return true;
+}
+
 /** Editing one variable's name, unit, type and category order. */
 function VariableEditor({ v, onClose }: { v: Variable; onClose: () => void }) {
   const ws = useStore((s) => s.ws);
@@ -133,9 +140,7 @@ function VariableEditor({ v, onClose }: { v: Variable; onClose: () => void }) {
           type="button"
           className="danger"
           onClick={() => {
-            if (!window.confirm(`Delete “${v.name}” and its values in all groups?`)) return;
-            mutate('Delete variable', (w) => removeVariable(w, v.id));
-            onClose();
+            if (deleteVariable(v, mutate)) onClose();
           }}
         >
           Delete
@@ -655,7 +660,12 @@ export function MetadataView() {
                 setActiveVar(v.id);
                 setEditing(editing === v.id ? null : v.id);
               }}
-              title="Edit variable"
+              onKeyDown={(e) => {
+                if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+                e.preventDefault();
+                if (deleteVariable(v, mutate) && editing === v.id) setEditing(null);
+              }}
+              title="Edit variable (Delete to remove)"
             >
               {v.name}
               {v.unit ? ` (${v.unit})` : ''}
