@@ -1143,6 +1143,10 @@ table.stats thead th {
   font-weight: 600;
   text-align: center;
 }
+table.stats td .frac {
+  display: inline-block;
+  text-align: left;
+}
 table.stats .sec-start {
   border-left: 1px solid var(--border);
 }

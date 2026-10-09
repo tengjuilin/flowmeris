@@ -46,17 +46,40 @@ export const AGG_FUNCS: { id: AggFunc; label: string; title: string }[] = [
   { id: 'n', label: 'n', title: 'Number of rows in each group' },
 ];
 
-const COUNT_FORMAT = new Intl.NumberFormat();
-
 /** Display formatting only; exports carry full double precision. */
 function fmt(v: Cell, stat: string | undefined): string {
   if (v === undefined) return '';
   if (typeof v === 'string') return v;
   if (Number.isNaN(v)) return 'NaN';
-  if (stat === 'count' || stat === 'n') return COUNT_FORMAT.format(v);
-  if (stat?.startsWith('pct') || stat === 'cv' || stat === 'rcv') return v.toFixed(2);
-  const a = Math.abs(v);
-  return a !== 0 && (a < 1e-3 || a >= 1e7) ? v.toExponential(4) : String(Number(v.toPrecision(5)));
+  if (stat === 'count' || stat === 'n') return String(Math.round(v));
+  if (stat?.startsWith('pct')) {
+    const r = Number(v.toPrecision(2)); // 99.96 → 100, which toPrecision would print as 1.0e+2
+    return Math.abs(r) >= 100 ? String(Math.round(r)) : r.toPrecision(2);
+  }
+  if (stat === 'cv' || stat === 'rcv') return v.toFixed(2);
+  return String(Math.round(v));
+}
+
+const PLAIN_DECIMAL = /^(-?\d+)(\.\d+)?$/;
+
+/** Digits after the decimal point of a formatted number (0 if it has none or is not plain). */
+function fracDigits(text: string): number {
+  const m = PLAIN_DECIMAL.exec(text);
+  return m?.[2] ? m[2].length - 1 : 0;
+}
+
+/** A formatted number with its decimal point aligned to the others of its column. */
+function alignedNumber(text: string, fracLen: number) {
+  const m = PLAIN_DECIMAL.exec(text);
+  if (!m || fracLen === 0) return text;
+  return (
+    <>
+      {m[1]}
+      <span className="frac" style={{ minWidth: `${fracLen + 1}ch` }}>
+        {m[2]}
+      </span>
+    </>
+  );
 }
 
 /** Header section of a column: a population, or one of the fixed sections. */
@@ -658,6 +681,17 @@ export function StatsView() {
   };
   const statOf = (c: ColumnDef): string | undefined =>
     c.func === 'n' ? 'n' : c.func === 'cv' ? 'cv' : statByKey.get(c.source ?? c.key)?.stat;
+  // Longest fractional part of each column, so its decimal points line up.
+  const fracLen = new Map<string, number>();
+  for (const c of display.columns) {
+    if (c.type !== 'numeric') continue;
+    let n = 0;
+    for (const row of display.rows) {
+      const v = row.values[c.key];
+      if (typeof v === 'number') n = Math.max(n, fracDigits(fmt(v, statOf(c))));
+    }
+    fracLen.set(c.key, n);
+  }
 
   const addStat = () => {
     if (!form.channel) {
@@ -930,7 +964,7 @@ export function StatsView() {
                             .join(' ') || undefined
                         }
                       >
-                        {fmt(r.values[c.key], statOf(c))}
+                        {alignedNumber(fmt(r.values[c.key], statOf(c)), fracLen.get(c.key) ?? 0)}
                       </td>
                     ),
                   )}
