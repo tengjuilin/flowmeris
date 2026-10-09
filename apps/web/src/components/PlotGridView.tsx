@@ -80,7 +80,7 @@ function removeCell(groupId: string, cellId: string) {
 /** Grid gap, and the narrowest cell offered (as for tiles), so plots keep room for their axes. */
 const GAP = 8;
 const MIN_CELL = 160;
-/** Narrowest populations card; it spans as many cells as reach this width (as in Tiles). */
+/** Narrowest populations card; it spans as many cells as reach this width, or its rows' width (as in Tiles). */
 const SIDE_MIN = 280;
 
 /** Open a cell's population, sample and axes in the Gate view, reusing a matching saved plot. */
@@ -191,6 +191,7 @@ export function PlotGridView() {
   const box = useRef<HTMLDivElement>(null);
   const { width } = useSize(box);
   const handle = useRef<PlotHandle>(null);
+  const [treeWidth, setTreeWidth] = useState(0);
   if (!group) return <div className="empty">Select or add a group.</div>;
 
   const { cells } = group.grid;
@@ -202,8 +203,10 @@ export function PlotGridView() {
   const activeSample = active ? cellSample(group, active, ui.sampleId) : undefined;
   const gap = GAP;
   const cellW = width > 0 ? Math.floor((width - gap * (columns - 1)) / columns) : 0;
-  // The populations card takes the top-right cells (as in Tiles); the plot slots flow around it.
-  const span = cellW > 0 ? Math.min(columns, Math.ceil((SIDE_MIN + gap) / (cellW + gap))) : 1;
+  // The populations card takes the top-right cells (as in Tiles), as many as show its rows in full;
+  // the plot slots flow around it.
+  const sideW = Math.max(SIDE_MIN, treeWidth);
+  const span = cellW > 0 ? Math.min(columns, Math.ceil((sideW + gap) / (cellW + gap))) : 1;
   const rows = Math.max(2, Math.ceil((cells.length + span) / columns) + 1);
   const slots = Array.from({ length: rows * columns - span }, (_, i) => cells[i] ?? null);
   const sampleName = (id: string) => names[id] ?? ws.samples[id]?.fileName ?? id;
@@ -255,7 +258,7 @@ export function PlotGridView() {
             </button>
           </div>
         </div>
-        {active ? (
+        {active && (
           <CellControls
             group={group}
             cell={active}
@@ -271,12 +274,6 @@ export function PlotGridView() {
               )
             }
           />
-        ) : (
-          <p className="muted small grid-hint">
-            Add a plot to an empty cell, then click a plot to select it: gate on it with the tools above and
-            change its population, sample, overlays, type and axes here. Click a plot's population or axis
-            titles to change them in place.
-          </p>
         )}
       </div>
       <div
@@ -295,6 +292,7 @@ export function PlotGridView() {
           {/* Shows the selected plot's population and sample; clicking a population sets the plot's. */}
           <PopulationTree
             popId={active?.population}
+            onWidth={setTreeWidth}
             sampleId={activeSample}
             {...(active ? { onPick: (popId: string) => setCellPopulation(group.id, active.id, popId) } : {})}
           />

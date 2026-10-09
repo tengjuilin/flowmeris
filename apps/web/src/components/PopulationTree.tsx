@@ -1,5 +1,5 @@
 import { type Population, childPopulations, isOverridden } from '@flowmeris/model';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { deleteGate, lineageKey, renamePopulation } from '../lib/analysis.ts';
 import { contextFor, useGroup, useSampleNames, useStore } from '../state/store.ts';
@@ -14,7 +14,14 @@ export function PopulationTree({
   popId: shownPop,
   sampleId: shownSample,
   onPick,
-}: { popId?: string; sampleId?: string | undefined; onPick?: (popId: string) => void } = {}) {
+  onWidth,
+}: {
+  popId?: string;
+  sampleId?: string | undefined;
+  onPick?: (popId: string) => void;
+  /** Told the width the card needs to show every name and count in full. */
+  onWidth?: (px: number) => void;
+} = {}) {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
   const group = useGroup();
@@ -50,6 +57,27 @@ export function PopulationTree({
       live = false;
     };
   }, [key, sampleId]);
+
+  // Measure each row at its natural width: the name's text in full (not what fits now) plus everything
+  // else in the row, with any count wider than its column.
+  const box = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el || !onWidth) return;
+    let need = 0;
+    for (const row of el.querySelectorAll<HTMLElement>('.pop-row')) {
+      // A row being renamed has an input that fills whatever width the card has: not counted.
+      const name = row.querySelector<HTMLElement>('.pop-name');
+      if (!name) continue;
+      const range = document.createRange();
+      range.selectNodeContents(name);
+      let w = row.clientWidth + Math.ceil(range.getBoundingClientRect().width) + 4 - name.clientWidth;
+      for (const n of row.querySelectorAll<HTMLElement>('.num'))
+        w += Math.max(0, n.scrollWidth - n.clientWidth);
+      need = Math.max(need, w);
+    }
+    onWidth(need + el.offsetWidth - el.clientWidth);
+  });
 
   if (!group) return null;
 
@@ -131,7 +159,7 @@ export function PopulationTree({
   };
   const root = group.template.populations.root;
   return (
-    <div className="pop-tree">
+    <div className="pop-tree" ref={box}>
       <div className="pane-title">
         Populations{' '}
         <span className="muted small">

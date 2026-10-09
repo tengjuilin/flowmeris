@@ -191,8 +191,11 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
   const [picked, setPicked] = useState(DEFAULT_COLUMNS);
   const columns = Math.max(MIN_COLUMNS, Math.min(maxColumns, picked));
   const tile = width > 0 ? Math.max(MIN_TILE, tileSizeFor(width, columns)) : 0;
-  // The populations card takes the top-right columns (as in the Plot view), as many as reach SIDE_MIN.
-  const span = tile > 0 ? Math.min(columns, Math.ceil((SIDE_MIN + TILE_GAP) / (tile + TILE_EXTRA))) : 1;
+  // The populations card takes the top-right columns (as in the Plot view): as many as show its rows in
+  // full, and at least SIDE_MIN.
+  const [treeWidth, setTreeWidth] = useState(0);
+  const sideW = Math.max(SIDE_MIN, treeWidth);
+  const span = tile > 0 ? Math.min(columns, Math.ceil((sideW + TILE_GAP) / (tile + TILE_EXTRA))) : 1;
   // Tiles resize live; their plots are recomputed at the new size once the slider settles.
   const renderSize = useSettled(tile, 150);
   return (
@@ -242,7 +245,7 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
               minHeight: tile || undefined,
             }}
           >
-            <PopulationTree />
+            <PopulationTree onWidth={setTreeWidth} />
           </div>
           {shown.length === 0 && (
             <div
