@@ -15,7 +15,10 @@ code now. Update it when the layout changes.
 | `src/state/persist.ts` | IndexedDB autosave of `ws` (ring of 20 snapshots) |
 | `src/engine-client/pool.ts` | `pool`, the worker pool (ADR-0003): request queue, cancellation, client cache |
 | `src/workers/compute.worker.ts` | worker side: wraps `@flowmeris/engine` behind Comlink (`ComputeApi`) |
-| `src/lib/` | pure helpers, tested in Node (`*.test.ts`). `analysis`, `ingest`, `statsTable` and `exportPlot` still import the store or pool; they are listed in `.dependency-cruiser-known-violations.json` and are to be split |
+| `src/state/commands/` | named store commands: `gates.ts` (create, edit, delete gates and overrides), `ingest.ts` (load files, check missing data) |
+| `src/state/hooks/` | data hooks that fetch from the worker pool: `stats.ts` (`useSampleStats`, `useAnalysisTable`) |
+| `src/state/export.ts` | figure export wired to the store, pool and toasts (`exportPlot`, `exportSvgFigure`) |
+| `src/lib/` | pure logic, tested in Node: no store, pool, workers or components (`pnpm lint:deps` checks this). Functions documented "call inside `mutate`" work on a workspace draft |
 | `src/components/` | views and inspectors (see below) |
 | `src/styles.css` | all CSS, one global file |
 
@@ -35,6 +38,22 @@ conditionals in `App.tsx`:
 | `compensation` | `CompensationView` | – |
 | `samples` | `SamplesView` in `CompensationView.tsx` | – |
 
+What is in `src/lib/`:
+
+| File | Contents |
+|---|---|
+| `keys.ts` | worker-pool cache keys: `lineageKey`, `plotKey` |
+| `gates.ts` | `addGate`: a new gate's populations and their names |
+| `axisDefaults.ts`, `plotFactories.ts` | default axes and channels, scale kinds; new Gate-view and Tiles plots |
+| `figure.ts`, `ridgeStyle.ts`, `styleScope.ts` | plot and ridge appearance; settings kept per channel and shared across populations (`styleScope` is the shared logic) |
+| `gridCarry.ts` | grid-plot settings copied to the other grid plots |
+| `ridgeRows.ts` | which ridges a ridge plot draws (samples or combined replicates) |
+| `statsTable.ts`, `statsFormat.ts`, `chartSelection.ts`, `formula.ts` | statistics table rows and columns, number formatting, chart data, formula editing |
+| `metadata.ts`, `palette.ts` | sample variables (values, types, paste); colours of populations and values |
+| `ingest.ts`, `files.ts`, `names.ts` | grouping loaded files; data-file extensions; short sample names |
+| `export/` | figure export: `svg.ts`, `pdf.ts`, `figure.ts`, `plot.ts` (takes its data as a `PlotExportSource`) |
+| `geometry.ts`, `fitSize.ts`, `text.ts`, `format.ts`, `json.ts`, `download.ts`, `sheets.ts` | gate drawing geometry, sizing, label wrapping, number formats, JSON copy/compare, downloads, spreadsheets |
+
 Some names do not match what the files hold: `components/Inspector.tsx` is a library of shared
 controls (`Section`, `NumInput`, `AxisEditor`, `StyleEditor`, `GateEditor`, icons), and `RidgeInspector.tsx`
 also exports shared controls (`TicksEditor`, `FontSelect`, `TextStyleEditor`). Search for a symbol
@@ -42,12 +61,15 @@ before assuming where it lives.
 
 ## Store rules
 
-- Change the workspace only through `useStore.getState().mutate(label, fn, merge?)`. `fn` receives an
-  immer draft. `label` is the undo entry's name. `merge` is a key that folds repeated edits from one
-  gesture (a drag, typing) into one undo step within 1 s; it must be unique per gesture. `mutateQuiet`
+- Change the workspace only through `useStore.getState().mutate(label, fn, merge?)`. Put a reusable
+  change in `state/commands/` (calling `mutate`) with its logic in a draft function in `lib/` that a Node
+  test can call on a plain workspace.
+- `mutate(label, fn, merge?)`: `fn` receives an immer draft. `label` is the undo entry's name. `merge`
+  is a key that folds repeated edits from one gesture (a drag, typing) into one undo step within 1 s; it
+  must be unique per gesture. `mutateQuiet`
   changes the workspace without an undo step (for derived data only).
 - Helpers whose doc comment says "call inside `mutate`" take a draft (for example `defaultAxis` in
-  `lib/defaults.ts`, which can register transforms and axis defaults). Do not call them on the live state.
+  `lib/axisDefaults.ts`, which can register transforms and axis defaults). Do not call them on the live state.
 - `mutate` currently does more than apply `fn`:
   - it carries grid-plot style changes to sibling cells (`lib/gridCarry.ts`);
   - it stamps `modifiedAt`.
@@ -60,7 +82,7 @@ before assuming where it lives.
 ## Worker pool rules
 
 - Plot requests (`raster`, `histogram`, `counts`) take `{ key, signal }`. `key` must identify the result
-  completely, typically `plotKey` from `lib/analysis.ts` plus size and colours. Results with the same key
+  completely, typically `plotKey` from `lib/keys.ts` plus size and colours. Results with the same key
   are shared and cached, so never mutate a result.
 - Other methods (`table`, `preview`, `channelValues`, `exportEvents`) are not queued or cached.
 - Adding a worker method means editing `packages/engine`, `workers/compute.worker.ts` and

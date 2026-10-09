@@ -17,7 +17,9 @@ import { Sidebar } from './components/Sidebar.tsx';
 import { StatsInspector, StatsView } from './components/StatsView.tsx';
 import { pool } from './engine-client/pool.ts';
 import { download, safeName } from './lib/download.ts';
-import { checkMissing, filesFromDrop, filesFromInput, ingestFiles } from './lib/ingest.ts';
+import { DATA_FILE_ACCEPT } from './lib/files.ts';
+import { filesFromDrop, filesFromInput } from './lib/ingest.ts';
+import { checkMissing, ingestFiles } from './state/commands/ingest.ts';
 import { workspaceToFile } from './state/persist.ts';
 import {
   APP_INFO,
@@ -138,7 +140,7 @@ function FolderButtons() {
         type="file"
         hidden
         multiple
-        accept=".fcs,.lmd,.FCS,.LMD"
+        accept={DATA_FILE_ACCEPT}
         onChange={(e) => {
           if (e.target.files) void ingestFiles(filesFromInput(e.target.files));
           e.target.value = '';

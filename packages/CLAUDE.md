@@ -13,7 +13,7 @@ and is imported by name (`@flowmeris/stats`), never by path. Unit tests sit next
 | `compensation` | spillover parsing, matrix inverse, condition number, compensator | – | M-COMP-* |
 | `transforms` | Gating-ML 2.0 scales (linear, log, logicle, arcsinh, hyperlog), ticks | model | M-TR-* |
 | `stats` | summary statistics, percentiles, frequencies, Student t | – | M-STAT-* |
-| `density` | 1D/2D binning, smoothing, contour levels and lines | – | M-PLOT-BIN, -SMOOTH, -CONTOUR-* |
+| `density` | 1D/2D binning, smoothing, contour levels and lines, replicate histograms for ridges | – | M-PLOT-BIN, -SMOOTH, -CONTOUR-*, -RIDGE-COMBINE |
 | `gating` | gate geometry, event membership, population bitsets | model, compensation | M-GATE-* |
 | `render` | colormaps, 2D raster, histogram, PNG encoder (ADR-0001) | model, density | M-PLOT-PSEUDO, -DENSITY |
 | `gatingml` | Gating-ML 2.0 reader and evaluator (ISAC compliance suite) | model, compensation, gating, transforms | M-GATE-* |

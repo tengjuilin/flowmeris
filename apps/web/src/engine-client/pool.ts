@@ -14,7 +14,7 @@ import type { ComputeApi, IngestResult } from '../workers/compute.worker.ts';
 /**
  * Options for plot requests (raster, histogram, counts).
  *
- * `key` must identify the result completely (everything it depends on, e.g. lib/analysis plotKey
+ * `key` must identify the result completely (everything it depends on, e.g. lib/keys plotKey
  * plus the raster size and colours): results are then kept in a client-side cache and identical
  * concurrent requests share one computation. Cached results are shared, so callers must not mutate them.
  *

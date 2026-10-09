@@ -22,18 +22,17 @@ import {
   useRef,
   useState,
 } from 'react';
-import { defaultChannels, factoryAxis } from '../lib/defaults.ts';
+import { defaultChannels, factoryAxis } from '../lib/axisDefaults.ts';
 import { FONT_GROUPS, FONT_STACKS, fontStack } from '../lib/figure.ts';
+import { sameJson } from '../lib/json.ts';
+import { type RidgeRow, applyOrder, comboRows, selectRidges } from '../lib/ridgeRows.ts';
 import {
   DEFAULT_OVERLAP,
   DEFAULT_RIDGE_STYLE,
-  type RidgeRow,
   allRidgesAtDefaults,
-  applyOrder,
   applyRidgeToChannels,
   applyRidgeToPopulations,
   carryRidge,
-  comboRows,
   isDefaultRidge,
   resetAllRidges,
   resetRidgeChannel,
@@ -43,11 +42,9 @@ import {
   ridgeChannelAtDefaults,
   ridgeChannelsMatch,
   ridgePopulationsMatch,
-  sameJson,
-  selectRidges,
   setRidgeChannelStyles,
   withRidgeChannel,
-} from '../lib/ridge.ts';
+} from '../lib/ridgeStyle.ts';
 import { useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
 import { GroupPicker, toggleIds } from './GroupPicker.tsx';
 import { ActionRow, ApplyIcon, AxisFields, NumInput, ResetIcon, Section } from './Inspector.tsx';

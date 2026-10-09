@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ImageFormat } from '../lib/exportPlot.ts';
+import type { ImageFormat } from '../lib/export/svg.ts';
 import { toast } from '../state/store.ts';
 
 /** Import: an arrow up out of a tray (the reverse of the export icon). */

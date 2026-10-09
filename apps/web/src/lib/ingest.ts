@@ -1,16 +1,17 @@
-import { type Sample, newGroup } from '@flowmeris/model';
+import { type Sample, type Workspace, newGroup } from '@flowmeris/model';
 import { wellFromSample } from '@flowmeris/table';
-import { pool } from '../engine-client/pool.ts';
-import { toast, useStore } from '../state/store.ts';
-import { newPlot } from './defaults.ts';
+import { newPlot } from './plotFactories.ts';
+
+/**
+ * Turning dropped or chosen files into groups. The store command that runs the workers and updates
+ * the UI is state/commands/ingest.ts `ingestFiles`.
+ */
 
 export interface InputFile {
   file: File;
   /** Path relative to the chosen folder, including the folder name. */
   path: string;
 }
-
-const FCS_RE = /\.(fcs|lmd)$/i;
 
 /** Collect files from a drag-and-drop DataTransfer, recursing into folders. */
 export async function filesFromDrop(dt: DataTransfer): Promise<InputFile[]> {
@@ -39,125 +40,70 @@ export function filesFromInput(list: FileList): InputFile[] {
   return Array.from(list).map((file) => ({ file, path: file.webkitRelativePath || file.name }));
 }
 
-function folderOf(path: string): string {
+/** The folder a file was chosen from (its path without the file name), or "Ungrouped files". */
+export function folderOf(path: string): string {
   const parts = path.split('/');
   return parts.length > 1 ? parts.slice(0, -1).join('/') : 'Ungrouped files';
 }
 
-/**
- * Ingest FCS files. Files are grouped by their folder; each folder becomes a
- * group sharing one analysis pipeline. Samples already in the workspace (same
- * SHA-256 and dataset) are re-linked rather than duplicated.
- */
-export async function ingestFiles(files: InputFile[]): Promise<void> {
-  const fcs = files.filter((f) => FCS_RE.test(f.file.name));
-  const { setUi } = useStore.getState();
-  if (fcs.length === 0) {
-    toast('No .fcs or .lmd files found in the selection.');
-    return;
-  }
-  const progress = {
-    total: fcs.length,
-    done: 0,
-    current: '',
-    errors: [] as { file: string; message: string }[],
-  };
-  setUi({ ingest: { ...progress } });
-  const results: { folder: string; samples: Sample[] }[] = [];
-  let cursor = 0;
-  const workerLoop = async () => {
-    while (cursor < fcs.length) {
-      const f = fcs[cursor++]!;
-      progress.current = f.path;
-      setUi({ ingest: { ...progress, errors: [...progress.errors] } });
-      try {
-        const r = await pool.ingest(f.file, f.path);
-        results.push({ folder: folderOf(f.path), samples: r.samples });
-      } catch (e) {
-        progress.errors.push({ file: f.path, message: e instanceof Error ? e.message : String(e) });
-      }
-      progress.done++;
-      setUi({ ingest: { ...progress, errors: [...progress.errors] } });
-    }
-  };
-  await Promise.all(Array.from({ length: pool.size }, workerLoop));
-
-  const relinked: string[] = [];
-  let firstNewGroup: string | null = null;
-  useStore.getState().mutate('Add FCS files', (ws) => {
-    const byFolder = new Map<string, Sample[]>();
-    for (const r of results.sort((a, b) => a.folder.localeCompare(b.folder))) {
-      for (const s of r.samples) {
-        if (ws.samples[s.id]) {
-          relinked.push(s.id);
-          continue;
-        }
-        const well = wellFromSample(s);
-        ws.samples[s.id] = well ? { ...s, well } : s;
-        if (!byFolder.has(r.folder)) byFolder.set(r.folder, []);
-        byFolder.get(r.folder)!.push(ws.samples[s.id]!);
-      }
-    }
-    for (const [folder, samples] of byFolder) {
-      samples.sort(
-        (a, b) =>
-          a.relativePath.localeCompare(b.relativePath, undefined, { numeric: true }) ||
-          a.datasetIndex - b.datasetIndex,
-      );
-      // Group by identical channel ($PnN) lists; mismatching samples form their own group.
-      const sets = new Map<string, Sample[]>();
-      for (const s of samples) {
-        const key = s.channels.map((c) => c.pnn).join('\u0001');
-        if (!sets.has(key)) sets.set(key, []);
-        sets.get(key)!.push(s);
-      }
-      let k = 0;
-      for (const list of [...sets.values()].sort((a, b) => b.length - a.length)) {
-        const name = k === 0 ? folder : `${folder} (channel set ${k + 1})`;
-        const g = newGroup(
-          name,
-          list.map((s) => s.id),
-          list[0]!.channels.map((c) => c.pnn),
-        );
-        ws.groups.push(g);
-        newPlot(ws, g, 'root');
-        firstNewGroup ??= g.id;
-        k++;
-      }
-    }
-  });
-  const missing = { ...useStore.getState().ui.missing };
-  for (const id of relinked) delete missing[id];
-  const st = useStore.getState();
-  const g = firstNewGroup ? st.ws.groups.find((x) => x.id === firstNewGroup) : undefined;
-  setUi({
-    ingest: progress.errors.length ? { ...progress } : null,
-    missing,
-    ...(g
-      ? {
-          groupId: g.id,
-          sampleId: g.sampleIds[0] ?? null,
-          popId: 'root',
-          plotId: g.plots[0]?.id ?? null,
-          view: 'gate',
-        }
-      : {}),
-  });
-  const parts = [`${results.reduce((a, r) => a + r.samples.length, 0)} sample(s) loaded`];
-  if (relinked.length) parts.push(`${relinked.length} re-linked`);
-  if (progress.errors.length) parts.push(`${progress.errors.length} file(s) failed`);
-  toast(parts.join(' · '));
+/** The samples parsed from one file, and the folder it came from. */
+export interface IngestedFile {
+  folder: string;
+  samples: Sample[];
 }
 
-/** After restoring a workspace, find samples whose decoded data is not in browser storage. */
-export async function checkMissing(): Promise<void> {
-  await pool.whenReady();
-  const ws = useStore.getState().ws;
-  const missing: Record<string, true> = {};
-  await Promise.all(
-    Object.keys(ws.samples).map(async (id) => {
-      if (!(await pool.hasSample(id))) missing[id] = true;
-    }),
-  );
-  useStore.getState().setUi({ missing });
+/**
+ * Add ingested samples to the workspace, in place (call inside `mutate`). Samples already in the
+ * workspace (same id: SHA-256 and dataset) are re-linked rather than duplicated. New samples are
+ * grouped by folder, then by identical channel ($PnN) lists: the largest set takes the folder's name,
+ * the others become "<folder> (channel set n)". Each new group gets a Gate view plot of all events.
+ * Sorts `results` by folder.
+ */
+export function addIngested(
+  ws: Workspace,
+  results: IngestedFile[],
+): { relinked: string[]; firstNewGroup: string | null } {
+  const relinked: string[] = [];
+  let firstNewGroup: string | null = null;
+  const byFolder = new Map<string, Sample[]>();
+  for (const r of results.sort((a, b) => a.folder.localeCompare(b.folder))) {
+    for (const s of r.samples) {
+      if (ws.samples[s.id]) {
+        relinked.push(s.id);
+        continue;
+      }
+      const well = wellFromSample(s);
+      ws.samples[s.id] = well ? { ...s, well } : s;
+      if (!byFolder.has(r.folder)) byFolder.set(r.folder, []);
+      byFolder.get(r.folder)!.push(ws.samples[s.id]!);
+    }
+  }
+  for (const [folder, samples] of byFolder) {
+    samples.sort(
+      (a, b) =>
+        a.relativePath.localeCompare(b.relativePath, undefined, { numeric: true }) ||
+        a.datasetIndex - b.datasetIndex,
+    );
+    // Group by identical channel ($PnN) lists; mismatching samples form their own group.
+    const sets = new Map<string, Sample[]>();
+    for (const s of samples) {
+      const key = s.channels.map((c) => c.pnn).join('\u0001');
+      if (!sets.has(key)) sets.set(key, []);
+      sets.get(key)!.push(s);
+    }
+    let k = 0;
+    for (const list of [...sets.values()].sort((a, b) => b.length - a.length)) {
+      const name = k === 0 ? folder : `${folder} (channel set ${k + 1})`;
+      const g = newGroup(
+        name,
+        list.map((s) => s.id),
+        list[0]!.channels.map((c) => c.pnn),
+      );
+      ws.groups.push(g);
+      newPlot(ws, g, 'root');
+      firstNewGroup ??= g.id;
+      k++;
+    }
+  }
+  return { relinked, firstNewGroup };
 }

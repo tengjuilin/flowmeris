@@ -1,15 +1,17 @@
+import { type RidgeCurve, combineCounts } from '@flowmeris/density';
 import type { HistogramResponse } from '@flowmeris/engine';
 import type { Group, PlotSpec } from '@flowmeris/model';
 import { axisTicks, formatLinear } from '@flowmeris/transforms';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
-import { lineageKey } from '../lib/analysis.ts';
-import { factoryAxis } from '../lib/defaults.ts';
-import { exportSvgFigure } from '../lib/exportPlot.ts';
+import { factoryAxis } from '../lib/axisDefaults.ts';
 import { TILE_FIGURE } from '../lib/figure.ts';
 import { nearestColumns } from '../lib/fitSize.ts';
 import { scaleFor } from '../lib/geometry.ts';
-import { type RidgeCurve, combineCounts, textMeasure, withRidgeChannel, wrapText } from '../lib/ridge.ts';
+import { lineageKey } from '../lib/keys.ts';
+import { withRidgeChannel } from '../lib/ridgeStyle.ts';
+import { textMeasure, wrapText } from '../lib/text.ts';
+import { exportSvgFigure } from '../state/export.ts';
 import {
   contextFor,
   toast,

@@ -69,9 +69,8 @@ package name, never by a path into another package's `src/`. `pnpm lint:deps` en
 - **File size.** Keep `.ts`/`.tsx` files under 500 lines and split them by responsibility. Files in
   `tools/size-allowlist.json` predate the limit: they may shrink but not grow. After shrinking one, run
   `node tools/check-size.mjs --tighten`.
-- **Known boundary violations** are listed in `.dependency-cruiser-known-violations.json` and are being
-  removed. Do not add to that list; after removing one, regenerate it with
-  `npx depcruise packages apps/web/src e2e -T baseline > .dependency-cruiser-known-violations.json`.
+- **Known boundary violations** would be listed in `.dependency-cruiser-known-violations.json` (empty
+  now). Do not add to it: fix the import instead.
 - **Style.** Biome (`biome.json`): 2 spaces, single quotes, line width 110. Imports carry their `.ts`
   extension. TypeScript is strict with `noUncheckedIndexedAccess`. Biome warns on functions whose
   cognitive complexity is over 25; do not add new ones.

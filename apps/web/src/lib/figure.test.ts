@@ -1,6 +1,6 @@
 import type { PlotSpec } from '@flowmeris/model';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_STYLE } from './defaults.ts';
+import { DEFAULT_STYLE } from './figure.ts';
 import {
   DEFAULT_FIGURE,
   PANEL_FIGURE_KEYS,

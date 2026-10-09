@@ -1,6 +1,7 @@
 import type { Group, PlotFigure, PlotSpec } from '@flowmeris/model';
 import { useEffect, useRef, useState } from 'react';
-import { DEFAULT_STYLE, factoryAxis } from '../lib/defaults.ts';
+import { factoryAxis } from '../lib/axisDefaults.ts';
+import { DEFAULT_STYLE } from '../lib/figure.ts';
 import {
   DEFAULT_FIGURE,
   PANEL_FIGURE_KEYS,

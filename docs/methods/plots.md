@@ -1,6 +1,7 @@
 # Plots
 
-Implementation: `packages/density`, `packages/render`. Tests: `packages/density/src/density.test.ts`,
+Implementation: `packages/density` (ridge replicates: `combine.ts`), `packages/render`. Tests:
+`packages/density/src/density.test.ts`, `packages/density/src/combine.test.ts`,
 `packages/render/src/render.test.ts`.
 
 All plots are computed in display (transformed) units and rasterised on the CPU at the screen's pixel

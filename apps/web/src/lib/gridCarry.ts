@@ -1,12 +1,12 @@
 import type { Group, PlotCell, Workspace } from '@flowmeris/model';
 import { PER_PLOT, TILE_FIGURE } from './figure.ts';
+import { jsonClone } from './json.ts';
 
 /** One setting changed: its path from the cell and its new value (undefined = removed). */
 type Change = { path: string[]; value: unknown };
 
 const isObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
-const clone = <T>(v: T): T => (v === undefined ? v : (JSON.parse(JSON.stringify(v)) as T));
 
 /** The settings that differ between `a` and `b`, down to single values (arrays count as one value). */
 function diff(a: unknown, b: unknown, path: string[], out: Change[]) {
@@ -16,7 +16,7 @@ function diff(a: unknown, b: unknown, path: string[], out: Change[]) {
     return;
   }
   if (JSON.stringify(a) === JSON.stringify(b)) return;
-  out.push({ path, value: clone(b) });
+  out.push({ path, value: jsonClone(b) });
 }
 
 /** A grid plot's settings; one without saved figure options shows the grid defaults. */
@@ -31,7 +31,7 @@ function setAt(root: Record<string, unknown>, path: string[], value: unknown) {
   }
   const last = path[path.length - 1]!;
   if (value === undefined) delete o[last];
-  else o[last] = clone(value);
+  else o[last] = jsonClone(value);
 }
 
 /** The settings changed on the one grid plot of `before` → `after` that changed, or null if not exactly one did. */

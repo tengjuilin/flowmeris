@@ -6,6 +6,22 @@ import {
   type TextStyle,
 } from '@flowmeris/model';
 import type { CSSProperties } from 'react';
+import { jsonClone, sortedJson } from './json.ts';
+import {
+  type StyleScopes,
+  applyShared,
+  applyToScopes,
+  carryShared,
+  resetAllScopes,
+  resetCurrentScope,
+  resetScopeEverywhere,
+  scopeAtDefaults,
+  scopesAtDefaults,
+  scopesMatch,
+  setPerScope,
+  sharedMatch,
+  withScopeChange,
+} from './styleScope.ts';
 
 export const FONT_GROUPS: { label: string; fonts: { id: string; label: string; stack: string }[] }[] = [
   {
@@ -113,13 +129,13 @@ export const PER_PLOT = ['title', 'xTicks', 'yTicks', 'xTitle', 'yTitle'] as con
 
 /** `from`'s shareable settings over `to`'s per-plot ones. */
 export function sharedStyle(from: PlotStyle, to: PlotStyle): PlotStyle {
-  const style = JSON.parse(JSON.stringify(from)) as PlotStyle;
+  const style = jsonClone(from);
   const own = to.figure;
   if (style.figure || own) {
     const f = (style.figure ??= structuredClone(DEFAULT_FIGURE));
     for (const k of PER_PLOT) {
       if (own?.[k] === undefined) delete f[k];
-      else (f as Record<string, unknown>)[k] = JSON.parse(JSON.stringify(own[k]));
+      else (f as Record<string, unknown>)[k] = jsonClone(own[k]);
     }
   }
   return style;
@@ -130,17 +146,12 @@ export function sharedStyle(from: PlotStyle, to: PlotStyle): PlotStyle {
  * grid plots) now; each keeps its title, ticks and axis titles.
  */
 export function applyToPopulations(plots: PlotSpec[], plotId: string) {
-  const src = plots.find((p) => p.id === plotId);
-  if (!src) return;
-  for (const p of plots) if (p.id !== plotId) p.style = sharedStyle(src.style, p.style);
+  applyShared(PLOT_SCOPES, sharePlot, plots, plotId);
 }
 
 /** Whether every other population's plot in `plots` already has plot `plotId`'s settings. */
 export function populationsMatch(plots: PlotSpec[], plotId: string): boolean {
-  const src = plots.find((p) => p.id === plotId);
-  return (
-    !src || plots.every((p) => p.id === plotId || canon(sharedStyle(src.style, p.style)) === canon(p.style))
-  );
+  return sharedMatch(PLOT_SCOPES, sharePlot, plots, plotId);
 }
 
 /**
@@ -148,10 +159,7 @@ export function populationsMatch(plots: PlotSpec[], plotId: string): boolean {
  * `from`'s settings, keeping its own title, ticks and axis titles. Returns whether anything changed.
  */
 export function carryToPopulation(from: PlotSpec, to: PlotSpec): boolean {
-  const next = sharedStyle(from.style, to.style);
-  if (canon(next) === canon(to.style)) return false;
-  to.style = next;
-  return true;
+  return carryShared(PLOT_SCOPES, sharePlot, from, to);
 }
 
 /** A plot whose channels can change; only a saved plot (with `style`) keeps settings per channel pair. */
@@ -164,6 +172,17 @@ type Restylable = { kind: string; x: { channel: string }; y?: { channel: string 
 export const axesKey = (p: Restylable) =>
   `${p.x.channel}|${p.kind === 'histogram' ? '' : (p.y?.channel ?? '')}`;
 
+/** A plot's settings are kept per channel pair (lib/styleScope.ts). */
+const PLOT_SCOPES: StyleScopes<Restylable, PlotStyle> = {
+  scope: axesKey,
+  get: (p) => p.style,
+  set: (p, s) => void (p.style = jsonClone(s)),
+  saved: (p) => p.stylesByAxes,
+  setSaved: (p, saved) => void (p.stylesByAxes = saved),
+};
+
+const sharePlot = (from: Restylable, to: Restylable): PlotStyle => sharedStyle(from.style!, to.style!);
+
 /**
  * Run `fn`, which changes `p`'s channels. The settings in use are saved under the old channel pair. While
  * settings are carried to plots (`styleFollow` not false) the new pair takes them over; otherwise it gets
@@ -171,41 +190,22 @@ export const axesKey = (p: Restylable) =>
  * Returns whether `p`'s settings were replaced.
  */
 export function withAxesChange(p: Restylable, fn: () => void): boolean {
-  const before = axesKey(p);
-  const style = p.style && (JSON.parse(JSON.stringify(p.style)) as PlotStyle);
-  fn();
-  const after = axesKey(p);
-  if (!style || after === before) return false;
-  p.stylesByAxes ??= {};
-  p.stylesByAxes[before] = style;
-  if (p.styleFollow !== false) return false;
-  const from = p.stylesByAxes[after] ?? p.styleBase;
-  p.style = from ? (JSON.parse(JSON.stringify(from)) as PlotStyle) : structuredClone(DEFAULT_STYLE);
-  return true;
+  return withScopeChange(PLOT_SCOPES, p, DEFAULT_STYLE, fn);
 }
 
 /** Apply `p`'s current settings to every channel pair of its population now, including pairs not used yet. */
 export function applyToPairs(p: PlotSpec) {
-  p.stylesByAxes = undefined;
-  p.styleBase = JSON.parse(JSON.stringify(p.style)) as PlotStyle;
+  applyToScopes(PLOT_SCOPES, p);
 }
 
 /** Whether every channel pair of `p`'s population already has its current settings. */
 export function pairsMatch(p: PlotSpec): boolean {
-  const cur = canon(p.style);
-  const key = axesKey(p);
-  return (
-    Object.entries(p.stylesByAxes ?? {}).every(([k, s]) => k === key || canon(s) === cur) &&
-    (p.styleFollow !== false ||
-      (p.styleBase ? canon(p.styleBase) === cur : isDefaultStyle(p.style, DEFAULT_STYLE)))
-  );
+  return scopesMatch(PLOT_SCOPES, p, (s) => isDefaultStyle(s, DEFAULT_STYLE));
 }
 
 /** Default settings for `p` with every channel pair's saved settings dropped. */
 export function resetPlotStyles(p: PlotSpec, defaults: PlotStyle) {
-  p.style = structuredClone(defaults);
-  p.stylesByAxes = undefined;
-  p.styleBase = undefined;
+  resetAllScopes(PLOT_SCOPES, p, defaults);
 }
 
 /**
@@ -213,12 +213,12 @@ export function resetPlotStyles(p: PlotSpec, defaults: PlotStyle) {
  * Nothing is applied when it is switched.
  */
 export function setPairStyles(p: PlotSpec, perPair: boolean) {
-  p.styleFollow = perPair ? false : undefined;
+  setPerScope(p, perPair);
 }
 
 /** Default settings for `p`'s current channel pair only. */
 export function resetCurrentStyle(p: PlotSpec, defaults: PlotStyle) {
-  p.style = structuredClone(defaults);
+  resetCurrentScope(PLOT_SCOPES, p, defaults);
 }
 
 /** The settings each tab of the Gate view's settings panel holds. */
@@ -286,50 +286,32 @@ export function styleKeysAtDefaults(
   base: PlotFigure = DEFAULT_FIGURE,
 ) {
   const f = style.figure ?? base;
-  if (keys.some((k) => canon(f[k]) !== canon(base[k]))) return false;
+  if (keys.some((k) => sortedJson(f[k]) !== sortedJson(base[k]))) return false;
   if (!display) return true;
   const { figure: _a, ...rest } = style;
   const { figure: _b, ...shown } = display;
-  return canon(rest) === canon(shown);
+  return sortedJson(rest) === sortedJson(shown);
 }
 
 /** Default settings for channel pair `key` in every plot of `plots`, current or saved. */
 export function resetPairStyles(plots: PlotSpec[], key: string, defaults: PlotStyle) {
-  for (const p of plots) {
-    if (axesKey(p) === key) p.style = structuredClone(defaults);
-    else if (p.styleFollow === false || p.stylesByAxes?.[key])
-      (p.stylesByAxes ??= {})[key] = structuredClone(defaults);
-  }
+  resetScopeEverywhere(PLOT_SCOPES, plots, key, defaults);
 }
-
-/** JSON with object keys sorted, so equal settings compare equal whatever order they were set in. */
-const canon = (v: unknown) =>
-  JSON.stringify(v, (_, x) =>
-    x && typeof x === 'object' && !Array.isArray(x)
-      ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : 1)))
-      : x,
-  );
 
 /** Whether `s` equals `defaults`, counting figure options left at their defaults as unset. */
 export function isDefaultStyle(s: PlotStyle, defaults: PlotStyle): boolean {
   const { figure, ...rest } = s;
   const { figure: baseFigure, ...base } = defaults;
-  return canon(rest) === canon(base) && (!figure || canon(figure) === canon(baseFigure ?? DEFAULT_FIGURE));
+  return (
+    sortedJson(rest) === sortedJson(base) &&
+    (!figure || sortedJson(figure) === sortedJson(baseFigure ?? DEFAULT_FIGURE))
+  );
 }
-
-/** The settings pair `key` of `p` would show: current, saved, or those an unused pair starts from. */
-const pairStyle = (p: PlotSpec, key: string): PlotStyle | undefined =>
-  axesKey(p) === key ? p.style : p.styleFollow === false ? (p.stylesByAxes?.[key] ?? p.styleBase) : p.style;
 
 /** Whether `p` is at the defaults for its current, every saved and every unused channel pair. */
 export const plotAtDefaults = (p: PlotSpec, defaults: PlotStyle) =>
-  [p.style, p.styleBase, ...Object.values(p.stylesByAxes ?? {})].every(
-    (s) => !s || isDefaultStyle(s, defaults),
-  );
+  scopesAtDefaults(PLOT_SCOPES, p, (s) => isDefaultStyle(s, defaults));
 
 /** Whether channel pair `key` is at the defaults in every plot of `plots`. */
 export const pairAtDefaults = (plots: PlotSpec[], key: string, defaults: PlotStyle) =>
-  plots.every((p) => {
-    const s = pairStyle(p, key);
-    return !s || isDefaultStyle(s, defaults);
-  });
+  scopeAtDefaults(PLOT_SCOPES, plots, key, (s) => isDefaultStyle(s, defaults));

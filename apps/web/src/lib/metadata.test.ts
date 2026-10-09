@@ -1,17 +1,8 @@
 import type { Variable, Workspace } from '@flowmeris/model';
 import { CATEGORICAL, colormapCss } from '@flowmeris/render';
 import { describe, expect, it } from 'vitest';
-import {
-  addVariable,
-  coerce,
-  distinctValues,
-  inkOn,
-  normRect,
-  pasteTargets,
-  retype,
-  setValue,
-  valueColors,
-} from './metadata.ts';
+import { addVariable, coerce, distinctValues, normRect, pasteTargets, retype, setValue } from './metadata.ts';
+import { inkOn, valueColors } from './palette.ts';
 
 const at = (t: { r: number; c: number; raw: string }[]) => t.map(({ r, c, raw }) => `${r}${c}${raw}`);
 
