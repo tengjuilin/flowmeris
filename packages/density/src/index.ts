@@ -293,3 +293,5 @@ export function contourLines(g: Grid2D, levels: number[]): ContourLine[] {
     ),
   }));
 }
+
+export * from './combine.ts';

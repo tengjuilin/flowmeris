@@ -1,3 +1,4 @@
+import { type RidgeCurve, combineCounts } from '@flowmeris/density';
 import type { HistogramResponse } from '@flowmeris/engine';
 import type { Group, PlotSpec } from '@flowmeris/model';
 import { axisTicks, formatLinear } from '@flowmeris/transforms';
@@ -8,7 +9,8 @@ import { TILE_FIGURE } from '../lib/figure.ts';
 import { nearestColumns } from '../lib/fitSize.ts';
 import { scaleFor } from '../lib/geometry.ts';
 import { lineageKey } from '../lib/keys.ts';
-import { type RidgeCurve, combineCounts, textMeasure, withRidgeChannel, wrapText } from '../lib/ridge.ts';
+import { withRidgeChannel } from '../lib/ridgeStyle.ts';
+import { textMeasure, wrapText } from '../lib/text.ts';
 import { exportSvgFigure } from '../state/export.ts';
 import {
   contextFor,
