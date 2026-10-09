@@ -9,9 +9,11 @@ In the panel's **Statistics** tab, **Derived columns** adds columns computed fro
 
 - **Formula:** an arithmetic expression over other columns, referenced by their header in brackets,
   e.g. `[CD4+ | Median PE-A] / [CD4+ | Median FITC-A]` or `log2([Fold])`. Operators `+ − * / ^` and
-  the functions `log10`, `ln`, `log2`, `exp`, `sqrt`, `abs`, `min`, `max` are available; use
-  **Insert column** to add a reference. A formula may use earlier derived columns.
-- **Normalisation:** a column relative to reference samples — those whose variable has a given value (dose
+  the functions `log10`, `ln`, `log2`, `exp`, `sqrt`, `abs`, `min`, `max` are available. While
+  you type, matching column names and functions are suggested (after `[`, columns only); ↑/↓ choose, Enter or
+  Tab inserts. A mistake (unknown column or function, unbalanced brackets) is reported under the box,
+  with the formula shown and the faulty part marked. A formula may use earlier derived columns.
+- **Normalization:** a column relative to reference samples — those whose variable has a given value (dose
   0, condition "untreated"). The reference is the mean over the reference samples; tick **Within the same**
   variables to take it per replicate, per cell line, etc. Ratio (x / ref), percent (100 · x / ref) or
   difference (x − ref).

@@ -10,8 +10,17 @@ import {
   newId,
   populationPath,
 } from '@flowmeris/model';
-import { type Cell, type ColumnDef, EXPR_FUNCTIONS, type Table, tableRows } from '@flowmeris/table';
-import { useMemo, useRef, useState } from 'react';
+import {
+  type Cell,
+  type ColumnDef,
+  EXPR_FUNCTIONS,
+  ExprError,
+  type Table,
+  exprRefs,
+  parseExpr,
+  tableRows,
+} from '@flowmeris/table';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import { download, safeName } from '../lib/download.ts';
 import { type StatColumn, useAnalysisTable } from '../lib/statsTable.ts';
@@ -116,6 +125,224 @@ function exportKeys(display: Table, grouped: boolean, selected: string[] | undef
 // Derived columns
 // ---------------------------------------------------------------------------
 
+/** A suggestion for the formula at the caret: a column reference or a function. */
+interface Completion {
+  kind: 'column' | 'function';
+  label: string;
+  /** Text that replaces expr[from, to). */
+  insert: string;
+  from: number;
+  to: number;
+}
+
+const MAX_COMPLETIONS = 12;
+
+/** Completions for the word being typed at `caret`: inside `[`, columns; otherwise functions and columns. */
+function completionsAt(expr: string, caret: number, columns: ColumnDef[]): Completion[] {
+  const before = expr.slice(0, caret);
+  const open = before.lastIndexOf('[');
+  const numeric = columns.filter((c) => c.type === 'numeric');
+  if (open > before.lastIndexOf(']')) {
+    const q = before.slice(open + 1).toLowerCase();
+    // Replace through the closing bracket if one already follows.
+    const close = expr.indexOf(']', caret);
+    const nextOpen = expr.indexOf('[', caret);
+    const to = close >= 0 && (nextOpen < 0 || close < nextOpen) ? close + 1 : caret;
+    return numeric
+      .filter((c) => c.label.toLowerCase().includes(q))
+      .slice(0, MAX_COMPLETIONS)
+      .map((c) => ({ kind: 'column', label: c.label, insert: `[${c.label}]`, from: open, to }));
+  }
+  const word = /[A-Za-z_][A-Za-z0-9_]*$/.exec(before)?.[0];
+  if (!word) return [];
+  const q = word.toLowerCase();
+  const from = caret - word.length;
+  const fns: Completion[] = EXPR_FUNCTIONS.filter((f) => f.startsWith(q) && f !== q).map((f) => ({
+    kind: 'function',
+    label: `${f}( )`,
+    insert: `${f}(`,
+    from,
+    to: caret,
+  }));
+  const cols: Completion[] = numeric
+    .filter((c) => c.label.toLowerCase().includes(q))
+    .map((c) => ({ kind: 'column', label: c.label, insert: `[${c.label}]`, from, to: caret }));
+  return [...fns, ...cols].slice(0, MAX_COMPLETIONS);
+}
+
+/** Formula input that suggests column names (typed, or after “[”) and function names at the caret. */
+function FormulaInput(props: {
+  value: string;
+  columns: ColumnDef[];
+  onChange: (expr: string) => void;
+  onBlur?: () => void;
+  invalid?: boolean;
+}) {
+  const { value } = props;
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const [caret, setCaret] = useState<number | null>(null);
+  const [active, setActive] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
+  // Caret to restore after a completion is inserted, as soon as the new value is in the DOM.
+  const pendingCaret = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const at = pendingCaret.current;
+    if (at === null || !ref.current) return;
+    pendingCaret.current = null;
+    ref.current.focus();
+    ref.current.setSelectionRange(at, at);
+  });
+  // Grow with the formula instead of scrolling inside the box.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+  }, [value]);
+  const items = caret === null || dismissed ? [] : completionsAt(value, caret, props.columns);
+  const open = items.length > 0;
+  const sync = () => {
+    const el = ref.current;
+    if (el && document.activeElement === el) setCaret(el.selectionStart);
+  };
+  const accept = (c: Completion) => {
+    const next = value.slice(0, c.from) + c.insert + value.slice(c.to);
+    const at = c.from + c.insert.length;
+    props.onChange(next);
+    setCaret(at);
+    setActive(0);
+    pendingCaret.current = at;
+  };
+  return (
+    <div className="formula-input">
+      <textarea
+        ref={ref}
+        rows={2}
+        className="mono"
+        aria-label="Formula"
+        aria-invalid={props.invalid || undefined}
+        aria-describedby={props.invalid ? 'formula-error' : undefined}
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={open}
+        aria-controls="formula-completions"
+        aria-activedescendant={open ? `formula-completion-${active}` : undefined}
+        spellCheck={false}
+        autoComplete="off"
+        value={value}
+        placeholder="[CD4+ | Median PE-A] / [CD4+ | Median FITC-A]"
+        onChange={(e) => {
+          props.onChange(e.target.value);
+          setCaret(e.target.selectionStart);
+          setActive(0);
+          setDismissed(false);
+        }}
+        onSelect={sync}
+        onFocus={sync}
+        onBlur={() => {
+          setCaret(null);
+          props.onBlur?.();
+        }}
+        onKeyDown={(e) => {
+          if (!open) return;
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            const d = e.key === 'ArrowDown' ? 1 : -1;
+            setActive((i) => (i + d + items.length) % items.length);
+          } else if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            accept(items[Math.min(active, items.length - 1)]!);
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            setDismissed(true);
+          }
+        }}
+      />
+      {open && (
+        // biome-ignore lint/a11y/useSemanticElements: a native <select> cannot be the popup of a text input; this is the ARIA combobox pattern
+        <div id="formula-completions" className="formula-completions" role="listbox" tabIndex={-1}>
+          {items.map((c, i) => (
+            <div
+              key={`${c.kind}:${c.label}`}
+              id={`formula-completion-${i}`}
+              // biome-ignore lint/a11y/useSemanticElements: options of the ARIA combobox above; the input keeps the focus
+              role="option"
+              tabIndex={-1}
+              aria-selected={i === active}
+              className={i === active ? 'on' : undefined}
+              // Keep the focus (and caret) in the input.
+              onMouseDown={(e) => {
+                e.preventDefault();
+                accept(c);
+              }}
+              onMouseEnter={() => setActive(i)}
+            >
+              <span className="completion-kind">{c.kind === 'function' ? 'ƒ' : '[ ]'}</span>
+              <span className={c.kind === 'function' ? 'mono' : undefined}>{c.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A problem with a formula and the span of the formula it is about. */
+interface FormulaProblem {
+  message: string;
+  from: number;
+  to: number;
+}
+
+/** Span of the token at `pos`: a [column reference], a name, or one character. */
+function tokenAt(expr: string, pos: number): [number, number] {
+  if (pos >= expr.length) return [expr.length, expr.length];
+  if (expr[pos] === '[') {
+    const end = expr.indexOf(']', pos);
+    return [pos, end < 0 ? expr.length : end + 1];
+  }
+  const word = /^[A-Za-z_][A-Za-z0-9_]*/.exec(expr.slice(pos));
+  return [pos, pos + (word ? word[0].length : 1)];
+}
+
+/** The first problem with `expr` given the columns it may use, as the table would report it. */
+export function checkFormula(expr: string, columns: ColumnDef[]): FormulaProblem | null {
+  let refs: Set<string>;
+  try {
+    refs = exprRefs(parseExpr(expr));
+  } catch (err) {
+    if (!(err instanceof ExprError)) return { message: String((err as Error).message), from: 0, to: 0 };
+    const [from, to] = tokenAt(expr, err.pos);
+    return { message: err.message, from, to };
+  }
+  const known = new Set(columns.flatMap((c) => [c.label, c.key]));
+  for (const m of expr.matchAll(/\[([^\]]*)\]/g)) {
+    const name = m[1]!.trim();
+    if (refs.has(name) && !known.has(name))
+      return { message: `Unknown column [${name}]`, from: m.index, to: m.index + m[0].length };
+  }
+  return null;
+}
+
+/** The error message, and the formula with the part it is about marked. */
+function FormulaError({ expr, problem, id }: { expr: string; problem: FormulaProblem; id?: string }) {
+  const { from, to } = problem;
+  return (
+    <div className="formula-error" id={id} role="alert">
+      <div className="formula-error-msg">
+        {problem.message}
+        {from < expr.length ? ` (at character ${from + 1})` : ''}
+      </div>
+      <div className="formula-error-src mono">
+        {expr.slice(0, from)}
+        <mark className={to > from ? undefined : 'gap'}>{to > from ? expr.slice(from, to) : '\u00a0'}</mark>
+        {expr.slice(to)}
+      </div>
+    </div>
+  );
+}
+
 function FormulaForm(props: {
   initial?: Extract<DerivedColumn, { kind: 'formula' }>;
   columns: ColumnDef[];
@@ -124,63 +351,42 @@ function FormulaForm(props: {
 }) {
   const [name, setName] = useState(props.initial?.name ?? 'Formula');
   const [expr, setExpr] = useState(props.initial?.expr ?? '');
-  const ref = useRef<HTMLInputElement>(null);
-  const insert = (text: string) => {
-    const el = ref.current;
-    const at = el?.selectionStart ?? expr.length;
-    const end = el?.selectionEnd ?? at;
-    setExpr(expr.slice(0, at) + text + expr.slice(end));
-    requestAnimationFrame(() => {
-      el?.focus();
-      el?.setSelectionRange(at + text.length, at + text.length);
-    });
-  };
+  // The problem is shown once the user leaves the box or tries to add; after that it updates as they type.
+  const [checked, setChecked] = useState(!!props.initial);
+  const problem = expr.trim() ? checkFormula(expr, props.columns) : null;
+  const shown = checked ? problem : null;
   return (
     <div className="derived-form">
       <label className="field">
         Name
         <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
       </label>
-      <label className="field stack">
+      <div className="field stack">
         Formula
-        <input
-          ref={ref}
-          type="text"
-          className="mono"
+        <FormulaInput
           value={expr}
-          placeholder="[CD4+ | Median PE-A (PE-A)] / [CD4+ | Median FITC-A (FITC-A)]"
-          onChange={(e) => setExpr(e.target.value)}
+          columns={props.columns}
+          onChange={setExpr}
+          onBlur={() => expr.trim() && setChecked(true)}
+          invalid={!!shown}
         />
-      </label>
-      <label className="field">
-        Insert column
-        <select value="" onChange={(e) => e.target.value && insert(`[${e.target.value}]`)}>
-          <option value="">—</option>
-          {props.columns
-            .filter((c) => c.type === 'numeric')
-            .map((c) => (
-              <option key={c.key} value={c.label}>
-                {c.label}
-              </option>
-            ))}
-        </select>
-      </label>
-      <span className="muted small" title="Operators: + − * / ^ and parentheses">
-        Functions: {EXPR_FUNCTIONS.join(', ')}
-      </span>
+      </div>
+      {shown && <FormulaError id="formula-error" expr={expr} problem={shown} />}
       <div className="row">
         <button
           type="button"
           className="primary"
-          disabled={!expr.trim()}
-          onClick={() =>
+          disabled={!expr.trim() || !!shown}
+          onClick={() => {
+            setChecked(true);
+            if (problem) return;
             props.onSave({
               id: props.initial?.id ?? newId('dc_'),
               name: name.trim() || 'Formula',
               kind: 'formula',
               expr,
-            })
-          }
+            });
+          }}
         >
           {props.initial ? 'Save' : 'Add'}
         </button>
@@ -231,7 +437,7 @@ function NormalizeForm(props: {
     return (
       <div className="derived-form">
         <span className="muted">
-          Normalisation needs a sample variable (Metadata tab) to pick reference samples.
+          Normalization needs a sample variable (Metadata tab) to pick reference samples.
         </span>
         <button type="button" onClick={props.onCancel}>
           Close
@@ -375,9 +581,6 @@ function DerivedPanel(props: {
   };
   return (
     <div className="derived-panel">
-      {derived.length === 0 && !form && (
-        <p className="muted small">Columns computed from the others, e.g. a ratio or a fold change.</p>
-      )}
       {derived.length > 0 && (
         <ul className="derived-list">
           {derived.map((d) => (
@@ -388,7 +591,9 @@ function DerivedPanel(props: {
                   ? `= ${d.expr}`
                   : `${d.mode} to ${variables.find((v) => v.id === d.refVariable)?.name ?? '?'} = ${d.refValue}${d.within.length ? ` within ${d.within.map((w) => variables.find((v) => v.id === w)?.name ?? '?').join(', ')}` : ''}`}
               </span>
-              {props.errors[d.id] && <span className="badge danger">{props.errors[d.id]}</span>}
+              {props.errors[d.id] && d.kind !== 'formula' && (
+                <span className="badge danger">{props.errors[d.id]}</span>
+              )}
               <button
                 type="button"
                 className="icon"
@@ -407,10 +612,42 @@ function DerivedPanel(props: {
               >
                 ✕
               </button>
+              {props.errors[d.id] && d.kind === 'formula' && (
+                <FormulaError
+                  expr={d.expr}
+                  problem={
+                    checkFormula(d.expr, before(d.id)) ?? {
+                      message: props.errors[d.id]!,
+                      from: 0,
+                      to: d.expr.length,
+                    }
+                  }
+                />
+              )}
             </li>
           ))}
         </ul>
       )}
+      <div className="row">
+        <button
+          type="button"
+          className={form?.kind === 'formula' && !form.id ? 'on' : undefined}
+          aria-pressed={form?.kind === 'formula' && !form.id}
+          onClick={() => setForm(form?.kind === 'formula' && !form.id ? null : { kind: 'formula' })}
+          title="A new column computed from others, e.g. a ratio"
+        >
+          + Formula
+        </button>
+        <button
+          type="button"
+          className={form?.kind === 'normalize' && !form.id ? 'on' : undefined}
+          aria-pressed={form?.kind === 'normalize' && !form.id}
+          onClick={() => setForm(form?.kind === 'normalize' && !form.id ? null : { kind: 'normalize' })}
+          title="Fold change or percent of a reference condition (e.g. untreated, dose 0)"
+        >
+          + Normalization
+        </button>
+      </div>
       {form?.kind === 'formula' ? (
         <FormulaForm
           key={form.id ?? 'new'}
@@ -429,24 +666,7 @@ function DerivedPanel(props: {
           onSave={save}
           onCancel={() => setForm(null)}
         />
-      ) : (
-        <div className="row">
-          <button
-            type="button"
-            onClick={() => setForm({ kind: 'formula' })}
-            title="A new column computed from others, e.g. a ratio"
-          >
-            + Formula
-          </button>
-          <button
-            type="button"
-            onClick={() => setForm({ kind: 'normalize' })}
-            title="Fold change or percent of a reference condition (e.g. untreated, dose 0)"
-          >
-            + Normalisation
-          </button>
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -533,7 +753,6 @@ function AddStatForm({
       <button type="button" className="primary" onClick={addStat}>
         Add statistic
       </button>
-      <p className="muted small">Remove a statistic with the ✕ in its column header.</p>
     </div>
   );
 }
@@ -651,35 +870,37 @@ function ColumnsChecklist({ group, table }: { group: Group; table: Table }) {
           none
         </button>
       </div>
-      {sections.map((s) => (
-        <fieldset key={s.title + s.cols[0]!.key}>
-          <legend>
-            <label className="field check">
-              <input
-                type="checkbox"
-                checked={s.cols.every((c) => on.has(c.key))}
-                onChange={(e) =>
-                  toggle(
-                    s.cols.map((c) => c.key),
-                    e.target.checked,
-                  )
-                }
-              />
-              {s.title}
-            </label>
-          </legend>
-          {s.cols.map((c) => (
-            <label key={c.key} className="field check">
-              <input
-                type="checkbox"
-                checked={on.has(c.key)}
-                onChange={(e) => toggle([c.key], e.target.checked)}
-              />
-              {c.pop ? c.label.slice(c.label.indexOf(' | ') + 3) : c.label}
-            </label>
-          ))}
-        </fieldset>
-      ))}
+      <div className="columns-scroll">
+        {sections.map((s) => (
+          <fieldset key={s.title + s.cols[0]!.key}>
+            <legend>
+              <label className="field check">
+                <input
+                  type="checkbox"
+                  checked={s.cols.every((c) => on.has(c.key))}
+                  onChange={(e) =>
+                    toggle(
+                      s.cols.map((c) => c.key),
+                      e.target.checked,
+                    )
+                  }
+                />
+                {s.title}
+              </label>
+            </legend>
+            {s.cols.map((c) => (
+              <label key={c.key} className="field check">
+                <input
+                  type="checkbox"
+                  checked={on.has(c.key)}
+                  onChange={(e) => toggle([c.key], e.target.checked)}
+                />
+                {c.pop ? c.label.slice(c.label.indexOf(' | ') + 3) : c.label}
+              </label>
+            ))}
+          </fieldset>
+        ))}
+      </div>
     </div>
   );
 }
@@ -890,7 +1111,6 @@ export function StatsInspector() {
               open={!!open.summaries}
               onToggle={() => toggle('summaries')}
             >
-              <p className="muted small">Shown for every numeric column when replicates are combined.</p>
               <SummaryFields group={group} />
             </Section>
           </>
@@ -947,10 +1167,6 @@ export function StatsInspector() {
               />
             </Section>
             <Section id="events" title="Events" open={!!open.events} onToggle={() => toggle('events')}>
-              <p className="muted small">
-                {group.template.populations[popId]?.name ?? 'The population'} of{' '}
-                {eventSample?.fileName ?? 'the selected sample'}
-              </p>
               <ActionRow
                 label="FCS (raw)"
                 title="Download FCS 3.1 with linearised, uncompensated values; original keywords and $SPILLOVER kept"
