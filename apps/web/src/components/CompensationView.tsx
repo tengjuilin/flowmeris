@@ -233,7 +233,7 @@ export function SamplesView() {
   const s = ws.samples[sid];
   return (
     <div className="samples-view">
-      <div className="table-wrap">
+      <div className="table-wrap stats-scroll">
         <table className="stats">
           <thead>
             <tr>
@@ -273,7 +273,7 @@ export function SamplesView() {
       {s && (
         <>
           <h3>Channels · {s.fileName}</h3>
-          <div className="table-wrap">
+          <div className="table-wrap stats-scroll">
             <table className="stats">
               <thead>
                 <tr>
