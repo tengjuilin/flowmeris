@@ -1,6 +1,6 @@
 import { type Sample, type Workspace, newGroup } from '@flowmeris/model';
 import { wellFromSample } from '@flowmeris/table';
-import { newPlot } from './defaults.ts';
+import { newPlot } from './plotFactories.ts';
 
 /**
  * Turning dropped or chosen files into groups. The store command that runs the workers and updates

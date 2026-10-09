@@ -1,5 +1,5 @@
 import { type Gate, type Group, type Population, type Region, type Workspace, newId } from '@flowmeris/model';
-import { nextColor } from './defaults.ts';
+import { nextColor } from './palette.ts';
 
 /** Gate creation on a workspace draft. The store command is state/commands/gates.ts `createGate`. */
 

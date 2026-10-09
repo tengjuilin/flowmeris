@@ -1,20 +1,14 @@
 import {
   type AxisSpec,
   type Group,
-  type PlotKind,
-  type PlotSpec,
-  type PlotStyle,
   type Sample,
   type Transform,
   type Workspace,
-  newId,
   transformId,
 } from '@flowmeris/model';
-import { CATEGORICAL } from '@flowmeris/render';
 import { asinhDefFromCofactor, linearDef, logDef, logicleDef } from '@flowmeris/transforms';
-import { DEFAULT_STYLE, TILE_STYLE } from './figure.ts';
 
-export { DEFAULT_STYLE };
+/** Default axes and the scale choices offered for an axis. */
 
 export function registerTransform(ws: Workspace, t: Transform): string {
   const id = transformId(t);
@@ -28,11 +22,6 @@ export function groupSample(ws: Workspace, g: Group): Sample | undefined {
   return undefined;
 }
 
-/**
- * Default axis for a channel (docs/guide/axes.md): scatter channels linear over
- * [0, $PnR] and time channels over [0, largest time in the data]; fluorescence channels logicle with T = $PnR (min
- * 1024), W = 0.5, M = 4.5, A = 0. All map to display range [0, 1].
- */
 export type ScaleKind = 'linear' | 'log' | 'logicle' | 'arcsinh';
 
 export const SCALE_KINDS: { id: ScaleKind; label: string }[] = [
@@ -60,7 +49,12 @@ export function transformOfKind(k: ScaleKind, top: number): Transform {
   return asinhDefFromCofactor(150, top);
 }
 
-/** The built-in axis for a channel, ignoring any scale the user has since set as the group's default. */
+/**
+ * The built-in axis for a channel (docs/guide/axes.md), ignoring any scale the user has since set as the
+ * group's default: scatter, time and other channels linear over [0, $PnR] (time channels over [0, largest
+ * time in the data]); fluorescence channels logicle with T = $PnR (min 1024), W = 0.5, M = 4.5, A = 0.
+ * All map to display range [0, 1]. Registers the transform in `ws` (call inside `mutate`).
+ */
 export function factoryAxis(ws: Workspace, g: Group, channel: string): AxisSpec {
   const s = groupSample(ws, g);
   const ch = s?.channels.find((c) => c.pnn === channel);
@@ -83,6 +77,10 @@ export function factoryAxis(ws: Workspace, g: Group, channel: string): AxisSpec 
   return { channel, comp: 'group', transform: registerTransform(ws, t), range: [0, 1] };
 }
 
+/**
+ * The group's default axis for a channel: the one the user set, else the built-in one, which is then
+ * saved as the group's default (call inside `mutate`).
+ */
 export function defaultAxis(ws: Workspace, g: Group, channel: string): AxisSpec {
   const existing = g.axisDefaults[channel];
   if (existing && ws.transforms[existing.transform]) return existing;
@@ -99,49 +97,4 @@ export function defaultChannels(ws: Workspace, g: Group): [string, string] {
   const x = pick(/^FSC-A$/i) ?? pick(/^FSC/i) ?? names[0] ?? g.channels[0] ?? '';
   const y = pick(/^SSC-A$/i) ?? pick(/^SSC/i) ?? names.find((n) => n !== x) ?? x;
   return [x, y];
-}
-
-export function newPlot(
-  ws: Workspace,
-  g: Group,
-  population: string,
-  kind: PlotKind = 'pseudocolor',
-  xy?: [string, string],
-): PlotSpec {
-  const [xc, yc] = xy ?? defaultChannels(ws, g);
-  const plot: PlotSpec = {
-    id: newId('plt_'),
-    population,
-    kind,
-    x: { ...defaultAxis(ws, g, xc) },
-    style: structuredClone(DEFAULT_STYLE),
-  };
-  if (kind !== 'histogram') plot.y = { ...defaultAxis(ws, g, yc) };
-  g.plots.push(plot);
-  return plot;
-}
-
-/**
- * Add the population's Tiles plot: a copy of the Gate view's plot type and axes (or the defaults when it
- * has none) with the Tiles default appearance. Not linked to the Gate view's plot afterwards.
- */
-export function newTilePlot(ws: Workspace, g: Group, population: string): PlotSpec {
-  const src = g.plots.find((p) => p.population === population);
-  const [xc, yc] = defaultChannels(ws, g);
-  const plot: PlotSpec = {
-    id: newId('tpl_'),
-    population,
-    kind: src?.kind ?? 'pseudocolor',
-    x: { ...(src?.x ?? defaultAxis(ws, g, xc)) },
-    style: structuredClone(TILE_STYLE),
-  };
-  if (plot.kind !== 'histogram') plot.y = { ...(src?.y ?? defaultAxis(ws, g, yc)) };
-  g.tilePlots.push(plot);
-  return plot;
-}
-
-/** Next population colour: categorical palette in fixed order (dataviz rule: never cycled). */
-export function nextColor(g: Group): string {
-  const used = Object.keys(g.template.populations).length - 1;
-  return CATEGORICAL[Math.min(used, CATEGORICAL.length - 1)]!;
 }

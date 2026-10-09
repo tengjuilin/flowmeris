@@ -1,7 +1,7 @@
 import type { PlotCell, Workspace } from '@flowmeris/model';
 import { produce } from 'immer';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_STYLE } from './defaults.ts';
+import { DEFAULT_STYLE } from './figure.ts';
 import { TILE_FIGURE } from './figure.ts';
 import { gridCarry } from './gridCarry.ts';
 

@@ -1,7 +1,8 @@
 import type { Group, Variable, Workspace } from '@flowmeris/model';
 import { ALL_WELLS, PLATE_COLS, PLATE_ROWS, wellIndex, wellName } from '@flowmeris/table';
 import { useEffect, useMemo, useState } from 'react';
-import { distinctValues, inkOn, valueColors } from '../lib/metadata.ts';
+import { distinctValues } from '../lib/metadata.ts';
+import { inkOn, valueColors } from '../lib/palette.ts';
 import { useSampleNames, useStore } from '../state/store.ts';
 
 function fmtValue(x: unknown): string {

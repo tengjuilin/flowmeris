@@ -2,7 +2,7 @@ import type { Group, PlotCell, PlotKind, PlotSpec, Workspace } from '@flowmeris/
 import { newId, populationLineage, populationsDepthFirst } from '@flowmeris/model';
 import { CATEGORICAL } from '@flowmeris/render';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { defaultAxis, defaultChannels } from '../lib/defaults.ts';
+import { defaultAxis, defaultChannels } from '../lib/axisDefaults.ts';
 import type { PlotHandle } from '../lib/export/plot.ts';
 import { TILE_FIGURE, TILE_STYLE } from '../lib/figure.ts';
 import { nearestColumns } from '../lib/fitSize.ts';

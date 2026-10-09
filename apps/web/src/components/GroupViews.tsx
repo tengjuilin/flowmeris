@@ -3,7 +3,7 @@ import type { Group, PlotSpec } from '@flowmeris/model';
 import { axisTicks, formatLinear } from '@flowmeris/transforms';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
-import { factoryAxis } from '../lib/defaults.ts';
+import { factoryAxis } from '../lib/axisDefaults.ts';
 import { TILE_FIGURE } from '../lib/figure.ts';
 import { nearestColumns } from '../lib/fitSize.ts';
 import { scaleFor } from '../lib/geometry.ts';

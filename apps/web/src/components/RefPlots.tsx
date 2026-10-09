@@ -1,7 +1,8 @@
 import type { Group, PlotSpec, RefPlot, Workspace } from '@flowmeris/model';
 import { newId, populationLineage, populationsDepthFirst } from '@flowmeris/model';
 import { useRef } from 'react';
-import { DEFAULT_STYLE, defaultAxis, defaultChannels, groupSample } from '../lib/defaults.ts';
+import { defaultAxis, defaultChannels, groupSample } from '../lib/axisDefaults.ts';
+import { DEFAULT_STYLE } from '../lib/figure.ts';
 import { useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { PlotCanvas } from './PlotCanvas.tsx';
 import { AxisSelects, PlotKindSelect, axisPickers } from './PlotPanel.tsx';

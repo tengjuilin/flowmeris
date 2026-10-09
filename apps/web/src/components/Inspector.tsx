@@ -15,7 +15,6 @@ import { asinhCofactor, asinhDefFromCofactor, makeScale, suggestLogicleW } from 
 import { type ReactNode, useState } from 'react';
 import { pool } from '../engine-client/pool.ts';
 import {
-  DEFAULT_STYLE,
   SCALE_KINDS,
   type ScaleKind,
   factoryAxis,
@@ -23,7 +22,8 @@ import {
   registerTransform,
   scaleKindOf,
   transformOfKind,
-} from '../lib/defaults.ts';
+} from '../lib/axisDefaults.ts';
+import { DEFAULT_STYLE } from '../lib/figure.ts';
 import { DEFAULT_FIGURE, TILE_FIGURE } from '../lib/figure.ts';
 import { deleteGate, promoteOverride, revertOverride, setGateGeometry } from '../state/commands/gates.ts';
 import { contextFor, toast, useGroup, useStore } from '../state/store.ts';

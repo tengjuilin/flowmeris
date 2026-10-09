@@ -5,14 +5,13 @@ import {
   type ScaleKind,
   defaultAxis,
   groupSample,
-  newPlot,
-  newTilePlot,
   registerTransform,
   scaleKindOf,
   transformOfKind,
-} from '../lib/defaults.ts';
+} from '../lib/axisDefaults.ts';
 import type { PlotHandle } from '../lib/export/plot.ts';
 import { withAxesChange } from '../lib/figure.ts';
+import { newPlot, newTilePlot } from '../lib/plotFactories.ts';
 import { exportPlot } from '../state/export.ts';
 import { type Tool, useGroup, useStore } from '../state/store.ts';
 import { ExportMenu } from './ExportMenu.tsx';

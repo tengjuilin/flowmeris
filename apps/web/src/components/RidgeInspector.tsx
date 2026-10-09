@@ -22,7 +22,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { defaultChannels, factoryAxis } from '../lib/defaults.ts';
+import { defaultChannels, factoryAxis } from '../lib/axisDefaults.ts';
 import { FONT_GROUPS, FONT_STACKS, fontStack } from '../lib/figure.ts';
 import { sameJson } from '../lib/json.ts';
 import {
