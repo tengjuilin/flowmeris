@@ -2284,7 +2284,8 @@ button.chip:hover {
   box-shadow: 0 2px 0 var(--accent);
 }
 /* The table fills the view's height and scrolls inside its box, so its header row and Sample column stay pinned. */
-.metadata-view.table-mode {
+.metadata-view.table-mode,
+.metadata-view.plate-mode {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -2341,6 +2342,12 @@ table.meta-table {
   flex-wrap: wrap;
   align-items: flex-start;
 }
+/* The plate area takes the rest of the view's height, as a container the plate sizes itself against. */
+.plate-mode > .plate-layout {
+  flex: 1;
+  min-height: 0;
+  container-type: size;
+}
 .plate-wrap {
   flex: 1 1 520px;
   min-width: 0;
@@ -2351,6 +2358,10 @@ table.meta-table {
   gap: 4px;
   user-select: none;
   min-width: 460px;
+  /* No taller than the area, legend included: 8 rows of round wells set the height, and the width
+     follows at 12 columns for 8 rows. Fixed parts: row labels 28px, column labels ~16px, 4px gaps,
+     10px padding and the border; ~40px are kept for the legend below. Small areas scroll instead. */
+  max-width: calc(28px + 13 * 4px + 22px + 1.5 * (100cqh - 16px - 9 * 4px - 22px - 40px));
   padding: 10px;
   border: 1px solid var(--border);
   border-radius: 12px;

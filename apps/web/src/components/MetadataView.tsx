@@ -478,7 +478,7 @@ export function MetadataView() {
   };
 
   return (
-    <div className={`metadata-view${mode === 'table' ? ' table-mode' : ''}`}>
+    <div className={`metadata-view ${mode === 'table' ? 'table-mode' : 'plate-mode'}`}>
       <div className="toolbar">
         <div className="seg">
           <button type="button" className={mode === 'table' ? 'on' : ''} onClick={() => setMode('table')}>
