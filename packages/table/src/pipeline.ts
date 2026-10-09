@@ -169,7 +169,9 @@ export function aggregate(table: Table, by: string[], funcs: AggFunc[], levels?:
   const fs = funcs.filter((f) => f !== 'n');
   const columns: ColumnDef[] = [
     ...byCols,
-    { key: 'group:n', label: 'n', type: 'numeric', kind: 'aggregate', func: 'n' },
+    ...(funcs.includes('n')
+      ? [{ key: 'group:n', label: 'n', type: 'numeric', kind: 'aggregate', func: 'n' } as ColumnDef]
+      : []),
     ...numeric.flatMap((c) =>
       fs.map(
         (f): ColumnDef => ({
