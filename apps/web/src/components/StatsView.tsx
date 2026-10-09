@@ -849,15 +849,21 @@ export function StatsView() {
               ))}
             </tr>
             <tr>
-              {display.columns.map((c) => {
+              {display.columns.map((c, i) => {
+                const summary = !!aggregated && c.kind === 'aggregate' && !!c.source;
+                if (summary && display.columns[i - 1]?.source === c.source) return null;
+                let span = 1;
+                if (summary) while (display.columns[i + span]?.source === c.source) span++;
                 const specId = !aggregated ? statByKey.get(c.key)?.specId : undefined;
                 return (
                   <th
                     key={c.key}
-                    title={c.label}
+                    title={summary ? undefined : c.label}
+                    colSpan={span > 1 ? span : undefined}
+                    rowSpan={aggregated && !summary ? 2 : undefined}
                     className={sectionStart.has(c.key) ? 'sec-start' : undefined}
                   >
-                    {shortLabel(c)}
+                    {summary ? shortLabel(byKey.get(c.source!) ?? c) : shortLabel(c)}
                     {specId && (
                       <button
                         type="button"
@@ -877,6 +883,21 @@ export function StatsView() {
                 );
               })}
             </tr>
+            {aggregated && (
+              <tr>
+                {display.columns.map((c) =>
+                  c.kind === 'aggregate' && c.source ? (
+                    <th
+                      key={c.key}
+                      title={c.label}
+                      className={sectionStart.has(c.key) ? 'sec-start' : undefined}
+                    >
+                      {AGG_FUNCS.find((x) => x.id === c.func)?.label ?? c.func}
+                    </th>
+                  ) : null,
+                )}
+              </tr>
+            )}
           </thead>
           <tbody>
             {display.rows.map((r) => {
