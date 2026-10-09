@@ -624,6 +624,19 @@ export function StatsView() {
     if (last?.id === id) last.span++;
     else sections.push({ id, span: 1 });
   }
+  // Columns that get a left divider: the first of every section after the first.
+  const sectionStart = new Set<string>();
+  let colIdx = 0;
+  for (const sec of sections.slice(0, -1)) {
+    colIdx += sec.span;
+    sectionStart.add(display.columns[colIdx]!.key);
+  }
+  // A grouped table also divides the summaries (mean, SD, …) of different source columns.
+  if (aggregated)
+    display.columns.forEach((c, i) => {
+      const prev = display.columns[i - 1];
+      if (prev && c.source && c.source !== prev.source) sectionStart.add(c.key);
+    });
   const sectionHead = (id: string) => {
     if (id.startsWith('pop:')) {
       const p = group.template.populations[id.slice(4)];
@@ -824,7 +837,11 @@ export function StatsView() {
                 <th
                   key={`${s.id}${i}`}
                   colSpan={s.span}
-                  className={s.id.startsWith('pop:') ? 'pop-head' : undefined}
+                  className={
+                    [s.id.startsWith('pop:') ? 'pop-head' : '', i > 0 ? 'sec-start' : '']
+                      .filter(Boolean)
+                      .join(' ') || undefined
+                  }
                   title={s.id.startsWith('pop:') ? populationPath(group.template, s.id.slice(4)) : undefined}
                 >
                   {sectionHead(s.id)}
@@ -835,7 +852,11 @@ export function StatsView() {
               {display.columns.map((c) => {
                 const specId = !aggregated ? statByKey.get(c.key)?.specId : undefined;
                 return (
-                  <th key={c.key} title={c.label}>
+                  <th
+                    key={c.key}
+                    title={c.label}
+                    className={sectionStart.has(c.key) ? 'sec-start' : undefined}
+                  >
                     {shortLabel(c)}
                     {specId && (
                       <button
@@ -880,7 +901,17 @@ export function StatsView() {
                         {!aggregated && missing[r.id] && <span className="badge danger">missing</span>}
                       </th>
                     ) : (
-                      <td key={c.key} className={c.type === 'categorical' ? 'text-cell' : undefined}>
+                      <td
+                        key={c.key}
+                        className={
+                          [
+                            c.type === 'categorical' ? 'text-cell' : '',
+                            sectionStart.has(c.key) ? 'sec-start' : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ') || undefined
+                        }
+                      >
                         {fmt(r.values[c.key], statOf(c))}
                       </td>
                     ),

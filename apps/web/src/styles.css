@@ -1143,6 +1143,9 @@ table.stats thead th {
   font-weight: 600;
   text-align: center;
 }
+table.stats .sec-start {
+  border-left: 1px solid var(--border);
+}
 table.stats tbody th {
   text-align: left;
   font-weight: 500;
