@@ -9,14 +9,13 @@
   "sideEffects": false,
   "dependencies": {
     "@flowmeris/model": "workspace:*",
-    "@flowmeris/engine": "workspace:*",
     "@flowmeris/fcs": "workspace:*",
-    "@flowmeris/stats": "workspace:*",
     "@flowmeris/compensation": "workspace:*"
   },
   "devDependencies": {
     "@flowmeris/testkit": "workspace:*",
     "@flowmeris/gatingml": "workspace:*",
-    "@flowmeris/gating": "workspace:*"
+    "@flowmeris/gating": "workspace:*",
+    "@flowmeris/engine": "workspace:*"
   }
 }

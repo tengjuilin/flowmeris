@@ -7,9 +7,6 @@
     ".": "./src/index.ts"
   },
   "sideEffects": false,
-  "dependencies": {
-    "@flowmeris/model": "workspace:*"
-  },
   "devDependencies": {
     "@flowmeris/testkit": "workspace:*",
     "@flowmeris/fcs": "workspace:*"

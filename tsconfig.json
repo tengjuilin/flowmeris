@@ -6,6 +6,7 @@
     "apps/web/src/**/*.ts",
     "apps/web/src/**/*.tsx",
     "e2e/**/*.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "vitest.workspace.ts"
   ]
 }
