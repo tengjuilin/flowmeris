@@ -74,8 +74,10 @@ numeric column, over the group's $k$ finite values:
 | n | rows in the group |
 
 Student's *t* quantiles are computed by bisection on the upper tail $\tfrac12 I_{\nu/(\nu+t^2)}(\nu/2, \tfrac12)$,
-with the regularised incomplete beta function evaluated by its continued fraction; they agree with
-`scipy.stats.t.ppf` to 10⁻⁹. Chart error bars use the same definitions over the samples that share an
+with the regularised incomplete beta function evaluated by its continued fraction. Its log-beta prefactor
+uses exact ln Γ recurrences, except for many degrees of freedom (ν ≥ 60), where ln Γ(ν/2 + ½) − ln Γ(ν/2)
+comes from Stirling's series to avoid cancellation. Quantiles and the CDF agree with `scipy.stats.t` to
+10⁻¹⁰ for ν = 1 – 10⁵. Chart error bars use the same definitions over the samples that share an
 x value and series.
 
 ## Validation

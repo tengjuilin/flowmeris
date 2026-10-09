@@ -2,7 +2,19 @@ import { linearize, parseFcs } from '@flowmeris/fcs';
 import { TOL, isClose, readFixture, readGolden } from '@flowmeris/testkit';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { frequencies, medianSorted, percentileSorted, summarize } from './index.ts';
+import {
+  type ValueStat,
+  ci95HalfWidth,
+  frequencies,
+  mean,
+  medianSorted,
+  percentileSorted,
+  sd,
+  sem,
+  summarize,
+  tCdf,
+  tQuantile,
+} from './index.ts';
 
 interface StatGolden {
   channel: string;
@@ -247,5 +259,121 @@ describe('replicate summaries', () => {
     expect(sem(x)).toBeCloseTo(1.2909944487358056 / 2, 12);
     expect(ci95HalfWidth(x)).toBeCloseTo(3.182446305284263 * (1.2909944487358056 / 2), 9);
     expect(ci95HalfWidth([1])).toBeNaN();
+  });
+});
+
+/** Golden value: null stands for a value that is not finite (JSON has no NaN or ±Inf). */
+function closeOrNonFinite(
+  a: number,
+  b: number | null | undefined,
+  tol: { rel: number; abs: number },
+): boolean {
+  return b === null || b === undefined ? !Number.isFinite(a) : isClose(a, b, tol);
+}
+
+interface EdgeCase {
+  name: string;
+  x: (number | null)[];
+  n: number;
+  n_excluded: number;
+  mean?: number | null;
+  sd?: number | null;
+  cv?: number | null;
+  median?: number | null;
+  rsd?: number | null;
+  rcv?: number | null;
+  geom_mean?: number | null;
+  geom_n?: number;
+  min?: number | null;
+  max?: number | null;
+  percentiles?: Record<string, number>;
+}
+
+describe('golden parity: statistics vs NumPy on edge cases', () => {
+  const g = readGolden<{ percentiles: number[]; cases: EdgeCase[] }>('stats_edge.json');
+  const stats: [ValueStat, keyof EdgeCase][] = [
+    ['mean', 'mean'],
+    ['sd', 'sd'],
+    ['cv', 'cv'],
+    ['median', 'median'],
+    ['rsd', 'rsd'],
+    ['rcv', 'rcv'],
+    ['geomMean', 'geom_mean'],
+    ['min', 'min'],
+    ['max', 'max'],
+  ];
+  for (const c of g.cases) {
+    it(c.name, () => {
+      const x = c.x.map((v) => (v === null ? Number.NaN : v));
+      const r = summarize(x, [
+        ...stats.map(([stat]) => ({ stat })),
+        ...g.percentiles.map((p) => ({ stat: 'percentile' as const, p })),
+      ]);
+      const errs: string[] = [];
+      stats.forEach(([stat, key], i) => {
+        const got = r[i]!;
+        const want = c[key] as number | null | undefined;
+        if (!closeOrNonFinite(got.value, want, TOL.stats)) errs.push(`${stat}: ${got.value} ≠ ${want}`);
+        const n = stat === 'geomMean' ? (c.geom_n ?? 0) : c.n;
+        if (got.n !== n || got.nExcluded !== x.length - n)
+          errs.push(`${stat}: n ${got.n}/${got.nExcluded} ≠ ${n}/${x.length - n}`);
+      });
+      g.percentiles.forEach((p, k) => {
+        const got = r[stats.length + k]!.value;
+        const want = c.percentiles?.[String(p)];
+        // Same order statistics and interpolation as NumPy: exact.
+        if (want === undefined ? !Number.isNaN(got) : got !== want) errs.push(`P${p}: ${got} ≠ ${want}`);
+      });
+      expect(errs).toEqual([]);
+    });
+  }
+});
+
+interface SummaryGolden {
+  x: (number | string)[];
+  n: number;
+  mean: number | null;
+  sd: number | null;
+  sem: number | null;
+  ci95: number | null;
+  median: number | null;
+  cv: number | null;
+  min: number | null;
+  max: number | null;
+}
+
+describe('golden parity: replicate summaries and the t distribution vs SciPy', () => {
+  const g = readGolden<{
+    cases: SummaryGolden[];
+    t_quantile: { p: number; df: number; q: number }[];
+    t_cdf: { t: number; df: number; cdf: number }[];
+  }>('aggregate.json');
+
+  it('t quantiles (scipy.stats.t.ppf)', () => {
+    const errs = g.t_quantile
+      .filter(({ p, df, q }) => !isClose(tQuantile(p, df), q, TOL.tdist))
+      .map(({ p, df, q }) => `t(${p}, ${df}): ${tQuantile(p, df)} ≠ ${q}`);
+    expect(errs).toEqual([]);
+  });
+
+  it('t cumulative distribution (scipy.stats.t.cdf)', () => {
+    const errs = g.t_cdf
+      .filter(({ t, df, cdf }) => !isClose(tCdf(t, df), cdf, TOL.tdist))
+      .map(({ t, df, cdf }) => `F(${t}; ${df}): ${tCdf(t, df)} ≠ ${cdf}`);
+    expect(errs).toEqual([]);
+  });
+
+  it('mean, SD, SEM and 95% CI half-width of finite values', () => {
+    const errs: string[] = [];
+    for (const c of g.cases) {
+      const xs = c.x.filter((v): v is number => typeof v === 'number');
+      const got = { mean: mean(xs), sd: sd(xs), sem: sem(xs), ci95: ci95HalfWidth(xs) };
+      for (const [k, v] of Object.entries(got)) {
+        const want = c[k as keyof typeof got];
+        const tol = k === 'ci95' ? TOL.tdist : TOL.stats;
+        if (!closeOrNonFinite(v, want, tol)) errs.push(`n=${c.n} ${k}: ${v} ≠ ${want}`);
+      }
+    }
+    expect(errs).toEqual([]);
   });
 });

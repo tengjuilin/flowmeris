@@ -1,0 +1,83 @@
+{
+ "scenario": "comp_kw",
+ "file": "flowio/100715.fcs",
+ "compensation": {
+  "kind": "keyword"
+ },
+ "gml": "golden/inputs/comp_kw.gml.xml",
+ "sha256": "733b0f6d959527116860f4c78f0908db33fc71388c7717737b340c100b9f46e7",
+ "populations": [
+  {
+   "id": "scat_in",
+   "parent": "root"
+  },
+  {
+   "id": "cd3_in",
+   "parent": "scat_in"
+  },
+  {
+   "id": "cd3raw_in",
+   "parent": "scat_in"
+  },
+  {
+   "id": "cd48_Q1",
+   "parent": "cd3_in"
+  },
+  {
+   "id": "cd48_Q2",
+   "parent": "cd3_in"
+  },
+  {
+   "id": "cd48_Q3",
+   "parent": "cd3_in"
+  },
+  {
+   "id": "cd48_Q4",
+   "parent": "cd3_in"
+  },
+  {
+   "id": "poly_in",
+   "parent": "scat_in"
+  },
+  {
+   "id": "cd27_lo",
+   "parent": "scat_in"
+  },
+  {
+   "id": "cd27_hi",
+   "parent": "scat_in"
+  }
+ ],
+ "transforms": {
+  "t_6dd1a59b93c49653": {
+   "kind": "logicle",
+   "T": 262144,
+   "W": 0.5,
+   "M": 4.5,
+   "A": 0
+  },
+  "t_21d9be165f22bc12": {
+   "kind": "fasinh",
+   "T": 262144,
+   "M": 4.5,
+   "A": 0
+  },
+  "t_511a5d049667c81f": {
+   "kind": "flog",
+   "T": 262144,
+   "M": 4.5
+  }
+ },
+ "fcs_exports": [
+  {
+   "pop": "cd48_Q3",
+   "mode": "compensated",
+   "path": "golden/inputs/comp_kw_cd48_Q3_compensated.fcs"
+  },
+  {
+   "pop": "cd48_Q3",
+   "mode": "raw",
+   "path": "golden/inputs/comp_kw_cd48_Q3_raw.fcs"
+  }
+ ]
+}

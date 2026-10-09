@@ -36,6 +36,12 @@ export const TOL = {
   transform: { rel: 1e-10, abs: 1e-12 },
   /** Summary statistics. */
   stats: { rel: 1e-12, abs: 1e-12 },
+  /** Student's t quantiles and CDF (incomplete beta continued fraction; bisection to 1e-14). */
+  tdist: { rel: 1e-10, abs: 1e-12 },
+  /** Formula columns: elementary functions (log, exp, pow) may differ from libm by an ULP or two. */
+  formula: { rel: 1e-14, abs: 0 },
+  /** Binned densities after smoothing, and contour levels on them. */
+  density: { rel: 1e-12, abs: 1e-15 },
 } as const;
 
 export function isClose(a: number | null, b: number | null, tol: { rel: number; abs: number }): boolean {

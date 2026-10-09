@@ -11,7 +11,8 @@
     "@flowmeris/model": "workspace:*",
     "@flowmeris/engine": "workspace:*",
     "@flowmeris/fcs": "workspace:*",
-    "@flowmeris/stats": "workspace:*"
+    "@flowmeris/stats": "workspace:*",
+    "@flowmeris/compensation": "workspace:*"
   },
   "devDependencies": {
     "@flowmeris/testkit": "workspace:*",

@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gating:Gating-ML xmlns:gating="http://www.isac-net.org/std/Gating-ML/v2.0/gating" xmlns:transforms="http://www.isac-net.org/std/Gating-ML/v2.0/transformations" xmlns:data-type="http://www.isac-net.org/std/Gating-ML/v2.0/datatypes" xmlns:flowmeris="https://flowmeris.org/ns/gating-ext/1">
+  <data-type:custom_info>Exported by Flowmeris golden; group "data1 gates"; group template.</data-type:custom_info>
+  <transforms:transformation transforms:id="t_5d53e32c2cc0637a">
+    <transforms:logicle transforms:T="1024" transforms:W="0.5" transforms:M="4.5" transforms:A="0" />
+  </transforms:transformation>
+  <transforms:transformation transforms:id="t_9f241e66e31746cf">
+    <transforms:fasinh transforms:T="1024" transforms:M="4" transforms:A="0" />
+  </transforms:transformation>
+  <transforms:transformation transforms:id="t_fb6aaf7367b22070">
+    <transforms:hyperlog transforms:T="1024" transforms:W="0.5" transforms:M="4.5" transforms:A="0" />
+  </transforms:transformation>
+  <transforms:transformation transforms:id="t_04ab639fbd945dfa">
+    <transforms:flin transforms:T="1024" transforms:A="0" />
+  </transforms:transformation>
+  <gating:RectangleGate gating:id="cells_in">
+    <data-type:custom_info><flowmeris:name>Cells</flowmeris:name></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:min="40" gating:max="250"><data-type:fcs-dimension data-type:name="FSC-H" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:min="8"><data-type:fcs-dimension data-type:name="SSC-H" /></gating:dimension>
+  </gating:RectangleGate>
+  <gating:PolygonGate gating:id="lymph_in" gating:parent_id="cells_in">
+    <data-type:custom_info><flowmeris:name>Lymphocytes</flowmeris:name></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a"><data-type:fcs-dimension data-type:name="FSC-H" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a"><data-type:fcs-dimension data-type:name="SSC-H" /></gating:dimension>
+    <gating:vertex><gating:coordinate data-type:value="0.7" /><gating:coordinate data-type:value="0.58" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="0.78" /><gating:coordinate data-type:value="0.58" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="0.78" /><gating:coordinate data-type:value="0.68" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="0.72" /><gating:coordinate data-type:value="0.7" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="0.69" /><gating:coordinate data-type:value="0.64" /></gating:vertex>
+  </gating:PolygonGate>
+  <gating:RectangleGate gating:id="cd3_in" gating:parent_id="lymph_in">
+    <data-type:custom_info><flowmeris:name>CD3+</flowmeris:name></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_9f241e66e31746cf" gating:min="0.4" gating:max="0.9"><data-type:fcs-dimension data-type:name="FL3-H" /></gating:dimension>
+  </gating:RectangleGate>
+  <gating:QuadrantGate gating:id="t48" gating:parent_id="cd3_in">
+    <data-type:custom_info><flowmeris:name quadrant="t48_Q1">t48 Q1</flowmeris:name><flowmeris:name quadrant="t48_Q2">CD4+ &amp; CD8+ &lt;double&gt;</flowmeris:name><flowmeris:name quadrant="t48_Q3">t48 Q3</flowmeris:name><flowmeris:name quadrant="t48_Q4">t48 Q4</flowmeris:name></data-type:custom_info>
+    <gating:divider gating:id="t48_x" gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a"><data-type:fcs-dimension data-type:name="FL1-H" /><gating:value>0.55</gating:value></gating:divider>
+    <gating:divider gating:id="t48_y" gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a"><data-type:fcs-dimension data-type:name="FL4-H" /><gating:value>0.47</gating:value></gating:divider>
+    <gating:Quadrant gating:id="t48_Q1">
+      <gating:position gating:divider_ref="t48_x" gating:location="-0.44999999999999996" />
+      <gating:position gating:divider_ref="t48_y" gating:location="1.47" />
+    </gating:Quadrant>
+    <gating:Quadrant gating:id="t48_Q2">
+      <gating:position gating:divider_ref="t48_x" gating:location="1.55" />
+      <gating:position gating:divider_ref="t48_y" gating:location="1.47" />
+    </gating:Quadrant>
+    <gating:Quadrant gating:id="t48_Q3">
+      <gating:position gating:divider_ref="t48_x" gating:location="1.55" />
+      <gating:position gating:divider_ref="t48_y" gating:location="-0.53" />
+    </gating:Quadrant>
+    <gating:Quadrant gating:id="t48_Q4">
+      <gating:position gating:divider_ref="t48_x" gating:location="-0.44999999999999996" />
+      <gating:position gating:divider_ref="t48_y" gating:location="-0.53" />
+    </gating:Quadrant>
+  </gating:QuadrantGate>
+  <gating:QuadrantGate gating:id="deep" gating:parent_id="t48_Q2">
+    <data-type:custom_info><flowmeris:name quadrant="deep_lo">deep lo</flowmeris:name><flowmeris:name quadrant="deep_hi">deep hi</flowmeris:name></data-type:custom_info>
+    <gating:divider gating:id="deep_x" gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a"><data-type:fcs-dimension data-type:name="FL2-H" /><gating:value>0.6</gating:value></gating:divider>
+    <gating:Quadrant gating:id="deep_lo">
+      <gating:position gating:divider_ref="deep_x" gating:location="-0.4" />
+    </gating:Quadrant>
+    <gating:Quadrant gating:id="deep_hi">
+      <gating:position gating:divider_ref="deep_x" gating:location="1.6" />
+    </gating:Quadrant>
+  </gating:QuadrantGate>
+  <gating:PolygonGate gating:id="spi_Q1" gating:parent_id="cells_in">
+    <data-type:custom_info><flowmeris:name>spi Q1</flowmeris:name><flowmeris:spider gate="spi" region="Q1" center="0.5,0.55" arms="0.52,0.8;0.8,0.57;0.48,0.3;0.2,0.53" /></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_fb6aaf7367b22070"><data-type:fcs-dimension data-type:name="FL1-H" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_fb6aaf7367b22070"><data-type:fcs-dimension data-type:name="FL2-H" /></gating:dimension>
+    <gating:vertex><gating:coordinate data-type:value="0.5" /><gating:coordinate data-type:value="0.55" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="79745222.78289007" /><gating:coordinate data-type:value="996815279.0861249" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="-260566483.70118085" /><gating:coordinate data-type:value="965455907.0061342" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="-570445205.7732692" /><gating:coordinate data-type:value="821335660.7035375" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="-813698513.1316191" /><gating:coordinate data-type:value="581287131.7628746" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="-961915521.9524908" /><gating:coordinate data-type:value="273346900.4134367" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="-997785157.356609" /><gating:coordinate data-type:value="-66519009.973773755" /></gating:vertex>
+  </gating:PolygonGate>
+  <gating:PolygonGate gating:id="spi_Q2" gating:parent_id="cells_in">
+    <data-type:custom_info><flowmeris:name>spi Q2</flowmeris:name><flowmeris:spider gate="spi" region="Q2" center="0.5,0.55" arms="0.52,0.8;0.8,0.57;0.48,0.3;0.2,0.53" /></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_fb6aaf7367b22070"><data-type:fcs-dimension data-type:name="FL1-H" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_fb6aaf7367b22070"><data-type:fcs-dimension data-type:name="FL2-H" /></gating:dimension>
+    <gating:vertex><gating:coordinate data-type:value="0.5" /><gating:coordinate data-type:value="0.55" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="997785158.356609" /><gating:coordinate data-type:value="66519011.07377361" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="911997907.1652044" /><gating:coordinate data-type:value="410194854.53805894" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="711779964.1125764" /><gating:coordinate data-type:value="702402508.660328" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="422253182.63621724" /><gating:coordinate data-type:value="906477937.4992887" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="79745222.78289007" /><gating:coordinate data-type:value="996815279.0861249" /></gating:vertex>
+  </gating:PolygonGate>
+  <gating:PolygonGate gating:id="spi_Q3" gating:parent_id="cells_in">
+    <data-type:custom_info><flowmeris:name>spi Q3</flowmeris:name><flowmeris:spider gate="spi" region="Q3" center="0.5,0.55" arms="0.52,0.8;0.8,0.57;0.48,0.3;0.2,0.53" /></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_fb6aaf7367b22070"><data-type:fcs-dimension data-type:name="FL1-H" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_fb6aaf7367b22070"><data-type:fcs-dimension data-type:name="FL2-H" /></gating:dimension>
+    <gating:vertex><gating:coordinate data-type:value="0.5" /><gating:coordinate data-type:value="0.55" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="-79745221.78289016" /><gating:coordinate data-type:value="-996815277.986125" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="260566484.701181" /><gating:coordinate data-type:value="-965455905.9061342" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="570445206.7732693" /><gating:coordinate data-type:value="-821335659.6035374" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="813698514.1316191" /><gating:coordinate data-type:value="-581287130.6628748" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="961915522.9524908" /><gating:coordinate data-type:value="-273346899.3134368" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="997785158.356609" /><gating:coordinate data-type:value="66519011.07377365" /></gating:vertex>
+  </gating:PolygonGate>
+  <gating:PolygonGate gating:id="spi_Q4" gating:parent_id="cells_in">
+    <data-type:custom_info><flowmeris:name>spi Q4</flowmeris:name><flowmeris:spider gate="spi" region="Q4" center="0.5,0.55" arms="0.52,0.8;0.8,0.57;0.48,0.3;0.2,0.53" /></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_fb6aaf7367b22070"><data-type:fcs-dimension data-type:name="FL1-H" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_fb6aaf7367b22070"><data-type:fcs-dimension data-type:name="FL2-H" /></gating:dimension>
+    <gating:vertex><gating:coordinate data-type:value="0.5" /><gating:coordinate data-type:value="0.55" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="-997785157.356609" /><gating:coordinate data-type:value="-66519009.973774" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="-911997906.1652043" /><gating:coordinate data-type:value="-410194853.43805933" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="-711779963.1125764" /><gating:coordinate data-type:value="-702402507.5603281" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="-422253181.6362171" /><gating:coordinate data-type:value="-906477936.3992888" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="-79745221.78289016" /><gating:coordinate data-type:value="-996815277.986125" /></gating:vertex>
+  </gating:PolygonGate>
+  <gating:QuadrantGate gating:id="bis">
+    <data-type:custom_info><flowmeris:name quadrant="bis_lo">bis lo</flowmeris:name><flowmeris:name quadrant="bis_hi">bis hi</flowmeris:name></data-type:custom_info>
+    <gating:divider gating:id="bis_x" gating:compensation-ref="uncompensated"><data-type:fcs-dimension data-type:name="FL2-A" /><gating:value>3</gating:value></gating:divider>
+    <gating:Quadrant gating:id="bis_lo">
+      <gating:position gating:divider_ref="bis_x" gating:location="2" />
+    </gating:Quadrant>
+    <gating:Quadrant gating:id="bis_hi">
+      <gating:position gating:divider_ref="bis_x" gating:location="4" />
+    </gating:Quadrant>
+  </gating:QuadrantGate>
+  <gating:RectangleGate gating:id="ties_in">
+    <data-type:custom_info><flowmeris:name>ties in</flowmeris:name></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:min="1" gating:max="3"><data-type:fcs-dimension data-type:name="FL2-A" /></gating:dimension>
+  </gating:RectangleGate>
+  <gating:EllipsoidGate gating:id="ell_in">
+    <data-type:custom_info><flowmeris:name>ell in</flowmeris:name></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated"><data-type:fcs-dimension data-type:name="FL3-H" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="uncompensated"><data-type:fcs-dimension data-type:name="FL4-H" /></gating:dimension>
+    <gating:mean><gating:coordinate data-type:value="13" /><gating:coordinate data-type:value="16" /></gating:mean>
+    <gating:covarianceMatrix>
+      <gating:row><gating:entry data-type:value="62.5" /><gating:entry data-type:value="37.5" /></gating:row>
+      <gating:row><gating:entry data-type:value="37.5" /><gating:entry data-type:value="62.5" /></gating:row>
+    </gating:covarianceMatrix>
+    <gating:distanceSquare data-type:value="1" />
+  </gating:EllipsoidGate>
+  <gating:EllipsoidGate gating:id="ellt_in" gating:parent_id="cells_in">
+    <data-type:custom_info><flowmeris:name>ellt in</flowmeris:name></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a"><data-type:fcs-dimension data-type:name="FL1-H" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a"><data-type:fcs-dimension data-type:name="FL2-H" /></gating:dimension>
+    <gating:mean><gating:coordinate data-type:value="0.55" /><gating:coordinate data-type:value="0.59" /></gating:mean>
+    <gating:covarianceMatrix>
+      <gating:row><gating:entry data-type:value="0.004" /><gating:entry data-type:value="0.001" /></gating:row>
+      <gating:row><gating:entry data-type:value="0.001" /><gating:entry data-type:value="0.003" /></gating:row>
+    </gating:covarianceMatrix>
+    <gating:distanceSquare data-type:value="4" />
+  </gating:EllipsoidGate>
+  <gating:PolygonGate gating:id="bowtie_in">
+    <data-type:custom_info><flowmeris:name>bowtie in</flowmeris:name></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a"><data-type:fcs-dimension data-type:name="FL1-H" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a"><data-type:fcs-dimension data-type:name="FL2-H" /></gating:dimension>
+    <gating:vertex><gating:coordinate data-type:value="0.4" /><gating:coordinate data-type:value="0.4" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="0.7" /><gating:coordinate data-type:value="0.7" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="0.7" /><gating:coordinate data-type:value="0.4" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="0.4" /><gating:coordinate data-type:value="0.7" /></gating:vertex>
+  </gating:PolygonGate>
+  <gating:RectangleGate gating:id="time_in">
+    <data-type:custom_info><flowmeris:name>time in</flowmeris:name></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_04ab639fbd945dfa" gating:min="0.05" gating:max="0.12"><data-type:fcs-dimension data-type:name="Time" /></gating:dimension>
+  </gating:RectangleGate>
+</gating:Gating-ML>

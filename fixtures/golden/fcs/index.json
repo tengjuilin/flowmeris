@@ -64,5 +64,25 @@
   "file": "remote/101_DEN084Y5_15_E01_008_clean.fcs",
   "golden": "fcs/101_DEN084Y5_15_E01_008_clean.fcs.json",
   "events": 290172
+ },
+ {
+  "file": "golden/inputs/comp_csv_p38_hi_compensated.fcs",
+  "golden": "fcs/comp_csv_p38_hi_compensated.fcs.json",
+  "events": 768
+ },
+ {
+  "file": "golden/inputs/comp_kw_cd48_Q3_compensated.fcs",
+  "golden": "fcs/comp_kw_cd48_Q3_compensated.fcs.json",
+  "events": 1435
+ },
+ {
+  "file": "golden/inputs/comp_kw_cd48_Q3_raw.fcs",
+  "golden": "fcs/comp_kw_cd48_Q3_raw.fcs.json",
+  "events": 1435
+ },
+ {
+  "file": "golden/inputs/data1_t48_Q2_raw.fcs",
+  "golden": "fcs/data1_t48_Q2_raw.fcs.json",
+  "events": 1014
  }
 ]

@@ -23,7 +23,8 @@
     "docs:build": "vitepress build docs",
     "build:site": "corepack pnpm build && DOCS_BASE=${DOCS_BASE:-/} vitepress build docs && rm -rf docs/.vitepress/dist/app && cp -R apps/web/dist docs/.vitepress/dist/app",
     "fixtures:fetch": "node tools/fetch-fixtures.mjs",
-    "golden": "uv run --project tools/golden/python python tools/golden/python/generate.py",
+    "golden:inputs": "GOLDEN_WRITE=1 vitest run packages/export/test/golden-inputs.test.ts",
+    "golden": "corepack pnpm golden:inputs && uv run --project tools/golden/python python tools/golden/python/generate.py",
     "check": "corepack pnpm lint && corepack pnpm typecheck && corepack pnpm test"
   },
   "devDependencies": {

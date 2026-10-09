@@ -1,0 +1,130 @@
+{
+ "scenario": "data1",
+ "file": "flowkit/gate_ref/data1.fcs",
+ "compensation": {
+  "kind": "none"
+ },
+ "gml": "golden/inputs/data1.gml.xml",
+ "sha256": "cba7812f5bbce700786d22d97cf9858c1301878aa840c64eadcd263a3a0a5508",
+ "populations": [
+  {
+   "id": "cells_in",
+   "parent": "root"
+  },
+  {
+   "id": "lymph_in",
+   "parent": "cells_in"
+  },
+  {
+   "id": "cd3_in",
+   "parent": "lymph_in"
+  },
+  {
+   "id": "t48_Q1",
+   "parent": "cd3_in"
+  },
+  {
+   "id": "t48_Q2",
+   "parent": "cd3_in"
+  },
+  {
+   "id": "t48_Q3",
+   "parent": "cd3_in"
+  },
+  {
+   "id": "t48_Q4",
+   "parent": "cd3_in"
+  },
+  {
+   "id": "deep_lo",
+   "parent": "t48_Q2"
+  },
+  {
+   "id": "deep_hi",
+   "parent": "t48_Q2"
+  },
+  {
+   "id": "spi_Q1",
+   "parent": "cells_in"
+  },
+  {
+   "id": "spi_Q2",
+   "parent": "cells_in"
+  },
+  {
+   "id": "spi_Q3",
+   "parent": "cells_in"
+  },
+  {
+   "id": "spi_Q4",
+   "parent": "cells_in"
+  },
+  {
+   "id": "bis_lo",
+   "parent": "root"
+  },
+  {
+   "id": "bis_hi",
+   "parent": "root"
+  },
+  {
+   "id": "ties_in",
+   "parent": "root"
+  },
+  {
+   "id": "ell_in",
+   "parent": "root"
+  },
+  {
+   "id": "ellt_in",
+   "parent": "cells_in"
+  },
+  {
+   "id": "bowtie_in",
+   "parent": "root"
+  },
+  {
+   "id": "time_in",
+   "parent": "root"
+  }
+ ],
+ "transforms": {
+  "t_5d53e32c2cc0637a": {
+   "kind": "logicle",
+   "T": 1024,
+   "W": 0.5,
+   "M": 4.5,
+   "A": 0
+  },
+  "t_9f241e66e31746cf": {
+   "kind": "fasinh",
+   "T": 1024,
+   "M": 4,
+   "A": 0
+  },
+  "t_fb6aaf7367b22070": {
+   "kind": "hyperlog",
+   "T": 1024,
+   "W": 0.5,
+   "M": 4.5,
+   "A": 0
+  },
+  "t_04ab639fbd945dfa": {
+   "kind": "flin",
+   "T": 1024,
+   "A": 0
+  },
+  "t_76285941d87f6d91": {
+   "kind": "flog",
+   "T": 1024,
+   "M": 4.5
+  }
+ },
+ "fcs_exports": [
+  {
+   "pop": "t48_Q2",
+   "mode": "raw",
+   "path": "golden/inputs/data1_t48_Q2_raw.fcs"
+  }
+ ]
+}

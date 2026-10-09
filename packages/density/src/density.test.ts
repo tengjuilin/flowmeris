@@ -1,4 +1,4 @@
-import { Rng } from '@flowmeris/testkit';
+import { Rng, TOL, compareArrays, isClose, readGolden } from '@flowmeris/testkit';
 import { describe, expect, it } from 'vitest';
 import {
   bin1d,
@@ -7,6 +7,8 @@ import {
   equalProbabilityLevels,
   gaussianKernel,
   logContourLevels,
+  scottSigmaBins,
+  smooth1d,
   smooth2d,
 } from './index.ts';
 
@@ -142,5 +144,66 @@ describe('M-PLOT-CONTOUR-EQP: equal-probability levels', () => {
     const lv = logContourLevels(v, 4);
     expect(lv.length).toBe(4);
     for (let i = 1; i < lv.length; i++) expect(lv[i]!).toBeGreaterThan(lv[i - 1]!);
+  });
+});
+
+interface DensityGolden {
+  x: (number | null)[];
+  y: (number | null)[];
+  hist: { range: [number, number]; bins: number; counts: number[]; off_scale: number; nan: number };
+  hist2d: {
+    x_range: [number, number];
+    y_range: [number, number];
+    nx: number;
+    ny: number;
+    values: number[];
+    off_scale: number;
+    nan: number;
+  };
+  smooth1d: { sigma: number; y: number[] }[];
+  smooth2d: { sigma: number; values: number[] }[];
+  hist_norm: { sigma: number; count: number[]; mode: number[]; area: number[] };
+  levels_eqp: Record<string, number[]>;
+  levels_log: Record<string, number[]>;
+  scott_sigma_bins: number;
+}
+
+describe('golden parity: binning, smoothing and contour levels vs NumPy/SciPy', () => {
+  const g = readGolden<DensityGolden>('density.json');
+  const x = Float64Array.from(g.x, (v) => v ?? Number.NaN);
+  const y = Float64Array.from(g.y, (v) => v ?? Number.NaN);
+  const h = bin1d(x, null, g.hist.range, g.hist.bins);
+  const b2 = bin2d(x, y, null, g.hist2d.x_range, g.hist2d.y_range, g.hist2d.nx, g.hist2d.ny);
+
+  it('1D histogram counts (numpy.histogram), with values on every bin edge, off-scale and NaN', () => {
+    expect(Array.from(h.counts)).toEqual(g.hist.counts);
+    expect(h.stats).toEqual({ binned: x.length, offScale: g.hist.off_scale, nan: g.hist.nan });
+  });
+
+  it('2D histogram counts (numpy.histogram2d)', () => {
+    expect(Array.from(b2.grid.values)).toEqual(g.hist2d.values);
+    expect(b2.stats).toEqual({ binned: x.length, offScale: g.hist2d.off_scale, nan: g.hist2d.nan });
+  });
+
+  it('Gaussian smoothing (scipy.ndimage, zero padding, radius ⌈4σ⌉)', () => {
+    const counts = Float64Array.from(g.hist.counts);
+    for (const s of g.smooth1d)
+      expect(compareArrays(smooth1d(counts, s.sigma), s.y, TOL.density, `1D σ=${s.sigma}`)).toEqual([]);
+    for (const s of g.smooth2d)
+      expect(
+        compareArrays(smooth2d(b2.grid, s.sigma).values, s.values, TOL.density, `2D σ=${s.sigma}`),
+      ).toEqual([]);
+  });
+
+  it('equal-probability and logarithmic contour levels', () => {
+    const v = smooth2d(b2.grid, 2).values;
+    for (const [p, want] of Object.entries(g.levels_eqp))
+      expect(compareArrays(equalProbabilityLevels(v, Number(p)), want, TOL.density, `p=${p}`)).toEqual([]);
+    for (const [k, want] of Object.entries(g.levels_log))
+      expect(compareArrays(logContourLevels(v, Number(k)), want, TOL.density, `${k} levels`)).toEqual([]);
+  });
+
+  it("Scott's rule bandwidth", () => {
+    expect(isClose(scottSigmaBins(x, g.hist.range, g.hist.bins), g.scott_sigma_bins, TOL.stats)).toBe(true);
   });
 });

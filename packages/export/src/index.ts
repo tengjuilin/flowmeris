@@ -196,4 +196,5 @@ export function wideRows(ws: Workspace, g: Group, cells: StatCell[]): unknown[][
   return rows;
 }
 
+export * from './events.ts';
 export * from './gatingml.ts';

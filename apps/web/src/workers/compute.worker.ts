@@ -11,7 +11,8 @@ import {
   sampleMetaFromDataset,
 } from '@flowmeris/engine';
 /// <reference lib="webworker" />
-import { parseFcs, writeFcs } from '@flowmeris/fcs';
+import { eventsToFcs } from '@flowmeris/export';
+import { parseFcs } from '@flowmeris/fcs';
 import type { AxisSpec, PlotStyle, Sample } from '@flowmeris/model';
 import { OpfsStorage } from '@flowmeris/storage';
 import * as Comlink from 'comlink';
@@ -146,20 +147,7 @@ const api = {
       for (let i = 0; i < ev.count; i++) lines.push(ev.columns.map((c) => String(c[i])).join(','));
       return new TextEncoder().encode(`${lines.join('\n')}\n`);
     }
-    // Compensated values must not carry a spillover matrix (it would be applied twice).
-    const dropped = mode === 'compensated' ? new Set(['$SPILLOVER', '$SPILL', 'SPILL']) : new Set<string>();
-    const kw: Record<string, string> = Object.fromEntries(
-      Object.entries(s.keywords).filter(([k]) => !dropped.has(k)),
-    );
-    Object.assign(kw, provenance);
-    const bytes = writeFcs(
-      ev.channels.map((pnn, i) => ({
-        pnn,
-        ...(s.keywords[`$P${i + 1}S`] ? { pns: s.keywords[`$P${i + 1}S`] } : {}),
-        values: ev.columns[i]!,
-      })),
-      { keywords: kw },
-    );
+    const bytes = eventsToFcs(s.keywords, ev, mode, provenance);
     return Comlink.transfer(bytes, [bytes.buffer]);
   },
 

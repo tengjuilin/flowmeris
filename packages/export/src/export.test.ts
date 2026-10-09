@@ -5,7 +5,7 @@ import { evaluateGatingML, parseGatingML } from '@flowmeris/gatingml';
 import { type Gate, type Transform, newGroup, newWorkspace, transformId } from '@flowmeris/model';
 import { readFixture } from '@flowmeris/testkit';
 import { describe, expect, it } from 'vitest';
-import { type StatCell, csvField, exportGatingML, tidyRows, toCsv, wideRows } from './index.ts';
+import { type StatCell, csvField, eventsToFcs, exportGatingML, tidyRows, toCsv, wideRows } from './index.ts';
 
 const bytes = readFixture('flowkit/gate_ref/data1.fcs');
 const ds = parseFcs(bytes).datasets[0]!;
@@ -150,6 +150,43 @@ describe('M-EXPORT-GML: Gating-ML export round trip', () => {
       expect(bad, popId).toBe(0);
     }
     expect(sampleId).toBeTruthy();
+  });
+});
+
+describe('M-FCS-WRITE: gated events as FCS', () => {
+  const events = {
+    channels: ['FL1-A', 'Time'],
+    columns: [
+      [1.5, -2],
+      [0.25, 3.5],
+    ],
+  };
+  const source = {
+    $P1S: 'CD4',
+    $TIMESTEP: '0.01',
+    $SPILLOVER: '1,FL1-A,1',
+    SPILLOVER: '1,FL1-A,1',
+    $COMP: '1,FL1-A,1',
+    $CYT: 'Test',
+  };
+  const read = (mode: 'raw' | 'compensated') =>
+    parseFcs(eventsToFcs(source, events, mode, { FLOWMERIS_VALUES: mode })).datasets[0]!;
+
+  it('keeps the values (already in seconds for time: $TIMESTEP becomes 1)', () => {
+    const ds = read('raw');
+    expect(ds.keywords.$TIMESTEP).toBe('1');
+    expect(ds.keywords.$CYT).toBe('Test');
+    expect(ds.keywords.FLOWMERIS_VALUES).toBe('raw');
+    expect(ds.channels.map((c) => c.pns)).toEqual(['CD4', undefined]);
+    ds.channels.forEach((c, i) =>
+      expect(Array.from(linearize(ds.columns[i]!, c.scaling))).toEqual(events.columns[i]),
+    );
+  });
+
+  it('drops every spillover keyword from compensated values, and keeps them for raw values', () => {
+    const spill = (kw: Record<string, string>) => ['$SPILLOVER', 'SPILLOVER', '$COMP'].filter((k) => k in kw);
+    expect(spill(read('compensated').keywords)).toEqual([]);
+    expect(spill(read('raw').keywords)).toEqual(['$SPILLOVER', 'SPILLOVER', '$COMP']);
   });
 });
 

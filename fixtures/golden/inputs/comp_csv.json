@@ -1,0 +1,60 @@
+{
+ "scenario": "comp_csv",
+ "file": "flowkit/test_comp_example.fcs",
+ "compensation": {
+  "kind": "csv",
+  "path": "flowkit/comp_complete_example.csv"
+ },
+ "gml": "golden/inputs/comp_csv.gml.xml",
+ "sha256": "fb33bf60546d40fa7e892c67f51681f8af59d3be818a212035c649437f00a105",
+ "populations": [
+  {
+   "id": "scat_in",
+   "parent": "root"
+  },
+  {
+   "id": "q_Q1",
+   "parent": "scat_in"
+  },
+  {
+   "id": "q_Q2",
+   "parent": "scat_in"
+  },
+  {
+   "id": "q_Q3",
+   "parent": "scat_in"
+  },
+  {
+   "id": "q_Q4",
+   "parent": "scat_in"
+  },
+  {
+   "id": "cd4_in",
+   "parent": "scat_in"
+  },
+  {
+   "id": "p38_lo",
+   "parent": "cd4_in"
+  },
+  {
+   "id": "p38_hi",
+   "parent": "cd4_in"
+  }
+ ],
+ "transforms": {
+  "t_6dd1a59b93c49653": {
+   "kind": "logicle",
+   "T": 262144,
+   "W": 0.5,
+   "M": 4.5,
+   "A": 0
+  }
+ },
+ "fcs_exports": [
+  {
+   "pop": "p38_hi",
+   "mode": "compensated",
+   "path": "golden/inputs/comp_csv_p38_hi_compensated.fcs"
+  }
+ ]
+}

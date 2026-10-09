@@ -353,6 +353,27 @@ function lnGammaHalf(x: number): number {
   return y === 1 ? s : s + 0.5 * Math.log(Math.PI);
 }
 
+/** Stirling series of ln Γ(z) less its leading terms (truncation error < 1e-16 for z ≥ 30). */
+function stirlingTail(z: number): number {
+  const z2 = z * z;
+  return (1 / 12 - (1 / 360 - (1 / 1260 - 1 / (1680 * z2)) / z2) / z2) / z;
+}
+
+/**
+ * ln B(a, b) = ln Γ(a) + ln Γ(b) − ln Γ(a + b), for a and b positive multiples of ½. With b = ½
+ * and large a (the t distribution with many degrees of freedom) the three ln Γ terms are large and
+ * nearly cancel, so ln Γ(a + ½) − ln Γ(a) is taken from Stirling's series instead, with the leading
+ * terms (a)·ln(a + ½) − (a − ½)·ln a − ½ rewritten as ½·ln a + a·log1p(1/(2a)) − ½.
+ */
+function lnBetaHalf(a: number, b: number): number {
+  if (b === 0.5 && a >= 30) {
+    const ratio =
+      0.5 * Math.log(a) + a * Math.log1p(1 / (2 * a)) - 0.5 + stirlingTail(a + 0.5) - stirlingTail(a);
+    return 0.5 * Math.log(Math.PI) - ratio;
+  }
+  return lnGammaHalf(a) + lnGammaHalf(b) - lnGammaHalf(a + b);
+}
+
 /** Continued fraction of the regularised incomplete beta function (modified Lentz). */
 function betaCf(a: number, b: number, x: number): number {
   const tiny = 1e-300;
@@ -387,7 +408,7 @@ function betaCf(a: number, b: number, x: number): number {
 function betaInc(x: number, a: number, b: number): number {
   if (x <= 0) return 0;
   if (x >= 1) return 1;
-  const lbt = lnGammaHalf(a + b) - lnGammaHalf(a) - lnGammaHalf(b) + a * Math.log(x) + b * Math.log(1 - x);
+  const lbt = -lnBetaHalf(a, b) + a * Math.log(x) + b * Math.log(1 - x);
   return x < (a + 1) / (a + b + 2)
     ? (Math.exp(lbt) * betaCf(a, b, x)) / a
     : 1 - (Math.exp(lbt) * betaCf(b, a, 1 - x)) / b;

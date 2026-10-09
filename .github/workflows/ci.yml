@@ -45,7 +45,9 @@ jobs:
           path: test-results/
 
   golden-drift:
-    # Regenerates golden fixtures with the pinned FlowKit environment and fails if they changed.
+    # Regenerates golden fixtures with the pinned FlowKit environment and fails if they changed. The
+    # inputs the app writes (fixtures/golden/inputs) are evaluated as committed; `pnpm test` checks
+    # that the app still writes them byte for byte.
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     steps:

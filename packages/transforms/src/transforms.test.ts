@@ -32,6 +32,24 @@ describe('golden parity: transforms vs FlowKit/flowutils', () => {
   }
 });
 
+describe('golden parity: inverse transforms vs FlowKit/flowutils', () => {
+  for (const c of readGolden<
+    { kind: Transform['kind']; params: Record<string, number>; y: number[]; x: (number | null)[] }[]
+  >('transforms_inverse.json')) {
+    it(`${c.kind} ${JSON.stringify(c.params)}`, () => {
+      const s = makeScale({ kind: c.kind, ...c.params } as Transform);
+      expect(
+        compareArrays(
+          c.y.map((y) => s.inverse(y)),
+          c.x,
+          TOL.transform,
+          c.kind,
+        ),
+      ).toEqual([]);
+    });
+  }
+});
+
 describe('M-TR-LOGICLE properties', () => {
   it('maps 0 to x1 = (W + A)/(M + A) and T to 1', () => {
     const l = new Logicle(262144, 0.5, 4.5, 0);

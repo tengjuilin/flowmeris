@@ -38,13 +38,18 @@ the gate's own `custom_info`, one `flowmeris:name` element per quadrant.
 Round-trip test: for rectangle, polygon, ellipse, quadrant, spider and bisector gates on `data1.fcs`, evaluating
 the exported XML with the independent Gating-ML evaluator gives membership identical to the engine.
 An end-to-end check exported gates drawn in the app on three 8-colour samples; FlowKit 1.2.3 reproduced
-every population count, including those of a sample with an override.
+every population count, including those of a sample with an override. Golden test: Gating-ML the app
+exports for 38 populations on three files (every gate kind; linear, flin, logicle, arcsinh and hyperlog
+dimensions; keyword, matrix and no compensation) is evaluated by FlowKit, and the engine's membership
+is identical event by event ([Validation](../validation/)).
 
 ## Gated events
 
 - **FCS (raw):** FCS 3.1 ([M-FCS-WRITE](./fcs#m-fcs-write-fcs-3-1-output)) with linearised,
   uncompensated values and the original keywords (including `$SPILLOVER`), so other tools can re-apply
-  compensation.
+  compensation. Time values are written in seconds, so `$TIMESTEP` is set to 1. (Values written
+  compensated carry no spillover keyword, which would compensate them twice.) Golden test: FlowKit reads
+  the exported events exactly as the engine holds them, at float32 precision.
 - **CSV (compensated):** one column per channel, linear compensated values.
 
 ## Plots

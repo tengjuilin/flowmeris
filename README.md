@@ -25,7 +25,9 @@ implementations.
 |---|---|
 | ISAC Gating-ML 2.0 compliance suite (51 reference gates) | exact event-level agreement |
 | FCS parsing, compensation and transforms vs FlowKit 1.2.3 (pinned) | ≤ 10⁻¹⁴, 10⁻⁹ and 10⁻¹⁰ relative |
-| Statistics vs NumPy | ≤ 10⁻¹² relative; percentiles exact on linear channels |
+| Statistics vs NumPy, on gated populations in linear and transformed units | ≤ 10⁻¹² relative (transformed: 10⁻¹⁰); percentiles exact on linear channels |
+| Replicate summaries and t-based 95% CI vs SciPy/pandas | ≤ 10⁻¹² (t distribution 10⁻¹⁰) |
+| Gating-ML exported by the app, evaluated by FlowKit (every gate kind) | identical membership, event by event |
 | Gates drawn in the app, exported as Gating-ML and evaluated by FlowKit | identical population counts |
 
 Details: [`docs/validation`](docs/validation/index.md). Methods: [`docs/methods`](docs/methods/index.md).
@@ -74,7 +76,7 @@ corepack pnpm build:site && corepack pnpm preview   # docs + app (at /app/), as 
 | `packages/engine`, `storage` | cached analysis pipeline; OPFS persistence |
 | `apps/web` | React app and compute workers |
 | `docs` | VitePress site: guide, methods, validation, decision records |
-| `fixtures`, `tools/golden` | reference data and the golden-value generator |
+| `fixtures`, `tools/golden` | reference data and the golden-value generator (`fixtures/golden/inputs`: files the app writes, evaluated by FlowKit) |
 
 ## Status
 

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gating:Gating-ML xmlns:gating="http://www.isac-net.org/std/Gating-ML/v2.0/gating" xmlns:transforms="http://www.isac-net.org/std/Gating-ML/v2.0/transformations" xmlns:data-type="http://www.isac-net.org/std/Gating-ML/v2.0/datatypes" xmlns:flowmeris="https://flowmeris.org/ns/gating-ext/1">
+  <data-type:custom_info>Exported by Flowmeris golden; group "keyword compensation"; group template.</data-type:custom_info>
+  <transforms:transformation transforms:id="t_6dd1a59b93c49653">
+    <transforms:logicle transforms:T="262144" transforms:W="0.5" transforms:M="4.5" transforms:A="0" />
+  </transforms:transformation>
+  <transforms:transformation transforms:id="t_21d9be165f22bc12">
+    <transforms:fasinh transforms:T="262144" transforms:M="4.5" transforms:A="0" />
+  </transforms:transformation>
+  <gating:RectangleGate gating:id="scat_in">
+    <data-type:custom_info><flowmeris:name>scat in</flowmeris:name></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="FCS" gating:min="30000" gating:max="200000"><data-type:fcs-dimension data-type:name="FSC-A" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="FCS" gating:min="50" gating:max="2000"><data-type:fcs-dimension data-type:name="SSC-A" /></gating:dimension>
+  </gating:RectangleGate>
+  <gating:RectangleGate gating:id="cd3_in" gating:parent_id="scat_in">
+    <data-type:custom_info><flowmeris:name>cd3 in</flowmeris:name></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="FCS" gating:transformation-ref="t_6dd1a59b93c49653" gating:min="0.3"><data-type:fcs-dimension data-type:name="R780-A" /></gating:dimension>
+  </gating:RectangleGate>
+  <gating:RectangleGate gating:id="cd3raw_in" gating:parent_id="scat_in">
+    <data-type:custom_info><flowmeris:name>cd3raw in</flowmeris:name></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_6dd1a59b93c49653" gating:min="0.3"><data-type:fcs-dimension data-type:name="R780-A" /></gating:dimension>
+  </gating:RectangleGate>
+  <gating:QuadrantGate gating:id="cd48" gating:parent_id="cd3_in">
+    <data-type:custom_info><flowmeris:name quadrant="cd48_Q1">cd48 Q1</flowmeris:name><flowmeris:name quadrant="cd48_Q2">cd48 Q2</flowmeris:name><flowmeris:name quadrant="cd48_Q3">cd48 Q3</flowmeris:name><flowmeris:name quadrant="cd48_Q4">cd48 Q4</flowmeris:name></data-type:custom_info>
+    <gating:divider gating:id="cd48_x" gating:compensation-ref="FCS" gating:transformation-ref="t_6dd1a59b93c49653"><data-type:fcs-dimension data-type:name="V655-A" /><gating:value>0.45</gating:value></gating:divider>
+    <gating:divider gating:id="cd48_y" gating:compensation-ref="FCS" gating:transformation-ref="t_6dd1a59b93c49653"><data-type:fcs-dimension data-type:name="V800-A" /><gating:value>0.45</gating:value></gating:divider>
+    <gating:Quadrant gating:id="cd48_Q1">
+      <gating:position gating:divider_ref="cd48_x" gating:location="-0.55" />
+      <gating:position gating:divider_ref="cd48_y" gating:location="1.45" />
+    </gating:Quadrant>
+    <gating:Quadrant gating:id="cd48_Q2">
+      <gating:position gating:divider_ref="cd48_x" gating:location="1.45" />
+      <gating:position gating:divider_ref="cd48_y" gating:location="1.45" />
+    </gating:Quadrant>
+    <gating:Quadrant gating:id="cd48_Q3">
+      <gating:position gating:divider_ref="cd48_x" gating:location="1.45" />
+      <gating:position gating:divider_ref="cd48_y" gating:location="-0.55" />
+    </gating:Quadrant>
+    <gating:Quadrant gating:id="cd48_Q4">
+      <gating:position gating:divider_ref="cd48_x" gating:location="-0.55" />
+      <gating:position gating:divider_ref="cd48_y" gating:location="-0.55" />
+    </gating:Quadrant>
+  </gating:QuadrantGate>
+  <gating:PolygonGate gating:id="poly_in" gating:parent_id="scat_in">
+    <data-type:custom_info><flowmeris:name>poly in</flowmeris:name></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="FCS" gating:transformation-ref="t_6dd1a59b93c49653"><data-type:fcs-dimension data-type:name="B515-A" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="FCS" gating:transformation-ref="t_21d9be165f22bc12"><data-type:fcs-dimension data-type:name="G560-A" /></gating:dimension>
+    <gating:vertex><gating:coordinate data-type:value="0.45" /><gating:coordinate data-type:value="0.3" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="0.62" /><gating:coordinate data-type:value="0.35" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="0.6" /><gating:coordinate data-type:value="0.6" /></gating:vertex>
+    <gating:vertex><gating:coordinate data-type:value="0.42" /><gating:coordinate data-type:value="0.55" /></gating:vertex>
+  </gating:PolygonGate>
+  <gating:QuadrantGate gating:id="cd27" gating:parent_id="scat_in">
+    <data-type:custom_info><flowmeris:name quadrant="cd27_lo">cd27 lo</flowmeris:name><flowmeris:name quadrant="cd27_hi">cd27 hi</flowmeris:name></data-type:custom_info>
+    <gating:divider gating:id="cd27_x" gating:compensation-ref="FCS" gating:transformation-ref="t_6dd1a59b93c49653"><data-type:fcs-dimension data-type:name="G660-A" /><gating:value>0.27</gating:value></gating:divider>
+    <gating:Quadrant gating:id="cd27_lo">
+      <gating:position gating:divider_ref="cd27_x" gating:location="-0.73" />
+    </gating:Quadrant>
+    <gating:Quadrant gating:id="cd27_hi">
+      <gating:position gating:divider_ref="cd27_x" gating:location="1.27" />
+    </gating:Quadrant>
+  </gating:QuadrantGate>
+</gating:Gating-ML>

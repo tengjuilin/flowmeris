@@ -1,5 +1,5 @@
 import { sha256Hex } from '@flowmeris/model';
-import { Rng } from '@flowmeris/testkit';
+import { Rng, TOL, compareArrays, readGolden } from '@flowmeris/testkit';
 import { describe, expect, it } from 'vitest';
 import { colormapLut, encodePng, histogram, raster2d } from './index.ts';
 
@@ -81,4 +81,25 @@ describe('histogram & colormaps & PNG', () => {
     expect(Array.from(png.slice(0, 8))).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     expect(new TextDecoder().decode(png.slice(37, 41))).toBe('pHYs');
   });
+});
+
+describe('golden parity: histogram heights vs SciPy (smoothed, then count / % of max / fraction)', () => {
+  const g = readGolden<{
+    x: (number | null)[];
+    hist: { range: [number, number]; bins: number };
+    hist_norm: { sigma: number; count: number[]; mode: number[]; area: number[] };
+  }>('density.json');
+  const x = Float64Array.from(g.x, (v) => v ?? Number.NaN);
+  for (const norm of ['count', 'mode', 'area'] as const)
+    it(norm, () => {
+      const h = histogram(x, null, g.hist.range, {
+        histBins: g.hist.bins,
+        histNorm: norm,
+        histSmooth: true,
+        histSigmaBins: g.hist_norm.sigma,
+      });
+      expect(compareArrays(h.heights, g.hist_norm[norm], TOL.density, norm)).toEqual([]);
+      const bw = (g.hist.range[1] - g.hist.range[0]) / g.hist.bins;
+      expect(h.centers[0]).toBe(g.hist.range[0] + 0.5 * bw);
+    });
 });
