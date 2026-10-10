@@ -6,7 +6,6 @@
   "apps/web/src/components/MetadataView.tsx": 552,
   "apps/web/src/components/RidgeInspector.tsx": 1381,
   "apps/web/src/components/StatsView.tsx": 1331,
-  "apps/web/src/features/gate/GateInspector.tsx": 768,
   "packages/engine/src/engine.ts": 685,
   "packages/fcs/src/parse.ts": 630,
   "packages/model/src/schema.ts": 762

@@ -77,6 +77,19 @@ export function factoryAxis(ws: Workspace, g: Group, channel: string): AxisSpec 
   return { channel, comp: 'group', transform: registerTransform(ws, t), range: [0, 1] };
 }
 
+/** Whether `a` has its channel's built-in scale and range (`factoryAxis`). */
+export function axisAtFactory(ws: Workspace, g: Group, a: AxisSpec): boolean {
+  const f = factoryAxis(ws, g, a.channel);
+  return a.transform === f.transform && a.range[0] === f.range[0] && a.range[1] === f.range[1];
+}
+
+/** Puts `a` back to its channel's built-in scale and range (call inside `mutate`). */
+export function resetAxisToFactory(ws: Workspace, g: Group, a: AxisSpec): void {
+  const f = factoryAxis(ws, g, a.channel);
+  a.transform = f.transform;
+  a.range = [...f.range];
+}
+
 /**
  * The group's default axis for a channel: the one the user set, else the built-in one, which is then
  * saved as the group's default (call inside `mutate`).

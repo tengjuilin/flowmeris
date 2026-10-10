@@ -1,6 +1,15 @@
 import { type Sample, type Workspace, newGroup, newWorkspace } from '@flowmeris/model';
 import { describe, expect, it } from 'vitest';
-import { defaultAxis, defaultChannels, factoryAxis, scaleKindOf, transformOfKind } from './axisDefaults.ts';
+import {
+  axisAtFactory,
+  defaultAxis,
+  defaultChannels,
+  factoryAxis,
+  registerTransform,
+  resetAxisToFactory,
+  scaleKindOf,
+  transformOfKind,
+} from './axisDefaults.ts';
 import { newPlot, newTilePlot } from './plotFactories.ts';
 
 function setup(channels: Partial<Sample['channels'][number]>[], keywords: Record<string, string> = {}) {
@@ -72,5 +81,18 @@ describe('new plots', () => {
     const t = newTilePlot(ws, g, 'root');
     expect([t.kind, t.x.channel, t.y?.channel]).toEqual(['dot', 'FL1-A', 'SSC-A']);
     expect(t.style.figure?.fontSize).toBe(11);
+  });
+});
+
+describe('factory axes', () => {
+  it('tell an axis at its built-in scale and range, and put one back there', () => {
+    const { ws, g } = setup(CHANNELS);
+    const a = { ...factoryAxis(ws, g, 'FL1-A') };
+    expect(axisAtFactory(ws, g, a)).toBe(true);
+    a.range = [0.1, 1];
+    a.transform = registerTransform(ws, transformOfKind('linear', 512));
+    expect(axisAtFactory(ws, g, a)).toBe(false);
+    resetAxisToFactory(ws, g, a);
+    expect(a).toEqual(factoryAxis(ws, g, 'FL1-A'));
   });
 });
