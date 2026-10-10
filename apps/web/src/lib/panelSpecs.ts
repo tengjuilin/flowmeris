@@ -51,8 +51,13 @@ const plotPanel = (key: string, name: string): PanelSpec<PlotPanelTab, PlotCard>
         gateText: 'Gate labels',
       },
     },
-    { id: 'gate', label: 'Gate', cards: {} },
-    { id: 'settings', label: 'Settings', cards: { apply: 'Apply settings', resetAll: 'Reset settings' } },
+    { id: 'gate', label: 'Gate', cards: {}, resettable: false },
+    {
+      id: 'settings',
+      label: 'Settings',
+      cards: { apply: 'Apply settings', resetAll: 'Reset settings' },
+      resettable: false,
+    },
   ],
 });
 
@@ -109,7 +114,12 @@ export const RIDGE_PANEL: PanelSpec<RidgePanelTab, RidgeCard> = {
         titleText: 'Axis title',
       },
     },
-    { id: 'settings', label: 'Settings', cards: { apply: 'Apply settings', resetAll: 'Reset settings' } },
+    {
+      id: 'settings',
+      label: 'Settings',
+      cards: { apply: 'Apply settings', resetAll: 'Reset settings' },
+      resettable: false,
+    },
   ],
 };
 
@@ -164,6 +174,7 @@ export const CHART_PANEL: PanelSpec<ChartPanelTab, ChartCard> = {
       id: 'settings',
       label: 'Settings',
       cards: { manage: 'Chart', apply: 'Apply settings', resetAll: 'Reset settings' },
+      resettable: false,
     },
   ],
 };
@@ -216,7 +227,7 @@ export type MetaPanelTab = 'variables' | 'values';
 /** The cards of the Metadata view's settings panel: one per variable, and the Values tab's. */
 export type MetaCard = `var-${string}` | 'setValue' | 'fillSeries';
 
-/** The Metadata panel's tab follows the table or plate map, so it is not remembered. */
+/** The Metadata panel's tab follows the table or plate map, so only its collapsed cards are remembered. */
 export const META_PANEL: PanelSpec<MetaPanelTab, MetaCard> = {
   key: 'flowmeris.metaPanel',
   idPrefix: 'meta',
@@ -225,7 +236,7 @@ export const META_PANEL: PanelSpec<MetaPanelTab, MetaCard> = {
   defaultTab: 'variables',
   tabs: [
     { id: 'variables', label: 'Variables', cards: {} },
-    { id: 'values', label: 'Values', cards: { fillSeries: 'Fill series' } },
+    { id: 'values', label: 'Values', cards: { setValue: 'Set value', fillSeries: 'Fill series' } },
   ],
 };
 

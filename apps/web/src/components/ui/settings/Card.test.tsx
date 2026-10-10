@@ -32,6 +32,7 @@ describe('Card', () => {
     );
     const reset = screen.getByRole('button', { name: 'Reset ticks' }) as HTMLButtonElement;
     expect(reset.disabled).toBe(true);
+    expect(reset.title).toBe('Already at the defaults');
     rerender(
       <Card id="x" title="Ticks" open onToggle={() => {}} changed onReset={onReset}>
         <p>body</p>

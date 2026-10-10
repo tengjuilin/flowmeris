@@ -1,10 +1,11 @@
 import type { Variable } from '@flowmeris/model';
 import { useEffect, useState } from 'react';
 import { DeleteIcon } from '../../components/ui/icons.tsx';
-import { Card, SettingsPanel } from '../../components/ui/settings/index.ts';
+import { Card, EmptyPanel, SettingsPanel } from '../../components/ui/settings/index.ts';
 import { activeVariable, addVariable } from '../../lib/metadata.ts';
 import { META_PANEL, type MetaPanelTab } from '../../lib/panelSpecs.ts';
 import { deleteVariable } from '../../state/commands/metadata.ts';
+import { useSettingsPanel } from '../../state/prefs.ts';
 import { useGroup, useStore } from '../../state/store.ts';
 import { ValuesTab } from './ValuesTab.tsx';
 import { VariableFields } from './VariableFields.tsx';
@@ -20,7 +21,9 @@ export function MetadataInspector() {
   // The plate map opens on Values (what it is for), the table on Variables.
   const [tab, setTab] = useState<MetaPanelTab>(mode === 'plate' ? 'values' : 'variables');
   useEffect(() => setTab(mode === 'plate' ? 'values' : 'variables'), [mode]);
-  if (!group) return null;
+  // The Values tab's collapsed cards, remembered in this browser (the tab follows the table or plate map).
+  const { card } = useSettingsPanel(META_PANEL);
+  if (!group) return <EmptyPanel spec={META_PANEL} className="meta-inspector" />;
   // Values act on the plate map's selected wells, so that tab is for the plate map only.
   const shown: MetaPanelTab = mode === 'plate' ? tab : 'variables';
   const openId = metaVarId ?? vars[0]?.id;
@@ -88,7 +91,7 @@ export function MetadataInspector() {
           </Card>
         ))
       ) : (
-        <ValuesTab group={group} variable={activeVariable(vars, metaVarId)} />
+        <ValuesTab group={group} variable={activeVariable(vars, metaVarId)} card={card} />
       )}
     </SettingsPanel>
   );

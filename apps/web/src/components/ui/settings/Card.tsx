@@ -42,7 +42,7 @@ export function Card({
             type="button"
             className="icon reset-btn"
             disabled={!changed}
-            title={changed ? `Reset ${title.toLowerCase()} to the defaults` : `${title} are at the defaults`}
+            title={changed ? `Reset ${title.toLowerCase()} to the defaults` : 'Already at the defaults'}
             aria-label={`Reset ${title.toLowerCase()}`}
             onClick={onReset}
           >

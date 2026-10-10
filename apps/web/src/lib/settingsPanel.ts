@@ -9,6 +9,8 @@ export interface PanelTab<T extends string, C extends string> {
   id: T;
   label: string;
   cards: Partial<Record<C, string>>;
+  /** False for a tab with no settings of its own to reset: it has no "Reset this panel". */
+  resettable?: false;
 }
 
 /**
@@ -59,6 +61,14 @@ export const tabIds = <T extends string, C extends string>(spec: PanelSpec<T, C>
 /** The label of tab `tab` of `spec`. */
 export const tabLabel = <T extends string, C extends string>(spec: PanelSpec<T, C>, tab: T): string =>
   spec.tabs.find((t) => t.id === tab)?.label ?? tab;
+
+/** Whether tab `tab` of `spec` has "Reset this panel". */
+export const tabResettable = <T extends string, C extends string>(spec: PanelSpec<T, C>, tab: T): boolean =>
+  spec.tabs.find((t) => t.id === tab)?.resettable !== false;
+
+/** The undo label of "Reset this panel" on tab `tab`: "Reset chart axis settings". */
+export const panelResetLabel = <T extends string, C extends string>(spec: PanelSpec<T, C>, tab: T): string =>
+  `Reset ${spec.noun} ${tabLabel(spec, tab).toLowerCase()} settings`;
 
 /** The cards of tab `tab` of `spec`, top to bottom. */
 export const cardsOfTab = <T extends string, C extends string>(spec: PanelSpec<T, C>, tab: T): C[] =>

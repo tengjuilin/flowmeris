@@ -3,7 +3,7 @@ import { populationPath } from '@flowmeris/model';
 import { type Cell, tableRows } from '@flowmeris/table';
 import { ActionRow } from '../../components/ui/ActionRow.tsx';
 import { ExportIcon } from '../../components/ui/icons.tsx';
-import { Card, SettingsPanel } from '../../components/ui/settings/index.ts';
+import { Card, EmptyPanel, SettingsPanel } from '../../components/ui/settings/index.ts';
 import { getPool } from '../../engine-client/pool.ts';
 import { download } from '../../lib/download.ts';
 import { STATS_PANEL } from '../../lib/panelSpecs.ts';
@@ -26,7 +26,7 @@ export function StatsInspector() {
   // The last tab and collapsed cards, remembered in this browser.
   const { tab, setTab, card } = useSettingsPanel(STATS_PANEL);
 
-  if (!group) return null;
+  if (!group) return <EmptyPanel spec={STATS_PANEL} className="stats-inspector" />;
   const display = aggregated ?? perSample;
 
   const valuesOf = (variableId: string): Cell[] => distinctValues(perSample.rows, variableId);

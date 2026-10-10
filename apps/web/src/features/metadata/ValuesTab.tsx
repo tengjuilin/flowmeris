@@ -2,15 +2,20 @@ import type { Group, Variable } from '@flowmeris/model';
 import { useState } from 'react';
 import { Card } from '../../components/ui/settings/index.ts';
 import { coerce, distinctValues, setValue } from '../../lib/metadata.ts';
+import type { MetaCard } from '../../lib/panelSpecs.ts';
 import { type Series, fillSeries, samplesByWell, seriesSteps, seriesValue } from '../../lib/plate.ts';
+import type { CardOf } from '../../lib/settingsPanel.ts';
 import { toast, useStore } from '../../state/store.ts';
 
 /** Set a value on, or fill a numeric series across, the wells selected on the plate map. */
-export function ValuesTab({ group, variable }: { group: Group; variable: Variable | undefined }) {
+export function ValuesTab({
+  group,
+  variable,
+  card,
+}: { group: Group; variable: Variable | undefined; card: CardOf<MetaCard> }) {
   const ws = useStore((s) => s.ws);
   const mutate = useStore((s) => s.mutate);
   const plateSel = useStore((s) => s.ui.plateSel);
-  const [open, setOpen] = useState({ set: true, series: true });
   const [raw, setRaw] = useState('');
   const [series, setSeries] = useState({
     start: '100',
@@ -65,12 +70,7 @@ export function ValuesTab({ group, variable }: { group: Group; variable: Variabl
         <strong>{plateSel.length}</strong> {plateSel.length === 1 ? 'well' : 'wells'},{' '}
         <strong>{selected.length}</strong> {selected.length === 1 ? 'sample' : 'samples'}
       </p>
-      <Card
-        id="setValue"
-        title={`Set ${variable.name}`}
-        open={open.set}
-        onToggle={() => setOpen({ ...open, set: !open.set })}
-      >
+      <Card {...card('setValue', undefined, `Set ${variable.name}`)}>
         <div className="row value-row">
           <input
             type="text"
@@ -111,12 +111,7 @@ export function ValuesTab({ group, variable }: { group: Group; variable: Variabl
         )}
       </Card>
       {variable.type === 'numeric' && (
-        <Card
-          id="fillSeries"
-          title="Fill series"
-          open={open.series}
-          onToggle={() => setOpen({ ...open, series: !open.series })}
-        >
+        <Card {...card('fillSeries')}>
           <label className="field">
             Start
             <input

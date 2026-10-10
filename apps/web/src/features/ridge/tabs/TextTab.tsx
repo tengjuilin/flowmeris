@@ -12,7 +12,7 @@ export function TextTab({ r, fx, card }: RidgeTabProps) {
       <BaseFontCard
         card={card('baseFont', resetOf('baseFont', 'base font'))}
         font={style.fontFamily}
-        defaultFont="arial"
+        defaultFont={DEFAULT_RIDGE_STYLE.fontFamily}
         onFont={(v) => set('fontFamily', v, 'Ridge font')}
         color={style.fontColor}
         colorAtDefault={style.fontColor === DEFAULT_RIDGE_STYLE.fontColor}

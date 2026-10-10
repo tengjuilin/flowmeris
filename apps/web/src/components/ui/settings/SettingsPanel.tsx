@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { PanelSpec } from '../../../lib/settingsPanel.ts';
+import { type PanelSpec, panelResetLabel, tabResettable } from '../../../lib/settingsPanel.ts';
 import { InspectorTabs, PanelReset } from './InspectorTabs.tsx';
 
 /**
@@ -21,8 +21,11 @@ export function SettingsPanel<T extends string, C extends string>({
   onTab: (tab: T) => void;
   /** Tabs that cannot be opened now, with the reason shown on hover. */
   disabledTabs?: Partial<Record<T, string>>;
-  /** "Reset this panel": whether the open tab is at its defaults, and how to reset it. */
-  reset?: { disabled: boolean; onClick: () => void };
+  /**
+   * "Reset this panel", on the tabs the spec does not mark `resettable: false`: whether the open tab is
+   * at its defaults, and how to reset it (`label` is the undo label).
+   */
+  reset?: { disabled: boolean; onReset: (label: string) => void };
   /** More in the panel's head, below the tabs (a status line, buttons). */
   head?: ReactNode;
   /** A class for this panel's own CSS. */
@@ -38,11 +41,11 @@ export function SettingsPanel<T extends string, C extends string>({
     <aside className={panelClass(className)} aria-label={spec.name}>
       <div className="insp-head">
         <InspectorTabs idPrefix={p} label={spec.name} tabs={tabs} current={tab} onSelect={onTab} />
-        {reset && (
+        {reset && tabResettable(spec, tab) && (
           <PanelReset
             title={`Reset the settings in this panel for this ${spec.noun}`}
             disabled={reset.disabled}
-            onClick={reset.onClick}
+            onClick={() => reset.onReset(panelResetLabel(spec, tab))}
           />
         )}
         {head}
@@ -54,7 +57,7 @@ export function SettingsPanel<T extends string, C extends string>({
   );
 }
 
-/** A settings panel with nothing to edit: `children` say what to do first. */
+/** A settings panel with nothing to edit: `children` say what to do first (by default, add samples). */
 export function EmptyPanel<T extends string, C extends string>({
   spec,
   className,
@@ -62,7 +65,7 @@ export function EmptyPanel<T extends string, C extends string>({
 }: { spec: PanelSpec<T, C>; className?: string; children?: ReactNode }) {
   return (
     <aside className={panelClass(className)} aria-label={spec.name}>
-      {children}
+      <p className="muted small">{children ?? 'Add samples to change these settings.'}</p>
     </aside>
   );
 }

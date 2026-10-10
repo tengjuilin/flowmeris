@@ -70,7 +70,10 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
   if (!group || !plot)
     return (
       <EmptyPanel spec={spec}>
-        {grid && group && <p className="muted small">Select a plot in the grid to change its settings.</p>}
+        {group &&
+          (grid
+            ? 'Select a plot in the grid to change its settings.'
+            : 'Open a population to change its plot settings.')}
       </EmptyPanel>
     );
   const fx = figureEdits(group, plot, target);
@@ -88,8 +91,8 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
       onTab={setTab}
       reset={{
         disabled: panelAtDefaults(tab, plot, group, useStore.getState().ws, target === 'gate'),
-        onClick: () =>
-          mutate(`Reset ${tab} settings`, (w) => {
+        onReset: (label) =>
+          mutate(label, (w) => {
             const g = w.groups.find((x) => x.id === group.id);
             const p = g && plotsOf(g).find((x) => x.id === plot.id);
             if (g && p) resetPanel(tab, p, g, w, target === 'gate');

@@ -1,7 +1,7 @@
 import type { RidgeLayout } from '@flowmeris/model';
 import { useEffect, useRef } from 'react';
 import { useRowSelection } from '../../components/ui/ReorderList.tsx';
-import { SettingsPanel } from '../../components/ui/settings/index.ts';
+import { EmptyPanel, SettingsPanel } from '../../components/ui/settings/index.ts';
 import { RIDGE_PANEL } from '../../lib/panelSpecs.ts';
 import { resetRidgePanel, ridgePanelAtDefaults } from '../../lib/ridgePanels.ts';
 import { carryRidge } from '../../lib/ridgeStyle.ts';
@@ -42,7 +42,7 @@ export function RidgeInspector() {
       if (src && dst) carryRidge(src, dst);
     });
   }, [group?.id, popId, layout?.id]);
-  if (!group) return null;
+  if (!group) return <EmptyPanel spec={RIDGE_PANEL} />;
 
   // "Reset this panel": the open tab's settings for this ridge plot (the Sample tab: this group's rows).
   const current = new Set(allIds);
@@ -61,8 +61,7 @@ export function RidgeInspector() {
       onTab={setTab}
       reset={{
         disabled: ridgePanelAtDefaults(tab, layout, ws, group, current),
-        onClick: () =>
-          r.update(`Reset ridge ${tab} settings`, (l, w, g) => resetRidgePanel(tab, l, w, g, current)),
+        onReset: (label) => r.update(label, (l, w, g) => resetRidgePanel(tab, l, w, g, current)),
       }}
     >
       {tab === 'settings' && <SettingsTab {...props} />}

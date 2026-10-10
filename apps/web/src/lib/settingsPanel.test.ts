@@ -3,9 +3,11 @@ import {
   type PanelSpec,
   cardTitle,
   cardsOfTab,
+  panelResetLabel,
   readPanelState,
   specProblems,
   tabLabel,
+  tabResettable,
   toggleCard,
 } from './settingsPanel.ts';
 
@@ -76,5 +78,8 @@ describe('settings panel spec checks', () => {
     expect(cardTitle(spec, 'y')).toBe('Y axis');
     expect(cardTitle(spec, 'z')).toBeUndefined();
     expect(cardsOfTab(spec, 'a')).toEqual(['x', 'y']);
+    expect(panelResetLabel(spec, 'a')).toBe('Reset plot axis settings');
+    expect(tabResettable(spec, 'a')).toBe(true);
+    expect(tabResettable({ ...spec, tabs: [{ ...spec.tabs[0]!, resettable: false }] }, 'a')).toBe(false);
   });
 });

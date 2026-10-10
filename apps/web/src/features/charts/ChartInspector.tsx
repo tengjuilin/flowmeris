@@ -7,7 +7,7 @@ import {
   resetChartPanel,
 } from '../../lib/chartPanels.ts';
 import { CHART_PANEL, type ChartCard } from '../../lib/panelSpecs.ts';
-import { type CardOf, cardTitle, tabLabel } from '../../lib/settingsPanel.ts';
+import { type CardOf, cardTitle } from '../../lib/settingsPanel.ts';
 import { useSettingsPanel } from '../../state/prefs.ts';
 import type { ChartTabProps } from './chartTabs.ts';
 import { AxisTab } from './tabs/AxisTab.tsx';
@@ -22,13 +22,8 @@ export function ChartInspector() {
   const { plot, edit } = c;
   // The last tab and collapsed cards, remembered in this browser.
   const { tab, setTab, card: cardOf } = useSettingsPanel(CHART_PANEL);
-  if (!c.group) return null;
-  if (!plot)
-    return (
-      <EmptyPanel spec={CHART_PANEL}>
-        <p className="muted small">Add a chart to change its settings.</p>
-      </EmptyPanel>
-    );
+  if (!c.group) return <EmptyPanel spec={CHART_PANEL} />;
+  if (!plot) return <EmptyPanel spec={CHART_PANEL}>Add a chart to change its settings.</EmptyPanel>;
 
   // A card with settings of its own has a reset button.
   const card: CardOf<ChartCard> = (id, reset, title) =>
@@ -51,10 +46,7 @@ export function ChartInspector() {
       onTab={setTab}
       reset={{
         disabled: chartPanelAtDefaults(tab, plot),
-        onClick: () =>
-          edit(`Reset chart ${tabLabel(CHART_PANEL, tab).toLowerCase()} settings`, (p) =>
-            resetChartPanel(tab, p),
-          ),
+        onReset: (label) => edit(label, (p) => resetChartPanel(tab, p)),
       }}
     >
       {tab === 'figure' && <FigureTab {...props} />}

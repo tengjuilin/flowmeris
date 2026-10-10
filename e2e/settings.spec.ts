@@ -87,6 +87,8 @@ test('apply and reset buttons in the Settings tab', async ({ page }) => {
   await visit(page, 'All events');
   await expect(pointSize(page)).toHaveValue('2');
   await tab(page, 'Settings');
+  // The Settings tab has no settings of its own, so no "Reset this panel".
+  await expect(page.getByRole('button', { name: 'Reset the settings in this panel' })).toHaveCount(0);
   await resetThis.click();
   await tab(page, 'Figure');
   await expect(pointSize(page)).toHaveValue('3');
