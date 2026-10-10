@@ -127,6 +127,35 @@ test('plot grid: add, size, settings, delete, open in another tab', async ({ pag
   await expect(page.locator('.sample-list button.on .name')).toHaveText('A02');
 });
 
+test('plot grid: open a plot in Tiles with its sample, type and axes', async ({ page }) => {
+  await loadWells(page, { A01: 100, A02: 200, B01: 110 });
+  await tab(page, 'Plot').click();
+  await page.locator('.plot-grid .empty-cell').first().getByRole('button', { name: 'Histogram' }).click();
+  const cell = page.locator('.plot-grid .grid-cell.on');
+  await cell.locator('.cell-sample').click();
+  await page.getByRole('dialog').getByText('A02', { exact: true }).click();
+  await expect(cell.locator('.cell-sample')).toHaveText('A02');
+  const xTitle = await cell.locator('text.axis-title').first().textContent();
+
+  // Tiles: the plot's sample is highlighted and every tile is a histogram on the same x axis.
+  await cell.getByRole('button', { name: 'Open this plot in the Tiles view' }).click();
+  await expect(tab(page, 'Tiles')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.tiles-grid .tile')).toHaveCount(3);
+  await expect(page.locator('.tiles-grid .tile.on .tile-title')).toContainText('A02');
+  for (const t of await page.locator('.tiles-grid .tile').all()) {
+    await expect(t.getByRole('button', { name: /^Y axis: .*Change what the y axis shows/ })).toBeVisible();
+    await expect(t.locator('text.axis-title').first()).toHaveText(xTitle!);
+  }
+
+  // A sample unchecked in the sidebar has no tile: a toast says to check it.
+  await page.getByRole('checkbox', { name: 'Show A02 in Tiles, Ridge and Statistics' }).uncheck();
+  await tab(page, 'Plot').click();
+  await cell.getByRole('button', { name: 'Open this plot in the Tiles view' }).click();
+  await expect(tab(page, 'Tiles')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.tiles-grid .tile')).toHaveCount(2);
+  await expect(page.locator('.toast').filter({ hasText: 'A02 is unchecked in the sidebar' })).toBeVisible();
+});
+
 test('gating path: steps, plot size, Path and Tree each with their own size, panel resizing', async ({
   page,
 }) => {

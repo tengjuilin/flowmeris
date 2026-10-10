@@ -5,7 +5,13 @@ import { type Anchor, type PickOption, PickerMenu } from '../../components/ui/Pi
 import { OpenInIcon } from '../../components/ui/icons.tsx';
 import type { PlotHandle } from '../../lib/export/plot.ts';
 import { overlayColors, plotOf } from '../../lib/gridCells.ts';
-import { editCell, openInGateView, setCellPopulation, setCellSample } from '../../state/commands/grid.ts';
+import {
+  editCell,
+  openInGateView,
+  openInTilesView,
+  setCellPopulation,
+  setCellSample,
+} from '../../state/commands/grid.ts';
 import { axisPickers } from '../../state/commands/plots.ts';
 import { useStore } from '../../state/store.ts';
 import { PlotCanvas } from '../plot/index.ts';
@@ -147,7 +153,7 @@ export function GridCell({
           className="icon labeled"
           title="Open in the Tiles view"
           aria-label="Open this plot in the Tiles view"
-          onClick={() => useStore.getState().setUi({ view: 'tiles', ...(sampleId ? { sampleId } : {}) })}
+          onClick={() => openInTilesView(group, cell, sampleId, sampleId && sampleName(sampleId))}
         >
           <OpenInIcon />
           Tiles

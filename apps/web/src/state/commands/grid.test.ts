@@ -1,8 +1,9 @@
 import { type PlotSpec, type Sample, type Workspace, newGroup, newWorkspace } from '@flowmeris/model';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { cellSample } from '../../lib/gridCells.ts';
+import { newTilePlot } from '../../lib/plotFactories.ts';
 import { APP_INFO, useStore } from '../store.ts';
-import { addCell, editCell, openTileInGrid, removeCell, setCellSample } from './grid.ts';
+import { addCell, editCell, openInTilesView, openTileInGrid, removeCell, setCellSample } from './grid.ts';
 
 const S = useStore.getState;
 const g = () => S().ws.groups[0]!;
@@ -67,5 +68,45 @@ describe('grid commands', () => {
     expect(g().grid.cells).toHaveLength(1);
     expect(g().grid.cells[0]?.sampleId).toBe('b');
     expect(S().ui).toMatchObject({ view: 'plot', sampleId: 'b', gridCellId: g().grid.cells[0]!.id });
+  });
+
+  it('open a plot in Tiles: its population and sample, with the Tiles plot on its type and axes', () => {
+    addCell('g', 0, 'dot', 'root', ['FL1-A', 'FSC-A']);
+    const id = g().grid.cells[0]!.id;
+    editCell('g', id, 'Range', (c) => void (c.x.range = [0.1, 0.9]));
+    setCellSample('g', id, 'b');
+    S().setUi({ view: 'plot', sampleId: 'a' });
+    const cell = g().grid.cells[0]!;
+    openInTilesView(g(), cell, 'b');
+    const tile = g().tilePlots.find((p) => p.population === 'root')!;
+    expect(tile.kind).toBe('dot');
+    expect(tile.x).toEqual(cell.x);
+    expect(tile.y).toEqual(cell.y);
+    expect(S().ui).toMatchObject({ view: 'tiles', popId: 'root', sampleId: 'b' });
+    expect(S().status.toast).toBeNull();
+  });
+
+  it('open a plot in Tiles as one undo step, and none when the Tiles plot already matches', () => {
+    addCell('g', 0, 'histogram', 'root', ['SSC-A']);
+    S().mutate('Tiles plot', (w) => void newTilePlot(w, w.groups[0]!, 'root'));
+    const cell = g().grid.cells[0]!;
+    const style = structuredClone(g().tilePlots[0]!.style);
+    openInTilesView(g(), cell, 'a');
+    const tile = g().tilePlots.find((p) => p.population === 'root')!;
+    expect([tile.kind, tile.x.channel]).toEqual(['histogram', 'SSC-A']);
+    expect(tile.style).toEqual(style);
+    const past = S().past.length;
+    openInTilesView(g(), cell, 'a');
+    expect(S().past.length).toBe(past);
+    S().undo();
+    expect(g().tilePlots.find((p) => p.population === 'root')?.kind).toBe('pseudocolor');
+  });
+
+  it('open a plot in Tiles whose sample is unchecked: select it and say to check it', () => {
+    addCell('g', 0, 'dot', 'root');
+    S().setUi({ excluded: { b: true } });
+    openInTilesView(g(), g().grid.cells[0]!, 'b', 'B02');
+    expect(S().ui).toMatchObject({ view: 'tiles', sampleId: 'b', excluded: { b: true } });
+    expect(S().status.toast?.text).toMatch(/B02 is unchecked in the sidebar/);
   });
 });

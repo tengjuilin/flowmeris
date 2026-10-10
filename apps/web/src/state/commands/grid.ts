@@ -1,8 +1,10 @@
 import type { Group, PlotCell, PlotKind, PlotSpec, Workspace } from '@flowmeris/model';
 import { newId } from '@flowmeris/model';
 import { defaultAxis, defaultChannels } from '../../lib/axisDefaults.ts';
-import { TILE_FIGURE, TILE_STYLE } from '../../lib/figure.ts';
-import { mutateGroup, useStore } from '../store.ts';
+import { TILE_FIGURE, TILE_STYLE, withAxesChange } from '../../lib/figure.ts';
+import { sameJson } from '../../lib/json.ts';
+import { newTilePlot } from '../../lib/plotFactories.ts';
+import { mutateGroup, toast, useStore } from '../store.ts';
 
 /** Commands on the Plot view's grid. Edits to a grid plot's settings are carried to the others by the store (AFTER_EDIT). */
 
@@ -86,6 +88,44 @@ export function openInGateView(group: Group, cell: PlotCell, sampleId: string | 
     selectedGateId: null,
     ...(sampleId ? { sampleId } : {}),
   });
+}
+
+/** Whether `plot` has `cell`'s type and axes (channel, compensation, scale and range); a histogram's y is ignored. */
+function sameTypeAndAxes(plot: PlotSpec, cell: PlotCell): boolean {
+  return (
+    plot.kind === cell.kind &&
+    sameJson(plot.x, cell.x) &&
+    (cell.kind === 'histogram' || sameJson(plot.y, cell.y))
+  );
+}
+
+/**
+ * Open a cell in the Tiles view: its population, with its sample selected (highlighted), and the
+ * population's Tiles plot set to the cell's type and axes. That is one undo step, and none when the Tiles
+ * plot already matches. The Tiles plot keeps its own appearance. A sample unchecked in the sidebar has no
+ * tile; a toast says to check it, naming the sample `name`.
+ */
+export function openInTilesView(group: Group, cell: PlotCell, sampleId: string | undefined, name = sampleId) {
+  const tile = group.tilePlots.find((p) => p.population === cell.population);
+  if (!tile || !sameTypeAndAxes(tile, cell)) {
+    mutateGroup(group.id, 'Open grid plot in Tiles view', (g, w) => {
+      const p =
+        g.tilePlots.find((x) => x.population === cell.population) ?? newTilePlot(w, g, cell.population);
+      withAxesChange(p, () => {
+        p.kind = cell.kind;
+        p.x = { ...cell.x };
+        if (cell.kind !== 'histogram' && cell.y) p.y = { ...cell.y };
+      });
+    });
+  }
+  useStore.getState().setUi({
+    view: 'tiles',
+    popId: cell.population,
+    selectedGateId: null,
+    ...(sampleId ? { sampleId } : {}),
+  });
+  if (sampleId && useStore.getState().ui.excluded[sampleId])
+    toast(`${name} is unchecked in the sidebar: check it to show its tile.`);
 }
 
 /**
