@@ -1,0 +1,153 @@
+/* Tiles and ridge views. */
+.tiles-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+/* The toolbar stays put while the tiles scroll under it. */
+.tiles {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  /* Tiles are sized from the width too: keep the scrollbar's room so they don't flip-flop. */
+  scrollbar-gutter: stable;
+}
+/* Tiles in fixed-width columns; the populations card takes the top-right cells. */
+.tiles-grid {
+  display: grid;
+  gap: 12px;
+  align-items: start;
+}
+/* The card is as tall as the tiles beside it; its own height doesn't count, and the tree scrolls inside. */
+.tiles-side {
+  align-self: stretch;
+  contain: size;
+}
+.tiles-side .pop-tree {
+  flex: 1 1 auto;
+  max-height: none;
+}
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+}
+.tile.on {
+  border-color: var(--accent);
+}
+.tile-title {
+  border: none;
+  background: none;
+  width: 100%;
+  justify-content: space-between;
+  font-size: 11.5px;
+  padding: 2px 4px;
+  overflow: hidden;
+}
+.tile-title span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A tile's title is text with an icon button that opens the sample in the Gate view. */
+.tile .tile-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 0;
+}
+.tile .tile-title span:first-child {
+  flex: 1;
+  white-space: nowrap;
+}
+.tile .tile-title button.icon {
+  display: flex;
+  padding: 2px;
+}
+.tile .tile-title button.icon.labeled {
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.tile .gate-label {
+  font-size: 10px;
+}
+
+.ridge .ridge-label {
+  fill: var(--text-2);
+  font-size: 11.5px;
+}
+.ridge .ridge-base {
+  stroke: var(--border);
+}
+.ridge-samples {
+  list-style: none;
+  margin: 6px 0;
+  padding: 0;
+  max-height: 320px;
+  overflow: auto;
+}
+.ridge-samples li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+.ridge-samples li {
+  border-radius: 4px;
+  border-top: 2px solid transparent;
+  border-bottom: 2px solid transparent;
+}
+.ridge-samples li.selected {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+.ridge-samples li.dragging {
+  opacity: 0.4;
+}
+.ridge-samples li.drop-before {
+  border-top-color: var(--accent);
+}
+.ridge-samples li.drop-after {
+  border-bottom-color: var(--accent);
+}
+.ridge-samples .ridge-grip {
+  cursor: grab;
+  user-select: none;
+  padding: 0 2px;
+  color: var(--muted, #888);
+}
+.inspector .ridge-samples input[type="color"] {
+  width: 26px;
+  height: 22px;
+  padding: 0 1px;
+  flex: none;
+}
+.ridge-samples input[type="color"].custom {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.inspector .ridge-samples input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+.ridge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.inspector textarea {
+  width: 100%;
+  font: inherit;
+  padding: 3px 6px;
+  resize: vertical;
+}
+.inspector textarea[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.inspector .field-error {
+  color: var(--danger);
+}

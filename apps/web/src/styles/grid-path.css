@@ -1,0 +1,575 @@
+/* Settings inputs, plot loading and back-gating, the Plot grid view, picker menus and the Gating path view. */
+.inspector input,
+.inspector select {
+  width: 100%;
+}
+.inspector .field.check input {
+  width: auto;
+}
+.inspector .group-picker input {
+  width: auto;
+  flex: none;
+}
+.plot-loading {
+  position: absolute;
+  font-size: 11px;
+  color: var(--text-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 8px;
+  pointer-events: none;
+}
+.gate-halo * {
+  stroke: var(--surface) !important;
+  stroke-width: 5px !important;
+  stroke-dasharray: none !important;
+  fill: none !important;
+  opacity: 0.85;
+}
+button.link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-weight: inherit;
+}
+button.link:hover {
+  text-decoration: underline;
+}
+
+/* Gating path view ----------------------------------------------------------- */
+.plot-raster.faded,
+.hist.faded {
+  filter: grayscale(1);
+  opacity: 0.4;
+}
+.hist-backgate {
+  fill-opacity: 0.55;
+  stroke-width: 1.25;
+}
+.hist.hist-overlay,
+.hist-overlay {
+  fill: none;
+  stroke-width: 1.5;
+}
+
+/* Plot view: fixed grid of plots; the active cell takes the gating tools. */
+.grid-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+/* Tools and the active cell's controls stay pinned while the grid scrolls (cancels .view's top padding). */
+.grid-head {
+  position: sticky;
+  top: -10px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: -10px;
+  padding-top: 10px;
+  background: var(--bg);
+}
+.grid-head .toolbar {
+  margin-bottom: 0;
+}
+.sample-step {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.sample-step > select {
+  flex: 1;
+  min-width: 0;
+  margin: 0 2px;
+}
+/* The overlay's sample checklist in the settings panel; long sample lists scroll. */
+.overlay-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow: auto;
+}
+.inspector .overlay-list .field {
+  margin: 0;
+  white-space: nowrap;
+}
+.overlay-list input[type="checkbox"] {
+  margin: 3px 4px 3px 0;
+}
+.overlay-picker {
+  position: relative;
+}
+.overlay-picker > summary {
+  cursor: pointer;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  list-style: none;
+}
+.overlay-picker[open] > summary {
+  border-color: var(--accent);
+}
+.overlay-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 240px;
+  max-height: 320px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+.overlay-menu .field {
+  white-space: nowrap;
+}
+
+/* Clickable axis titles open a picker for that axis's channel or column. */
+.axis-title.pickable {
+  cursor: pointer;
+}
+.axis-title.pickable:hover,
+.axis-title.pickable:focus-visible {
+  fill: var(--accent);
+  text-decoration: underline;
+  outline: none;
+}
+.picker-menu {
+  position: fixed;
+  right: auto;
+  bottom: auto;
+  margin: 0;
+  z-index: 50;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+  max-width: min(360px, calc(100vw - 16px));
+  max-height: min(380px, calc(100vh - 16px));
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  font-size: 13px;
+  font-weight: normal;
+  text-align: left;
+}
+.picker-menu:focus {
+  outline: none;
+}
+.picker-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.picker-list {
+  overflow: auto;
+  min-height: 0;
+}
+.picker-group {
+  padding: 6px 8px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.picker-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.picker-item.active {
+  background: var(--surface-2);
+}
+.picker-item.selected {
+  color: var(--accent);
+  font-weight: 600;
+}
+.picker-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.picker-detail {
+  margin-left: auto;
+  padding-left: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.picker-empty {
+  padding: 4px 8px;
+}
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  flex: none;
+}
+.plot-grid {
+  display: grid;
+}
+/* The scrollbar's room is kept even when the grid fits: cells are sized from the width, so a
+   scrollbar coming and going would resize them and flip back and forth as the columns change. */
+.view:has(> .grid-view) {
+  scrollbar-gutter: stable;
+}
+/* The populations card fills its grid slot; the tree scrolls inside when it is taller. */
+.grid-side .pop-tree {
+  flex: 1 1 auto;
+  max-height: none;
+}
+.grid-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.grid-cell.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.cell-title {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  height: 26px;
+  flex: none;
+  padding: 0 6px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.cell-title > button.icon.labeled {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px;
+  font-size: 11px;
+}
+.cell-title > .spacer {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.cell-title > .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cell-legend {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  height: 18px;
+  flex: none;
+  padding: 0 6px;
+  font-size: 11px;
+  color: var(--text-2);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.cell-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cell-plot {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  min-height: 0;
+}
+.empty-cell {
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-style: dashed;
+  background: transparent;
+}
+.add-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 8px;
+}
+.gate.focus {
+  stroke-width: 3;
+}
+.gate-dim {
+  opacity: 0.3;
+}
+/* The toolbar stays put while the plots scroll under it (as in Tiles). */
+.path-view {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+.path-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  /* Plots are sized from the width: keep the scrollbar's room so they don't flip-flop. */
+  scrollbar-gutter: stable;
+}
+/* Steps (a plot and its arrow) in fixed-width columns; the populations card takes the top-right cells. */
+.path-row {
+  display: grid;
+  align-items: start;
+  gap: 12px 0;
+}
+.path-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+/* The plots reach the view's bottom edge, under the populations panel floating over its bottom right.
+   The tree scrolls both ways inside itself, and dragging its empty space pans it. */
+.path-view > .path-body {
+  margin-bottom: -10px;
+}
+.path-body.tree {
+  overflow: hidden;
+}
+.path-body.tree > .path-tree {
+  height: 100%;
+  cursor: grab;
+}
+.path-tree.panning {
+  cursor: grabbing;
+  user-select: none;
+}
+/* The populations panel's top edge: drag to resize it, double-click to fit or minimise it. */
+.path-resize {
+  flex: none;
+  height: 10px;
+  cursor: row-resize;
+  touch-action: none;
+  position: relative;
+}
+.path-resize::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 3px;
+  width: 40px;
+  height: 4px;
+  margin-left: -20px;
+  border-radius: 2px;
+  background: var(--border);
+}
+.path-resize:hover::after,
+.path-resize:focus-visible::after {
+  background: var(--accent);
+}
+/* The resize grip and the panel below it: over the bottom right of the view, flush with its edges (over its
+   padding), and as wide as the rows need (measured), so each count stays near its name. */
+.path-dock {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  width: var(--pop-list-w, auto);
+  max-width: calc(100% + 20px);
+  margin: 0 -10px -10px;
+}
+.path-panel {
+  flex: none;
+}
+.path-panel .pop-tree {
+  flex: 1 1 auto;
+  max-height: none;
+  border-width: 1px 0 0 1px;
+  border-radius: 8px 0 0 0;
+  padding-top: 0;
+}
+/* The title stays in place while the populations scroll under it. */
+.path-panel .pane-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  padding-top: 8px;
+}
+.path-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+}
+.path-card .tile-title .swatch,
+.path-arrow-label .swatch {
+  display: inline-block;
+  vertical-align: -1px;
+}
+.path-missing,
+.path-end {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  max-width: 220px;
+}
+.path-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: none;
+  width: 96px;
+  padding: 0 4px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 11.5px;
+  text-align: center;
+}
+.path-arrow-head {
+  font-size: 28px;
+  line-height: 1;
+  color: var(--text-2);
+}
+.path-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.path-chip.on,
+.path-node.on > .path-node-plots .path-card {
+  border-color: var(--accent);
+}
+.path-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.path-node-plots {
+  display: flex;
+  gap: 8px;
+}
+/* Tree connectors: each child hangs from a horizontal bar under its parent. */
+.path-tree {
+  overflow: auto;
+}
+.path-tree ul {
+  display: flex;
+  justify-content: center;
+  list-style: none;
+  margin: 0;
+  padding: 16px 0 0;
+  position: relative;
+}
+.path-tree > ul {
+  padding-top: 0;
+  width: max-content;
+  min-width: 100%;
+}
+.path-tree li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 16px 6px 0;
+}
+.path-tree > ul > li {
+  padding-top: 0;
+}
+.path-tree li::before,
+.path-tree li::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 50%;
+  width: 50%;
+  height: 16px;
+  border-top: 1px solid var(--grid);
+}
+.path-tree li::after {
+  right: auto;
+  left: 50%;
+  border-left: 1px solid var(--grid);
+}
+.path-tree li:first-child::before,
+.path-tree li:last-child::after {
+  border-top: none;
+}
+.path-tree li:only-child::before {
+  display: none;
+}
+.path-tree > ul > li::before,
+.path-tree > ul > li::after {
+  display: none;
+}
+.path-tree ul ul::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 16px;
+  border-left: 1px solid var(--grid);
+}
+.gate-label.focus {
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: underline;
+}
+.cell-title > button.link {
+  color: var(--accent);
+  text-decoration: underline;
+  font-weight: normal;
+}
+/* Long names shorten with an ellipsis (the population first, down to a few characters) so the
+   badge and buttons keep their place. */
+.cell-title > * {
+  flex: none;
+}
+.cell-title > button.cell-pop,
+.cell-title > button.cell-sample {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cell-title > button.cell-pop {
+  flex-shrink: 4;
+  min-width: 3em;
+}

@@ -1,0 +1,264 @@
+/* The app shell: header, sidebar, view tabs, the settings drawer and the controls at the end of view toolbars. */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.app.drag-over::after {
+  content: "Drop a folder of FCS files";
+  position: fixed;
+  inset: 12px;
+  border: 3px dashed var(--accent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  z-index: 50;
+  pointer-events: none;
+}
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  position: relative;
+}
+.brand {
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ws-name {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  width: 220px;
+  border-color: transparent !important;
+  background: transparent !important;
+  font-weight: 600;
+}
+.ws-name:hover,
+.ws-name:focus {
+  border-color: var(--border) !important;
+}
+
+.main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 240px 1fr auto;
+  min-height: 0;
+}
+.sidebar {
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  overflow: auto;
+  padding: 8px;
+}
+.nav-buttons {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding-top: 6px;
+}
+.nav-buttons button.icon {
+  display: flex;
+  padding: 3px;
+  border-radius: 4px;
+}
+.nav-buttons button.icon:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.nav-buttons button.icon:disabled {
+  opacity: 0.35;
+}
+.group-block {
+  margin-bottom: 6px;
+}
+.group-block header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.group-name {
+  border: none;
+  background: none;
+  font-weight: 600;
+  padding: 4px;
+  flex: 1;
+  justify-content: flex-start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.group-block.active .group-name {
+  color: var(--accent);
+}
+.sample-list {
+  list-style: none;
+  margin: 0 0 0 4px;
+  padding: 0;
+}
+.sample-list li {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.sample-list input[type="checkbox"] {
+  margin: 0 2px;
+  flex: none;
+}
+.sample-list button {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  justify-content: space-between;
+  padding: 3px 6px;
+  border-radius: 4px;
+  text-align: left;
+}
+.sample-list .sample-rename {
+  flex: 1;
+  min-width: 0;
+}
+.sample-list button.on {
+  background: var(--surface-2);
+  font-weight: 600;
+}
+.selection-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 2px 8px;
+}
+.sample-list .name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.badges {
+  display: flex;
+  gap: 3px;
+}
+.badge {
+  font-size: 10.5px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  font-weight: 500;
+  margin-left: 4px;
+}
+.badge.warn {
+  background: var(--warn-bg);
+  color: var(--warn);
+  border-color: transparent;
+}
+.badge.danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: transparent;
+}
+
+.center {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+/* The tab strip scrolls sideways when the view is too narrow; the Settings button stays pinned outside it. */
+.tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border);
+}
+.tabs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 2px;
+  padding-top: 6px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.tabs button {
+  flex: none;
+  white-space: nowrap;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  padding: 6px 12px;
+  color: var(--text-2);
+}
+.tabs button.on {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
+/* Wide windows show the settings panel in place; narrow ones turn it into a drawer (see the media query). */
+.inspector-drawer {
+  display: contents;
+}
+.settings-toggle,
+.drawer-scrim {
+  display: none;
+}
+.settings-toggle {
+  flex: none;
+  padding: 5px 7px;
+}
+.tiles-settings {
+  display: inline-flex;
+  padding: 5px 7px;
+}
+/* At the end of the Tiles and Plot toolbars: columns, then the settings panel toggle. Fixed widths, so the
+   slider stays put under the pointer while the tiles re-lay out. */
+.tiles-controls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.tiles-controls .field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tiles-controls input[type="range"] {
+  width: 160px;
+}
+.tiles-controls .muted {
+  min-width: 2ch;
+  font-variant-numeric: tabular-nums;
+}
+.settings-toggle[aria-expanded="true"],
+.tiles-settings[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.view {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+}
+.plot-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  /* One row exactly as tall as the view, so the main plot never runs below the window; only very
+     short windows hit the floor and scroll the view. Columns shrink (and scroll) inside the row. */
+  grid-template-rows: minmax(0, 1fr);
+  gap: 10px;
+  height: 100%;
+  min-height: 480px;
+}
