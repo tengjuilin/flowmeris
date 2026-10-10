@@ -12,30 +12,20 @@ enablePatches();
 export const APP_INFO = { version: __APP_VERSION__, commit: __APP_COMMIT__, kernels: 'ts-1' };
 
 export type Tool = 'select' | 'rect' | 'range' | 'split' | 'ellipse' | 'polygon' | 'quadrant' | 'spider';
-export type View =
-  | 'gate'
-  | 'plot'
-  | 'tiles'
-  | 'ridge'
-  | 'path'
-  | 'metadata'
-  | 'stats'
-  | 'charts'
-  | 'compensation'
-  | 'samples';
-
-export const VIEW_LABELS: Record<View, string> = {
-  gate: 'Gate',
-  plot: 'Plot',
-  tiles: 'Tiles',
-  path: 'Gating path',
-  metadata: 'Metadata',
-  stats: 'Statistics',
-  ridge: 'Ridge',
-  charts: 'Charts',
-  compensation: 'Compensation',
-  samples: 'Samples',
-};
+/** The app's views (tabs). Labels, tab order and contents are in app/views.tsx. */
+export const VIEW_IDS = [
+  'gate',
+  'plot',
+  'tiles',
+  'ridge',
+  'path',
+  'metadata',
+  'stats',
+  'charts',
+  'compensation',
+  'samples',
+] as const;
+export type View = (typeof VIEW_IDS)[number];
 
 export interface IngestProgress {
   total: number;
@@ -68,7 +58,7 @@ interface UiState {
 }
 
 /** Layout choices of the views: settings panels shown, plot sizes, modes. */
-interface ViewPrefs {
+export interface ViewPrefs {
   /** Whether the Tiles view's settings panel is shown. */
   tilesSettings: boolean;
   /** Tile plot size (px) picked with the Tiles view's slider; the tiles per row follow the width. */
@@ -149,18 +139,6 @@ export function timestampName(d = new Date()): string {
 }
 
 const VIEW_KEY = 'flowmeris.view';
-const VIEWS: readonly View[] = [
-  'gate',
-  'plot',
-  'tiles',
-  'ridge',
-  'path',
-  'metadata',
-  'stats',
-  'charts',
-  'compensation',
-  'samples',
-];
 const PATH_MODE_KEY = 'flowmeris.pathMode';
 
 /**
@@ -180,7 +158,7 @@ export const useStore = create<Store>((set, get) => ({
     popId: 'root',
     plotId: null,
     // A page reload stays on the same tab (and, in `views`, the same Gating path layout).
-    view: readSession(VIEW_KEY, VIEWS, 'gate'),
+    view: readSession(VIEW_KEY, VIEW_IDS, 'gate'),
     tool: 'select',
     editScope: 'template',
     selectedGateId: null,
