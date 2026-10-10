@@ -1,6 +1,6 @@
 # ADR-0008 Web app layout and import layering
 
-**Status.** Proposed. It is being adopted in phases (`lib/` is pure, `state/` and `app/` checked since P2; feature folders come next); [`apps/web/CLAUDE.md`](https://github.com/tengjuilin/flowmeris/blob/main/apps/web/CLAUDE.md) shows the current layout.
+**Status.** Proposed. It is being adopted in phases (`lib/` is pure, `state/` and `app/` checked since P2; `features/plot` and `features/gate` since P3b, the other views to follow); [`apps/web/CLAUDE.md`](https://github.com/tengjuilin/flowmeris/blob/main/apps/web/CLAUDE.md) shows the current layout.
 
 **Decision.** `apps/web/src` is organised in layers, and imports only point down:
 
@@ -12,6 +12,9 @@
 | `state/` | zustand store, commands, preferences, data hooks | `engine-client/`, `lib/`, packages |
 | `engine-client/`, `workers/` | worker pool and compute worker | `lib/`, packages |
 | `lib/` | pure functions, tested in Node | packages only |
+
+Code outside a feature, and other features, import it only through its `index.ts`. All CSS is global, so a
+feature's CSS file is imported by `styles/index.css` in cascade order rather than by the feature's modules.
 
 Packages never import `apps/`. A package imports only the workspace packages declared in its
 `package.json`, and only through their entry points. Source files are capped at 500 lines; files that were

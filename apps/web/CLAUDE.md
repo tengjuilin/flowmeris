@@ -23,8 +23,13 @@ code now. Update it when the layout changes.
 | `src/components/ui/` | generic controls that take data and callbacks as props: `icons.tsx`, `Section` (collapsible settings card), `InspectorTabs` and `PanelReset`, `NumInput`/`OptNumInput`, `Slider`/`PercentSlider`, `SettingsToggle`, `ActionRow`, `PickerMenu`, `GroupPicker`, `PlotSizeSlider`, `SupLabel`. No store or pool imports (`lint:deps`) |
 | `src/components/controls/` | settings controls shared by several views, which may use the store: `AxisFields` (scale and range), `TicksEditor`, `FontSelect`, `TextStyleEditor`, `ExportMenu` |
 | `src/components/hooks/` | DOM and timing hooks: `useSize`, `useWidth`, `useVisible`, `useSettled`/`useDebounced` |
-| `src/components/` | views and inspectors (see below) |
-| `src/styles/` | all CSS, global, in files imported in cascade order by `styles/index.css` |
+| `src/features/plot/` | one plot: `PlotCanvas` (composes `usePlotData`, `useGateEditing`/`useGatePreview`, `GateShapes`, `DraftShapes`, `PlotAxes`, `PlotPaths`), `PlotControls` (plot type, channels and scales, drawing tools, edit scope), `usePlot` (`usePlotForPopulation`, `useTilePlot`) |
+| `src/features/gate/` | the Gate view: `PlotPanel` (with its toolbar and export card), `RefPlots`, and the plot settings panel `Inspector` (`GateInspector.tsx`, tabs in `tabs/`, cards `AxisEditor`, `StyleEditor`, `GateEditor`), also used by the Plot grid and Tiles views |
+| `src/components/` | the other views and inspectors (see below), moving to `features/` |
+| `src/styles/` | all CSS, global, in files imported in cascade order by `styles/index.css` (with the features' CSS) |
+
+A feature folder's public API is its `index.ts`: other code imports only that (`pnpm lint:deps`). Files inside
+a feature import each other directly.
 
 Views (`ui.view`). Each is defined once in `app/views.tsx`; to add one, add its id to `VIEW_IDS` in
 `state/store.ts`, its entry to `VIEW_DEFS` and its place in `VIEW_ORDER`:
@@ -32,7 +37,7 @@ Views (`ui.view`). Each is defined once in `app/views.tsx`; to add one, add its 
 | `ui.view` | View component | Settings panel |
 |---|---|---|
 | `metadata` | `MetadataView` | `MetadataInspector` (toggled by `views.metaSettings`) |
-| `gate` | `PlotPanel` → `PlotCanvas`, plus `PopulationTree` and `RefPlots` | `Inspector` from `GateInspector.tsx` |
+| `gate` | `PlotPanel` → `PlotCanvas`, plus `PopulationTree` and `RefPlots` | `Inspector` (`features/gate`) |
 | `plot` (Plot grid) | `PlotGridView` | `Inspector target="grid"` (toggled by `views.gridSettings`) |
 | `tiles` | `TilesView` in `GroupViews.tsx` | `Inspector target="tiles"` (toggled by `views.tilesSettings`) |
 | `path` | `GatingPathView` | – |
@@ -48,7 +53,7 @@ What is in `src/lib/`:
 |---|---|
 | `keys.ts` | worker-pool cache keys: `lineageKey`, `plotKey` |
 | `gates.ts` | `addGate`: a new gate's populations and their names |
-| `axisDefaults.ts`, `plotFactories.ts` | default axes and channels, scale kinds; new Gate-view and Tiles plots |
+| `axisDefaults.ts`, `plotFactories.ts` | default axes and channels, scale kinds, factory axes (`axisAtFactory`, `resetAxisToFactory`); new Gate-view and Tiles plots |
 | `figure.ts`, `ridgeStyle.ts`, `styleScope.ts` | plot and ridge appearance; settings kept per channel and shared across populations (`styleScope` is the shared logic) |
 | `gridCarry.ts` | grid-plot settings copied to the other grid plots |
 | `ridgeRows.ts` | which ridges a ridge plot draws (samples or combined replicates) |
@@ -57,10 +62,12 @@ What is in `src/lib/`:
 | `ingest.ts`, `files.ts`, `names.ts` | grouping loaded files; data-file extensions; short sample names |
 | `export/` | figure export: `svg.ts`, `pdf.ts`, `figure.ts`, `plot.ts` (takes its data as a `PlotExportSource`) |
 | `geometry.ts`, `fitSize.ts`, `text.ts`, `format.ts`, `json.ts`, `download.ts`, `sheets.ts` | gate drawing geometry, sizing, label wrapping, number formats, JSON copy/compare, downloads, spreadsheets |
-| `ticks.ts`, `math.ts` | custom tick text (`parseTicks`, `formatTicks`); `clamp` |
+| `ticks.ts`, `math.ts` | custom ticks (`parseTicks`, `formatTicks`, `customTicks`), histogram y ticks; `clamp` |
+| `plotFrame.ts`, `plotLayout.ts`, `plotPaths.ts` | a plot's pixel mapping and gate hit testing (`hitGate`, `popAt`); margins and titles (`plotBox`, `axisLabel`); histogram and contour SVG paths |
+| `gateEdit.ts` | gate shapes from drags and handles (`applyHandle`, `translate`, `shapeFromDrag`, `newGateBase`) |
+| `plotPanels.ts` | the plot settings panel's per-tab defaults and reset (`panelAtDefaults`, `resetPanel`) |
 
-`components/GateInspectorSections.tsx` holds the Gate-view settings cards (`AxisEditor`, `StyleEditor`,
-`GateEditor`). `RidgeInspector.tsx` still exports `useRidge`, `textCss` and `ridgeColor`, used by the
+`RidgeInspector.tsx` still exports `useRidge`, `textCss` and `ridgeColor`, used by the
 ridge plot in `GroupViews.tsx`. Search for a symbol before assuming where it lives.
 
 ## Store rules
@@ -107,9 +114,11 @@ ridge plot in `GroupViews.tsx`. Search for a symbol before assuming where it liv
 
 ## CSS
 
-All CSS is global, with flat class names, in `src/styles/`. `styles/index.css` imports the files in cascade
-order (later files win at equal specificity), so moving a rule to another file can change what wins:
-check the built CSS (`apps/web/dist/assets/*.css`) or the views after such a move. Theme tokens, in light
+All CSS is global, with flat class names. `styles/index.css` imports the files in cascade order (later
+files win at equal specificity): `styles/*.css` and each feature's own file (`features/plot/plot.css`,
+`features/gate/gate.css`). Moving a rule to another file can change what wins: compare the built CSS
+(`apps/web/dist/assets/*.css`) before and after, and check any rule that now comes after another
+rule with the same specificity that sets the same property on the same elements. Theme tokens, in light
 and dark, are at the top of `base.css`; the breakpoints at 1100 px and 700 px are in `responsive.css`.
 
 Classes shared across views:

@@ -74,6 +74,6 @@ package name, never by a path into another package's `src/`. `pnpm lint:deps` en
 - **Known boundary violations** would be listed in `.dependency-cruiser-known-violations.json` (empty
   now). Do not add to it: fix the import instead.
 - **Style.** Biome (`biome.json`): 2 spaces, single quotes, line width 110. Imports carry their `.ts`
-  extension. TypeScript is strict with `noUncheckedIndexedAccess`. Biome warns on functions whose
+  extension. TypeScript is strict with `noUncheckedIndexedAccess` and `noUnusedLocals`. Biome warns on functions whose
   cognitive complexity is over 25; do not add new ones.
 - **Docs.** The user guide (`docs/guide`) describes behaviour users see. Update it when that changes.
