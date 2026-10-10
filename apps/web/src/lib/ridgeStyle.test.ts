@@ -1,4 +1,4 @@
-import { type Group, type RidgeLayout, newWorkspace } from '@flowmeris/model';
+import type { Group, RidgeLayout } from '@flowmeris/model';
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_OVERLAP,

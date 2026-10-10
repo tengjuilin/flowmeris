@@ -8,7 +8,6 @@ import { useGroup, useStore } from '../../state/store.ts';
 
 /** One gate's exact coordinates, editable live, with a delete button at the card's top right. */
 export function GateEditor({ gateId, panel }: { gateId: string; panel: Panel }) {
-  const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
   const setUi = useStore((s) => s.setUi);
   const group = useGroup()!;
