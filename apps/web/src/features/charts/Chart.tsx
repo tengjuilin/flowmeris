@@ -126,7 +126,10 @@ export function Chart(props: {
         </g>
         {legend !== 'none' && <ChartLegend f={f} legend={legend} />}
       </svg>
-      {hover && <ChartTip f={f} hover={hover} width={width} xCol={xCol} seriesLabel={props.seriesLabel} />}
+      {/* Not when the hovered point's series is gone (e.g. "Colour by" undone under the pointer). */}
+      {hover && series.some((s) => s.key === hover.series) && (
+        <ChartTip f={f} hover={hover} width={width} xCol={xCol} seriesLabel={props.seriesLabel} />
+      )}
       {dropped > 0 && (
         <p className="plot-note">
           {dropped} point(s) not shown (non-positive on a log axis, or not a number).
