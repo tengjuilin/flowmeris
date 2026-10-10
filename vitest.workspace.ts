@@ -12,4 +12,14 @@ export default defineWorkspace([
     extends: './vitest.config.ts',
     test: { name: 'golden', include: ['packages/*/test/**/*.test.ts'] },
   },
+  {
+    // Component tests: apps/web/src/**/*.test.tsx, rendered in jsdom with Testing Library.
+    extends: './vitest.config.ts',
+    test: {
+      name: 'dom',
+      include: ['apps/web/src/**/*.test.tsx'],
+      environment: 'jsdom',
+      setupFiles: ['./vitest.dom-setup.ts'],
+    },
+  },
 ]);

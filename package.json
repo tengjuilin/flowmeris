@@ -32,9 +32,12 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9",
     "@playwright/test": "^1.48",
+    "@testing-library/dom": "^10",
+    "@testing-library/react": "^16",
     "@types/node": "^22",
     "dependency-cruiser": "^16",
     "fast-check": "^3.22",
+    "jsdom": "^25",
     "markdown-it-mathjax3": "^4",
     "typescript": "~5.6",
     "vitepress": "^1.4",
