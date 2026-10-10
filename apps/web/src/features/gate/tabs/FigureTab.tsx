@@ -1,9 +1,9 @@
 import type { PlotCell } from '@flowmeris/model';
 import { CellOverlayFields, CellSourceFields } from '../../../components/PlotGridView.tsx';
 import { FontSelect } from '../../../components/controls/FontSelect.tsx';
+import { ColorField } from '../../../components/ui/ColorField.tsx';
 import { NumInput } from '../../../components/ui/NumInput.tsx';
 import { Section } from '../../../components/ui/Section.tsx';
-import { ResetIcon } from '../../../components/ui/icons.tsx';
 import { DEFAULT_FIGURE } from '../../../lib/figure.ts';
 import { clamp } from '../../../lib/math.ts';
 import { clearCellOverlay } from '../../../state/commands/grid.ts';
@@ -73,31 +73,21 @@ export function FigureTab({
           value={fig.fontFamily}
           onChange={(v) => set('fontFamily', v ?? DEFAULT_FIGURE.fontFamily, 'Plot font')}
         />
-        <label className="field inline">
-          Base font color
-          <span className="swatch-auto">
-            <input
-              type="color"
-              className="swatch"
-              value={fig.fontColor}
-              onChange={(e) => set('fontColor', e.target.value, 'Plot font color', 'fontColor')}
-            />
-            <button
-              type="button"
-              className="reset-btn"
-              disabled={fig.fontColor === DEFAULT_FIGURE.fontColor}
-              aria-label="Reset base font color to black"
-              title={
-                fig.fontColor === DEFAULT_FIGURE.fontColor
-                  ? 'Base font color is the default'
-                  : 'Reset base font color to black'
-              }
-              onClick={() => set('fontColor', DEFAULT_FIGURE.fontColor, 'Plot font color')}
-            >
-              <ResetIcon />
-            </button>
-          </span>
-        </label>
+        <ColorField
+          inline
+          label="Base font color"
+          value={fig.fontColor}
+          onChange={(v) => set('fontColor', v, 'Plot font color', 'fontColor')}
+          reset={{
+            disabled: fig.fontColor === DEFAULT_FIGURE.fontColor,
+            label: 'Reset base font color to black',
+            title:
+              fig.fontColor === DEFAULT_FIGURE.fontColor
+                ? 'Base font color is the default'
+                : 'Reset base font color to black',
+            onReset: () => set('fontColor', DEFAULT_FIGURE.fontColor, 'Plot font color'),
+          }}
+        />
         <NumInput
           live
           label="Base font size (px)"

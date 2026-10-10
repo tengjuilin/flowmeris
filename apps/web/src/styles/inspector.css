@@ -212,7 +212,7 @@
   max-height: none;
   overflow: visible;
 }
-.insp-panel .ridge-actions {
+.insp-panel .list-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 4px;
@@ -280,7 +280,7 @@
   border-color: var(--accent);
 }
 
-.ridge-actions button {
+.list-actions button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -410,19 +410,19 @@ button.icon-text {
 /* Reset buttons: borderless; grey and inert at the default, black and clickable once changed. */
 button.reset-btn,
 button.reset-all,
-.insp-panel .ridge-actions button {
+.insp-panel .list-actions button {
   border: none;
   background: transparent;
   color: var(--text);
 }
 button.reset-btn:hover:not(:disabled),
 button.reset-all:hover:not(:disabled),
-.insp-panel .ridge-actions button:hover:not(:disabled) {
+.insp-panel .list-actions button:hover:not(:disabled) {
   background: color-mix(in srgb, var(--text) 8%, transparent);
 }
 button.reset-btn:disabled,
 button.reset-all:disabled,
-.insp-panel .ridge-actions button:disabled {
+.insp-panel .list-actions button:disabled {
   color: var(--muted);
   opacity: 0.6;
   cursor: default;

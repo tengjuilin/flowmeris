@@ -538,7 +538,7 @@ export function RidgeInspector() {
         )}
         {tab === 'sample' && (
           <>
-            <div className="ridge-actions">
+            <div className="list-actions">
               <button
                 type="button"
                 onClick={() =>
@@ -633,7 +633,7 @@ export function RidgeInspector() {
                     }}
                   >
                     <span
-                      className="ridge-grip"
+                      className="reorder-grip"
                       draggable
                       title="Drag to reorder; click to select (⌘/Ctrl-click to add, Shift-click for a range)"
                       aria-label={`Drag ${labels[id] ?? id} to reorder`}
