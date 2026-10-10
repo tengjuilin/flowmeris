@@ -1,5 +1,5 @@
 /* Shared controls and side panels: toolbars, segmented buttons, fields, the population tree, group picker,
-   tab strip, ridge combine panel and the settings panel frame. */
+   tab strip and the settings panel frame. */
 .toolbar {
   display: flex;
   gap: 8px;
@@ -62,11 +62,6 @@
 }
 
 /* Gate view side column: population tree above tabbed reference plots. */
-.plot-layout > .ridge-view {
-  min-width: 0;
-  min-height: 0;
-  overflow: auto;
-}
 .plot-side {
   display: flex;
   flex-direction: column;
@@ -79,28 +74,6 @@
   flex: 0 1 auto;
   min-height: 96px;
   max-height: 40vh;
-}
-.ridge-combine {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 6px 10px 10px;
-}
-.ridge-combine .pane-title {
-  padding: 2px 0 0;
-}
-.ridge-combine p {
-  margin: 0;
-}
-.ridge-combine-by {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2px 10px;
 }
 .group-picker {
   list-style: none;

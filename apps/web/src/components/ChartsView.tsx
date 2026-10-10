@@ -14,6 +14,7 @@ import { useCallback, useId, useMemo, useRef, useState } from 'react';
 import { includedRows, visiblePoints } from '../lib/chartSelection.ts';
 import { download, safeName } from '../lib/download.ts';
 import { standaloneSvg } from '../lib/export/svg.ts';
+import { FONT_STACKS } from '../lib/figure.ts';
 import { useAnalysisTable } from '../state/hooks/stats.ts';
 import { toast, useGroup, useStore } from '../state/store.ts';
 import {
@@ -23,7 +24,6 @@ import {
   seriesColor,
   seriesKey,
 } from './ChartInspector.tsx';
-import { FONT_STACKS } from './RidgeInspector.tsx';
 import { useWidth } from './hooks/useWidth.ts';
 import { type Anchor, type PickOption, PickerMenu, pickerTrigger } from './ui/PickerMenu.tsx';
 import { SupLabel } from './ui/SupLabel.tsx';

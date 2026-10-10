@@ -6,7 +6,9 @@
 @import "./controls.css";
 @import "../features/plot/plot.css";
 @import "../features/gate/gate.css";
-@import "./tiles-ridge.css";
+@import "../features/tiles/tiles.css";
+@import "../features/ridge/ridge.css";
+@import "./lists.css";
 @import "./tables.css";
 @import "./responsive.css";
 @import "./grid-path.css";

@@ -2,14 +2,14 @@ import type { ReactNode } from 'react';
 import { ChartsView } from '../components/ChartsView.tsx';
 import { CompensationView, SamplesView } from '../components/CompensationView.tsx';
 import { GatingPathView } from '../components/GatingPathView.tsx';
-import { RidgeExportCard, RidgeView, TilesView } from '../components/GroupViews.tsx';
 import { MetadataInspector } from '../components/MetadataInspector.tsx';
 import { MetadataView } from '../components/MetadataView.tsx';
 import { PlotGridView } from '../components/PlotGridView.tsx';
 import { PopulationTree } from '../components/PopulationTree.tsx';
-import { RidgeCombinePanel, RidgeInspector } from '../components/RidgeInspector.tsx';
 import { StatsInspector, StatsView } from '../components/StatsView.tsx';
 import { GateExportCard, GateToolbar, Inspector, PlotPanel, RefPlots } from '../features/gate/index.ts';
+import { RidgeCombinePanel, RidgeExportCard, RidgeInspector, RidgeView } from '../features/ridge/index.ts';
+import { TilesView } from '../features/tiles/index.ts';
 import { drill } from '../state/commands/plots.ts';
 import type { View, ViewPrefs } from '../state/store.ts';
 
