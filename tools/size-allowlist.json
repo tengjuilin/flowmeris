@@ -1,5 +1,4 @@
 {
   "packages/engine/src/engine.ts": 685,
-  "packages/fcs/src/parse.ts": 630,
-  "packages/model/src/schema.ts": 762
+  "packages/fcs/src/parse.ts": 630
 }

@@ -1,5 +1,5 @@
 import { fingerprint } from './canonical.ts';
-import type { Transform, TransformId } from './schema.ts';
+import type { Transform, TransformId } from './schema/index.ts';
 
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 

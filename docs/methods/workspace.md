@@ -1,6 +1,6 @@
 # Workspace format
 
-Implementation: `packages/model` (zod schema in `schema.ts`). The workspace is plain JSON:
+Implementation: `packages/model` (zod schema in `src/schema/`, one file per section). The workspace is plain JSON:
 
 ```text
 { schema: "flowmeris.workspace", schemaVersion: 1,

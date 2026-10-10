@@ -9,7 +9,7 @@ import {
   SCHEMA_VERSION,
   type Workspace,
   WorkspaceSchema,
-} from './schema.ts';
+} from './schema/index.ts';
 
 export interface AppInfo {
   version: string;
