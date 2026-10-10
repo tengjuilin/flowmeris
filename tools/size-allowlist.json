@@ -1,6 +1,4 @@
 {
-  "apps/web/src/components/GatingPathView.tsx": 731,
-  "apps/web/src/components/MetadataView.tsx": 552,
   "packages/engine/src/engine.ts": 685,
   "packages/fcs/src/parse.ts": 630,
   "packages/model/src/schema.ts": 762

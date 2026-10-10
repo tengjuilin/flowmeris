@@ -11,8 +11,9 @@
 @import "./lists.css";
 @import "./tables.css";
 @import "./responsive.css";
-@import "./grid-path.css";
+@import "../features/grid/grid.css";
+@import "../features/path/path.css";
 @import "../features/stats/stats.css";
-@import "./metadata.css";
+@import "../features/metadata/metadata.css";
 @import "../features/charts/charts.css";
 @import "./inspector.css";

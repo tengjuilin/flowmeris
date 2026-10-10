@@ -1,7 +1,17 @@
 import type { Variable, Workspace } from '@flowmeris/model';
 import { CATEGORICAL, colormapCss } from '@flowmeris/render';
 import { describe, expect, it } from 'vitest';
-import { addVariable, coerce, distinctValues, normRect, pasteTargets, retype, setValue } from './metadata.ts';
+import {
+  activeVariable,
+  addVariable,
+  coerce,
+  detectWells,
+  distinctValues,
+  normRect,
+  pasteTargets,
+  retype,
+  setValue,
+} from './metadata.ts';
 import { inkOn, valueColors } from './palette.ts';
 
 const at = (t: { r: number; c: number; raw: string }[]) => t.map(({ r, c, raw }) => `${r}${c}${raw}`);
@@ -204,5 +214,38 @@ describe('cell selections', () => {
       '01b',
       '10c',
     ]);
+  });
+});
+
+describe('the Metadata view’s variables and wells', () => {
+  it('shows the selected variable, else the first', () => {
+    const vars = [
+      { id: 'a', name: 'A', type: 'numeric', levels: [] },
+      { id: 'b', name: 'B', type: 'numeric', levels: [] },
+    ] as Variable[];
+    expect(activeVariable(vars, 'b')).toBe(vars[1]);
+    expect(activeVariable(vars, '')).toBe(vars[0]);
+    expect(activeVariable(vars, null)).toBe(vars[0]);
+    expect(activeVariable([], 'b')).toBeUndefined();
+  });
+
+  it('finds wells from keywords or file names, keeping wells already set', () => {
+    const sample = (id: string, fileName: string, keywords = {}, well?: string) => ({
+      id,
+      fileName,
+      keywords,
+      meta: {},
+      ...(well ? { well } : {}),
+    });
+    const ws = {
+      samples: {
+        k: sample('k', 'x.fcs', { $WELLID: 'c4' }),
+        f: sample('f', 'Plate1_B07.fcs'),
+        set: sample('set', 'A01.fcs', {}, 'H12'),
+        none: sample('none', 'tube.fcs'),
+      },
+    } as unknown as Workspace;
+    expect(detectWells(ws, ['k', 'f', 'set', 'none', 'gone'])).toBe(2);
+    expect(Object.values(ws.samples).map((s) => s.well)).toEqual(['C04', 'B07', 'H12', undefined]);
   });
 });

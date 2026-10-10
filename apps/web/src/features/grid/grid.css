@@ -1,0 +1,163 @@
+/* The Plot grid view: its toolbar, cells and their titles, and the overlay checklist in its settings panel. */
+/* Plot view: fixed grid of plots; the active cell takes the gating tools. */
+.grid-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+/* Tools and the active cell's controls stay pinned while the grid scrolls (cancels .view's top padding). */
+.grid-head {
+  position: sticky;
+  top: -10px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: -10px;
+  padding-top: 10px;
+  background: var(--bg);
+}
+.grid-head .toolbar {
+  margin-bottom: 0;
+}
+.sample-step {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.sample-step > select {
+  flex: 1;
+  min-width: 0;
+  margin: 0 2px;
+}
+/* The overlay's sample checklist in the settings panel; long sample lists scroll. */
+.overlay-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  overflow: auto;
+}
+.inspector .overlay-list .field {
+  margin: 0;
+  white-space: nowrap;
+}
+.overlay-list input[type="checkbox"] {
+  margin: 3px 4px 3px 0;
+}
+.plot-grid {
+  display: grid;
+}
+/* The scrollbar's room is kept even when the grid fits: cells are sized from the width, so a
+   scrollbar coming and going would resize them and flip back and forth as the columns change. */
+.view:has(> .grid-view) {
+  scrollbar-gutter: stable;
+}
+/* The populations card fills its grid slot; the tree scrolls inside when it is taller. */
+.grid-side .pop-tree {
+  flex: 1 1 auto;
+  max-height: none;
+}
+.grid-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.grid-cell.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.cell-title {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  height: 26px;
+  flex: none;
+  padding: 0 6px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.cell-title > button.icon.labeled {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px;
+  font-size: 11px;
+}
+.cell-title > .spacer {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.cell-title > .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cell-legend {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  height: 18px;
+  flex: none;
+  padding: 0 6px;
+  font-size: 11px;
+  color: var(--text-2);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.cell-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cell-plot {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  min-height: 0;
+}
+.empty-cell {
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-style: dashed;
+  background: transparent;
+}
+.add-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 8px;
+}
+.cell-title > button.link {
+  color: var(--accent);
+  text-decoration: underline;
+  font-weight: normal;
+}
+/* Long names shorten with an ellipsis (the population first, down to a few characters) so the
+   badge and buttons keep their place. */
+.cell-title > * {
+  flex: none;
+}
+.cell-title > button.cell-pop,
+.cell-title > button.cell-sample {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cell-title > button.cell-pop {
+  flex-shrink: 4;
+  min-width: 3em;
+}

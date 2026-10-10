@@ -1,4 +1,16 @@
 /* Shared settings panels: text toolbar, tabs, collapsible sections, reset buttons and export menus. */
+/* Settings inputs fill the panel's width, except checkboxes and group pickers. */
+.inspector input,
+.inspector select {
+  width: 100%;
+}
+.inspector .field.check input {
+  width: auto;
+}
+.inspector .group-picker input {
+  width: auto;
+  flex: none;
+}
 /* Word-processor style text toolbar: font + size, then style, colour and alignment. */
 .text-toolbar {
   display: flex;

@@ -1,29 +1,15 @@
-import type { Group, PlotSpec, Population, Workspace } from '@flowmeris/model';
-import { newId, populationLineage, populationsDepthFirst } from '@flowmeris/model';
-import {
-  type CSSProperties,
-  Component,
-  type ReactNode,
-  memo,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { getPool } from '../engine-client/pool.ts';
-import { PlotCanvas, plotBox } from '../features/plot/index.ts';
-import { withBaseFont } from '../lib/figure.ts';
-import { type Count, type Counts, pathSteps, pctOfParent, treeLayout } from '../lib/gatingPath.ts';
-import { lineageKey } from '../lib/keys.ts';
-import { drill } from '../state/commands/plots.ts';
-import { contextFor, useGroup, useStore } from '../state/store.ts';
-import { PopulationTree } from './PopulationTree.tsx';
-import { useDebounced } from './hooks/useSettled.ts';
-import { useSize } from './hooks/useSize.ts';
+import type { PlotSpec, Population } from '@flowmeris/model';
+import { populationLineage, populationsDepthFirst } from '@flowmeris/model';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useDebounced } from '../../components/hooks/useSettled.ts';
+import { useSize } from '../../components/hooks/useSize.ts';
+import { getPool } from '../../engine-client/pool.ts';
+import { type Counts, pathSteps, pctOfParent, treeLayout } from '../../lib/gatingPath.ts';
+import { lineageKey } from '../../lib/keys.ts';
+import { contextFor, useGroup, useStore } from '../../state/store.ts';
 
-/** Base font size (px) of the plots, as in Tiles. */
-const FONT_PX = 11;
+import { PopChip, StepCard, ViewErrorBoundary } from './PathCards.tsx';
+import { PopulationsPanel } from './PopulationsPanel.tsx';
 /** Space a card takes beyond its plot: padding and border. */
 const CARD_EXTRA = 10;
 /** Width of a path step's arrow, with the gap before it. */
@@ -31,176 +17,13 @@ const ARROW_W = 104;
 /** Range of the plot size slider (px). */
 const MIN_PLOT = 120;
 const MAX_PLOT = 800;
-/** The populations panel leaves at least MIN_BODY of the view above it. */
-const MIN_BODY = 120;
 
 /** Where a tree is scrolled to, with its scrollable size then. */
 type TreeView = { left: number; top: number; sw: number; sh: number };
 /** Where each group's tree was scrolled to, kept while the Path layout or other views are shown. */
 const treeScroll = new Map<string, TreeView>();
 
-/**
- * Renders `children` once the placeholder comes within a margin of the viewport, then keeps them
- * mounted. A large tree then computes and draws only the plots that are (or have been) on screen.
- * The placeholder takes the plot's own size, so nothing moves when the plot replaces it.
- */
-function WhenVisible({ width, height, children }: { width: number; height: number; children: ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [seen, setSeen] = useState(() => typeof IntersectionObserver === 'undefined');
-  useEffect(() => {
-    const el = ref.current;
-    if (seen || !el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setSeen(true);
-          io.disconnect();
-        }
-      },
-      { rootMargin: '200px' },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [seen]);
-  return seen ? (
-    <>{children}</>
-  ) : (
-    <div ref={ref} className="path-placeholder" style={{ width, height }} aria-hidden="true" />
-  );
-}
-
-function openInPlot(popId: string, plot: PlotSpec | null, real: boolean) {
-  const st = useStore.getState();
-  if (plot && real) st.setUi({ popId, plotId: plot.id, selectedGateId: null, view: 'gate' });
-  else if (plot) {
-    // A preview built from the gate's axes: save it as a plot so the Gate view shows the same axes.
-    const g = st.ws.groups.find((x) => x.id === st.ui.groupId);
-    if (!g) return;
-    const id = newId('plt_');
-    st.mutate('Add plot', (ws) => {
-      const gg = ws.groups.find((x) => x.id === g.id)!;
-      gg.plots.push({ ...structuredClone(plot), id });
-    });
-    st.setUi({ popId, plotId: id, selectedGateId: null, view: 'gate' });
-  } else {
-    drill(popId);
-    useStore.getState().setUi({ view: 'gate' });
-  }
-}
-
-interface CardProps {
-  ws: Workspace;
-  group: Group;
-  sampleId: string;
-  pop: Population;
-  plot: PlotSpec;
-  real: boolean;
-  size: number;
-  renderSize: number;
-  count: Count | undefined;
-  focusPopId?: string;
-  backgate?: { popId: string; color: string };
-}
-
-/** Memoised: a card re-renders only when its own plot, count, size or overlay changes. */
-const StepCard = memo(function StepCard({
-  ws,
-  group,
-  sampleId,
-  pop,
-  plot,
-  real,
-  size,
-  renderSize,
-  count: c,
-  focusPopId,
-  backgate,
-}: CardProps) {
-  // Drawn with the small base font; the saved plot itself (opened on click) keeps its own.
-  const shown = useMemo(() => withBaseFont(plot, FONT_PX), [plot]);
-  const box = plotBox(shown, size, size);
-  return (
-    <div className="path-card">
-      <button
-        type="button"
-        className="tile-title"
-        title={`Open ${pop.name} in the Gate view`}
-        onClick={() => openInPlot(pop.id, plot, real)}
-      >
-        <span>
-          <span className="swatch" style={{ background: pop.color }} aria-hidden="true" /> {pop.name}
-        </span>
-        <span className="muted num">
-          {/* A space until the count arrives, so the title keeps its height. */}
-          {c ? c.count.toLocaleString() : '\u00a0'}
-          {pop.parent && c ? ` · ${pctOfParent(c)}` : ''}
-        </span>
-      </button>
-      <WhenVisible width={box.width} height={box.height}>
-        {/* While the size changes, the last render is stretched to the live size (as in Tiles). */}
-        <div style={{ width: size, height: size, overflow: 'hidden' }}>
-          <div
-            style={
-              size === renderSize
-                ? undefined
-                : { transform: `scale(${size / renderSize})`, transformOrigin: '0 0' }
-            }
-          >
-            <PlotCanvas
-              ws={ws}
-              group={group}
-              sampleId={sampleId}
-              plot={shown}
-              width={renderSize}
-              height={renderSize}
-              hideOffScaleNote
-              {...(focusPopId ? { focusPopId } : {})}
-              {...(backgate ? { backgate } : {})}
-            />
-          </div>
-        </div>
-      </WhenVisible>
-    </div>
-  );
-});
-
-function PopChip({ pop, count: c, on }: { pop: Population; count: Count | undefined; on: boolean }) {
-  return (
-    <button
-      type="button"
-      className={`path-chip${on ? ' on' : ''}`}
-      title={`Open ${pop.name} in the Gate view`}
-      onClick={() => openInPlot(pop.id, null, false)}
-    >
-      <span className="swatch" style={{ background: pop.color }} aria-hidden="true" />
-      <strong>{pop.name}</strong>
-      <span className="num">{c ? c.count.toLocaleString() : ''}</span>
-      {pop.parent && <span className="num muted">{pctOfParent(c)}</span>}
-    </button>
-  );
-}
-
-/** Shows a render error in place of its children instead of leaving the view blank. */
-class ViewErrorBoundary extends Component<
-  { children: ReactNode; resetKey: string },
-  { error: Error | null }
-> {
-  override state = { error: null as Error | null };
-  static getDerivedStateFromError(error: Error) {
-    return { error };
-  }
-  override componentDidUpdate(prev: { resetKey: string }) {
-    if (prev.resetKey !== this.props.resetKey && this.state.error) this.setState({ error: null });
-  }
-  override render() {
-    return this.state.error ? (
-      <div className="empty">Could not draw the gating tree: {this.state.error.message}</div>
-    ) : (
-      this.props.children
-    );
-  }
-}
-
+/** The Gating path view. Clicking a plot opens it in the Gate view. */
 export function GatingPathView() {
   const ws = useStore((s) => s.ws);
   const uiSampleId = useStore((s) => s.ui.sampleId);
@@ -550,94 +373,6 @@ export function GatingPathView() {
         sampleId={sampleId}
         onPick={(popId) => setUi({ popId, plotId: null, selectedGateId: null })}
       />
-    </div>
-  );
-}
-
-/**
- * The populations tree in a panel over the bottom right of the view, the plots showing beside it.
- * Dragging (or arrow keys on) its top edge sets its height, kept while other views are shown;
- * double-clicking it (or Enter) fits the panel to its rows, or, when it fits already, minimises it to its title.
- */
-function PopulationsPanel({
-  popId,
-  sampleId,
-  onPick,
-}: { popId: string; sampleId: string; onPick: (popId: string) => void }) {
-  const height = useStore((s) => s.views.pathPanelHeight);
-  const setViews = useStore((s) => s.setViews);
-  const panel = useRef<HTMLDivElement>(null);
-  // The panel is as wide as the longest name and its counts need (plus a little room), not the full
-  // view, so each count stays close to its name.
-  const [listW, setListW] = useState(0);
-  const drag = useRef<{ y: number; h: number; max: number } | null>(null);
-  const tree = () => panel.current?.querySelector<HTMLElement>('.pop-tree');
-  /** Shortest the panel may be: its title alone (with the top border). */
-  const minHeight = () => (tree()?.querySelector<HTMLElement>('.pane-title')?.offsetHeight ?? 29) + 1;
-  /** Tallest the panel may be: the view's height less the toolbar and MIN_BODY of plots. */
-  const maxHeight = () => {
-    const view = panel.current?.closest<HTMLElement>('.path-view');
-    const bar = view?.querySelector<HTMLElement>(':scope > .toolbar');
-    return view ? view.clientHeight - (bar?.offsetHeight ?? 0) - MIN_BODY : 600;
-  };
-  const set = (h: number, max: number) =>
-    setViews({ pathPanelHeight: Math.round(Math.max(minHeight(), Math.min(max, h))) });
-  /** Fit the panel to its rows (as far as the view allows), or minimise it when it fits already. */
-  const toggle = () => {
-    const t = tree();
-    if (!t) return;
-    const max = maxHeight();
-    // Its title and rows, measured as laid out (scrollHeight is the panel's own height when they are shorter).
-    const cs = getComputedStyle(t);
-    const content = [...t.children].reduce((h, c) => h + (c as HTMLElement).offsetHeight, 0);
-    const edges = ['paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth'] as const;
-    const fit = Math.max(
-      minHeight(),
-      Math.min(max, Math.ceil(content + edges.reduce((h, k) => h + Number.parseFloat(cs[k]), 0))),
-    );
-    set(Math.abs(height - fit) <= 1 ? minHeight() : fit, max);
-  };
-  return (
-    <div
-      className="path-dock"
-      style={listW > 0 ? ({ '--pop-list-w': `${listW + 24}px` } as CSSProperties) : undefined}
-    >
-      <div
-        className="path-resize"
-        role="separator"
-        aria-orientation="horizontal"
-        aria-label="Resize the populations panel"
-        aria-valuenow={height}
-        tabIndex={0}
-        title="Drag to resize the populations panel; double-click to fit it to its rows or minimise it"
-        onDoubleClick={toggle}
-        onPointerDown={(e) => {
-          if (e.button !== 0) return;
-          e.currentTarget.setPointerCapture(e.pointerId);
-          drag.current = { y: e.clientY, h: panel.current?.offsetHeight ?? height, max: maxHeight() };
-        }}
-        onPointerMove={(e) => {
-          const d = drag.current;
-          if (d) set(d.h + d.y - e.clientY, d.max);
-        }}
-        onPointerUp={() => {
-          drag.current = null;
-        }}
-        onPointerCancel={() => {
-          drag.current = null;
-        }}
-        onKeyDown={(e) => {
-          const step = e.shiftKey ? 50 : 10;
-          if (e.key === 'Enter') toggle();
-          else if (e.key === 'ArrowUp') set(height + step, maxHeight());
-          else if (e.key === 'ArrowDown') set(height - step, maxHeight());
-          else return;
-          e.preventDefault();
-        }}
-      />
-      <div className="plot-side path-panel" ref={panel} style={{ height }}>
-        <PopulationTree popId={popId} sampleId={sampleId} onPick={onPick} onWidth={setListW} />
-      </div>
     </div>
   );
 }

@@ -1,10 +1,10 @@
 import type { Group, Variable } from '@flowmeris/model';
 import { ALL_WELLS, PLATE_COLS, PLATE_ROWS, wellName } from '@flowmeris/table';
 import { useEffect, useMemo, useState } from 'react';
-import { distinctValues } from '../lib/metadata.ts';
-import { inkOn, valueColors } from '../lib/palette.ts';
-import { fmtWellValue, rampGradient, samplesByWell, wellRect } from '../lib/plate.ts';
-import { useSampleNames, useStore } from '../state/store.ts';
+import { distinctValues } from '../../lib/metadata.ts';
+import { inkOn, valueColors } from '../../lib/palette.ts';
+import { fmtWellValue, rampGradient, samplesByWell, wellRect } from '../../lib/plate.ts';
+import { useSampleNames, useStore } from '../../state/store.ts';
 
 /**
  * 96-well plate map: select wells (click, drag, shift/⌘-click, row and column

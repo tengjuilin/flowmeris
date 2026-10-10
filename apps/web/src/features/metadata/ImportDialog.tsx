@@ -15,9 +15,9 @@ import {
   importTable,
   initialTargets,
   matchTargets,
-} from '../lib/metaImport.ts';
-import type { Sheet } from '../lib/sheets.ts';
-import { toast, useSampleNames, useStore } from '../state/store.ts';
+} from '../../lib/metaImport.ts';
+import type { Sheet } from '../../lib/sheets.ts';
+import { toast, useSampleNames, useStore } from '../../state/store.ts';
 
 function TargetRow(props: {
   label: string;

@@ -1,4 +1,5 @@
 import type { Group, PlotCell, PlotSpec, Workspace } from '@flowmeris/model';
+import { newId } from '@flowmeris/model';
 import { defaultAxis } from '../../lib/axisDefaults.ts';
 import { withAxesChange } from '../../lib/figure.ts';
 import { newPlot } from '../../lib/plotFactories.ts';
@@ -103,4 +104,27 @@ export function axisPickers(group: Group, plot: PlotSpec, edit?: EditAxes) {
         p.style.histNorm = norm;
       }),
   };
+}
+
+/**
+ * Open a Gating path plot of `popId` in the Gate view: a saved plot (`real`) as it is, a plot built from a
+ * gate's axes saved first as a new plot, or with no plot the population's own (`drill`).
+ */
+export function openPathPlot(popId: string, plot: PlotSpec | null, real: boolean) {
+  const st = useStore.getState();
+  if (plot && real) st.setUi({ popId, plotId: plot.id, selectedGateId: null, view: 'gate' });
+  else if (plot) {
+    // A preview built from the gate's axes: save it as a plot so the Gate view shows the same axes.
+    const g = st.ws.groups.find((x) => x.id === st.ui.groupId);
+    if (!g) return;
+    const id = newId('plt_');
+    st.mutate('Add plot', (ws) => {
+      const gg = ws.groups.find((x) => x.id === g.id)!;
+      gg.plots.push({ ...structuredClone(plot), id });
+    });
+    st.setUi({ popId, plotId: id, selectedGateId: null, view: 'gate' });
+  } else {
+    drill(popId);
+    useStore.getState().setUi({ view: 'gate' });
+  }
 }

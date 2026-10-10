@@ -1,10 +1,10 @@
 import { type Population, childPopulations, isOverridden } from '@flowmeris/model';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { getPool } from '../engine-client/pool.ts';
-import { lineageKey } from '../lib/keys.ts';
-import { deleteGate, renamePopulation } from '../state/commands/gates.ts';
-import { drill } from '../state/commands/plots.ts';
-import { contextFor, useGroup, useSampleNames, useStore } from '../state/store.ts';
+import { getPool } from '../../engine-client/pool.ts';
+import { lineageKey } from '../../lib/keys.ts';
+import { deleteGate, renamePopulation } from '../../state/commands/gates.ts';
+import { drill } from '../../state/commands/plots.ts';
+import { contextFor, useGroup, useSampleNames, useStore } from '../../state/store.ts';
 
 let ctx: CanvasRenderingContext2D | null = null;
 /** A canvas context to measure text with (shared). */

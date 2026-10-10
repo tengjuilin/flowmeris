@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Sidebar } from '../components/Sidebar.tsx';
+import { Sidebar } from '../features/sidebar/index.ts';
 import { useStore } from '../state/store.ts';
 import { Header } from './Header.tsx';
 import { Overlays } from './Overlays.tsx';

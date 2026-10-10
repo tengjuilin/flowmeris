@@ -1,15 +1,15 @@
 import type { ReactNode } from 'react';
-import { CompensationView, SamplesView } from '../components/CompensationView.tsx';
-import { GatingPathView } from '../components/GatingPathView.tsx';
-import { MetadataInspector } from '../components/MetadataInspector.tsx';
-import { MetadataView } from '../components/MetadataView.tsx';
-import { PlotGridView } from '../components/PlotGridView.tsx';
-import { PopulationTree } from '../components/PopulationTree.tsx';
 import { ChartsView } from '../features/charts/index.ts';
+import { CompensationView } from '../features/compensation/index.ts';
 import { GateExportCard, GateToolbar, Inspector, PlotPanel, RefPlots } from '../features/gate/index.ts';
+import { PlotGridView } from '../features/grid/index.ts';
+import { MetadataInspector, MetadataView } from '../features/metadata/index.ts';
+import { GatingPathView } from '../features/path/index.ts';
 import { RidgeCombinePanel, RidgeExportCard, RidgeInspector, RidgeView } from '../features/ridge/index.ts';
+import { SamplesView } from '../features/samples/index.ts';
 import { StatsInspector, StatsView } from '../features/stats/index.ts';
 import { TilesView } from '../features/tiles/index.ts';
+import { PopulationTree } from '../features/tree/index.ts';
 import { drill } from '../state/commands/plots.ts';
 import type { View, ViewPrefs } from '../state/store.ts';
 
