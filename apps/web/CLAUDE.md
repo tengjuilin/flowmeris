@@ -20,8 +20,8 @@ several features. Update this file when the layout changes.
 | `src/state/hooks/` | data hooks that fetch from the worker pool: `stats.ts` (`useSampleStats`, `useAnalysisTable`) |
 | `src/state/export.ts` | figure export wired to the store, pool and toasts (`exportPlot`, `exportSvgFigure`) |
 | `src/lib/` | pure logic, tested in Node: no store, pool, workers or components (`pnpm lint:deps` checks this). Functions documented "call inside `mutate`" work on a workspace draft |
-| `src/components/ui/` | generic controls that take data and callbacks as props: `icons.tsx`, `settings/` (every settings panel's frame: `SettingsPanel`, `EmptyPanel`, `Card`, `InspectorTabs`, `PanelReset`; see Settings panels below), `TabStrip` (closable tabs with +), `NumInput`/`OptNumInput`, `Slider`/`PercentSlider`, `SettingsToggle`, `ActionRow`, `PickerMenu`, `GroupPicker`, `PlotSizeSlider`, `SupLabel`, `ColorField` (swatch with reset), `ReorderList` (drag-to-reorder rows, with `useRowSelection`). No store or pool imports (`lint:deps`) |
-| `src/components/controls/` | settings controls shared by several views, which may use the store: `AxisFields` (scale and range), `TicksEditor`, `FontSelect`, `TextStyleEditor`, `ExportMenu` |
+| `src/components/ui/` | generic controls that take data and callbacks as props: `icons.tsx`, `settings/` (every settings panel's parts: `SettingsPanel`, `EmptyPanel`, `Card`, `InspectorTabs`, `PanelReset`, and the Settings tab's `ApplyCard`, `ResetCard`, `ActionsCard`; see Settings panels below), `TabStrip` (closable tabs with +), `NumInput`/`OptNumInput`, `Slider`/`PercentSlider`, `SettingsToggle`, `ActionRow`, `PickerMenu`, `GroupPicker`, `PlotSizeSlider`, `SupLabel`, `ColorField` (swatch with reset), `ReorderList` (drag-to-reorder rows, with `useRowSelection`). No store or pool imports (`lint:deps`) |
+| `src/components/controls/` | settings controls shared by several views, which may use the store: `AxisFields` (scale and range), `TicksEditor`, `ExportMenu`; `text/` (`BaseFontCard`, `TextCards`: the settings panels' text appearance, built on `FontSelect` and `TextStyleEditor`) |
 | `src/components/hooks/` | DOM and timing hooks: `useSize`, `useWidth`, `useVisible`, `useSettled`/`useDebounced` |
 | `src/features/plot/` | one plot: `PlotCanvas` (composes `usePlotData`, `useGateEditing`/`useGatePreview`, `GateShapes`, `DraftShapes`, `PlotAxes`, `PlotPaths`), `PlotControls` (plot type, channels and scales, drawing tools, edit scope), `usePlot` (`usePlotForPopulation`, `useTilePlot`) |
 | `src/features/gate/` | the Gate view: `PlotPanel` (with its title, whose buttons open the plot in the Plot or Tiles view, its toolbar and export card), `RefPlots`, and the plot settings panel `Inspector` (`GateInspector.tsx`, tabs in `tabs/`, cards `AxisEditor`, `StyleEditor`, `GateEditor`), also used by the Plot grid and Tiles views |
@@ -74,7 +74,7 @@ What is in `src/lib/`:
 | `ingest.ts`, `files.ts`, `names.ts` | grouping loaded files; data-file extensions; short sample names |
 | `export/` | figure export: `svg.ts`, `pdf.ts`, `figure.ts`, `plot.ts` (takes its data as a `PlotExportSource`) |
 | `geometry.ts`, `fitSize.ts`, `order.ts`, `text.ts`, `format.ts`, `json.ts`, `download.ts`, `sheets.ts` | gate drawing geometry; sizing (`nearestColumns`, and `RowFit` for rows of plots in Tiles and the Plot grid); moving ids in a list (`moveIds`); label wrapping, number formats, JSON copy/compare, downloads, spreadsheets |
-| `ticks.ts`, `math.ts` | custom ticks (`parseTicks`, `formatTicks`, `customTicks`), histogram y ticks; `clamp` |
+| `ticks.ts`, `math.ts`, `textScale.ts` | custom ticks (`parseTicks`, `formatTicks`, `customTicks`), histogram y ticks; `clamp`; font sizes (`clampFontSize`, `scaleFontSizes`: the base font size scaling the others) |
 | `plotFrame.ts`, `plotLayout.ts`, `plotPaths.ts` | a plot's pixel mapping and gate hit testing (`hitGate`, `popAt`); margins and titles (`plotBox`, `axisLabel`); histogram and contour SVG paths |
 | `gateEdit.ts` | gate shapes from drags and handles (`applyHandle`, `translate`, `shapeFromDrag`, `newGateBase`) |
 | `plotPanels.ts` | the plot settings panel's per-tab defaults and reset (`panelAtDefaults`, `resetPanel`) |
@@ -86,17 +86,30 @@ What is in `src/lib/`:
 
 ## Settings panels
 
-Every view's settings panel is built the same way, so a change to how panels look or behave is made once:
+Every view's settings panel is built from the same parts, so a change to how panels look or behave is
+made once, and each feature keeps only its own logic:
 
-- **Tabs and cards** are declared in `lib/panelSpecs.ts` (ids, labels, titles, storage key). To add a card,
-  add it there and render `<Card {...card('id')}>` in its tab; pass `card('id', { changed, onReset })`
-  for its ↺ button. A card that is not in the spec (one per gate or variable) passes its title:
-  `` card(`gate-${id}`, undefined, name) ``.
-- **State**: `useSettingsPanel(spec)` (`state/prefs.ts`) gives the tab, `setTab` and `card`; every card
-  starts open and collapsed cards are remembered in this browser.
-- **Look**: `components/ui/settings/` (`SettingsPanel` frame, `EmptyPanel`, `Card`, `InspectorTabs`,
-  `PanelReset`) and `styles/inspector.css`. Features never build the frame or `insp-*` markup themselves.
-- **Logic** stays with each feature: its tab components, its edits, and its resets in `lib/*Panels.ts`.
+| To change | Edit | Reaches |
+|---|---|---|
+| a panel's tabs, cards or titles | `lib/panelSpecs.ts` | that panel |
+| the frame, tabs, "Reset this panel", empty panel, card | `components/ui/settings/` and `styles/inspector.css` | every panel |
+| the Settings tab's Apply / Reset cards | `components/ui/settings/ActionsCard.tsx` | Gate, Ridge, Charts |
+| the Base font card, the per-text cards | `components/controls/text/` | Gate, Ridge, Charts |
+| remembered tab and collapsed cards | `useSettingsPanel` (`state/prefs.ts`), `lib/settingsPanel.ts` | every panel |
+| what a card edits or resets | the feature's `tabs/*.tsx` and `lib/*Panels.ts` | that panel |
+
+- **Add a card**: add it to the tab in `lib/panelSpecs.ts`, then render `<Card {...card('id')}>` in the
+  tab; pass `card('id', { changed, onReset })` for its ↺ button. A card not in the spec (one per gate or
+  variable) passes its title: `` card(`gate-${id}`, undefined, name) ``.
+- **Add a tab**: add it to the spec (`resettable: false` if it has nothing of its own to reset), render
+  its component in the inspector, and give "Reset this panel" its reset in the feature's `lib/*Panels.ts`.
+- **Text settings**: a Text tab is a `BaseFontCard` and a `TextCards` list of entries (card, label, style,
+  size, edits, and `extra` fields); the base size scales the others with `scaleFontSizes`.
+- **Settings tab**: `ApplyCard` and `ResetCard` take lists of actions (`label`, `title`, `disabled`,
+  `run`) and checkboxes; `ActionsCard` takes actions with their own icons.
+- **Guardrails**: `lint:deps` (`web-settings-kit-api`, `web-text-through-cards`) keeps features on the
+  kits' `index.ts`; `features/settingsPanels.test.ts` fails when a feature draws `insp-*` frame markup or
+  a tab list itself; `lib/panelSpecs.test.ts` checks every spec's ids.
 
 | Panel | Spec | Inspector |
 |---|---|---|
