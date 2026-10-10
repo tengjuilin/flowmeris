@@ -37,13 +37,14 @@ const plotPanel = (key: string, name: string): PanelSpec<PlotPanelTab, PlotCard>
     {
       id: 'figure',
       label: 'Figure',
-      cards: { plot: 'Plot', overlay: 'Sample overlay', display: 'Display', baseFont: 'Base font' },
+      cards: { plot: 'Plot', overlay: 'Sample overlay', display: 'Display' },
     },
     { id: 'axis', label: 'Axis', cards: { xaxis: 'X axis', yaxis: 'Y axis', ticks: 'Ticks and spine' } },
     {
       id: 'text',
       label: 'Text',
       cards: {
+        baseFont: 'Base font',
         titleText: 'Plot title',
         tickText: 'Tick labels',
         axisTitleText: 'Axis titles',
@@ -94,7 +95,6 @@ export const RIDGE_PANEL: PanelSpec<RidgePanelTab, RidgeCard> = {
         labels: 'Ridge labels',
         layout: 'Layout',
         histogram: 'Histogram',
-        baseFont: 'Base font',
       },
     },
     { id: 'sample', label: 'Sample', cards: {} },
@@ -102,7 +102,12 @@ export const RIDGE_PANEL: PanelSpec<RidgePanelTab, RidgeCard> = {
     {
       id: 'text',
       label: 'Text',
-      cards: { labelText: 'Ridge labels', tickText: 'Tick labels', titleText: 'Axis title' },
+      cards: {
+        baseFont: 'Base font',
+        labelText: 'Ridge labels',
+        tickText: 'Tick labels',
+        titleText: 'Axis title',
+      },
     },
     { id: 'settings', label: 'Settings', cards: { apply: 'Apply settings', resetAll: 'Reset settings' } },
   ],

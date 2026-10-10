@@ -112,6 +112,8 @@ test('opening a population saves its plot only with the first edit, in one undo 
 test('a collapsed card stays collapsed after leaving the view', async ({ page }) => {
   await open(page);
   await tab(page, 'Text');
+  // The Text tab starts with the base font.
+  await expect(page.locator('.insp-section-head').first()).toHaveText('Base font');
   const card = page.getByRole('button', { name: 'Tick labels', exact: true });
   await expect(card).toHaveAttribute('aria-expanded', 'true');
   await card.click();

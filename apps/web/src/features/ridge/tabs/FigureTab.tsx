@@ -1,15 +1,13 @@
 import type { RidgeStyle } from '@flowmeris/model';
-import { BaseFontCard } from '../../../components/controls/text/index.ts';
 import { ColorField } from '../../../components/ui/ColorField.tsx';
 import { NumInput } from '../../../components/ui/NumInput.tsx';
 import { PercentSlider } from '../../../components/ui/Slider.tsx';
 import { Card } from '../../../components/ui/settings/index.ts';
 import { clamp } from '../../../lib/math.ts';
-import { scaleRidgeFonts } from '../../../lib/ridgePanels.ts';
 import { DEFAULT_RIDGE_STYLE } from '../../../lib/ridgeStyle.ts';
 import type { RidgeTabProps } from '../ridgeEdits.ts';
 
-/** The Figure tab: ridge colors and outline, labels, layout, histogram and base font. */
+/** The Figure tab: ridge colors and outline, labels, layout and histogram. */
 export function FigureTab({ r, fx, card }: RidgeTabProps) {
   const { style, overlap, update } = r;
   const { set, resetOf } = fx;
@@ -227,20 +225,6 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
           />
         </div>
       </Card>
-      <BaseFontCard
-        card={card('baseFont', resetOf('baseFont', 'base font'))}
-        font={style.fontFamily}
-        defaultFont="arial"
-        onFont={(v) => set('fontFamily', v, 'Ridge font')}
-        color={style.fontColor}
-        defaultColor={DEFAULT_RIDGE_STYLE.fontColor}
-        onColor={(v, merge) => set('fontColor', v, 'Ridge font color', merge)}
-        size={style.fontSize}
-        onSize={(v) =>
-          update('Ridge base font size', (l) => void scaleRidgeFonts(l.style, v), 'style:fontSize')
-        }
-        sizeTitle="Scales the label, tick and title sizes together"
-      />
     </>
   );
 }

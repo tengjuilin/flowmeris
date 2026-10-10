@@ -27,9 +27,9 @@ export const RIDGE_CARD_KEYS = {
 const K = RIDGE_CARD_KEYS;
 /** The style keys each tab's "Reset this panel" resets (the Axis tab also resets the scale, the Sample tab its rows). */
 export const RIDGE_PANEL_KEYS: Record<'figure' | 'axis' | 'text', Keys> = {
-  figure: [...K.ridgeStyle, ...K.labels, ...K.layout, ...K.histogram, ...K.baseFont],
+  figure: [...K.ridgeStyle, ...K.labels, ...K.layout, ...K.histogram],
   axis: [...K.ticks, ...K.title],
-  text: [...K.labelText, ...K.tickText, ...K.titleText],
+  text: [...K.baseFont, ...K.labelText, ...K.tickText, ...K.titleText],
 };
 
 /** Whether the style `keys` (and the overlap, if `withOverlap`) are at the defaults. */

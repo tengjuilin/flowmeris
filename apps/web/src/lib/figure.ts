@@ -227,17 +227,7 @@ export function resetCurrentStyle(p: PlotSpec, defaults: PlotStyle) {
 
 /** The settings each tab of the Gate view's settings panel holds. */
 export const PANEL_FIGURE_KEYS: Record<'figure' | 'axis' | 'text', (keyof PlotFigure)[]> = {
-  figure: [
-    'title',
-    'fontFamily',
-    'fontColor',
-    'fontSize',
-    'titleFontSize',
-    'tickFontSize',
-    'axisTitleFontSize',
-    'gateFontSize',
-    'showOffScaleNote',
-  ],
+  figure: ['title', 'showOffScaleNote'],
   axis: [
     'axisColor',
     'tickWidth',
@@ -251,6 +241,9 @@ export const PANEL_FIGURE_KEYS: Record<'figure' | 'axis' | 'text', (keyof PlotFi
     'yTitle',
   ],
   text: [
+    'fontFamily',
+    'fontColor',
+    'fontSize',
     'titleText',
     'titleFontSize',
     'tickText',

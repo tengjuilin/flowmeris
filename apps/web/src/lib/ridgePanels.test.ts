@@ -45,7 +45,10 @@ describe('ridge settings panel reset', () => {
     l.style.bins = 64;
     l.overlap = 0.3;
     l.style.axisTitle = 'X';
+    l.style.fontSize = 20;
     resetRidgePanel('figure', l, ws, g, current);
+    expect(l.style.fontSize).toBe(20);
+    expect(ridgePanelAtDefaults('text', l, ws, g, current)).toBe(false);
     expect(l.style.bins).toBe(DEFAULT_RIDGE_STYLE.bins);
     expect(l.overlap).toBe(DEFAULT_OVERLAP);
     expect(l.style.axisTitle).toBe('X');
