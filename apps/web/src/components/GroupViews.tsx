@@ -4,6 +4,7 @@ import type { Group, PlotSpec } from '@flowmeris/model';
 import { axisTicks, formatLinear } from '@flowmeris/transforms';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getPool } from '../engine-client/pool.ts';
+import { EditScopeToggle, PlotCanvas, ToolButtons, useTilePlot } from '../features/plot/index.ts';
 import { factoryAxis } from '../lib/axisDefaults.ts';
 import { TILE_FIGURE } from '../lib/figure.ts';
 import { nearestColumns } from '../lib/fitSize.ts';
@@ -15,8 +16,6 @@ import { openTileInGrid } from '../state/commands/grid.ts';
 import { axisPickers, drill, tilesEdit } from '../state/commands/plots.ts';
 import { exportSvgFigure } from '../state/export.ts';
 import { contextFor, useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
-import { PlotCanvas } from './PlotCanvas.tsx';
-import { EditScopeToggle, ToolButtons, useTilePlot } from './PlotPanel.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { fontStack, ridgeColor, textCss, useRidge } from './RidgeInspector.tsx';
 import { ExportMenu } from './controls/ExportMenu.tsx';
@@ -140,7 +139,6 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
   const shown = useSelectedSampleIds(group);
   const settingsOpen = useStore((s) => s.views.tilesSettings);
   const setViews = useStore((s) => s.setViews);
-  const setUi = useStore((s) => s.setUi);
   const box = useRef<HTMLDivElement>(null);
   const { width } = useSize(box);
   // Tile sizes are discrete: each fills a full-width row (below the populations card) with a whole
@@ -246,7 +244,6 @@ export function RidgeView() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
   const noData = useStore((s) => s.status.missing);
-  const mutate = useStore((s) => s.mutate);
   const { group, style, combine, overlap, ch, axis, rows, update } = useRidge();
   const sampleIds = useMemo(() => rows.flatMap((r) => r.sampleIds), [rows]);
   const box = useRef<HTMLDivElement>(null);

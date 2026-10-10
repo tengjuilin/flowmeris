@@ -256,7 +256,7 @@ const PANEL_KEY = 'flowmeris.ridgePanel';
 
 export function RidgeInspector() {
   const popId = useStore((s) => s.ui.popId);
-  const { group, layout, style, combine, overlap, axis, rows, allIds, update } = useRidge();
+  const { group, layout, style, overlap, axis, rows, allIds, update } = useRidge();
   const mutate = useStore((s) => s.mutate);
   const ordered = rows.map((r) => r.id);
   const labels = Object.fromEntries(rows.map((r) => [r.id, r.label]));

@@ -1,8 +1,11 @@
 /* All app styles, in cascade order: later files override earlier ones at equal specificity, so keep this
-   order when moving rules. */
+   order when moving rules. A feature's own rules live in its folder (features/<name>/<name>.css) and are
+   imported here, in this order, rather than from its modules. */
 @import "./base.css";
 @import "./layout.css";
-@import "./gate.css";
+@import "./controls.css";
+@import "../features/plot/plot.css";
+@import "../features/gate/gate.css";
 @import "./tiles-ridge.css";
 @import "./tables.css";
 @import "./responsive.css";

@@ -12,12 +12,12 @@ import {
   useState,
 } from 'react';
 import { getPool } from '../engine-client/pool.ts';
+import { PlotCanvas, plotBox } from '../features/plot/index.ts';
 import { DEFAULT_STYLE, withBaseFont } from '../lib/figure.ts';
 import { gateMatchesAxes } from '../lib/geometry.ts';
 import { lineageKey } from '../lib/keys.ts';
 import { drill } from '../state/commands/plots.ts';
 import { contextFor, useGroup, useStore } from '../state/store.ts';
-import { PlotCanvas, plotBox } from './PlotCanvas.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { useDebounced } from './hooks/useSettled.ts';
 import { useSize } from './hooks/useSize.ts';
@@ -32,8 +32,6 @@ const FONT_PX = 11;
 const CARD_EXTRA = 10;
 /** Width of a path step's arrow, with the gap before it. */
 const ARROW_W = 104;
-/** A tree card's horizontal room beyond its plot: padding and border, then its branch's padding. */
-const TREE_EXTRA = 22;
 /** Range of the plot size slider (px). */
 const MIN_PLOT = 120;
 const MAX_PLOT = 800;
@@ -655,7 +653,6 @@ function PopulationsPanel({
   onPick,
 }: { popId: string; sampleId: string; onPick: (popId: string) => void }) {
   const height = useStore((s) => s.views.pathPanelHeight);
-  const setUi = useStore((s) => s.setUi);
   const setViews = useStore((s) => s.setViews);
   const panel = useRef<HTMLDivElement>(null);
   // The panel is as wide as the longest name and its counts need (plus a little room), not the full

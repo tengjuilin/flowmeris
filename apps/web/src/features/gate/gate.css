@@ -1,0 +1,86 @@
+/* The Gate view: its layout, the plot panel and the reference plots. */
+/* Gate view: the gating tools above the plot and its side column (as in the Plot view). */
+.gate-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+}
+.gate-view > .toolbar {
+  margin-bottom: 0;
+}
+.gate-view > .plot-layout {
+  flex: 1;
+  height: auto;
+}
+.plot-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+.ref-plots {
+  /* Never shrinks below its controls plus the plot's minimum, so a long population tree scrolls first. */
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px 8px;
+}
+.ref-plots > .empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.ref-controls {
+  display: grid;
+  flex-shrink: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 6px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.ref-controls > * {
+  grid-column: 1 / -1;
+}
+.ref-controls > .field:has(+ button) {
+  grid-column: 1;
+}
+.ref-controls > button {
+  grid-column: 2;
+}
+.ref-controls > .field:not(.check) {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+}
+/* Axis rows keep their scale picker beside the channel instead of on a row of its own. */
+.ref-controls > .field:not(.check):has(select + select) {
+  grid-template-columns: 74px minmax(0, 1fr) 84px;
+}
+.ref-controls select {
+  width: 100%;
+  min-width: 0;
+}
+.ref-box {
+  /* Square from the first layout (the canvas sits out of flow, so drawing it can't grow the card and
+     squeeze the population tree frame by frame); taller panels grow it further. */
+  flex: 1;
+  aspect-ratio: 1;
+  min-height: 200px;
+  position: relative;
+}
+.ref-box > * {
+  position: absolute;
+  top: 0;
+  left: 0;
+}

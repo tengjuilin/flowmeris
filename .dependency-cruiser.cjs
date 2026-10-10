@@ -110,6 +110,20 @@ module.exports = {
       },
     },
     {
+      name: 'web-feature-public-api',
+      comment: 'A feature folder is used through its index.ts; only its own files import its other files.',
+      severity: 'error',
+      from: { path: '^apps/web/src/', pathNot: '^apps/web/src/features/' },
+      to: { path: '^apps/web/src/features/[^/]+/(?!index\\.ts$)' },
+    },
+    {
+      name: 'web-feature-to-feature',
+      comment: 'A feature uses another feature through its index.ts.',
+      severity: 'error',
+      from: { path: '^apps/web/src/features/([^/]+)/' },
+      to: { path: '^apps/web/src/features/[^/]+/(?!index\\.ts$)', pathNot: '^apps/web/src/features/$1/' },
+    },
+    {
       name: 'web-app-on-top',
       comment: 'apps/web/src/app (shell, view registry) is the top layer: only main.tsx imports it.',
       severity: 'error',

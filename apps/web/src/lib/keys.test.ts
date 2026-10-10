@@ -1,4 +1,4 @@
-import { type PlotSpec, type Workspace, newGroup, newWorkspace } from '@flowmeris/model';
+import { type PlotSpec, newGroup, newWorkspace } from '@flowmeris/model';
 import { describe, expect, it } from 'vitest';
 import { addGate } from './gates.ts';
 import { lineageKey, plotKey } from './keys.ts';

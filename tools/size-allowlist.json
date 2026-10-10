@@ -1,11 +1,9 @@
 {
   "apps/web/src/components/ChartInspector.tsx": 557,
   "apps/web/src/components/ChartsView.tsx": 1038,
-  "apps/web/src/components/GateInspector.tsx": 768,
   "apps/web/src/components/GatingPathView.tsx": 734,
-  "apps/web/src/components/GroupViews.tsx": 533,
+  "apps/web/src/components/GroupViews.tsx": 532,
   "apps/web/src/components/MetadataView.tsx": 552,
-  "apps/web/src/components/PlotCanvas.tsx": 1627,
   "apps/web/src/components/RidgeInspector.tsx": 1381,
   "apps/web/src/components/StatsView.tsx": 1331,
   "packages/engine/src/engine.ts": 685,

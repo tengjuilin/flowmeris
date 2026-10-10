@@ -1,28 +1,5 @@
-/* Gate view: tools, the plot and its gates, reference plots, the population tree and the settings panel frame. */
-/* Gate view: the gating tools above the plot and its side column (as in the Plot view). */
-.gate-view {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  height: 100%;
-}
-.gate-view > .toolbar {
-  margin-bottom: 0;
-}
-.gate-view > .plot-layout {
-  flex: 1;
-  height: auto;
-}
-.plot-panel {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px;
-}
+/* Shared controls and side panels: toolbars, segmented buttons, fields, the population tree, group picker,
+   tab strip, ridge combine panel and the settings panel frame. */
 .toolbar {
   display: flex;
   gap: 8px;
@@ -59,12 +36,6 @@
   border-color: var(--accent);
   position: relative;
 }
-.tool-seg button {
-  width: 34px;
-  height: 30px;
-  padding: 0;
-  justify-content: center;
-}
 .seg button.on.warn {
   background: var(--gate-override);
   border-color: var(--gate-override);
@@ -78,134 +49,6 @@
 .field.check {
   gap: 4px;
 }
-.plot-box {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  position: relative;
-}
-.plot {
-  position: relative;
-  user-select: none;
-}
-.plot-raster {
-  position: absolute;
-  image-rendering: pixelated;
-}
-.plot-overlay {
-  position: absolute;
-  inset: 0;
-  overflow: visible;
-}
-.plot-overlay.tool-rect,
-.plot-overlay.tool-ellipse,
-.plot-overlay.tool-polygon,
-.plot-overlay.tool-quadrant,
-.plot-overlay.tool-spider,
-.plot-overlay.tool-range {
-  cursor: crosshair;
-}
-.plot-frame {
-  fill: none;
-  stroke: var(--border);
-}
-.axis line {
-  stroke: var(--grid);
-}
-.axis text {
-  fill: var(--text-2);
-  font-size: 11px;
-}
-.axis .axis-title {
-  fill: var(--text);
-  font-size: 12px;
-  font-weight: 600;
-}
-.hist {
-  fill: color-mix(in srgb, var(--accent) 35%, transparent);
-  stroke: var(--accent);
-  stroke-width: 1.5;
-}
-.contour {
-  fill: none;
-  stroke: var(--text-2);
-  stroke-width: 0.9;
-}
-.gate {
-  fill: none;
-  stroke-width: 2;
-  vector-effect: non-scaling-stroke;
-}
-.gate-closed {
-  fill: rgba(0, 0, 0, 0.02);
-}
-.gate.selected {
-  stroke-width: 2.5;
-}
-.gate.overridden {
-  stroke: var(--gate-override) !important;
-  stroke-dasharray: 6 4;
-}
-.gate-fill {
-  opacity: 0.12;
-}
-.gate-label {
-  font-size: 11.5px;
-  font-weight: 600;
-  fill: var(--text);
-  paint-order: stroke;
-  stroke: var(--surface);
-  stroke-width: 3px;
-  pointer-events: none;
-}
-.gate-label.movable {
-  pointer-events: auto;
-  cursor: move;
-  user-select: none;
-}
-.draft-label {
-  fill: var(--accent);
-}
-.handle {
-  fill: var(--surface);
-  stroke: var(--accent);
-  stroke-width: 1.5;
-  cursor: grab;
-}
-.handle-mid {
-  fill: var(--accent);
-  opacity: 0.6;
-  cursor: copy;
-}
-.draft {
-  fill: color-mix(in srgb, var(--accent) 12%, transparent);
-  stroke: var(--accent);
-  stroke-width: 1.5;
-  stroke-dasharray: 4 3;
-}
-.draft-vertex {
-  fill: var(--accent);
-}
-.plot-message {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  text-align: center;
-  color: var(--text-2);
-  padding: 12px;
-  background: color-mix(in srgb, var(--surface) 80%, transparent);
-}
-.plot-note {
-  font-size: 10.5px;
-  color: var(--muted);
-  margin-top: 4px;
-}
-.plot-warning {
-  font-size: 11.5px;
-  color: var(--warn);
-  margin-top: 4px;
-}
-
 .pop-tree {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -327,25 +170,6 @@
   justify-content: space-between;
   gap: 8px;
 }
-.ref-plots {
-  /* Never shrinks below its controls plus the plot's minimum, so a long population tree scrolls first. */
-  flex: 1 0 auto;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: auto;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 6px 8px 8px;
-}
-.ref-plots > .empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  text-align: center;
-}
 .tab-strip {
   display: flex;
   flex-shrink: 0;
@@ -393,48 +217,6 @@
 /* Clear the tabs' 2px underline so + lines up with ✕. */
 .tab-strip-add {
   margin-bottom: 2px;
-}
-.ref-controls {
-  display: grid;
-  flex-shrink: 0;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 4px 6px;
-  align-items: center;
-  margin-bottom: 4px;
-}
-.ref-controls > * {
-  grid-column: 1 / -1;
-}
-.ref-controls > .field:has(+ button) {
-  grid-column: 1;
-}
-.ref-controls > button {
-  grid-column: 2;
-}
-.ref-controls > .field:not(.check) {
-  display: grid;
-  grid-template-columns: 74px minmax(0, 1fr);
-}
-/* Axis rows keep their scale picker beside the channel instead of on a row of its own. */
-.ref-controls > .field:not(.check):has(select + select) {
-  grid-template-columns: 74px minmax(0, 1fr) 84px;
-}
-.ref-controls select {
-  width: 100%;
-  min-width: 0;
-}
-.ref-box {
-  /* Square from the first layout (the canvas sits out of flow, so drawing it can't grow the card and
-     squeeze the population tree frame by frame); taller panels grow it further. */
-  flex: 1;
-  aspect-ratio: 1;
-  min-height: 200px;
-  position: relative;
-}
-.ref-box > * {
-  position: absolute;
-  top: 0;
-  left: 0;
 }
 .pop-tree ul {
   list-style: none;
