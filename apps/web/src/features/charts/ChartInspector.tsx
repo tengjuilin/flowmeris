@@ -1,423 +1,90 @@
-import type { ChartStyle, StatPlot } from '@flowmeris/model';
-import type { PlotSeries } from '@flowmeris/table';
-import { GroupPicker, toggleIds } from '../../components/ui/GroupPicker.tsx';
-import { NumInput, OptNumInput } from '../../components/ui/NumInput.tsx';
-import { ReorderList } from '../../components/ui/ReorderList.tsx';
-import { Slider } from '../../components/ui/Slider.tsx';
-import { pointKey } from '../../lib/chartSelection.ts';
-import { DEFAULT_CHART_STYLE, seriesColor, seriesKey, seriesName } from '../../lib/chartStyle.ts';
-import { clamp } from '../../lib/math.ts';
-import { moveIds } from '../../lib/order.ts';
+import { InspectorTabs, PanelReset } from '../../components/ui/InspectorTabs.tsx';
+import {
+  CHART_CARD_KEYS,
+  CHART_TAB_CARDS,
+  type ChartCard,
+  type ChartPanelTab,
+  chartCardAtDefaults,
+  chartPanelAtDefaults,
+  resetChartCard,
+  resetChartPanel,
+} from '../../lib/chartPanels.ts';
+import { usePanelState } from '../../state/prefs.ts';
+import type { CardProps, ChartTabProps } from './chartTabs.ts';
+import { AxisTab } from './tabs/AxisTab.tsx';
+import { FigureTab } from './tabs/FigureTab.tsx';
+import { SettingsTab } from './tabs/SettingsTab.tsx';
+import { TextTab } from './tabs/TextTab.tsx';
+import { useChart } from './useChart.ts';
 
-import { ChartAxisFields } from './ChartAxisFields.tsx';
-/** The Charts view's settings panel: series, groups, marks, axes, text and figure size. */
-export function ChartInspector(props: {
-  plot: StatPlot;
-  /** All series with all their points and rows, in display order (hidden points included). */
-  series: PlotSeries[];
-  /** Sample name of each row id. */
-  rowNames: Record<string, string>;
-  seriesLabel: string | undefined;
-  xTitle: string;
-  yTitle: string;
-  /** Whether x is placed as categories. */
-  band: boolean;
-  edit: (label: string, fn: (p: StatPlot) => void, merge?: string) => void;
-}) {
-  const { plot, series, edit } = props;
-  const st = plot.style;
-  const set = <K extends keyof ChartStyle>(key: K, value: ChartStyle[K], label: string, merge?: string) =>
-    edit(
-      label,
-      (p) => {
-        if (value === undefined) delete p.style[key];
-        else p.style[key] = value;
-      },
-      merge && `chart:${plot.id}:${merge}`,
+const CHART_TABS: { id: ChartPanelTab; label: string }[] = [
+  { id: 'figure', label: 'Figure' },
+  { id: 'axis', label: 'Axis' },
+  { id: 'text', label: 'Text' },
+  { id: 'settings', label: 'Settings' },
+];
+const TAB_LABEL = Object.fromEntries(CHART_TABS.map((t) => [t.id, t.label.toLowerCase()]));
+
+const PANEL_KEY = 'flowmeris.chartPanel';
+/** Every card starts open; what the user collapses is remembered in this browser. */
+const DEFAULT_OPEN: Partial<Record<ChartCard, boolean>> = Object.fromEntries(
+  Object.values(CHART_TAB_CARDS)
+    .flat()
+    .map((c) => [c, true]),
+);
+
+/** The Charts view's settings panel: Figure / Axis / Text / Settings tabs of collapsible cards. */
+export function ChartInspector() {
+  const c = useChart();
+  const { plot, edit } = c;
+  const { tab, open, setTab, toggle } = usePanelState<ChartPanelTab, ChartCard>(
+    PANEL_KEY,
+    CHART_TABS.map((t) => t.id),
+    { tab: 'figure', open: DEFAULT_OPEN },
+    {},
+  );
+  if (!c.group) return null;
+  if (!plot)
+    return (
+      <aside className="inspector insp-panel" aria-label="Chart settings">
+        <p className="muted small">Add a chart to change its settings.</p>
+      </aside>
     );
-  const keys = series.map((s) => seriesKey(s.key));
 
-  const moveTo = (moved: string[], target: string, after: boolean) => {
-    const next = moveIds(keys, moved, target, after);
-    if (next) set('seriesOrder', next, 'Reorder chart series');
-  };
-
-  const bar = plot.kind === 'bar';
-  const multi = series.length > 1;
+  const card = (id: ChartCard, title: string): CardProps => ({
+    id: `chart-${id}`,
+    title,
+    open: !!open[id],
+    onToggle: () => toggle(id),
+    ...(CHART_CARD_KEYS[id] && {
+      changed: !chartCardAtDefaults(plot, id),
+      onReset: () => edit(`Reset chart ${title.toLowerCase()}`, (p) => resetChartCard(p, id)),
+    }),
+  });
+  const props: ChartTabProps = { c, plot, card };
 
   return (
-    <aside className="inspector chart-inspector" aria-label="Chart settings">
-      <fieldset>
-        <legend>{props.seriesLabel ? `Series · ${props.seriesLabel}` : 'Colour'}</legend>
-        <label className="field">
-          Colour
-          <select
-            value={st.colorMode}
-            onChange={(e) => set('colorMode', e.target.value as ChartStyle['colorMode'], 'Chart colour mode')}
-          >
-            <option value="palette">Categorical palette</option>
-            <option value="single">Single colour</option>
-          </select>
-        </label>
-        {st.colorMode === 'single' && (
-          <label className="field">
-            Fill colour
-            <input
-              type="color"
-              value={st.color}
-              onChange={(e) => set('color', e.target.value, 'Chart colour', 'color')}
-            />
-          </label>
-        )}
-        {props.seriesLabel ? (
-          <>
-            <ReorderList
-              ids={keys}
-              name={(k) => seriesName(series[keys.indexOf(k)]!)}
-              gripTitle="Drag to reorder"
-              onMove={moveTo}
-            >
-              {(k, i) => {
-                const custom = st.seriesColors[k] !== undefined;
-                const name = seriesName(series[i]!);
-                return (
-                  <>
-                    <input
-                      type="color"
-                      className={custom ? 'custom' : ''}
-                      value={seriesColor(st, k, i)}
-                      title={custom ? 'Custom colour' : 'Colour from the setting above; pick to override'}
-                      aria-label={`Colour of ${name}`}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        edit(
-                          'Chart series colour',
-                          (p) => {
-                            p.style.seriesColors[k] = v;
-                          },
-                          `chart:${plot.id}:color:${k}`,
-                        );
-                      }}
-                    />
-                    <input
-                      type="text"
-                      value={st.seriesLabels[k] ?? ''}
-                      placeholder={name}
-                      aria-label={`Legend label of ${name}`}
-                      onChange={(e) =>
-                        edit(
-                          'Chart series label',
-                          (p) => {
-                            if (e.target.value) p.style.seriesLabels[k] = e.target.value;
-                            else delete p.style.seriesLabels[k];
-                          },
-                          `chart:${plot.id}:label:${k}`,
-                        )
-                      }
-                    />
-                    {custom && (
-                      <button
-                        type="button"
-                        className="icon"
-                        title="Reset colour"
-                        aria-label={`Reset colour of ${name}`}
-                        onClick={() =>
-                          edit('Reset chart series colour', (p) => {
-                            delete p.style.seriesColors[k];
-                          })
-                        }
-                      >
-                        ×
-                      </button>
-                    )}
-                  </>
-                );
-              }}
-            </ReorderList>
-            <div className="list-actions">
-              <button
-                type="button"
-                onClick={() => set('seriesOrder', [...keys].reverse(), 'Reverse chart series')}
-              >
-                Reverse
-              </button>
-              <button
-                type="button"
-                disabled={!st.seriesOrder.length}
-                onClick={() => set('seriesOrder', [], 'Reset chart series order')}
-              >
-                Reset order
-              </button>
-              <button
-                type="button"
-                disabled={!Object.keys(st.seriesColors).length}
-                onClick={() => set('seriesColors', {}, 'Reset chart series colours')}
-              >
-                Reset colours
-              </button>
-              <button
-                type="button"
-                disabled={!Object.keys(st.seriesLabels).length}
-                onClick={() => set('seriesLabels', {}, 'Reset chart series labels')}
-              >
-                Reset labels
-              </button>
-            </div>
-          </>
-        ) : (
-          <p className="small muted">Choose “Colour by” in the toolbar to colour by a variable.</p>
-        )}
-      </fieldset>
-
-      <fieldset>
-        <legend>Groups</legend>
-        <p className="small muted">
-          Click a group to hide it; open it with ▸ to leave single replicates out of its mean and error bar.
-          Shift-click selects a range.
-        </p>
-        <GroupPicker
-          groups={series.flatMap((s, i) => {
-            const k = keys[i]!;
-            const name =
-              st.seriesLabels[k] ?? (s.key === undefined || s.key === null ? '(none)' : String(s.key));
-            return s.points.map((p) => ({
-              id: pointKey(s.key, p.x),
-              label: props.seriesLabel ? `${name} · ${String(p.x)}` : String(p.x),
-              members: p.rowIds.map((id) => ({ id, label: props.rowNames[id] ?? id })),
-            }));
-          })}
-          hidden={new Set(plot.hiddenPoints)}
-          excluded={new Set(plot.excludeRows)}
-          onShow={(ids, on) =>
-            edit(on ? 'Show chart group' : 'Hide chart group', (p) => {
-              p.hiddenPoints = toggleIds(p.hiddenPoints, ids, !on);
-            })
-          }
-          onInclude={(ids, on) =>
-            edit(on ? 'Include replicate' : 'Exclude replicate', (p) => {
-              p.excludeRows = toggleIds(p.excludeRows, ids, !on);
-            })
-          }
-          onShowAll={() =>
-            edit('Show all chart groups', (p) => {
-              p.hiddenPoints = [];
-              p.excludeRows = [];
-            })
-          }
+    <aside className="inspector insp-panel" aria-label="Chart settings">
+      <div className="insp-head">
+        <InspectorTabs
+          idPrefix="chart"
+          label="Chart settings"
+          tabs={CHART_TABS}
+          current={tab}
+          onSelect={setTab}
         />
-      </fieldset>
-
-      <fieldset>
-        <legend>Marks</legend>
-        <Slider
-          label={bar ? 'Bar opacity' : 'Marker opacity'}
-          value={st.fillOpacity}
-          onChange={(v) => set('fillOpacity', v, 'Chart opacity', 'opacity')}
+        <PanelReset
+          title="Reset the settings in this panel for this chart"
+          disabled={chartPanelAtDefaults(tab, plot)}
+          onClick={() => edit(`Reset chart ${TAB_LABEL[tab]} settings`, (p) => resetChartPanel(tab, p))}
         />
-        <div className="grid2">
-          {!bar && (
-            <NumInput
-              label="Marker size (px)"
-              step={0.5}
-              value={st.markerSize}
-              onCommit={(v) => set('markerSize', clamp(v, 0, 30), 'Chart marker size')}
-            />
-          )}
-          {plot.kind === 'line' && (
-            <NumInput
-              label="Line width (px)"
-              step={0.25}
-              value={st.lineWidth}
-              onCommit={(v) => set('lineWidth', clamp(v, 0, 20), 'Chart line width')}
-            />
-          )}
-        </div>
-        {props.band && (
-          <div className="grid2">
-            <label className="field check">
-              <input
-                type="checkbox"
-                checked={st.barWidth === undefined}
-                onChange={(e) => set('barWidth', e.target.checked ? undefined : 0.8, 'Chart bar width')}
-              />
-              Auto {bar ? 'bar' : 'group'} width
-            </label>
-            {st.barWidth !== undefined && (
-              <NumInput
-                label="Width (% of category)"
-                step={5}
-                value={Math.round(st.barWidth * 100)}
-                onCommit={(v) => set('barWidth', clamp(v / 100, 0.05, 1), 'Chart bar width')}
-              />
-            )}
-          </div>
-        )}
-        <div className="grid2">
-          <NumInput
-            label="Error bar width (px)"
-            step={0.25}
-            value={st.errorWidth}
-            onCommit={(v) => set('errorWidth', clamp(v, 0, 10), 'Chart error bar width')}
-          />
-          <OptNumInput
-            label="Cap width (px)"
-            value={st.capWidth}
-            onCommit={(v) => set('capWidth', v === undefined ? v : clamp(v, 0, 60), 'Chart cap width')}
-          />
-        </div>
-        <div className="grid2">
-          <NumInput
-            label="Replicate size (px)"
-            step={0.5}
-            value={st.pointSize}
-            onCommit={(v) => set('pointSize', clamp(v, 0, 20), 'Chart replicate size')}
-          />
-          <label className="field check">
-            <input
-              type="checkbox"
-              checked={st.pointOpacity === undefined}
-              onChange={(e) =>
-                set(
-                  'pointOpacity',
-                  e.target.checked ? undefined : bar ? 0.85 : 0.55,
-                  'Chart replicate opacity',
-                )
-              }
-            />
-            Auto replicate opacity
-          </label>
-        </div>
-        {st.pointOpacity !== undefined && (
-          <Slider
-            label="Replicate opacity"
-            value={st.pointOpacity}
-            onChange={(v) => set('pointOpacity', v, 'Chart replicate opacity', 'point-opacity')}
-          />
-        )}
-      </fieldset>
-
-      <ChartAxisFields
-        which="x"
-        plot={plot}
-        defaultTitle={props.xTitle}
-        numeric={!props.band}
-        log={!props.band && plot.xScale === 'log10'}
-        set={set}
-        edit={edit}
-      />
-      <ChartAxisFields
-        which="y"
-        plot={plot}
-        defaultTitle={props.yTitle}
-        numeric
-        log={plot.yScale === 'log10'}
-        set={set}
-        edit={edit}
-      />
-
-      <fieldset>
-        <legend>Text &amp; legend</legend>
-        <label className="field">
-          Font
-          <select
-            value={st.fontFamily}
-            onChange={(e) => set('fontFamily', e.target.value as ChartStyle['fontFamily'], 'Chart font')}
-          >
-            <option value="sans">Sans-serif</option>
-            <option value="serif">Serif</option>
-            <option value="mono">Monospace</option>
-          </select>
-        </label>
-        <label className="field check">
-          <input
-            type="checkbox"
-            checked={st.showTickLabels}
-            onChange={(e) => set('showTickLabels', e.target.checked, 'Chart tick labels')}
-          />
-          Show tick labels
-        </label>
-        <label className="field check">
-          <input
-            type="checkbox"
-            checked={st.showGrid}
-            onChange={(e) => set('showGrid', e.target.checked, 'Chart gridlines')}
-          />
-          Show gridlines
-        </label>
-        <div className="grid2">
-          <NumInput
-            label="Tick label size (px)"
-            step={0.5}
-            value={st.tickFontSize}
-            onCommit={(v) => set('tickFontSize', clamp(v, 4, 48), 'Chart tick label size')}
-          />
-          <NumInput
-            label="Title size (px)"
-            step={0.5}
-            value={st.titleFontSize}
-            onCommit={(v) => set('titleFontSize', clamp(v, 4, 48), 'Chart title size')}
-          />
-        </div>
-        <div className="grid2">
-          <label className="field" title={multi ? undefined : 'Shown when there are two or more series'}>
-            Legend
-            <select
-              value={st.legend}
-              onChange={(e) => set('legend', e.target.value as ChartStyle['legend'], 'Chart legend')}
-            >
-              <option value="top">Top</option>
-              <option value="right">Right</option>
-              <option value="none">Hidden</option>
-            </select>
-          </label>
-          <NumInput
-            label="Legend size (px)"
-            step={0.5}
-            value={st.legendFontSize}
-            onCommit={(v) => set('legendFontSize', clamp(v, 4, 48), 'Chart legend size')}
-          />
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Figure</legend>
-        <div className="grid2">
-          <label className="field check">
-            <input
-              type="checkbox"
-              checked={st.width === undefined}
-              onChange={(e) => set('width', e.target.checked ? undefined : 760, 'Chart width')}
-            />
-            Fit width
-          </label>
-          {st.width !== undefined && (
-            <NumInput
-              label="Width (px)"
-              step={10}
-              value={st.width}
-              onCommit={(v) => set('width', clamp(v, 240, 10000), 'Chart width')}
-            />
-          )}
-        </div>
-        <NumInput
-          label="Height (px)"
-          step={10}
-          value={st.height}
-          onCommit={(v) => set('height', clamp(v, 160, 10000), 'Chart height')}
-        />
-        <button
-          type="button"
-          onClick={() =>
-            edit('Reset chart settings', (p) => {
-              p.style = structuredClone(DEFAULT_CHART_STYLE);
-              p.xLabel = undefined;
-              p.yLabel = undefined;
-            })
-          }
-        >
-          Reset all settings
-        </button>
-      </fieldset>
+      </div>
+      <div id="chart-tabpanel" role="tabpanel" aria-labelledby={`chart-tab-${tab}`}>
+        {tab === 'figure' && <FigureTab {...props} />}
+        {tab === 'axis' && <AxisTab {...props} />}
+        {tab === 'text' && <TextTab {...props} />}
+        {tab === 'settings' && <SettingsTab {...props} />}
+      </div>
     </aside>
   );
 }

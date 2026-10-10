@@ -142,3 +142,59 @@ export function ReverseIcon() {
     </svg>
   );
 }
+
+/** Close: a small ×, for closing a tab. */
+export function CloseIcon() {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M2 2l6 6M8 2 2 8" />
+    </svg>
+  );
+}
+
+/** Add: a small +, for adding a tab. */
+export function AddIcon() {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M5 1.5v7M1.5 5h7" />
+    </svg>
+  );
+}
+
+/** Duplicate: two overlapping sheets. */
+export function DuplicateIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
+      <path d="M10.5 3.5V3A1 1 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6a1 1 0 0 0 1 1h.5" />
+    </svg>
+  );
+}

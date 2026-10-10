@@ -68,27 +68,36 @@ test('sample variables from a CSV, replicate means, and a chart', async ({ page 
 
   // The settings panel restyles the chart: series labels and order, legend, axis range and size.
   const panel = page.getByRole('complementary', { name: 'Chart settings' });
+  await panel.getByRole('tab', { name: 'Axis' }).click();
   await panel.getByRole('textbox', { name: 'Legend label of r1' }).fill('Replicate 1');
   await expect(page.locator('svg.stat-chart .chart-legend')).toContainText('Replicate 1');
   await panel.getByRole('button', { name: 'Reverse' }).click();
   await expect(page.locator('svg.stat-chart .chart-legend text').first()).toHaveText('r2');
-  await panel.getByRole('combobox', { name: 'Legend', exact: true }).selectOption('none');
-  await expect(page.locator('svg.stat-chart .chart-legend')).toHaveCount(0);
-  const yAxis = panel.locator('fieldset', { hasText: 'Y axis' });
+  const yAxis = panel.locator('.insp-section', { hasText: 'Y axis' });
   await yAxis.getByRole('spinbutton', { name: 'Max' }).fill('1000');
   await yAxis.getByRole('spinbutton', { name: 'Max' }).press('Enter');
   await expect(page.locator('svg.stat-chart .chart-axis')).toContainText('1K');
+  await panel.getByRole('tab', { name: 'Text' }).click();
+  await panel.getByRole('combobox', { name: 'Legend', exact: true }).selectOption('none');
+  await expect(page.locator('svg.stat-chart .chart-legend')).toHaveCount(0);
+  await panel.getByRole('tab', { name: 'Figure' }).click();
   await panel.getByRole('spinbutton', { name: 'Height (px)' }).fill('300');
   await panel.getByRole('spinbutton', { name: 'Height (px)' }).press('Enter');
   await expect(page.locator('svg.stat-chart')).toHaveAttribute('height', '300');
   await page.screenshot({ path: 'test-results/charts-panel.png' });
 
-  await page.locator('.chart-controls label', { hasText: 'Colour by' }).locator('select').selectOption('');
+  await panel.getByRole('tab', { name: 'Axis' }).click();
+  await panel.getByRole('combobox', { name: 'Colour by' }).selectOption('');
   await expect(page.locator('svg.stat-chart .chart-err')).toHaveCount(2);
   await expect(page.locator('svg.stat-chart .chart-hit')).toHaveCount(2);
 
-  // Exports: the plotted means as CSV, and a 300 dpi PNG (pixel size and pHYs chunk).
-  const csv = await downloadText(page, () => page.getByRole('button', { name: 'CSV', exact: true }).click());
+  // Exports, from the one Export menu: the plotted means as CSV, and a 300 dpi PNG (pixel size and pHYs chunk).
+  const exportAs = async (format: string) => {
+    await page.getByRole('button', { name: 'Export', exact: true }).click();
+    await page.getByRole('combobox', { name: 'Format' }).selectOption(format);
+    await page.getByRole('button', { name: 'Download' }).click();
+  };
+  const csv = await downloadText(page, () => exportAs('csv'));
   expect(csv.name).toMatch(/_data\.csv$/);
   const [header, ...points] = parseCsv(csv.text);
   expect(header).toEqual(['Dose', 'All events | Median GFP (FL1-A) (mean)', 'SEM', 'n']);
@@ -96,7 +105,7 @@ test('sample variables from a CSV, replicate means, and a chart', async ({ page 
     [1, 105, expect.closeTo(5, 9), 2],
     [10, 210, expect.closeTo(10, 9), 2],
   ]);
-  const png = await downloadBytes(page, () => page.getByRole('button', { name: 'PNG', exact: true }).click());
+  const png = await downloadBytes(page, () => exportAs('png'));
   expect(png.bytes.subarray(1, 4).toString('latin1')).toBe('PNG');
   const svgW = Number(await page.locator('svg.stat-chart').getAttribute('width'));
   expect(png.bytes.readUInt32BE(16)).toBe(Math.round((svgW * 300) / 96));

@@ -2,6 +2,7 @@ import type { Group, PlotSpec, RefPlot, Workspace } from '@flowmeris/model';
 import { populationLineage, populationsDepthFirst } from '@flowmeris/model';
 import { useRef } from 'react';
 import { useSize } from '../../components/hooks/useSize.ts';
+import { TabStrip } from '../../components/ui/TabStrip.tsx';
 import { groupSample } from '../../lib/axisDefaults.ts';
 import { axisPickers } from '../../state/commands/plots.ts';
 import { addRef, editRef, removeRef } from '../../state/commands/refPlots.ts';
@@ -31,61 +32,16 @@ export function RefPlots() {
   const curSample = ui.sampleId && group.sampleIds.includes(ui.sampleId) ? ui.sampleId : group.sampleIds[0];
 
   const tabs = (
-    <div className="tab-strip" role="tablist" aria-label="Reference plots">
-      {refs.map((r) => (
-        <div key={r.id} className={`tab-strip-tab${r.id === ref?.id ? ' on' : ''}`}>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={r.id === ref?.id}
-            onClick={() => setUi({ refPlotId: r.id })}
-            title={tabLabel(ws, group, r)}
-          >
-            {tabLabel(ws, group, r)}
-          </button>
-          <button
-            type="button"
-            className="icon"
-            title="Close reference plot"
-            onClick={() => removeRef(group.id, r.id)}
-            aria-label="Close reference plot"
-          >
-            <svg
-              width="10"
-              height="10"
-              viewBox="0 0 10 10"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              aria-hidden="true"
-            >
-              <path d="M2 2l6 6M8 2 2 8" />
-            </svg>
-          </button>
-        </div>
-      ))}
-      <button
-        type="button"
-        className="icon tab-strip-add"
-        title="Add a reference plot"
-        onClick={() => addRef(group.id)}
-        aria-label="Add a reference plot"
-      >
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 10 10"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          aria-hidden="true"
-        >
-          <path d="M5 1.5v7M1.5 5h7" />
-        </svg>
-      </button>
-    </div>
+    <TabStrip
+      label="Reference plots"
+      tabs={refs.map((r) => ({ id: r.id, label: tabLabel(ws, group, r) }))}
+      current={ref?.id}
+      onSelect={(id) => setUi({ refPlotId: id })}
+      onClose={(id) => removeRef(group.id, id)}
+      closeLabel="Close reference plot"
+      onAdd={() => addRef(group.id)}
+      addLabel="Add a reference plot"
+    />
   );
 
   if (!ref) {

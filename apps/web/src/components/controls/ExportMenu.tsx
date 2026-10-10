@@ -3,20 +3,26 @@ import type { ImageFormat } from '../../lib/export/svg.ts';
 import { toast } from '../../state/store.ts';
 import { ExportIcon } from '../ui/icons.tsx';
 
-/** Export button: opens a small form to choose the file format (and DPI for raster formats). */
+/**
+ * Export button: opens a small form to choose the file format (and DPI for raster formats), and with
+ * `csv` also the figure's data as CSV.
+ */
 export function ExportMenu({
   onExport,
+  csv,
   className,
   disabled = false,
 }: {
   /** Write the figure as `format`; `dpi` applies to PNG and JPEG. Returns nothing when there is no figure yet. */
   onExport: (format: ImageFormat, dpi: number) => Promise<void> | undefined;
+  /** Adds a CSV format to the list, labelled `label`, which `write` downloads. */
+  csv?: { label: string; write: () => void };
   className?: string;
   /** Grey out the button (nothing to export). */
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const [format, setFormat] = useState<ImageFormat>('pdf');
+  const [format, setFormat] = useState<ImageFormat | 'csv'>('pdf');
   const [dpi, setDpi] = useState(300);
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -29,6 +35,11 @@ export function ExportMenu({
     return () => document.removeEventListener('mousedown', away);
   }, [open]);
   const run = () => {
+    if (format === 'csv') {
+      csv?.write();
+      setOpen(false);
+      return;
+    }
     const job = onExport(format, Math.min(1200, Math.max(72, dpi || 300)));
     if (!job) return;
     setBusy(true);
@@ -47,11 +58,12 @@ export function ExportMenu({
         <div className="export-pop" aria-label="Export options">
           <label className="field">
             Format
-            <select value={format} onChange={(e) => setFormat(e.target.value as ImageFormat)}>
+            <select value={format} onChange={(e) => setFormat(e.target.value as ImageFormat | 'csv')}>
               <option value="pdf">PDF (vector)</option>
               <option value="png">PNG</option>
               <option value="jpeg">JPG</option>
               <option value="svg">SVG (vector)</option>
+              {csv && <option value="csv">{csv.label}</option>}
             </select>
           </label>
           {(format === 'png' || format === 'jpeg') && (

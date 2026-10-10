@@ -16,11 +16,11 @@ several features. Update this file when the layout changes.
 | `src/state/persist.ts` | IndexedDB autosave of `ws` (ring of 20 snapshots) |
 | `src/engine-client/` | `pool.ts`: the worker pool (ADR-0003, ADR-0010), `getPool()`; `scheduler.ts`: its request queue and result cache |
 | `src/workers/compute.worker.ts` | worker side: wraps `@flowmeris/engine` behind Comlink (`ComputeApi`) |
-| `src/state/commands/` | named store commands: `gates.ts`, `plots.ts` (incl. `drill`, and `openPathPlot` for the Gating path), `grid.ts`, `refPlots.ts`, `metadata.ts` (delete a variable, detect wells), `ingest.ts`, `workspace.ts` (open, save, new) |
+| `src/state/commands/` | named store commands: `gates.ts`, `plots.ts` (incl. `drill`, and `openPathPlot` for the Gating path), `grid.ts`, `refPlots.ts`, `charts.ts`, `metadata.ts` (delete a variable, detect wells), `ingest.ts`, `workspace.ts` (open, save, new) |
 | `src/state/hooks/` | data hooks that fetch from the worker pool: `stats.ts` (`useSampleStats`, `useAnalysisTable`) |
 | `src/state/export.ts` | figure export wired to the store, pool and toasts (`exportPlot`, `exportSvgFigure`) |
 | `src/lib/` | pure logic, tested in Node: no store, pool, workers or components (`pnpm lint:deps` checks this). Functions documented "call inside `mutate`" work on a workspace draft |
-| `src/components/ui/` | generic controls that take data and callbacks as props: `icons.tsx`, `Section` (collapsible settings card), `InspectorTabs` and `PanelReset`, `NumInput`/`OptNumInput`, `Slider`/`PercentSlider`, `SettingsToggle`, `ActionRow`, `PickerMenu`, `GroupPicker`, `PlotSizeSlider`, `SupLabel`, `ColorField` (swatch with reset), `ReorderList` (drag-to-reorder rows, with `useRowSelection`). No store or pool imports (`lint:deps`) |
+| `src/components/ui/` | generic controls that take data and callbacks as props: `icons.tsx`, `Section` (collapsible settings card), `InspectorTabs` and `PanelReset`, `TabStrip` (closable tabs with +), `NumInput`/`OptNumInput`, `Slider`/`PercentSlider`, `SettingsToggle`, `ActionRow`, `PickerMenu`, `GroupPicker`, `PlotSizeSlider`, `SupLabel`, `ColorField` (swatch with reset), `ReorderList` (drag-to-reorder rows, with `useRowSelection`). No store or pool imports (`lint:deps`) |
 | `src/components/controls/` | settings controls shared by several views, which may use the store: `AxisFields` (scale and range), `TicksEditor`, `FontSelect`, `TextStyleEditor`, `ExportMenu` |
 | `src/components/hooks/` | DOM and timing hooks: `useSize`, `useWidth`, `useVisible`, `useSettled`/`useDebounced` |
 | `src/features/plot/` | one plot: `PlotCanvas` (composes `usePlotData`, `useGateEditing`/`useGatePreview`, `GateShapes`, `DraftShapes`, `PlotAxes`, `PlotPaths`), `PlotControls` (plot type, channels and scales, drawing tools, edit scope), `usePlot` (`usePlotForPopulation`, `useTilePlot`) |
@@ -28,7 +28,7 @@ several features. Update this file when the layout changes.
 | `src/features/ridge/` | the Ridge view: `RidgeView` (and `RidgeExportCard`), `useRidge` (the current population's ridge layout and its rows), `useRidgeCurves`, `RidgeCombinePanel` (Replicates card), and `RidgeInspector` (tabs in `tabs/`, edits in `ridgeEdits.ts`) |
 | `src/features/tiles/` | the Tiles view (`TilesView`); its settings panel is `features/gate`'s `Inspector target="tiles"` |
 | `src/features/stats/` | the Statistics view: `StatsView` (the table), `StatsInspector` with `StatsFields` (new statistic, grouping, summaries, export columns) and `DerivedColumns` (formula and normalization forms, `FormulaInput`); `useGroupMutate` edits the group |
-| `src/features/charts/` | the Charts view: `ChartsView` (tabs, toolbar, data table), `Chart` (layout in `frameChart`; axes, series marks, legend and tooltip in `ChartParts`), `ChartInspector` with `ChartAxisFields` (a chart axis in data units, unrelated to the cytometry `AxisFields`) |
+| `src/features/charts/` | the Charts view: `useChart` (the open chart, `ui.chartId`, with its data and edits), `ChartsView` (chart tabs, the chart, `ChartDataTable`, and the side column's Export card and `ChartGroupsPanel`), `Chart` (layout in `frameChart`; axes, series marks, legend and tooltip in `ChartParts`), and the settings panel `ChartInspector` (tabs in `tabs/`, with `ChartAxisFields`, a chart axis in data units unrelated to the cytometry `AxisFields`, and `ChartColorFields`) |
 | `src/features/tree/` | `PopulationTree`: the population tree with counts, beside the plots of the Gate, Plot grid, Tiles and Gating path views |
 | `src/features/grid/` | the Plot grid view: `PlotGridView` and `GridCell`, `useGridDrag` (drag plots by their titles) and `useGridKeys` (Delete, cut, copy, paste); slot moves are in `lib/gridMove.ts`; its settings panel is `features/gate`'s `Inspector target="grid"`, whose Figure tab has the cell's population, sample and overlay fields (`gate/tabs/GridCellFields.tsx`) |
 | `src/features/path/` | the Gating path view: `GatingPathView` (Path and Tree layouts), `PathCards` (`StepCard`, `PopChip`, `WhenVisible`, `ViewErrorBoundary`), `PopulationsPanel` |
@@ -53,7 +53,7 @@ Views (`ui.view`). Each is defined once in `app/views.tsx`; to add one, add its 
 | `path` | `GatingPathView` (`features/path`) | – |
 | `stats` | `StatsView` (`features/stats`) | `StatsInspector` (`features/stats`) |
 | `ridge` | `RidgeView`, plus `RidgeCombinePanel` (`features/ridge`) | `RidgeInspector` (`features/ridge`) |
-| `charts` | `ChartsView` (`features/charts`) | `ChartInspector`, rendered by `ChartsView` |
+| `charts` | `ChartsView`, with its Export and Groups cards (`features/charts`) | `ChartInspector` (`features/charts`) |
 | `compensation` | `CompensationView` (`features/compensation`) | – |
 | `samples` | `SamplesView` (`features/samples`) | – |
 
@@ -69,7 +69,7 @@ What is in `src/lib/`:
 | `gridCarry.ts` | grid-plot settings copied to the other grid plots |
 | `ridgeRows.ts`, `ridgeLayout.ts`, `ridgePanels.ts` | which ridges a ridge plot draws (samples or combined replicates); its labels, pixel layout and paths (`ridgeLabels`, `ridgeFrame`, `ridgePaths`); its settings panel's card and tab resets, reordering (`moveRidges`) and base font scaling |
 | `statsTable.ts`, `statsFormat.ts`, `statsHeader.ts`, `statsExport.ts`, `derived.ts`, `formula.ts` | statistics table rows and columns, number formatting, header sections, dividers and pinned columns; export file names, Gating-ML files and the export column checklist; derived column defaults and descriptions; formula editing |
-| `chartAxis.ts`, `chartLayout.ts`, `chartStyle.ts`, `chartSelection.ts` | chart axes (`makeAxis`, `validFix`, `dataExtents`, `barPath`); margins and band slots; default style, series colour and order, the first chart (`defaultPlot`), the chart CSV; hidden points and excluded rows |
+| `chartAxis.ts`, `chartLayout.ts`, `chartStyle.ts`, `chartSelection.ts`, `chartPanels.ts` | chart axes (`makeAxis`, `validFix`, `dataExtents`, `barPath`); margins and band slots; default style, series colour and order, the first chart (`defaultPlot`), the chart CSV; hidden points and excluded rows; the settings panel's cards, card and tab resets, applying settings to all charts, duplicating |
 | `metadata.ts`, `metaTable.ts`, `plate.ts`, `metaImport.ts`, `palette.ts` | sample variables (values, types, paste, the shown variable, wells detected); the Metadata table's cells (linked Well, Row and Column, `writeMetaCell`); the plate map (samples by well, series fills); importing a table or plate layout; colours of populations and values |
 | `ingest.ts`, `files.ts`, `names.ts` | grouping loaded files; data-file extensions; short sample names |
 | `export/` | figure export: `svg.ts`, `pdf.ts`, `figure.ts`, `plot.ts` (takes its data as a `PlotExportSource`) |
@@ -150,4 +150,4 @@ Classes shared across views:
   and chart series (`ui/ReorderList`), and the buttons above them;
 - `view-controls` and `view-settings`: the controls at the end of the Tiles, Plot grid, Path and Metadata
   toolbars (`ui/SettingsToggle`);
-- `tab-strip`, `tab-strip-tab` and `tab-strip-add`: the reference-plot and chart tabs.
+- `tab-strip`, `tab-strip-tab` and `tab-strip-add`: the reference-plot and chart tabs (`ui/TabStrip`).

@@ -53,6 +53,8 @@ interface UiState {
   selectedGateId: string | null;
   /** Active reference-plot tab of the Gate view. */
   refPlotId: string | null;
+  /** Open chart tab of the Charts view (the group's first chart when it is not one of the group's). */
+  chartId: string | null;
   /** Active (gateable) cell of the Plot view's grid. */
   gridCellId: string | null;
   /** Empty slot of the Plot view's grid selected to paste into (while no cell is active). */
@@ -178,6 +180,7 @@ export const useStore = create<Store>((set, get) => ({
     editScope: 'template',
     selectedGateId: null,
     refPlotId: null,
+    chartId: null,
     gridCellId: null,
     gridSlot: null,
     gridClip: null,
@@ -314,6 +317,7 @@ export const useStore = create<Store>((set, get) => ({
         unsavedPlot: null,
         selectedGateId: null,
         refPlotId: null,
+        chartId: null,
         gridCellId: null,
         gridSlot: null,
         gridClip: null,

@@ -1,26 +1,32 @@
 /* ---------------------------------------------------------------------------
    Charts
    --------------------------------------------------------------------------- */
-.charts-view {
+.plot-layout > .charts-view {
   min-width: 0;
-}
-/* Chart beside its settings panel; the panel sits flush with the window edge, as in the Ridge view. */
-.charts-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  margin: -10px;
-  height: calc(100% + 20px);
-}
-.charts-layout > .charts-view {
   min-height: 0;
   overflow: auto;
-  padding: 10px;
 }
-.chart-tabs {
-  margin-bottom: 6px;
+/* The Groups card beside the chart, styled like the Ridge view's Replicates card. */
+.chart-groups {
+  flex: 0 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px 10px;
 }
-.chart-controls input[type="text"] {
-  width: 160px;
+.chart-groups .pane-title {
+  padding: 2px 0 0;
+}
+.chart-groups p {
+  margin: 0;
+}
+.chart-groups .group-picker {
+  max-height: none;
+  min-height: 0;
 }
 .chart-wrap {
   position: relative;

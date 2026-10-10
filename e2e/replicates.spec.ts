@@ -59,15 +59,16 @@ test('choosing which grouped replicates the ridge plot and charts show', async (
   await page.getByRole('button', { name: 'Add statistic' }).click();
   await page.getByRole('tab', { name: 'Charts' }).click();
   await page.getByRole('button', { name: '+ New chart' }).click();
-  await page.locator('.chart-controls label', { hasText: 'Colour by' }).locator('select').selectOption('');
+  const panel = page.getByRole('complementary', { name: 'Chart settings' });
+  await panel.getByRole('tab', { name: 'Axis' }).click();
+  await panel.getByRole('combobox', { name: 'Colour by' }).selectOption('');
   await expect(page.locator('svg.stat-chart .chart-hit')).toHaveCount(2);
   const data = page.locator('details.chart-data');
   await data.locator('summary').click();
   await expect(data.locator('tbody tr').nth(1)).toContainText('440');
 
-  const groups = page.getByRole('complementary', { name: 'Chart settings' }).locator('fieldset', {
-    hasText: 'Groups',
-  });
+  // The Groups card floats beside the chart, as the Replicates card does in the Ridge view.
+  const groups = page.getByRole('region', { name: 'Groups' });
   await groups.getByRole('button', { name: 'Replicates of 10' }).click();
   await groups.getByRole('checkbox', { name: /C02/ }).uncheck();
   await expect(data.locator('tbody tr').nth(1)).toContainText('210');

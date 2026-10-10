@@ -328,7 +328,8 @@
    (populations, reference plots): 12px throughout, primary text for labels and controls,
    muted only for hints. Section titles stay bold at the same size. */
 .insp-panel,
-.ridge-combine {
+.ridge-combine,
+.chart-groups {
   font-size: 12px;
 }
 .insp-panel .field,
@@ -344,28 +345,38 @@
 .plot-side .ref-plots,
 .plot-side :is(.ref-plots, .tab-strip) :is(button, select, input, .field, .small, .pane-title),
 .ridge-combine .field,
+.chart-groups .field,
 .ridge-combine .small,
+.chart-groups .small,
 .ridge-combine .pane-title,
-.ridge-combine .group-picker {
+.chart-groups .pane-title,
+.ridge-combine .group-picker,
+.chart-groups .group-picker {
   font-size: 12px;
 }
 .insp-panel .field,
 .insp-panel .insp-section-body > fieldset > legend,
-.ridge-combine .field {
+.ridge-combine .field,
+.chart-groups .field {
   color: var(--text);
 }
 .insp-panel .field:has(> input:disabled),
 .insp-panel .field:has(> select:disabled),
 .ridge-combine .field:has(> input:disabled),
-.ridge-combine .field:has(> select:disabled) {
+.chart-groups .field:has(> input:disabled),
+.ridge-combine .field:has(> select:disabled),
+.chart-groups .field:has(> select:disabled) {
   color: var(--muted);
 }
 .insp-panel select,
 .insp-panel input,
 .insp-panel button:not(.tt-btn),
 .ridge-combine select,
+.chart-groups select,
 .ridge-combine input,
-.ridge-combine button:not(.tt-btn) {
+.chart-groups input,
+.ridge-combine button:not(.tt-btn),
+.chart-groups button:not(.tt-btn) {
   font-size: 12px;
 }
 

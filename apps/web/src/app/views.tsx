@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ChartsView } from '../features/charts/index.ts';
+import { ChartInspector, ChartsView } from '../features/charts/index.ts';
 import { CompensationView } from '../features/compensation/index.ts';
 import { GateExportCard, GateToolbar, Inspector, PlotPanel, RefPlots } from '../features/gate/index.ts';
 import { PlotGridView } from '../features/grid/index.ts';
@@ -88,7 +88,7 @@ export const VIEW_DEFS: Record<View, ViewDef> = {
     ),
     Panel: () => <RidgeInspector />,
   },
-  charts: { label: 'Charts', Main: () => <ChartsView /> },
+  charts: { label: 'Charts', Main: () => <ChartsView />, Panel: () => <ChartInspector /> },
   compensation: { label: 'Compensation', Main: () => <CompensationView /> },
   samples: { label: 'Samples', Main: () => <SamplesView /> },
 };
