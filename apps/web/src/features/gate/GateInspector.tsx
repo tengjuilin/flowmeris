@@ -1,7 +1,16 @@
 import type { Group, PlotFigure, PlotSpec } from '@flowmeris/model';
 import { useEffect, useRef, useState } from 'react';
-import { factoryAxis } from '../lib/axisDefaults.ts';
-import { DEFAULT_STYLE } from '../lib/figure.ts';
+import { CellOverlayFields, CellSourceFields } from '../../components/PlotGridView.tsx';
+import { FontSelect } from '../../components/controls/FontSelect.tsx';
+import { TextStyleEditor } from '../../components/controls/TextStyleEditor.tsx';
+import { TicksEditor } from '../../components/controls/TicksEditor.tsx';
+import { ActionRow } from '../../components/ui/ActionRow.tsx';
+import { InspectorTabs, PanelReset } from '../../components/ui/InspectorTabs.tsx';
+import { NumInput } from '../../components/ui/NumInput.tsx';
+import { type Panel, Section } from '../../components/ui/Section.tsx';
+import { ApplyIcon, ResetIcon } from '../../components/ui/icons.tsx';
+import { factoryAxis } from '../../lib/axisDefaults.ts';
+import { DEFAULT_STYLE } from '../../lib/figure.ts';
 import {
   DEFAULT_FIGURE,
   PANEL_FIGURE_KEYS,
@@ -23,23 +32,14 @@ import {
   setPairStyles,
   styleKeysAtDefaults,
   withAxesChange,
-} from '../lib/figure.ts';
-import { gateMatchesAxes } from '../lib/geometry.ts';
-import { clearCellOverlay } from '../state/commands/grid.ts';
-import { type PlotTarget, targetEdit, plotsOf as targetPlots } from '../state/commands/plots.ts';
-import { useRememberedTab } from '../state/prefs.ts';
-import { useGroup, useStore } from '../state/store.ts';
+} from '../../lib/figure.ts';
+import { gateMatchesAxes } from '../../lib/geometry.ts';
+import { clearCellOverlay } from '../../state/commands/grid.ts';
+import { type PlotTarget, targetEdit, plotsOf as targetPlots } from '../../state/commands/plots.ts';
+import { useRememberedTab } from '../../state/prefs.ts';
+import { useGroup, useStore } from '../../state/store.ts';
+import { PlotKindSelect, usePlotForPopulation, useTilePlot } from '../plot/index.ts';
 import { AxisEditor, GateEditor, StyleEditor } from './GateInspectorSections.tsx';
-import { CellOverlayFields, CellSourceFields } from './PlotGridView.tsx';
-import { PlotKindSelect, usePlotForPopulation, useTilePlot } from './PlotPanel.tsx';
-import { FontSelect } from './controls/FontSelect.tsx';
-import { TextStyleEditor } from './controls/TextStyleEditor.tsx';
-import { TicksEditor } from './controls/TicksEditor.tsx';
-import { ActionRow } from './ui/ActionRow.tsx';
-import { InspectorTabs, PanelReset } from './ui/InspectorTabs.tsx';
-import { NumInput } from './ui/NumInput.tsx';
-import { type Panel, Section } from './ui/Section.tsx';
-import { ApplyIcon, ResetIcon } from './ui/icons.tsx';
 
 type GateTab = 'settings' | 'gate' | 'figure' | 'axis' | 'text';
 const GATE_TABS: { id: GateTab; label: string }[] = [

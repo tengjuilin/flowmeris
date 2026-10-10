@@ -1,5 +1,5 @@
 import type { Group, PlotKind, PlotSpec } from '@flowmeris/model';
-import { type ReactNode, useEffect, useRef } from 'react';
+import type { ReactNode } from 'react';
 import {
   SCALE_KINDS,
   type ScaleKind,
@@ -8,16 +8,10 @@ import {
   registerTransform,
   scaleKindOf,
   transformOfKind,
-} from '../lib/axisDefaults.ts';
-import type { PlotHandle } from '../lib/export/plot.ts';
-import { withAxesChange } from '../lib/figure.ts';
-import { newTilePlot } from '../lib/plotFactories.ts';
-import { type EditAxes, axisPickers, drill, editPlot, setAxisChannel } from '../state/commands/plots.ts';
-import { exportPlot } from '../state/export.ts';
-import { type Tool, useGroup, useStore } from '../state/store.ts';
-import { PlotCanvas } from './PlotCanvas.tsx';
-import { ExportMenu } from './controls/ExportMenu.tsx';
-import { useSize } from './hooks/useSize.ts';
+} from '../../lib/axisDefaults.ts';
+import { withAxesChange } from '../../lib/figure.ts';
+import { type EditAxes, editPlot, setAxisChannel } from '../../state/commands/plots.ts';
+import { type Tool, useStore } from '../../state/store.ts';
 
 const TOOLS: { id: Tool; label: string; key: string; title: string; oneD?: boolean; twoD?: boolean }[] = [
   { id: 'select', label: 'Select', key: 'V', title: 'Select, move and edit gates (V)' },
@@ -112,31 +106,6 @@ const KINDS: { id: PlotKind; label: string }[] = [
   { id: 'contour', label: 'Contour' },
   { id: 'histogram', label: 'Histogram' },
 ];
-
-export function usePlotForPopulation(): PlotSpec | undefined {
-  const group = useGroup();
-  const ui = useStore((s) => s.ui);
-  if (!group) return undefined;
-  return (
-    group.plots.find((p) => p.id === ui.plotId && p.population === ui.popId) ??
-    group.plots.find((p) => p.population === ui.popId)
-  );
-}
-
-/** The Tiles plot of the population being gated; made from the Gate view's plot on first visit. */
-export function useTilePlot(group: Group | undefined): PlotSpec | undefined {
-  const popId = useStore((s) => s.ui.popId);
-  const plot = group?.tilePlots.find((p) => p.population === popId);
-  const missing = !!group && !plot && !!group.template.populations[popId];
-  useEffect(() => {
-    if (!missing || !group) return;
-    useStore.getState().mutateQuiet((w) => {
-      const g = w.groups.find((x) => x.id === group.id);
-      if (g && !g.tilePlots.some((p) => p.population === popId)) newTilePlot(w, g, popId);
-    });
-  }, [missing, group, popId]);
-  return plot;
-}
 
 /** Plot type picker; edits the population's Gate-view plot, or `edit`'s target. */
 export function PlotKindSelect({
@@ -309,83 +278,6 @@ export function EditScopeToggle() {
       >
         This sample only
       </button>
-    </div>
-  );
-}
-
-/** The Gate view's plot, for the export card beside it. */
-const gatePlotHandle: { current: PlotHandle | null } = { current: null };
-
-/** Card above the population tree: export the Gate view's plot. */
-export function GateExportCard() {
-  const ws = useStore((s) => s.ws);
-  const ui = useStore((s) => s.ui);
-  const group = useGroup();
-  const plot = usePlotForPopulation();
-  if (!group || !plot) return null;
-  const sampleId = ui.sampleId && group.sampleIds.includes(ui.sampleId) ? ui.sampleId : group.sampleIds[0];
-  const name = ws.samples[sampleId ?? '']?.fileName ?? 'plot';
-  return (
-    <ExportMenu
-      className="side-export"
-      onExport={(format, dpi) =>
-        gatePlotHandle.current ? exportPlot(gatePlotHandle.current, plot, format, name, dpi) : undefined
-      }
-    />
-  );
-}
-
-/** The Gate view's gating tools, above its plot and side column (as in the Plot view). */
-export function GateToolbar() {
-  const group = useGroup();
-  const plot = usePlotForPopulation();
-  if (!group || !plot) return null;
-  return (
-    <div className="toolbar" role="toolbar" aria-label="Gating tools">
-      <ToolButtons is1d={plot.kind === 'histogram'} />
-      <EditScopeToggle />
-    </div>
-  );
-}
-
-export function PlotPanel() {
-  const ws = useStore((s) => s.ws);
-  const ui = useStore((s) => s.ui);
-  const group = useGroup();
-  const plot = usePlotForPopulation();
-  const box = useRef<HTMLDivElement>(null);
-  const size = useSize(box);
-
-  if (!group) return <div className="empty">Select or add a group.</div>;
-  const sampleId = ui.sampleId && group.sampleIds.includes(ui.sampleId) ? ui.sampleId : group.sampleIds[0];
-  if (!sampleId) return <div className="empty">This group has no samples.</div>;
-  if (!plot) {
-    return (
-      <div className="empty">
-        <button type="button" onClick={() => drill(ui.popId)}>
-          Create a plot for this population
-        </button>
-      </div>
-    );
-  }
-  return (
-    <div className="plot-panel">
-      <div className="plot-box" ref={box}>
-        {size.width > 0 && (
-          <PlotCanvas
-            ref={gatePlotHandle}
-            ws={ws}
-            group={group}
-            sampleId={sampleId}
-            plot={plot}
-            width={Math.min(size.width, size.height + 120)}
-            height={Math.min(size.height, size.width)}
-            interactive
-            onDrill={drill}
-            {...axisPickers(group, plot)}
-          />
-        )}
-      </div>
     </div>
   );
 }

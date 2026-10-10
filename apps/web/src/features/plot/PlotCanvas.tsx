@@ -25,9 +25,10 @@ import {
   useRef,
   useState,
 } from 'react';
-import { getPool } from '../engine-client/pool.ts';
-import type { PlotHandle } from '../lib/export/plot.ts';
-import { DEFAULT_FIGURE, figureText } from '../lib/figure.ts';
+import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from '../../components/ui/PickerMenu.tsx';
+import { getPool } from '../../engine-client/pool.ts';
+import type { PlotHandle } from '../../lib/export/plot.ts';
+import { DEFAULT_FIGURE, figureText } from '../../lib/figure.ts';
 import {
   applyHandle,
   clampToRange,
@@ -35,15 +36,14 @@ import {
   newGateBase,
   shapeFromDrag,
   translate,
-} from '../lib/gateEdit.ts';
-import { type DimMap, type Pt, dimMap, gateMatchesAxes, rayEnd, scaleFor } from '../lib/geometry.ts';
-import { lineageKey, plotKey } from '../lib/keys.ts';
-import { SPAN, type ShownGate, hitGate, plotFrame, popAt, shapePx } from '../lib/plotFrame.ts';
-import { axisLabel, plotBox } from '../lib/plotLayout.ts';
-import { customTicks, formatHistTick, histYTicks } from '../lib/ticks.ts';
-import { createGate, deleteGate, setGateGeometry, setLabelOffset } from '../state/commands/gates.ts';
-import { contextFor, useStore } from '../state/store.ts';
-import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './ui/PickerMenu.tsx';
+} from '../../lib/gateEdit.ts';
+import { type DimMap, type Pt, dimMap, gateMatchesAxes, rayEnd, scaleFor } from '../../lib/geometry.ts';
+import { lineageKey, plotKey } from '../../lib/keys.ts';
+import { SPAN, type ShownGate, hitGate, plotFrame, popAt, shapePx } from '../../lib/plotFrame.ts';
+import { axisLabel, plotBox } from '../../lib/plotLayout.ts';
+import { customTicks, formatHistTick, histYTicks } from '../../lib/ticks.ts';
+import { createGate, deleteGate, setGateGeometry, setLabelOffset } from '../../state/commands/gates.ts';
+import { contextFor, useStore } from '../../state/store.ts';
 
 /** Where each quadrant / spider region's percentage label sits in a pw × ph plot. */
 const QUAD_CORNERS: Partial<Record<Region, (pw: number, ph: number) => [number, number, 'start' | 'end']>> = {
@@ -99,8 +99,6 @@ type Drag =
   | { kind: 'handle'; gateId: string; handle: string; base: Geometry }
   /** A population's label, its offset in fractions of the plot size. */
   | { kind: 'label'; popId: string; start: [number, number]; base: [number, number]; cur: [number, number] };
-
-export { plotBox };
 
 export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   {

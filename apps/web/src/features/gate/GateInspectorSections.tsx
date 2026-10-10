@@ -9,15 +9,15 @@ import {
 } from '@flowmeris/model';
 import { COLORMAPS } from '@flowmeris/render';
 import type { ReactNode } from 'react';
-import { factoryAxis, groupSample } from '../lib/axisDefaults.ts';
-import { DEFAULT_FIGURE, DEFAULT_STYLE, TILE_FIGURE } from '../lib/figure.ts';
-import { deleteGate, promoteOverride, revertOverride, setGateGeometry } from '../state/commands/gates.ts';
-import { type PlotTarget, axisChannelSetter, plotsOf, targetEdit } from '../state/commands/plots.ts';
-import { useGroup, useStore } from '../state/store.ts';
-import { type ApplyAxis, AxisFields } from './controls/AxisFields.tsx';
-import { NumInput } from './ui/NumInput.tsx';
-import { type Panel, Section } from './ui/Section.tsx';
-import { DeleteIcon } from './ui/icons.tsx';
+import { type ApplyAxis, AxisFields } from '../../components/controls/AxisFields.tsx';
+import { NumInput } from '../../components/ui/NumInput.tsx';
+import { type Panel, Section } from '../../components/ui/Section.tsx';
+import { DeleteIcon } from '../../components/ui/icons.tsx';
+import { factoryAxis, groupSample } from '../../lib/axisDefaults.ts';
+import { DEFAULT_FIGURE, DEFAULT_STYLE, TILE_FIGURE } from '../../lib/figure.ts';
+import { deleteGate, promoteOverride, revertOverride, setGateGeometry } from '../../state/commands/gates.ts';
+import { type PlotTarget, axisChannelSetter, plotsOf, targetEdit } from '../../state/commands/plots.ts';
+import { useGroup, useStore } from '../../state/store.ts';
 
 // The Gate-view settings panel's cards: an axis, the plot display, and one gate's coordinates.
 

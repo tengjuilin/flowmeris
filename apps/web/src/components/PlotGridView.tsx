@@ -1,6 +1,7 @@
 import type { Group, PlotCell, PlotKind, Workspace } from '@flowmeris/model';
 import { populationLineage, populationsDepthFirst } from '@flowmeris/model';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { EditScopeToggle, PlotCanvas, ToolButtons } from '../features/plot/index.ts';
 import type { PlotHandle } from '../lib/export/plot.ts';
 import { nearestColumns } from '../lib/fitSize.ts';
 import { cellSample, overlayColors, plotOf } from '../lib/gridCells.ts';
@@ -15,8 +16,6 @@ import {
 import { axisPickers } from '../state/commands/plots.ts';
 import { exportPlot } from '../state/export.ts';
 import { mutateGroup, toast, useGroup, useSampleNames, useStore } from '../state/store.ts';
-import { PlotCanvas } from './PlotCanvas.tsx';
-import { EditScopeToggle, ToolButtons } from './PlotPanel.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { ExportMenu } from './controls/ExportMenu.tsx';
 import { useSize } from './hooks/useSize.ts';
