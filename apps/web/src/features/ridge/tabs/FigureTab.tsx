@@ -1,6 +1,5 @@
 import type { RidgeStyle } from '@flowmeris/model';
-import type { ComponentProps } from 'react';
-import { FontSelect } from '../../../components/controls/FontSelect.tsx';
+import { BaseFontCard } from '../../../components/controls/text/index.ts';
 import { ColorField } from '../../../components/ui/ColorField.tsx';
 import { NumInput } from '../../../components/ui/NumInput.tsx';
 import { PercentSlider } from '../../../components/ui/Slider.tsx';
@@ -9,9 +8,6 @@ import { clamp } from '../../../lib/math.ts';
 import { scaleRidgeFonts } from '../../../lib/ridgePanels.ts';
 import { DEFAULT_RIDGE_STYLE } from '../../../lib/ridgeStyle.ts';
 import type { RidgeTabProps } from '../ridgeEdits.ts';
-
-/** A number input that updates the plot as you type. */
-const LiveNum = (p: ComponentProps<typeof NumInput>) => <NumInput live {...p} />;
 
 /** The Figure tab: ridge colors and outline, labels, layout, histogram and base font. */
 export function FigureTab({ r, fx, card }: RidgeTabProps) {
@@ -72,7 +68,8 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
           }}
         />
         <div className="grid2">
-          <LiveNum
+          <NumInput
+            live
             label="Outline width"
             step={0.25}
             value={style.strokeWidth}
@@ -108,7 +105,8 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
           Event count on its own line
         </label>
         <div className="grid2">
-          <LiveNum
+          <NumInput
+            live
             label="Label width (px)"
             step={10}
             title={style.labelOverflow === 'widen' ? 'Set automatically to fit the longest label' : undefined}
@@ -155,7 +153,8 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
           </label>
           {style.rowHeight !== undefined && (
             <div className="sub-option">
-              <LiveNum
+              <NumInput
+                live
                 label="Row height (px)"
                 step={1}
                 value={style.rowHeight}
@@ -175,7 +174,8 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
           </label>
           {style.width !== undefined && (
             <div className="sub-option">
-              <LiveNum
+              <NumInput
+                live
                 label="Width (px)"
                 step={10}
                 value={style.width}
@@ -195,7 +195,8 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
           </label>
           {style.aspect !== undefined && (
             <div className="sub-option">
-              <LiveNum
+              <NumInput
+                live
                 label="Width ÷ height"
                 step={0.1}
                 title="Fixes the figure's shape; row height is derived to fit"
@@ -208,14 +209,16 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
       </Card>
       <Card {...card('histogram', resetOf('histogram', 'histogram'))}>
         <div className="grid2">
-          <LiveNum
+          <NumInput
+            live
             label="Bins"
             step={16}
             title="Histogram bins across the x range"
             value={style.bins}
             onCommit={(v) => set('bins', clamp(Math.round(v), 16, 1024), 'Ridge bins')}
           />
-          <LiveNum
+          <NumInput
+            live
             label="Smoothing σ (bins)"
             step={0.5}
             title="Gaussian smoothing of each curve; 0 for none"
@@ -224,38 +227,20 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
           />
         </div>
       </Card>
-      <Card {...card('baseFont', resetOf('baseFont', 'base font'))}>
-        <FontSelect
-          label="Base font"
-          value={style.fontFamily}
-          onChange={(v) => set('fontFamily', v ?? 'arial', 'Ridge font')}
-        />
-        <ColorField
-          inline
-          label="Base font color"
-          value={style.fontColor}
-          onChange={(v) => set('fontColor', v, 'Ridge font color', 'fontColor')}
-          reset={{
-            disabled: style.fontColor === DEFAULT_RIDGE_STYLE.fontColor,
-            label: 'Reset base font color to black',
-            title:
-              style.fontColor === DEFAULT_RIDGE_STYLE.fontColor
-                ? 'Base font color is the default'
-                : 'Reset base font color to black',
-            onReset: () => set('fontColor', DEFAULT_RIDGE_STYLE.fontColor, 'Ridge font color'),
-          }}
-        />
-        <LiveNum
-          label="Base font size (px)"
-          step={0.5}
-          title="Scales the label, tick and title sizes together"
-          value={style.fontSize}
-          onCommit={(v) => {
-            if (clamp(v, 4, 48) === style.fontSize) return;
-            update('Ridge base font size', (l) => void scaleRidgeFonts(l.style, v), 'style:fontSize');
-          }}
-        />
-      </Card>
+      <BaseFontCard
+        card={card('baseFont', resetOf('baseFont', 'base font'))}
+        font={style.fontFamily}
+        defaultFont="arial"
+        onFont={(v) => set('fontFamily', v, 'Ridge font')}
+        color={style.fontColor}
+        defaultColor={DEFAULT_RIDGE_STYLE.fontColor}
+        onColor={(v, merge) => set('fontColor', v, 'Ridge font color', merge)}
+        size={style.fontSize}
+        onSize={(v) =>
+          update('Ridge base font size', (l) => void scaleRidgeFonts(l.style, v), 'style:fontSize')
+        }
+        sizeTitle="Scales the label, tick and title sizes together"
+      />
     </>
   );
 }

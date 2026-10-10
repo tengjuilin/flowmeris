@@ -51,7 +51,7 @@ export function figureEdits(group: Group, plot: PlotSpec, target: PlotTarget) {
       merge,
     );
   /** Reset props for a card whose settings are the figure `keys`. */
-  const resetOf = (keys: (keyof PlotFigure)[], title: string) => ({
+  const resetOf = (keys: readonly (keyof PlotFigure)[], title: string) => ({
     changed: keys.some((k) => !same(fig[k], defFig[k])),
     onReset: () =>
       edit(`Reset ${title}`, (f) => {
