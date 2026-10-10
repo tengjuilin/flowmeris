@@ -1,19 +1,19 @@
 import {
   type AnalysisContext,
   Engine,
-  type GatePreviewRequest,
+  type EventsFormat,
+  type EventsMode,
+  type IngestResult,
   MemoryStorage,
-  type RasterRequest,
   type SampleData,
-  type StatSpec,
   type StorageAdapter,
   sampleDataFromDataset,
   sampleMetaFromDataset,
 } from '@flowmeris/engine';
 /// <reference lib="webworker" />
-import { eventsToFcs } from '@flowmeris/export';
+import { eventsToCsv, eventsToFcs } from '@flowmeris/export';
 import { parseFcs } from '@flowmeris/fcs';
-import type { AxisSpec, PlotStyle, Sample } from '@flowmeris/model';
+import type { Sample } from '@flowmeris/model';
 import { OpfsStorage } from '@flowmeris/storage';
 import * as Comlink from 'comlink';
 
@@ -45,17 +45,15 @@ const storage: StorageAdapter = {
 
 const engine = new Engine(storage, { cacheBytes: 256 * 2 ** 20, sampleBytes: 384 * 2 ** 20 });
 
-async function sha256Hex(buf: ArrayBuffer): Promise<string> {
+async function sha256Buffer(buf: ArrayBuffer): Promise<string> {
   const d = new Uint8Array(await crypto.subtle.digest('SHA-256', buf));
   return Array.from(d, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export interface IngestResult {
-  samples: Sample[];
-  sha256: string;
-  persisted: boolean;
-}
-
+/**
+ * Parameters are Engine's own (ADR-0010): methods that only pass through take `...a:
+ * Parameters<Engine[m]>`. Results with large buffers are transferred, not copied.
+ */
 const api = {
   async init(budgetBytes: number) {
     engine.setBudgets(Math.floor(budgetBytes * 0.4), Math.floor(budgetBytes * 0.6));
@@ -65,7 +63,7 @@ const api = {
   /** Hash, parse and persist one FCS file (all datasets). */
   async ingest(file: File, relativePath: string): Promise<IngestResult> {
     const buf = await file.arrayBuffer();
-    const sha256 = await sha256Hex(buf);
+    const sha256 = await sha256Buffer(buf);
     const parsed = parseFcs(new Uint8Array(buf));
     await ready;
     const samples: Sample[] = [];
@@ -96,63 +94,35 @@ const api = {
     }
   },
 
-  async raster(ctx: AnalysisContext, req: RasterRequest) {
-    const r = await engine.raster(ctx, req);
+  async raster(...a: Parameters<Engine['raster']>) {
+    const r = await engine.raster(...a);
     return Comlink.transfer(r, [r.rgba.buffer]);
   },
 
-  async histogram(ctx: AnalysisContext, sampleId: string, popId: string, axis: AxisSpec, style: PlotStyle) {
-    const h = await engine.histogram(ctx, sampleId, popId, axis, style);
+  async histogram(...a: Parameters<Engine['histogram']>) {
+    const h = await engine.histogram(...a);
     return Comlink.transfer(h, [h.centers.buffer, h.heights.buffer]);
   },
 
-  counts(ctx: AnalysisContext, sampleId: string, popIds: string[]) {
-    return engine.counts(ctx, sampleId, popIds);
-  },
-
-  stats(ctx: AnalysisContext, sampleId: string, specs: StatSpec[]) {
-    return engine.stats(ctx, sampleId, specs);
-  },
-
-  table(ctx: AnalysisContext, sampleId: string, popIds: string[], specs: StatSpec[]) {
-    return engine.table(ctx, sampleId, popIds, specs);
-  },
-
-  preview(ctx: AnalysisContext, req: GatePreviewRequest) {
-    return engine.preview(ctx, req);
-  },
-
-  channelValues(
-    ctx: AnalysisContext,
-    sampleId: string,
-    axis: { channel: string; comp: 'group' | 'uncompensated' },
-    popId: string,
-  ) {
-    return engine.channelValues(ctx, sampleId, axis, popId);
-  },
+  counts: (...a: Parameters<Engine['counts']>) => engine.counts(...a),
+  table: (...a: Parameters<Engine['table']>) => engine.table(...a),
+  preview: (...a: Parameters<Engine['preview']>) => engine.preview(...a),
+  channelValues: (...a: Parameters<Engine['channelValues']>) => engine.channelValues(...a),
 
   /** Gated events as an FCS 3.1 file (raw linear values + original keywords) or CSV text. */
   async exportEvents(
     ctx: AnalysisContext,
     sampleId: string,
     popId: string,
-    mode: 'raw' | 'compensated',
-    format: 'fcs' | 'csv',
+    mode: EventsMode,
+    format: EventsFormat,
     provenance: Record<string, string>,
   ): Promise<Uint8Array> {
     const ev = await engine.populationEvents(ctx, sampleId, popId, mode);
+    if (format === 'csv') return new TextEncoder().encode(eventsToCsv(ev));
     const s = await engine.sample(sampleId);
-    if (format === 'csv') {
-      const lines = [ev.channels.map((c) => JSON.stringify(c)).join(',')];
-      for (let i = 0; i < ev.count; i++) lines.push(ev.columns.map((c) => String(c[i])).join(','));
-      return new TextEncoder().encode(`${lines.join('\n')}\n`);
-    }
     const bytes = eventsToFcs(s.keywords, ev, mode, provenance);
     return Comlink.transfer(bytes, [bytes.buffer]);
-  },
-
-  cacheBytes() {
-    return engine.cacheBytes;
   },
 };
 

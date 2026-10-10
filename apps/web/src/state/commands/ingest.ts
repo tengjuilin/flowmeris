@@ -1,4 +1,4 @@
-import { pool } from '../../engine-client/pool.ts';
+import { getPool } from '../../engine-client/pool.ts';
 import { DATA_FILE_RE } from '../../lib/files.ts';
 import { type IngestedFile, type InputFile, addIngested, folderOf } from '../../lib/ingest.ts';
 import { toast, useStore } from '../store.ts';
@@ -10,7 +10,7 @@ import { toast, useStore } from '../store.ts';
  */
 export async function ingestFiles(files: InputFile[]): Promise<void> {
   const fcs = files.filter((f) => DATA_FILE_RE.test(f.file.name));
-  const { setUi } = useStore.getState();
+  const { setUi, setStatus } = useStore.getState();
   if (fcs.length === 0) {
     toast('No .fcs or .lmd files found in the selection.');
     return;
@@ -21,38 +21,37 @@ export async function ingestFiles(files: InputFile[]): Promise<void> {
     current: '',
     errors: [] as { file: string; message: string }[],
   };
-  setUi({ ingest: { ...progress } });
+  setStatus({ ingest: { ...progress } });
   const results: IngestedFile[] = [];
   let cursor = 0;
   const workerLoop = async () => {
     while (cursor < fcs.length) {
       const f = fcs[cursor++]!;
       progress.current = f.path;
-      setUi({ ingest: { ...progress, errors: [...progress.errors] } });
+      setStatus({ ingest: { ...progress, errors: [...progress.errors] } });
       try {
-        const r = await pool.ingest(f.file, f.path);
+        const r = await getPool().ingest(f.file, f.path);
         results.push({ folder: folderOf(f.path), samples: r.samples });
       } catch (e) {
         progress.errors.push({ file: f.path, message: e instanceof Error ? e.message : String(e) });
       }
       progress.done++;
-      setUi({ ingest: { ...progress, errors: [...progress.errors] } });
+      setStatus({ ingest: { ...progress, errors: [...progress.errors] } });
     }
   };
-  await Promise.all(Array.from({ length: pool.size }, workerLoop));
+  await Promise.all(Array.from({ length: getPool().size }, workerLoop));
 
   let added: ReturnType<typeof addIngested> = { relinked: [], firstNewGroup: null };
   useStore.getState().mutate('Add FCS files', (ws) => {
     added = addIngested(ws, results);
   });
   const { relinked, firstNewGroup } = added;
-  const missing = { ...useStore.getState().ui.missing };
+  const missing = { ...useStore.getState().status.missing };
   for (const id of relinked) delete missing[id];
   const st = useStore.getState();
   const g = firstNewGroup ? st.ws.groups.find((x) => x.id === firstNewGroup) : undefined;
+  setStatus({ ingest: progress.errors.length ? { ...progress } : null, missing });
   setUi({
-    ingest: progress.errors.length ? { ...progress } : null,
-    missing,
     ...(g
       ? {
           groupId: g.id,
@@ -71,13 +70,13 @@ export async function ingestFiles(files: InputFile[]): Promise<void> {
 
 /** After restoring a workspace, find samples whose decoded data is not in browser storage. */
 export async function checkMissing(): Promise<void> {
-  await pool.whenReady();
+  await getPool().whenReady();
   const ws = useStore.getState().ws;
   const missing: Record<string, true> = {};
   await Promise.all(
     Object.keys(ws.samples).map(async (id) => {
-      if (!(await pool.hasSample(id))) missing[id] = true;
+      if (!(await getPool().hasSample(id))) missing[id] = true;
     }),
   );
-  useStore.getState().setUi({ missing });
+  useStore.getState().setStatus({ missing });
 }

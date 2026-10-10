@@ -1,7 +1,7 @@
 import type { Group } from '@flowmeris/model';
 import { useRef, useState } from 'react';
+import { drill } from '../state/commands/plots.ts';
 import { useSampleNames, useStore } from '../state/store.ts';
-import { drill } from './PlotPanel.tsx';
 
 function SelectionControls({ g }: { g: Group }) {
   const excluded = useStore((s) => s.ui.excluded);
@@ -33,6 +33,7 @@ function SelectionControls({ g }: { g: Group }) {
 export function Sidebar() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
+  const missing = useStore((s) => s.status.missing);
   const setUi = useStore((s) => s.setUi);
   const mutate = useStore((s) => s.mutate);
   const activeGroup = ws.groups.find((g) => g.id === ui.groupId);
@@ -188,7 +189,7 @@ export function Sidebar() {
                         >
                           <span className="name">{names[id] ?? s.fileName}</span>
                           <span className="badges">
-                            {ui.missing[id] && (
+                            {missing[id] && (
                               <span
                                 className="badge danger"
                                 title="Event data missing from browser storage — re-add the file"

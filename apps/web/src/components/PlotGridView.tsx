@@ -1,13 +1,19 @@
-import type { Group, PlotCell, PlotKind, PlotSpec, Workspace } from '@flowmeris/model';
-import { newId, populationLineage, populationsDepthFirst } from '@flowmeris/model';
-import { CATEGORICAL } from '@flowmeris/render';
+import type { Group, PlotCell, PlotKind, Workspace } from '@flowmeris/model';
+import { populationLineage, populationsDepthFirst } from '@flowmeris/model';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { defaultAxis, defaultChannels } from '../lib/axisDefaults.ts';
 import type { PlotHandle } from '../lib/export/plot.ts';
-import { TILE_FIGURE, TILE_STYLE } from '../lib/figure.ts';
 import { nearestColumns } from '../lib/fitSize.ts';
+import { cellSample, overlayColors, plotOf } from '../lib/gridCells.ts';
+import {
+  addCell,
+  editCell,
+  openInGateView,
+  removeCell,
+  setCellPopulation,
+  setCellSample,
+} from '../state/commands/grid.ts';
 import { exportPlot } from '../state/export.ts';
-import { toast, useGroup, useSampleNames, useStore } from '../state/store.ts';
+import { mutateGroup, toast, useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { ExportMenu } from './ExportMenu.tsx';
 import { OpenInIcon, SettingsIcon } from './Inspector.tsx';
 import { type Anchor, type PickOption, PickerMenu } from './PickerMenu.tsx';
@@ -25,56 +31,6 @@ const KINDS: { id: PlotKind; label: string }[] = [
   { id: 'histogram', label: 'Histogram' },
 ];
 
-function editGrid(groupId: string, label: string, fn: (g: Group, w: Workspace) => void) {
-  useStore.getState().mutate(label, (w) => {
-    const g = w.groups.find((x) => x.id === groupId);
-    if (g) fn(g, w);
-  });
-}
-
-function editCell(
-  groupId: string,
-  cellId: string,
-  label: string,
-  fn: (c: PlotCell, g: Group, w: Workspace) => void,
-) {
-  editGrid(groupId, label, (g, w) => {
-    const c = g.grid.cells.find((x) => x?.id === cellId);
-    if (c) fn(c, g, w);
-  });
-}
-
-/** Put a new plot into cell `slot`; its axes are `xy`, or the group's default channels. */
-function addCell(groupId: string, slot: number, kind: PlotKind, population: string, xy?: [string, string?]) {
-  let id = '';
-  editGrid(groupId, 'Add plot to grid', (g, w) => {
-    const [dx, dy] = defaultChannels(w, g);
-    const xc = xy?.[0] ?? dx;
-    const yc = xy?.[1] ?? (dy === xc ? dx : dy);
-    const c: PlotCell = {
-      id: newId('cell_'),
-      population: g.template.populations[population] ? population : 'root',
-      overlay: [],
-      kind,
-      x: { ...defaultAxis(w, g, xc) },
-      style: structuredClone(TILE_STYLE),
-    };
-    if (kind !== 'histogram') c.y = { ...defaultAxis(w, g, yc) };
-    while (g.grid.cells.length < slot) g.grid.cells.push(null);
-    g.grid.cells[slot] = c;
-    id = c.id;
-  });
-  if (id) useStore.getState().setUi({ gridCellId: id });
-}
-
-function removeCell(groupId: string, cellId: string) {
-  editGrid(groupId, 'Remove plot from grid', (g) => {
-    const cells = g.grid.cells.map((c) => (c?.id === cellId ? null : c));
-    while (cells.length && cells[cells.length - 1] === null) cells.pop();
-    g.grid.cells = cells;
-  });
-}
-
 /** Grid gap, and the narrowest cell offered (as for tiles), so plots keep room for their axes. */
 const GAP = 8;
 const MIN_CELL = 160;
@@ -82,91 +38,6 @@ const MIN_COLUMNS = 2;
 const MAX_COLUMNS = 12;
 /** Narrowest populations card; it spans as many cells as reach this width, or its rows' width (as in Tiles). */
 const SIDE_MIN = 280;
-
-/** Open a cell's population, sample and axes in the Gate view, reusing a matching saved plot. */
-function openInGateView(group: Group, cell: PlotCell, sampleId: string | undefined) {
-  const same = (p: PlotSpec) =>
-    p.population === cell.population &&
-    p.kind === cell.kind &&
-    p.x.channel === cell.x.channel &&
-    (cell.kind === 'histogram' || p.y?.channel === cell.y?.channel);
-  let plotId = group.plots.find(same)?.id;
-  if (!plotId) {
-    const id = newId('plt_');
-    editGrid(group.id, 'Open grid plot in Gate view', (g) => {
-      g.plots.push({
-        id,
-        population: cell.population,
-        kind: cell.kind,
-        x: { ...cell.x },
-        ...(cell.y ? { y: { ...cell.y } } : {}),
-        // The grid's figure options (smaller text) stay with the grid plot.
-        style: { ...cell.style, figure: undefined },
-      });
-    });
-    plotId = id;
-  }
-  useStore.getState().setUi({
-    view: 'gate',
-    popId: cell.population,
-    plotId,
-    selectedGateId: null,
-    ...(sampleId ? { sampleId } : {}),
-  });
-}
-
-/**
- * Open a Tiles plot of `sampleId` in the Plot view: select the grid plot already showing it (same
- * population, type and axes, pinned to that sample), else put a copy pinned to the sample in the next
- * empty cell, leaving the other grid plots as they are.
- */
-export function openTileInGrid(group: Group, plot: PlotSpec, sampleId: string) {
-  const same = (c: PlotCell | null): c is PlotCell =>
-    !!c &&
-    c.sampleId === sampleId &&
-    c.population === plot.population &&
-    c.kind === plot.kind &&
-    c.x.channel === plot.x.channel &&
-    (plot.kind === 'histogram' || c.y?.channel === plot.y?.channel);
-  let id = group.grid.cells.find(same)?.id;
-  if (!id) {
-    const cellId = newId('cell_');
-    editGrid(group.id, 'Open tile in Plot view', (g) => {
-      const slot = g.grid.cells.findIndex((c) => c === null);
-      const c: PlotCell = {
-        id: cellId,
-        population: plot.population,
-        sampleId,
-        overlay: [],
-        kind: plot.kind,
-        x: { ...plot.x },
-        ...(plot.y && plot.kind !== 'histogram' ? { y: { ...plot.y } } : {}),
-        // A tile drawn with the Tiles defaults leaves the cell on the grid defaults (the same).
-        style:
-          plot.style.figure === TILE_FIGURE
-            ? structuredClone({ ...plot.style, figure: undefined })
-            : structuredClone(plot.style),
-      };
-      if (slot >= 0) g.grid.cells[slot] = c;
-      else g.grid.cells.push(c);
-    });
-    id = cellId;
-  }
-  useStore.getState().setUi({ view: 'plot', sampleId, gridCellId: id, selectedGateId: null });
-}
-
-/** The sample a cell gates and shows: its pinned sample, else the selected one. */
-function cellSample(group: Group, cell: PlotCell, selected: string | null): string | undefined {
-  if (cell.sampleId && group.sampleIds.includes(cell.sampleId)) return cell.sampleId;
-  return selected && group.sampleIds.includes(selected) ? selected : group.sampleIds[0];
-}
-
-/** Colours of a cell's samples: the plotted sample first, then the overlays in order. */
-function overlayColors(cell: PlotCell, sampleId: string, group: Group) {
-  const others = cell.overlay.filter((id) => id !== sampleId && group.sampleIds.includes(id));
-  const color = (i: number) => CATEGORICAL[i % CATEGORICAL.length]!;
-  return { color: color(0), samples: others.map((id, i) => ({ sampleId: id, color: color(i + 1) })) };
-}
 
 /** The group's populations, depth first and indented, with their colours. */
 function populationOptions(group: Group): PickOption[] {
@@ -176,18 +47,6 @@ function populationOptions(group: Group): PickOption[] {
     depth: populationLineage(group.template, p.id).length - 1,
     swatch: p.color,
   }));
-}
-
-function setCellPopulation(groupId: string, cellId: string, popId: string) {
-  editCell(groupId, cellId, 'Change grid plot population', (c) => void (c.population = popId));
-}
-
-/** Pin a cell to `sampleId`, or let it follow the sidebar selection when there is none. */
-function setCellSample(groupId: string, cellId: string, sampleId: string | undefined) {
-  editCell(groupId, cellId, 'Change grid plot sample', (c) => {
-    if (sampleId) c.sampleId = sampleId;
-    else c.sampleId = undefined;
-  });
 }
 
 /** Sample choices of a cell: following the sidebar selection, then each of the group's samples. */
@@ -209,22 +68,13 @@ function openOnPress(open: (el: HTMLElement) => void) {
   };
 }
 
-/** A cell as a plot to draw; one without saved figure options is drawn with the grid (Tiles) defaults. */
-function plotOf(cell: PlotCell): PlotSpec {
-  return {
-    id: cell.id,
-    population: cell.population,
-    kind: cell.kind,
-    x: cell.x,
-    style: cell.style.figure ? cell.style : { ...cell.style, figure: TILE_FIGURE },
-    ...(cell.y ? { y: cell.y } : {}),
-  };
-}
-
 /** The Plot view: a fixed grid of plots, each with its own population, sample(s), type and axes. */
 export function PlotGridView() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
+  const missing = useStore((s) => s.status.missing);
+  const gridSettings = useStore((s) => s.views.gridSettings);
+  const setViews = useStore((s) => s.setViews);
   const setUi = useStore((s) => s.setUi);
   const group = useGroup();
   const names = useSampleNames(group);
@@ -320,7 +170,7 @@ export function PlotGridView() {
               max={maxColumns}
               sizeFor={sizeFor}
               onPick={(size) =>
-                editGrid(group.id, 'Change plot size', (g) => {
+                mutateGroup(group.id, 'Change plot size', (g) => {
                   g.grid.size = size;
                   g.grid.columns = nearestColumns(size, sizeFor, MIN_COLUMNS, maxColumns);
                 })
@@ -329,10 +179,10 @@ export function PlotGridView() {
             <button
               type="button"
               className="tiles-settings"
-              aria-expanded={ui.gridSettings}
+              aria-expanded={gridSettings}
               aria-label="Settings"
-              title={ui.gridSettings ? 'Hide settings' : 'Show settings'}
-              onClick={() => setUi({ gridSettings: !ui.gridSettings })}
+              title={gridSettings ? 'Hide settings' : 'Show settings'}
+              onClick={() => setViews({ gridSettings: !gridSettings })}
             >
               <SettingsIcon />
             </button>
@@ -371,7 +221,7 @@ export function PlotGridView() {
               active={cell.id === active?.id}
               sampleId={cellSample(group, cell, ui.sampleId)}
               sampleName={sampleName}
-              missing={ui.missing}
+              missing={missing}
               onActivate={() => cell.id !== ui.gridCellId && setUi({ gridCellId: cell.id })}
               onDrill={onDrill}
               handle={cell.id === active?.id ? handle : undefined}
@@ -456,10 +306,6 @@ export function CellSourceFields({ group, cell }: { group: Group; cell: PlotCell
       </div>
     </>
   );
-}
-
-export function clearCellOverlay(groupId: string, cellId: string) {
-  editCell(groupId, cellId, 'Clear grid plot overlay', (c) => void (c.overlay = []));
 }
 
 /** Checklist of the samples drawn over a grid plot, each in its own colour: its Sample overlay card. */

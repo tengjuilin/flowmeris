@@ -28,3 +28,17 @@ export function eventsToFcs(
     { keywords: kw },
   );
 }
+
+/**
+ * Gated events as CSV text: a header of channel names ($PnN, JSON-quoted), then one row per event in
+ * shortest round-trip decimal form.
+ */
+export function eventsToCsv(events: {
+  channels: string[];
+  columns: ArrayLike<number>[];
+  count: number;
+}): string {
+  const lines = [events.channels.map((c) => JSON.stringify(c)).join(',')];
+  for (let i = 0; i < events.count; i++) lines.push(events.columns.map((c) => String(c[i])).join(','));
+  return `${lines.join('\n')}\n`;
+}

@@ -348,7 +348,7 @@ function ValuesTab({ group, variable }: { group: Group; variable: Variable | und
 export function MetadataInspector() {
   const group = useGroup();
   const vars = useStore((s) => s.ws.variables);
-  const mode = useStore((s) => s.ui.metaMode);
+  const mode = useStore((s) => s.views.metaMode);
   const metaVarId = useStore((s) => s.ui.metaVarId);
   const setUi = useStore((s) => s.setUi);
   const mutate = useStore((s) => s.mutate);

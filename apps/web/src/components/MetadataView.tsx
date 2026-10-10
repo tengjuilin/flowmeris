@@ -423,11 +423,12 @@ export function MetadataView() {
   const ws = useStore((s) => s.ws);
   const mutate = useStore((s) => s.mutate);
   const names = useSampleNames(group);
-  const mode = useStore((s) => s.ui.metaMode);
+  const mode = useStore((s) => s.views.metaMode);
   const metaVarId = useStore((s) => s.ui.metaVarId);
-  const settingsOpen = useStore((s) => s.ui.metaSettings);
+  const settingsOpen = useStore((s) => s.views.metaSettings);
   const setUi = useStore((s) => s.setUi);
-  const setMode = (m: 'table' | 'plate') => setUi({ metaMode: m });
+  const setViews = useStore((s) => s.setViews);
+  const setMode = (m: 'table' | 'plate') => setViews({ metaMode: m });
   const [sheets, setSheets] = useState<Sheet[] | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   if (!group) return <div className="empty">Select a group.</div>;
@@ -513,7 +514,7 @@ export function MetadataView() {
           aria-expanded={settingsOpen}
           aria-label="Settings"
           title={settingsOpen ? 'Hide settings' : 'Show settings'}
-          onClick={() => setUi({ metaSettings: !settingsOpen })}
+          onClick={() => setViews({ metaSettings: !settingsOpen })}
         >
           <SettingsIcon />
         </button>

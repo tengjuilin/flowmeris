@@ -3,7 +3,7 @@ import type { HistogramResponse } from '@flowmeris/engine';
 import type { Group, PlotSpec } from '@flowmeris/model';
 import { axisTicks, formatLinear } from '@flowmeris/transforms';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { pool } from '../engine-client/pool.ts';
+import { getPool } from '../engine-client/pool.ts';
 import { factoryAxis } from '../lib/axisDefaults.ts';
 import { TILE_FIGURE } from '../lib/figure.ts';
 import { nearestColumns } from '../lib/fitSize.ts';
@@ -11,21 +11,15 @@ import { scaleFor } from '../lib/geometry.ts';
 import { lineageKey } from '../lib/keys.ts';
 import { withRidgeChannel } from '../lib/ridgeStyle.ts';
 import { textMeasure, wrapText } from '../lib/text.ts';
+import { openTileInGrid } from '../state/commands/grid.ts';
+import { drill, tilesEdit } from '../state/commands/plots.ts';
 import { exportSvgFigure } from '../state/export.ts';
-import {
-  contextFor,
-  toast,
-  useGroup,
-  useSampleNames,
-  useSelectedSampleIds,
-  useStore,
-} from '../state/store.ts';
+import { contextFor, useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
 import { ExportMenu } from './ExportMenu.tsx';
 import { OpenInIcon, SettingsIcon } from './Inspector.tsx';
 import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './PickerMenu.tsx';
 import { PlotCanvas } from './PlotCanvas.tsx';
-import { openTileInGrid } from './PlotGridView.tsx';
-import { EditScopeToggle, ToolButtons, axisPickers, drill, tilesEdit, useTilePlot } from './PlotPanel.tsx';
+import { EditScopeToggle, ToolButtons, axisPickers, useTilePlot } from './PlotPanel.tsx';
 import { PlotSizeSlider } from './PlotSizeSlider.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { fontStack, ridgeColor, textCss, useRidge } from './RidgeInspector.tsx';
@@ -177,7 +171,8 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
   );
   const names = useSampleNames(group);
   const shown = useSelectedSampleIds(group);
-  const settingsOpen = useStore((s) => s.ui.tilesSettings);
+  const settingsOpen = useStore((s) => s.views.tilesSettings);
+  const setViews = useStore((s) => s.setViews);
   const setUi = useStore((s) => s.setUi);
   const box = useRef<HTMLDivElement>(null);
   const { width } = useSize(box);
@@ -186,7 +181,7 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
   // the size near it.
   const fit = Math.floor((width + TILE_GAP) / (MIN_TILE + TILE_EXTRA));
   const maxColumns = Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, fit));
-  const picked = useStore((s) => s.ui.tilesPlotSize);
+  const picked = useStore((s) => s.views.tilesPlotSize);
   const sizeFor = (n: number) => tileSizeFor(width, n);
   const columns = width > 0 ? nearestColumns(picked, sizeFor, MIN_COLUMNS, maxColumns) : MIN_COLUMNS;
   const tile = width > 0 ? Math.max(MIN_TILE, tileSizeFor(width, columns)) : 0;
@@ -209,7 +204,7 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
             min={MIN_COLUMNS}
             max={maxColumns}
             sizeFor={sizeFor}
-            onPick={(tilesPlotSize) => setUi({ tilesPlotSize })}
+            onPick={(tilesPlotSize) => setViews({ tilesPlotSize })}
           />
           <button
             type="button"
@@ -217,7 +212,7 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
             aria-expanded={settingsOpen}
             aria-label="Settings"
             title={settingsOpen ? 'Hide settings' : 'Show settings'}
-            onClick={() => setUi({ tilesSettings: !settingsOpen })}
+            onClick={() => setViews({ tilesSettings: !settingsOpen })}
           >
             <SettingsIcon />
           </button>
@@ -292,6 +287,7 @@ export function RidgeExportCard() {
 export function RidgeView() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
+  const noData = useStore((s) => s.status.missing);
   const mutate = useStore((s) => s.mutate);
   const { group, style, combine, overlap, ch, axis, rows, update } = useRidge();
   const sampleIds = useMemo(() => rows.flatMap((r) => r.sampleIds), [rows]);
@@ -331,8 +327,8 @@ export function RidgeView() {
     };
     setData({});
     for (const sid of sampleIds) {
-      if (ui.missing[sid]) continue;
-      pool
+      if (noData[sid]) continue;
+      getPool()
         .histogram(ctx, sid, ui.popId, axis, hist as unknown as PlotSpec['style'])
         .then((h) => live && setData((d) => ({ ...d, [sid]: h })))
         .catch(() => {});
@@ -346,13 +342,13 @@ export function RidgeView() {
   const curves = useMemo(() => {
     const out: Record<string, RidgeCurve | null> = {};
     for (const r of rows) {
-      const ids = r.sampleIds.filter((id) => !ui.missing[id]);
+      const ids = r.sampleIds.filter((id) => !noData[id]);
       const hs = ids.flatMap((id) => data[id] ?? []);
       out[r.id] =
         hs.length && hs.length === ids.length ? combineCounts(hs, combine.method, combine.band) : null;
     }
     return out;
-  }, [rows, data, ui.missing, combine.method, combine.band]);
+  }, [rows, data, noData, combine.method, combine.band]);
 
   if (!group || !axis) return <div className="empty">Select a group.</div>;
   const n = Math.max(1, rows.length);
@@ -364,7 +360,7 @@ export function RidgeView() {
   );
   const labelText = rows.map((r) => {
     const h = curves[r.id];
-    const missing = r.sampleIds.every((id) => ui.missing[id]);
+    const missing = r.sampleIds.every((id) => noData[id]);
     const reps = r.sampleIds.length > 1 || combine.enabled ? `${r.sampleIds.length}×, ` : '';
     const count = !style.showCounts
       ? ''

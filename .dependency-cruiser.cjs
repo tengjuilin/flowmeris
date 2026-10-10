@@ -73,6 +73,20 @@ module.exports = {
       from: { path: '^apps/web/src/lib/' },
       to: { path: '^apps/web/src/(components|features|state|engine-client|workers|app)/' },
     },
+    {
+      name: 'web-state-below-ui',
+      comment: 'apps/web/src/state (store, commands, data hooks) is used by the UI and does not import it.',
+      severity: 'error',
+      from: { path: '^apps/web/src/state/' },
+      to: { path: '^apps/web/src/(components|features|app)/' },
+    },
+    {
+      name: 'web-app-on-top',
+      comment: 'apps/web/src/app (shell, view registry) is the top layer: only main.tsx imports it.',
+      severity: 'error',
+      from: { path: '^apps/web/src/', pathNot: '^apps/web/src/(app/|main\\.tsx$)' },
+      to: { path: '^apps/web/src/app/' },
+    },
     ...manifestRules(),
   ],
   options: {

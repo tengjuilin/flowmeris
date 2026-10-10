@@ -1,52 +1,12 @@
 import type { Group, PlotSpec, RefPlot, Workspace } from '@flowmeris/model';
-import { newId, populationLineage, populationsDepthFirst } from '@flowmeris/model';
+import { populationLineage, populationsDepthFirst } from '@flowmeris/model';
 import { useRef } from 'react';
-import { defaultAxis, defaultChannels, groupSample } from '../lib/axisDefaults.ts';
-import { DEFAULT_STYLE } from '../lib/figure.ts';
+import { groupSample } from '../lib/axisDefaults.ts';
+import { addRef, editRef, removeRef } from '../state/commands/refPlots.ts';
 import { useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { PlotCanvas } from './PlotCanvas.tsx';
 import { AxisSelects, PlotKindSelect, axisPickers } from './PlotPanel.tsx';
 import { useSize } from './hooks.ts';
-
-function editRef(
-  groupId: string,
-  refId: string,
-  label: string,
-  fn: (r: RefPlot, g: Group, w: Workspace) => void,
-) {
-  useStore.getState().mutate(label, (w) => {
-    const g = w.groups.find((x) => x.id === groupId);
-    const r = g?.refPlots.find((x) => x.id === refId);
-    if (g && r) fn(r, g, w);
-  });
-}
-
-function addRef(groupId: string) {
-  let id = '';
-  useStore.getState().mutate('Add reference plot', (w) => {
-    const g = w.groups.find((x) => x.id === groupId);
-    if (!g) return;
-    const [xc, yc] = defaultChannels(w, g);
-    const r: RefPlot = {
-      id: newId('ref_'),
-      kind: 'pseudocolor',
-      x: { ...defaultAxis(w, g, xc) },
-      y: { ...defaultAxis(w, g, yc) },
-      style: { ...DEFAULT_STYLE },
-      backgate: false,
-    };
-    g.refPlots.push(r);
-    id = r.id;
-  });
-  if (id) useStore.getState().setUi({ refPlotId: id });
-}
-
-function removeRef(groupId: string, refId: string) {
-  useStore.getState().mutate('Remove reference plot', (w) => {
-    const g = w.groups.find((x) => x.id === groupId);
-    if (g) g.refPlots = g.refPlots.filter((r) => r.id !== refId);
-  });
-}
 
 /** Short tab label: "<x> × <y>" by marker name ($PnS) when there is one. */
 function tabLabel(ws: Workspace, g: Group, r: RefPlot): string {
@@ -59,6 +19,7 @@ function tabLabel(ws: Workspace, g: Group, r: RefPlot): string {
 export function RefPlots() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
+  const missing = useStore((s) => s.status.missing);
   const setUi = useStore((s) => s.setUi);
   const group = useGroup();
   const names = useSampleNames(group);
@@ -226,7 +187,7 @@ export function RefPlots() {
       </div>
       {!sampleId ? (
         <div className="empty">This group has no samples.</div>
-      ) : ui.missing[sampleId] ? (
+      ) : missing[sampleId] ? (
         <div className="empty">Data not loaded for this sample: re-add its FCS file to view it.</div>
       ) : (
         <RefCanvas

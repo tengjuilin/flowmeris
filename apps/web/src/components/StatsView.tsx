@@ -12,7 +12,7 @@ import {
 } from '@flowmeris/model';
 import { type Cell, type ColumnDef, type Table, tableRows } from '@flowmeris/table';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { pool } from '../engine-client/pool.ts';
+import { getPool } from '../engine-client/pool.ts';
 import { download, safeName } from '../lib/download.ts';
 import { stripDataExt } from '../lib/files.ts';
 import { PLAIN_DECIMAL, fracDigits } from '../lib/format.ts';
@@ -20,6 +20,7 @@ import { type Completion, type FormulaProblem, checkFormula, completionsAt } fro
 import { DEFAULT_SIG_FIGS, exportKeys, fmtStat as fmt, sectionOf } from '../lib/statsFormat.ts';
 import type { StatColumn } from '../lib/statsTable.ts';
 import { useAnalysisTable } from '../state/hooks/stats.ts';
+import { usePanelState } from '../state/prefs.ts';
 import { APP_INFO, contextFor, toast, useGroup, useStore } from '../state/store.ts';
 import { ExportIcon } from './ExportMenu.tsx';
 import { ActionRow, Section } from './Inspector.tsx';
@@ -838,22 +839,6 @@ const STATS_DEFAULT_OPEN: Partial<Record<StatsSectionId, boolean>> = {
   events: true,
 };
 
-/** The last tab and open sections, remembered in this browser. */
-function loadStatsPanel(): { tab: StatsTab; open: Partial<Record<StatsSectionId, boolean>> } {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STATS_PANEL_KEY) ?? 'null');
-    if (saved && STATS_TABS.some((t) => t.id === saved.tab))
-      return { tab: saved.tab, open: { ...STATS_DEFAULT_OPEN, ...saved.open } };
-  } catch {}
-  return { tab: 'statistics', open: STATS_DEFAULT_OPEN };
-}
-
-function saveStatsPanel(panel: { tab: StatsTab; open: Partial<Record<StatsSectionId, boolean>> }) {
-  try {
-    localStorage.setItem(STATS_PANEL_KEY, JSON.stringify(panel));
-  } catch {}
-}
-
 /** Settings panel of the Statistics view: statistics and derived columns, replicates, exports. */
 export function StatsInspector() {
   const popId = useStore((s) => s.ui.popId);
@@ -861,17 +846,13 @@ export function StatsInspector() {
   const group = useGroup();
   const { stats, perSample, aggregated, errors } = useAnalysisTable(group);
   const { pops, rows, busy, complete, marker, shown } = stats;
-  const [panel, setPanel] = useState(loadStatsPanel);
-  const { tab, open } = panel;
-  const changePanel = (fn: (p: typeof panel) => typeof panel) =>
-    setPanel((p) => {
-      const next = fn(p);
-      saveStatsPanel(next);
-      return next;
-    });
-  const setTab = (t: StatsTab) => changePanel((p) => ({ ...p, tab: t }));
-  const toggle = (id: StatsSectionId) =>
-    changePanel((p) => ({ ...p, open: { ...p.open, [id]: !p.open[id] } }));
+  // The last tab and open sections, remembered in this browser.
+  const { tab, open, setTab, toggle } = usePanelState<StatsTab, StatsSectionId>(
+    STATS_PANEL_KEY,
+    STATS_TABS.map((t) => t.id),
+    { tab: 'statistics', open: STATS_DEFAULT_OPEN },
+    STATS_DEFAULT_OPEN,
+  );
 
   if (!group) return null;
   const display = aggregated ?? perSample;
@@ -930,7 +911,7 @@ export function StatsInspector() {
     if (!sid) return;
     const s = ws.samples[sid]!;
     const path = populationPath(group.template, popId);
-    const bytes = await pool.exportEvents(contextFor(ws, group), sid, popId, mode, format, {
+    const bytes = await getPool().exportEvents(contextFor(ws, group), sid, popId, mode, format, {
       FLOWMERIS_VERSION: `${APP_INFO.version} (${APP_INFO.commit})`,
       FLOWMERIS_SRC_SHA256: s.sha256,
       FLOWMERIS_SRC_FILE: s.fileName,
@@ -1114,7 +1095,7 @@ function layoutPinned(t: HTMLTableElement) {
 export function StatsView() {
   const samples = useStore((s) => s.ws.samples);
   const selectedSample = useStore((s) => s.ui.sampleId);
-  const missing = useStore((s) => s.ui.missing);
+  const missing = useStore((s) => s.status.missing);
   const group = useGroup();
   const { stats, perSample, aggregated } = useAnalysisTable(group);
   const { columns: statCols, rows } = stats;

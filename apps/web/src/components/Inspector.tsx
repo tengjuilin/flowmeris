@@ -13,7 +13,7 @@ import {
 import { COLORMAPS } from '@flowmeris/render';
 import { asinhCofactor, asinhDefFromCofactor, makeScale, suggestLogicleW } from '@flowmeris/transforms';
 import { type ReactNode, useState } from 'react';
-import { pool } from '../engine-client/pool.ts';
+import { getPool } from '../engine-client/pool.ts';
 import {
   SCALE_KINDS,
   type ScaleKind,
@@ -23,17 +23,11 @@ import {
   scaleKindOf,
   transformOfKind,
 } from '../lib/axisDefaults.ts';
-import { DEFAULT_STYLE } from '../lib/figure.ts';
-import { DEFAULT_FIGURE, TILE_FIGURE } from '../lib/figure.ts';
+import { DEFAULT_FIGURE, DEFAULT_STYLE, TILE_FIGURE } from '../lib/figure.ts';
 import { deleteGate, promoteOverride, revertOverride, setGateGeometry } from '../state/commands/gates.ts';
+import { type PlotTarget, plotsOf, targetEdit } from '../state/commands/plots.ts';
 import { contextFor, toast, useGroup, useStore } from '../state/store.ts';
-import {
-  type PlotTarget,
-  axisChannelSetter,
-  plotsOf,
-  targetEdit,
-  usePlotForPopulation,
-} from './PlotPanel.tsx';
+import { axisChannelSetter } from './PlotPanel.tsx';
 
 /** Reset: an undo arrow, an open arrowhead on a line that turns back on itself in a half circle. */
 export function ResetIcon() {
@@ -502,7 +496,7 @@ export function AxisFields({
           type="button"
           onClick={async () => {
             const sid = ui.sampleId ?? group.sampleIds[0]!;
-            const vals = await pool.channelValues(
+            const vals = await getPool().channelValues(
               contextFor(ws, group),
               sid,
               { channel: axis.channel, comp: axis.comp },

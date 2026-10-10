@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App } from './App.tsx';
-import { pool } from './engine-client/pool.ts';
+import { App } from './app/App.tsx';
+import { getPool } from './engine-client/pool.ts';
 import { checkMissing } from './state/commands/ingest.ts';
 import { loadAutosave, startAutosave } from './state/persist.ts';
 import { useStore } from './state/store.ts';
@@ -11,7 +11,7 @@ async function boot() {
   const saved = await loadAutosave();
   if (saved) useStore.getState().setWorkspace(saved);
   startAutosave();
-  await pool.whenReady();
+  await getPool().whenReady();
   if (navigator.storage?.persist) void navigator.storage.persist();
   if (saved) await checkMissing();
   if (import.meta.env.DEV) {

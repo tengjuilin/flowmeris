@@ -10,27 +10,28 @@ code now. Update it when the layout changes.
 
 | Path | Contents |
 |---|---|
-| `src/App.tsx` | shell: header, workspace open/save, tab bar, view switching, hotkeys, drop-to-ingest, overlays |
-| `src/state/store.ts` | the store: `ws` (workspace), `ui` (selection, view, per-view settings, status), undo history, navigation |
+| `src/app/` | the shell: `views.tsx` (VIEW_DEFS: every view's label, content, settings panel, tool keys, tab action; VIEW_ORDER), `App.tsx`, `Header.tsx`, `TabBar.tsx`, `Overlays.tsx`, `useHotkeys.ts`, `useDropIngest.ts` |
+| `src/state/store.ts` | the store: `ws` (workspace), `ui` (where the user is and what is selected), `views` (layout preferences), `status` (missing data, loading, toast), undo history, Back/Forward |
+| `src/state/prefs.ts` | preferences in browser storage: session view and layout, inspector tabs and sections (`usePanelState`, `useRememberedTab`) |
 | `src/state/persist.ts` | IndexedDB autosave of `ws` (ring of 20 snapshots) |
-| `src/engine-client/pool.ts` | `pool`, the worker pool (ADR-0003): request queue, cancellation, client cache |
+| `src/engine-client/` | `pool.ts`: the worker pool (ADR-0003, ADR-0010), `getPool()`; `scheduler.ts`: its request queue and result cache |
 | `src/workers/compute.worker.ts` | worker side: wraps `@flowmeris/engine` behind Comlink (`ComputeApi`) |
-| `src/state/commands/` | named store commands: `gates.ts` (create, edit, delete gates and overrides), `ingest.ts` (load files, check missing data) |
+| `src/state/commands/` | named store commands: `gates.ts`, `plots.ts` (incl. `drill`), `grid.ts`, `refPlots.ts`, `ingest.ts`, `workspace.ts` (open, save, new) |
 | `src/state/hooks/` | data hooks that fetch from the worker pool: `stats.ts` (`useSampleStats`, `useAnalysisTable`) |
 | `src/state/export.ts` | figure export wired to the store, pool and toasts (`exportPlot`, `exportSvgFigure`) |
 | `src/lib/` | pure logic, tested in Node: no store, pool, workers or components (`pnpm lint:deps` checks this). Functions documented "call inside `mutate`" work on a workspace draft |
 | `src/components/` | views and inspectors (see below) |
 | `src/styles.css` | all CSS, one global file |
 
-Views (`ui.view`, tab order in `VIEWS` in `App.tsx`). The view and inspector are chosen by separate
-conditionals in `App.tsx`:
+Views (`ui.view`). Each is defined once in `app/views.tsx`; to add one, add its id to `VIEW_IDS` in
+`state/store.ts`, its entry to `VIEW_DEFS` and its place in `VIEW_ORDER`:
 
 | `ui.view` | View component | Settings panel |
 |---|---|---|
-| `metadata` | `MetadataView` | `MetadataInspector` (toggled by `ui.metaSettings`) |
+| `metadata` | `MetadataView` | `MetadataInspector` (toggled by `views.metaSettings`) |
 | `gate` | `PlotPanel` → `PlotCanvas`, plus `PopulationTree` and `RefPlots` | `Inspector` from `GateInspector.tsx` |
-| `plot` (Plot grid) | `PlotGridView` | `Inspector target="grid"` (toggled by `ui.gridSettings`) |
-| `tiles` | `TilesView` in `GroupViews.tsx` | `Inspector target="tiles"` (toggled by `ui.tilesSettings`) |
+| `plot` (Plot grid) | `PlotGridView` | `Inspector target="grid"` (toggled by `views.gridSettings`) |
+| `tiles` | `TilesView` in `GroupViews.tsx` | `Inspector target="tiles"` (toggled by `views.tilesSettings`) |
 | `path` | `GatingPathView` | – |
 | `stats` | `StatsView` | `StatsInspector` (in `StatsView.tsx`) |
 | `ridge` | `RidgeView` in `GroupViews.tsx`, plus `RidgeCombinePanel` | `RidgeInspector` |
@@ -61,19 +62,18 @@ before assuming where it lives.
 
 ## Store rules
 
-- Change the workspace only through `useStore.getState().mutate(label, fn, merge?)`. Put a reusable
-  change in `state/commands/` (calling `mutate`) with its logic in a draft function in `lib/` that a Node
-  test can call on a plain workspace.
-- `mutate(label, fn, merge?)`: `fn` receives an immer draft. `label` is the undo entry's name. `merge`
-  is a key that folds repeated edits from one gesture (a drag, typing) into one undo step within 1 s; it
-  must be unique per gesture. `mutateQuiet`
-  changes the workspace without an undo step (for derived data only).
+- Change the workspace only through `mutate(label, fn, merge?)`, or `mutateGroup(groupId, label, fn,
+  merge?)` for one group. Put a reusable change in `state/commands/` with its logic in a draft function
+  in `lib/` that a Node test can call on a plain workspace.
+- `mutate`: `fn` receives an immer draft. `label` is the undo entry's name. `merge` is a key that folds
+  repeated edits from one gesture (a drag, typing) into one undo step within 1 s; it must be unique per
+  gesture. `mutateQuiet` changes the workspace without an undo step (for derived data only).
+- After every edit, `mutate` applies the rules listed in `AFTER_EDIT` in `store.ts` (today: grid-plot
+  settings carried to the other grid plots, `lib/gridCarry.ts`) and stamps `modifiedAt`.
 - Helpers whose doc comment says "call inside `mutate`" take a draft (for example `defaultAxis` in
   `lib/axisDefaults.ts`, which can register transforms and axis defaults). Do not call them on the live state.
-- `mutate` currently does more than apply `fn`:
-  - it carries grid-plot style changes to sibling cells (`lib/gridCarry.ts`);
-  - it stamps `modifiedAt`.
-- Changing `ui.view` pushes a Back/Forward history entry (subscription at the bottom of `store.ts`).
+- `setUi({ view })` that switches the view records the location left for Back. Layout preferences go
+  through `setViews`, messages and loading state through `setStatus` (or `toast()`).
 - The root population's id is `'root'`.
 - Statistics-table column keys are strings shared by `lib/statsTable.ts`, `StatsView`, `ChartsView` and
   `@flowmeris/table`: `${popId}|count`, `${popId}|pctParent`, a `StatSpec` id, `var:${variableId}` and
@@ -81,12 +81,16 @@ before assuming where it lives.
 
 ## Worker pool rules
 
-- Plot requests (`raster`, `histogram`, `counts`) take `{ key, signal }`. `key` must identify the result
-  completely, typically `plotKey` from `lib/keys.ts` plus size and colours. Results with the same key
-  are shared and cached, so never mutate a result.
-- Other methods (`table`, `preview`, `channelValues`, `exportEvents`) are not queued or cached.
-- Adding a worker method means editing `packages/engine`, `workers/compute.worker.ts` and
-  `engine-client/pool.ts`. Keep the three signatures identical.
+- Get the pool with `getPool()` (`engine-client/pool.ts`); tests can replace it with `setPool()`.
+- Plot requests (`raster`, `histogram`, `counts`) take `{ key, signal }` and go through the
+  `Scheduler` (`engine-client/scheduler.ts`). `key` must identify the result completely, typically
+  `plotKey` from `lib/keys.ts` plus size and colours. Results with the same key are shared and cached, so
+  never mutate a result.
+- Other requests (`table`, `preview`, `channelValues`, `exportEvents`) go to the worker at once, so a
+  gate preview never waits behind queued plots (ADR-0010).
+- To add a worker method, add it to `Engine`, pass it through in `workers/compute.worker.ts` with
+  `Parameters<Engine['name']>`, and add the pool method. Types that are not Engine's own go in
+  `packages/engine/src/api.ts`.
 
 ## Tests
 

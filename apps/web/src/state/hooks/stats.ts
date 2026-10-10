@@ -1,7 +1,7 @@
 import { type CompMatrix, type Group, type Transform, populationsDepthFirst } from '@flowmeris/model';
 import { aggregate, applyDerived } from '@flowmeris/table';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { pool } from '../../engine-client/pool.ts';
+import { getPool } from '../../engine-client/pool.ts';
 import {
   type SampleRow,
   type SampleTable,
@@ -43,7 +43,7 @@ function fetchTable(
   let p = inflight.get(key);
   if (!p) {
     const specs = ctx.group.stats;
-    p = pool
+    p = getPool()
       .table(ctx, sid, popIds, specs)
       .then(({ counts, stats }) => {
         const t = toTable(sid, counts, stats, specs);
@@ -65,7 +65,7 @@ export function useSampleStats(group: Group | undefined) {
   const samples = useStore((s) => s.ws.samples);
   const transforms = useStore((s) => s.ws.transforms);
   const compMatrices = useStore((s) => s.ws.compMatrices);
-  const missing = useStore((s) => s.ui.missing);
+  const missing = useStore((s) => s.status.missing);
   const shown = useSelectedSampleIds(group);
   const [, setTick] = useState(0);
 
