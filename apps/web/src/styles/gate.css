@@ -1,0 +1,535 @@
+/* Gate view: tools, the plot and its gates, reference plots, the population tree and the settings panel frame. */
+/* Gate view: the gating tools above the plot and its side column (as in the Plot view). */
+.gate-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+}
+.gate-view > .toolbar {
+  margin-bottom: 0;
+}
+.gate-view > .plot-layout {
+  flex: 1;
+  height: auto;
+}
+.plot-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+}
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.axis-pickers {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
+  row-gap: 4px;
+}
+.seg button {
+  border-radius: 0;
+  margin-left: -1px;
+}
+.seg button:first-child {
+  border-radius: 6px 0 0 6px;
+}
+.seg button:last-child {
+  border-radius: 0 6px 6px 0;
+}
+.seg button.on {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  position: relative;
+}
+.tool-seg button {
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  justify-content: center;
+}
+.seg button.on.warn {
+  background: var(--gate-override);
+  border-color: var(--gate-override);
+}
+.field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+}
+.field.check {
+  gap: 4px;
+}
+.plot-box {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+.plot {
+  position: relative;
+  user-select: none;
+}
+.plot-raster {
+  position: absolute;
+  image-rendering: pixelated;
+}
+.plot-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.plot-overlay.tool-rect,
+.plot-overlay.tool-ellipse,
+.plot-overlay.tool-polygon,
+.plot-overlay.tool-quadrant,
+.plot-overlay.tool-spider,
+.plot-overlay.tool-range {
+  cursor: crosshair;
+}
+.plot-frame {
+  fill: none;
+  stroke: var(--border);
+}
+.axis line {
+  stroke: var(--grid);
+}
+.axis text {
+  fill: var(--text-2);
+  font-size: 11px;
+}
+.axis .axis-title {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.hist {
+  fill: color-mix(in srgb, var(--accent) 35%, transparent);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+.contour {
+  fill: none;
+  stroke: var(--text-2);
+  stroke-width: 0.9;
+}
+.gate {
+  fill: none;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.gate-closed {
+  fill: rgba(0, 0, 0, 0.02);
+}
+.gate.selected {
+  stroke-width: 2.5;
+}
+.gate.overridden {
+  stroke: var(--gate-override) !important;
+  stroke-dasharray: 6 4;
+}
+.gate-fill {
+  opacity: 0.12;
+}
+.gate-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  fill: var(--text);
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 3px;
+  pointer-events: none;
+}
+.gate-label.movable {
+  pointer-events: auto;
+  cursor: move;
+  user-select: none;
+}
+.draft-label {
+  fill: var(--accent);
+}
+.handle {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  cursor: grab;
+}
+.handle-mid {
+  fill: var(--accent);
+  opacity: 0.6;
+  cursor: copy;
+}
+.draft {
+  fill: color-mix(in srgb, var(--accent) 12%, transparent);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+.draft-vertex {
+  fill: var(--accent);
+}
+.plot-message {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--text-2);
+  padding: 12px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+}
+.plot-note {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.plot-warning {
+  font-size: 11.5px;
+  color: var(--warn);
+  margin-top: 4px;
+}
+
+.pop-tree {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: auto;
+  padding: 6px 0;
+}
+.pane-title {
+  padding: 2px 10px 6px;
+  font-weight: 600;
+}
+
+/* Gate view side column: population tree above tabbed reference plots. */
+.plot-layout > .ridge-view {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+.plot-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+.plot-side .pop-tree {
+  flex: 0 1 auto;
+  min-height: 96px;
+  max-height: 40vh;
+}
+.ridge-combine {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px 10px;
+}
+.ridge-combine .pane-title {
+  padding: 2px 0 0;
+}
+.ridge-combine p {
+  margin: 0;
+}
+.ridge-combine-by {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+}
+.group-picker {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 30vh;
+  overflow: auto;
+  border-top: 1px solid var(--border);
+}
+.group-picker > li {
+  border-bottom: 1px solid var(--border);
+}
+.group-picker > li.off > .group-picker-row .group-picker-label {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.group-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 2px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.group-picker-row:hover {
+  background: var(--hover, rgba(127, 127, 127, 0.1));
+}
+.group-picker button.group-picker-toggle {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+  flex: none;
+}
+.group-picker-toggle svg {
+  transition: transform 0.12s;
+}
+.group-picker-toggle[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+.group-picker input {
+  margin: 0;
+}
+.group-picker-row > .muted {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.group-picker-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.group-picker ul {
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0 0 0 28px;
+  margin-left: 0;
+}
+.group-picker-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ref-plots {
+  /* Never shrinks below its controls plus the plot's minimum, so a long population tree scrolls first. */
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px 8px;
+}
+.ref-plots > .empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+.tab-strip {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-end;
+  gap: 2px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  margin: 0 -8px 6px;
+  padding: 0 8px;
+}
+.tab-strip-tab {
+  display: flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  border-bottom: 2px solid transparent;
+}
+.tab-strip-tab.on {
+  border-bottom-color: var(--accent);
+}
+.tab-strip-tab > button[role="tab"] {
+  border: none;
+  border-radius: 0;
+  background: none;
+  padding: 5px 2px 5px 6px;
+  color: var(--text-2);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+.tab-strip-tab.on > button[role="tab"] {
+  color: var(--text);
+  font-weight: 600;
+}
+.tab-strip-tab > button.icon,
+.tab-strip-add {
+  align-self: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+}
+/* Clear the tabs' 2px underline so + lines up with ✕. */
+.tab-strip-add {
+  margin-bottom: 2px;
+}
+.ref-controls {
+  display: grid;
+  flex-shrink: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 6px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.ref-controls > * {
+  grid-column: 1 / -1;
+}
+.ref-controls > .field:has(+ button) {
+  grid-column: 1;
+}
+.ref-controls > button {
+  grid-column: 2;
+}
+.ref-controls > .field:not(.check) {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+}
+/* Axis rows keep their scale picker beside the channel instead of on a row of its own. */
+.ref-controls > .field:not(.check):has(select + select) {
+  grid-template-columns: 74px minmax(0, 1fr) 84px;
+}
+.ref-controls select {
+  width: 100%;
+  min-width: 0;
+}
+.ref-box {
+  /* Square from the first layout (the canvas sits out of flow, so drawing it can't grow the card and
+     squeeze the population tree frame by frame); taller panels grow it further. */
+  flex: 1;
+  aspect-ratio: 1;
+  min-height: 200px;
+  position: relative;
+}
+.ref-box > * {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.pop-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pop-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+}
+.pop-row.on {
+  background: var(--surface-2);
+}
+.pop-row .pop-name {
+  border: none;
+  background: none;
+  padding: 1px 2px;
+  flex: 1;
+  justify-content: flex-start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.pop-row.on .pop-name {
+  font-weight: 600;
+}
+.pop-row input {
+  flex: 1;
+}
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+  flex: none;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+  font-size: 12px;
+  min-width: 52px;
+  text-align: right;
+}
+.num.pct {
+  color: var(--text);
+}
+.pop-row .pop-flag,
+.pop-row .pop-del {
+  flex: none;
+  display: flex;
+  justify-content: center;
+}
+.pop-row .pop-flag {
+  width: 26px;
+}
+.pop-row .pop-del {
+  width: 22px;
+}
+
+.inspector {
+  width: 300px;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  overflow: auto;
+  padding: 8px 10px;
+}
+.inspector fieldset {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 0 0 10px;
+  padding: 6px 8px 8px;
+}
+.inspector legend {
+  font-weight: 600;
+  padding: 0 4px;
+}
+.inspector .field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  font-size: 11.5px;
+  margin: 4px 0;
+}
+.inspector .field.check {
+  flex-direction: row;
+  align-items: center;
+}
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 8px;
+}
+.span2 {
+  grid-column: span 2;
+}

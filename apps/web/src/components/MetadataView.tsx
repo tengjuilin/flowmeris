@@ -7,11 +7,11 @@ import { PLAIN_DECIMAL, fracDigits } from '../lib/format.ts';
 import { type CellRect, coerce, distinctValues, normRect, pasteTargets, setValue } from '../lib/metadata.ts';
 import { type Sheet, TABLE_ACCEPT, readTableFile } from '../lib/sheets.ts';
 import { toast, useGroup, useSampleNames, useStore } from '../state/store.ts';
-import { ExportIcon, ImportIcon } from './ExportMenu.tsx';
 import { ImportDialog } from './ImportDialog.tsx';
-import { SettingsIcon } from './Inspector.tsx';
 import { activeVariable, deleteVariable } from './MetadataInspector.tsx';
 import { PlateMap } from './PlateMap.tsx';
+import { SettingsToggle } from './ui/SettingsToggle.tsx';
+import { ExportIcon, ImportIcon } from './ui/icons.tsx';
 
 function display(x: number | string | undefined): string {
   return x === undefined ? '' : String(x);
@@ -508,16 +508,7 @@ export function MetadataView() {
         >
           Detect wells
         </button>
-        <button
-          type="button"
-          className="tiles-settings"
-          aria-expanded={settingsOpen}
-          aria-label="Settings"
-          title={settingsOpen ? 'Hide settings' : 'Show settings'}
-          onClick={() => setViews({ metaSettings: !settingsOpen })}
-        >
-          <SettingsIcon />
-        </button>
+        <SettingsToggle open={settingsOpen} onToggle={() => setViews({ metaSettings: !settingsOpen })} />
         <input
           ref={fileInput}
           type="file"

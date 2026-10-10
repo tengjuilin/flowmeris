@@ -41,7 +41,7 @@ import {
 import { lineageKey, plotKey } from '../lib/keys.ts';
 import { createGate, deleteGate, setGateGeometry, setLabelOffset } from '../state/commands/gates.ts';
 import { contextFor, useStore } from '../state/store.ts';
-import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './PickerMenu.tsx';
+import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './ui/PickerMenu.tsx';
 
 /** Where each quadrant / spider region's percentage label sits in a pw × ph plot. */
 const QUAD_CORNERS: Partial<Record<Region, (pw: number, ph: number) => [number, number, 'start' | 'end']>> = {

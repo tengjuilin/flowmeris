@@ -19,7 +19,8 @@ import { drill } from '../state/commands/plots.ts';
 import { contextFor, useGroup, useStore } from '../state/store.ts';
 import { PlotCanvas, plotBox } from './PlotCanvas.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
-import { useSize } from './hooks.ts';
+import { useDebounced } from './hooks/useSettled.ts';
+import { useSize } from './hooks/useSize.ts';
 
 type Count = { count: number; parent: number };
 type Counts = Record<string, Count>;
@@ -111,23 +112,6 @@ function treeLayout(g: Group): { kids: Map<string, Population[]>; plots: Map<str
 
 function pct(x: Count | undefined): string {
   return x && x.parent > 0 ? `${((100 * x.count) / x.parent).toFixed(2)}%` : '…';
-}
-
-/**
- * `value`, updated only once it has stopped changing for `ms` (avoids recomputing plots mid-drag).
- * The first measured value (after `unset`) takes effect at once.
- */
-function useDebounced<T>(value: T, ms: number, unset: T): T {
-  const [v, setV] = useState(value);
-  useEffect(() => {
-    if (v === unset) {
-      setV(value);
-      return;
-    }
-    const t = setTimeout(() => setV(value), ms);
-    return () => clearTimeout(t);
-  }, [value, ms]);
-  return v === unset ? value : v;
 }
 
 /** Where a tree is scrolled to, with its scrollable size then. */
@@ -581,7 +565,7 @@ export function GatingPathView() {
           Backgating
         </label>
         <div className="spacer" />
-        <div className="tiles-controls">
+        <div className="view-controls">
           <label className="field" title="Plot size">
             Plot size
             <input

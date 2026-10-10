@@ -12,12 +12,12 @@ import {
 import type { PlotHandle } from '../lib/export/plot.ts';
 import { withAxesChange } from '../lib/figure.ts';
 import { newTilePlot } from '../lib/plotFactories.ts';
-import { type EditAxes, drill, editPlot, setAxisChannel } from '../state/commands/plots.ts';
+import { type EditAxes, axisPickers, drill, editPlot, setAxisChannel } from '../state/commands/plots.ts';
 import { exportPlot } from '../state/export.ts';
 import { type Tool, useGroup, useStore } from '../state/store.ts';
-import { ExportMenu } from './ExportMenu.tsx';
 import { PlotCanvas } from './PlotCanvas.tsx';
-import { useSize } from './hooks.ts';
+import { ExportMenu } from './controls/ExportMenu.tsx';
+import { useSize } from './hooks/useSize.ts';
 
 const TOOLS: { id: Tool; label: string; key: string; title: string; oneD?: boolean; twoD?: boolean }[] = [
   { id: 'select', label: 'Select', key: 'V', title: 'Select, move and edit gates (V)' },
@@ -136,26 +136,6 @@ export function useTilePlot(group: Group | undefined): PlotSpec | undefined {
     });
   }, [missing, group, popId]);
   return plot;
-}
-
-/** Changes the axis channel of the population's plot, or of `edit`'s target (for clickable axis titles). */
-export function axisChannelSetter(group: Group, plot: PlotSpec, edit?: EditAxes) {
-  return axisPickers(group, plot, edit).onPickChannel;
-}
-
-/**
- * Props making a plot's axis titles clickable: the x / y channel, or what a histogram's y axis shows
- * (`histNorm`), of the population's plot or of `edit`'s target.
- */
-export function axisPickers(group: Group, plot: PlotSpec, edit?: EditAxes) {
-  const ed: EditAxes = edit ?? ((label, fn) => editPlot(group.id, plot.id, label, fn));
-  return {
-    onPickChannel: (axis: 'x' | 'y', channel: string) => setAxisChannel(ed, axis, channel),
-    onPickHistNorm: (norm: PlotSpec['style']['histNorm']) =>
-      ed('Change histogram y axis', (p) => {
-        p.style.histNorm = norm;
-      }),
-  };
 }
 
 /** Plot type picker; edits the population's Gate-view plot, or `edit`'s target. */

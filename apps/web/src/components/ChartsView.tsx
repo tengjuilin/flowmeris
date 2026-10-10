@@ -10,7 +10,7 @@ import {
   summaryForPlot,
 } from '@flowmeris/table';
 import { formatLinear, formatPow10, niceLinearTicks } from '@flowmeris/transforms';
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useId, useMemo, useRef, useState } from 'react';
 import { includedRows, visiblePoints } from '../lib/chartSelection.ts';
 import { download, safeName } from '../lib/download.ts';
 import { standaloneSvg } from '../lib/export/svg.ts';
@@ -23,9 +23,10 @@ import {
   seriesColor,
   seriesKey,
 } from './ChartInspector.tsx';
-import { type Anchor, type PickOption, PickerMenu, pickerTrigger } from './PickerMenu.tsx';
 import { FONT_STACKS } from './RidgeInspector.tsx';
-import { SupLabel } from './SupLabel.tsx';
+import { useWidth } from './hooks/useWidth.ts';
+import { type Anchor, type PickOption, PickerMenu, pickerTrigger } from './ui/PickerMenu.tsx';
+import { SupLabel } from './ui/SupLabel.tsx';
 
 const ERRORS: { id: StatPlot['error']; label: string }[] = [
   { id: 'none', label: 'None' },
@@ -680,22 +681,6 @@ function ColumnSelect(props: {
   );
 }
 
-/**
- * Width of an element, tracked from when it mounts. A callback ref, because the chart frame
- * only appears once the group has a chart.
- */
-function useWidth(): [(el: HTMLElement | null) => void, number] {
-  const [el, setEl] = useState<HTMLElement | null>(null);
-  const [w, setW] = useState(760);
-  useEffect(() => {
-    if (!el) return;
-    const ro = new ResizeObserver(([e]) => setW(Math.max(320, Math.floor(e!.contentRect.width))));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [el]);
-  return [setEl, w];
-}
-
 export function ChartsView() {
   const group = useGroup();
   const variables = useStore((s) => s.ws.variables);
@@ -752,15 +737,15 @@ export function ChartsView() {
   };
 
   const tabs = (
-    <div className="ref-tabs chart-tabs" role="tablist" aria-label="Charts">
+    <div className="tab-strip chart-tabs" role="tablist" aria-label="Charts">
       {group.statPlots.map((p) => (
-        <div key={p.id} className={`ref-tab${p.id === plot?.id ? ' on' : ''}`}>
+        <div key={p.id} className={`tab-strip-tab${p.id === plot?.id ? ' on' : ''}`}>
           <button type="button" role="tab" aria-selected={p.id === plot?.id} onClick={() => setChartId(p.id)}>
             {p.name}
           </button>
         </div>
       ))}
-      <button type="button" className="ref-add" onClick={() => addChart()} title="New chart">
+      <button type="button" className="tab-strip-add" onClick={() => addChart()} title="New chart">
         + Chart
       </button>
     </div>

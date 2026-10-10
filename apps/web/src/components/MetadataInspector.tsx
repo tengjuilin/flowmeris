@@ -3,8 +3,10 @@ import { wellIndex } from '@flowmeris/table';
 import { useEffect, useState } from 'react';
 import { addVariable, coerce, distinctValues, retype, setValue } from '../lib/metadata.ts';
 import { toast, useGroup, useStore } from '../state/store.ts';
-import { DeleteIcon, Section } from './Inspector.tsx';
 import { samplesByWell } from './PlateMap.tsx';
+import { InspectorTabs } from './ui/InspectorTabs.tsx';
+import { Section } from './ui/Section.tsx';
+import { DeleteIcon } from './ui/icons.tsx';
 
 type MetaTab = 'variables' | 'values';
 const META_TABS: { id: MetaTab; label: string }[] = [
@@ -367,26 +369,19 @@ export function MetadataInspector() {
   };
 
   return (
-    <aside className="inspector ridge-inspector meta-inspector" aria-label="Metadata settings">
-      <div className="ridge-inspector-head">
-        <div className="tabs ridge-tabs" role="tablist" aria-label="Metadata settings">
-          {META_TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              id={`meta-tab-${t.id}`}
-              aria-selected={shown === t.id}
-              aria-controls="meta-tabpanel"
-              className={shown === t.id ? 'on' : ''}
-              disabled={t.id === 'values' && mode !== 'plate'}
-              title={t.id === 'values' && mode !== 'plate' ? 'Values are set on the plate map' : undefined}
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+    <aside className="inspector insp-panel meta-inspector" aria-label="Metadata settings">
+      <div className="insp-head">
+        <InspectorTabs
+          idPrefix="meta"
+          label="Metadata settings"
+          tabs={META_TABS.map((t) =>
+            t.id === 'values' && mode !== 'plate'
+              ? { ...t, disabled: true, title: 'Values are set on the plate map' }
+              : t,
+          )}
+          current={shown}
+          onSelect={setTab}
+        />
         {shown === 'variables' && (
           <div className="row meta-add">
             <button

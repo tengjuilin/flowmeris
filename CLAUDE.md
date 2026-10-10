@@ -15,7 +15,7 @@ Use `corepack pnpm …` (pnpm 9 through corepack, Node ≥ 20).
 | Command | What it does |
 |---|---|
 | `corepack pnpm check` | lint, `lint:deps`, `lint:size`, typecheck, all vitest projects. Run before every commit. |
-| `corepack pnpm test` | vitest, all projects (`unit`, `golden`) |
+| `corepack pnpm test` | vitest, all projects (`unit`, `golden`, `dom`) |
 | `corepack pnpm test:golden` | only the golden project (`packages/*/test/**`) |
 | `corepack pnpm lint:deps` | import boundaries (dependency-cruiser, `.dependency-cruiser.cjs`) |
 | `corepack pnpm lint:size` | 500-line cap on `.ts`/`.tsx` (`tools/check-size.mjs`, `tools/size-allowlist.json`) |
@@ -44,6 +44,8 @@ package name, never by a path into another package's `src/`. `pnpm lint:deps` en
 
 - **Unit**: `src/**/*.test.ts`, next to the code, in Node (vitest project `unit`). Put pure logic in a
   function you can test this way instead of inside a React component.
+- **Component**: `apps/web/src/**/*.test.tsx` (project `dom`: jsdom and Testing Library), for shared
+  controls.
 - **Golden**: `packages/*/test/**/*.test.ts` (project `golden`). These compare against values in
   `fixtures/golden`, which FlowKit/NumPy/SciPy generate:
   1. `corepack pnpm golden:inputs` writes the files the app exports (`fixtures/golden/inputs`), and the

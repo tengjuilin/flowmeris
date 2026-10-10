@@ -1,0 +1,117 @@
+/* ---------------------------------------------------------------------------
+   Charts
+   --------------------------------------------------------------------------- */
+/* Chart beside its settings panel; the panel sits flush with the window edge, as in the Ridge view. */
+.charts-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin: -10px;
+  height: calc(100% + 20px);
+}
+.charts-layout > .charts-view {
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+}
+.chart-tabs {
+  margin-bottom: 6px;
+}
+.chart-controls input[type="text"] {
+  width: 160px;
+}
+.chart-wrap {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: auto;
+}
+.chart-box {
+  position: relative;
+}
+.stat-chart {
+  display: block;
+  font-family: var(--font);
+}
+.stat-chart .chart-bg {
+  fill: var(--surface);
+}
+.stat-chart .chart-axis line {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+.stat-chart .chart-axis line.chart-grid {
+  stroke: var(--border);
+}
+.stat-chart text {
+  fill: var(--text-2);
+  font-size: 11px;
+}
+.stat-chart .axis-title {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.stat-chart .chart-legend text {
+  fill: var(--text);
+  font-size: 12px;
+}
+.stat-chart .chart-err line {
+  stroke: var(--text-2);
+  stroke-width: 1.5;
+}
+.stat-chart .chart-hit {
+  fill: transparent;
+  cursor: default;
+}
+.chart-tip {
+  position: absolute;
+  pointer-events: none;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 5;
+}
+.chart-data {
+  margin-top: 8px;
+}
+.chart-data summary {
+  cursor: pointer;
+  color: var(--text-2);
+}
+.chart-data td {
+  text-align: right;
+}
+.meta-table td.sel {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.meta-table.selecting input {
+  user-select: none;
+}
+.meta-table.selecting input::selection {
+  background: transparent;
+}
+/* After .sel so the focused cell keeps its outline inside a selection. */
+.meta-table td:focus-within {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+/* Hidden: measures a digit and "." in the table's font for decimal alignment. */
+.glyph-measure {
+  position: absolute;
+  visibility: hidden;
+  white-space: pre;
+  font-variant-numeric: tabular-nums;
+}
+/* All values of a categorical variable, under its focused cell. */
+.level-menu {
+  gap: 0;
+  padding: 4px;
+  min-width: 0;
+  max-height: 240px;
+  overflow: auto;
+}

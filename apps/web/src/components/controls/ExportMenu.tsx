@@ -1,37 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ImageFormat } from '../lib/export/svg.ts';
-import { toast } from '../state/store.ts';
-
-/** Import: an arrow up out of a tray (the reverse of the export icon). */
-export function ImportIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
-      <path
-        d="M8 10V2M4.5 5.5 8 2l3.5 3.5M2.5 11v2.5h11V11"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-export function ExportIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
-      <path
-        d="M8 2v8M4.5 6.5 8 10l3.5-3.5M2.5 11v2.5h11V11"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
+import type { ImageFormat } from '../../lib/export/svg.ts';
+import { toast } from '../../state/store.ts';
+import { ExportIcon } from '../ui/icons.tsx';
 
 /** Export button: opens a small form to choose the file format (and DPI for raster formats). */
 export function ExportMenu({

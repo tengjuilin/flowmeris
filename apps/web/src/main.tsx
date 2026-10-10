@@ -5,7 +5,7 @@ import { getPool } from './engine-client/pool.ts';
 import { checkMissing } from './state/commands/ingest.ts';
 import { loadAutosave, startAutosave } from './state/persist.ts';
 import { useStore } from './state/store.ts';
-import './styles.css';
+import './styles/index.css';
 
 async function boot() {
   const saved = await loadAutosave();

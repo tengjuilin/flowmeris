@@ -2,11 +2,12 @@ import type { Group, PlotSpec, RefPlot, Workspace } from '@flowmeris/model';
 import { populationLineage, populationsDepthFirst } from '@flowmeris/model';
 import { useRef } from 'react';
 import { groupSample } from '../lib/axisDefaults.ts';
+import { axisPickers } from '../state/commands/plots.ts';
 import { addRef, editRef, removeRef } from '../state/commands/refPlots.ts';
 import { useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { PlotCanvas } from './PlotCanvas.tsx';
-import { AxisSelects, PlotKindSelect, axisPickers } from './PlotPanel.tsx';
-import { useSize } from './hooks.ts';
+import { AxisSelects, PlotKindSelect } from './PlotPanel.tsx';
+import { useSize } from './hooks/useSize.ts';
 
 /** Short tab label: "<x> × <y>" by marker name ($PnS) when there is one. */
 function tabLabel(ws: Workspace, g: Group, r: RefPlot): string {
@@ -31,9 +32,9 @@ export function RefPlots() {
   const curSample = ui.sampleId && group.sampleIds.includes(ui.sampleId) ? ui.sampleId : group.sampleIds[0];
 
   const tabs = (
-    <div className="ref-tabs" role="tablist" aria-label="Reference plots">
+    <div className="tab-strip" role="tablist" aria-label="Reference plots">
       {refs.map((r) => (
-        <div key={r.id} className={`ref-tab${r.id === ref?.id ? ' on' : ''}`}>
+        <div key={r.id} className={`tab-strip-tab${r.id === ref?.id ? ' on' : ''}`}>
           <button
             type="button"
             role="tab"
@@ -67,7 +68,7 @@ export function RefPlots() {
       ))}
       <button
         type="button"
-        className="icon ref-add"
+        className="icon tab-strip-add"
         title="Add a reference plot"
         onClick={() => addRef(group.id)}
         aria-label="Add a reference plot"

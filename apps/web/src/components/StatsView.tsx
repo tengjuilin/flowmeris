@@ -22,8 +22,10 @@ import type { StatColumn } from '../lib/statsTable.ts';
 import { useAnalysisTable } from '../state/hooks/stats.ts';
 import { usePanelState } from '../state/prefs.ts';
 import { APP_INFO, contextFor, toast, useGroup, useStore } from '../state/store.ts';
-import { ExportIcon } from './ExportMenu.tsx';
-import { ActionRow, Section } from './Inspector.tsx';
+import { ActionRow } from './ui/ActionRow.tsx';
+import { InspectorTabs } from './ui/InspectorTabs.tsx';
+import { Section } from './ui/Section.tsx';
+import { ExportIcon } from './ui/icons.tsx';
 
 const VALUE_STATS: { id: StatKind; label: string }[] = [
   { id: 'median', label: 'Median' },
@@ -928,24 +930,15 @@ export function StatsInspector() {
   const pending = complete ? '' : ' (statistics are still being computed)';
 
   return (
-    <aside className="inspector ridge-inspector stats-inspector" aria-label="Statistics settings">
-      <div className="ridge-inspector-head">
-        <div className="tabs ridge-tabs" role="tablist" aria-label="Statistics settings">
-          {STATS_TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              id={`stats-tab-${t.id}`}
-              aria-selected={tab === t.id}
-              aria-controls="stats-tabpanel"
-              className={tab === t.id ? 'on' : ''}
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+    <aside className="inspector insp-panel stats-inspector" aria-label="Statistics settings">
+      <div className="insp-head">
+        <InspectorTabs
+          idPrefix="stats"
+          label="Statistics settings"
+          tabs={STATS_TABS}
+          current={tab}
+          onSelect={setTab}
+        />
         {(shown.length < group.sampleIds.length || busy > 0) && (
           <p className="muted small stats-status">
             {shown.length < group.sampleIds.length &&

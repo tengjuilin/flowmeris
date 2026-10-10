@@ -1,0 +1,429 @@
+/* Shared settings panels: text toolbar, tabs, collapsible sections, reset buttons and export menus. */
+/* Word-processor style text toolbar: font + size, then style, colour and alignment. */
+.text-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+.tt-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.tt-font {
+  flex: 1;
+  min-width: 0;
+}
+.tt-wide {
+  flex-basis: 100%;
+}
+.inspector input.tt-size {
+  width: 54px;
+  flex: none;
+}
+.tt-btn {
+  position: relative;
+  min-width: 26px;
+  height: 24px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.tt-btn sup {
+  font-size: 9px;
+}
+.tt-btn.small-a {
+  font-size: 11px;
+}
+.tt-btn.tt-text {
+  font-size: 11.5px;
+}
+.tt-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 0 2px;
+  background: var(--border);
+}
+.tt-color {
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1;
+}
+.tt-color .tt-bar {
+  width: 16px;
+  height: 3px;
+  border-radius: 1px;
+}
+.inspector .tt-color input[type="color"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.text-toolbar .seg button {
+  min-width: 26px;
+  height: 24px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ridge settings: tabs and global controls pinned above collapsible sections. */
+.insp-panel {
+  padding-top: 0;
+}
+.insp-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 0 -10px 8px;
+  padding: 0 10px 6px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.insp-tabs {
+  margin: 0 -10px;
+  padding: 4px 6px 0;
+}
+.insp-tabs button {
+  flex: 1;
+  padding: 6px 4px;
+  text-align: center;
+  justify-content: center;
+}
+.insp-global {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+.insp-global .field {
+  margin: 0;
+  white-space: nowrap;
+  min-width: 0;
+}
+.insp-global .reset-all {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+}
+.inspector .field.inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.inspector input[type="color"].swatch {
+  width: 26px;
+  height: 22px;
+  padding: 0 1px;
+  flex: none;
+}
+.inspector input[type="color"]:disabled {
+  opacity: 0.3;
+  filter: grayscale(1);
+  cursor: not-allowed;
+}
+.inspector .field:has(> input:disabled) {
+  color: var(--text-2);
+}
+.insp-section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 0 0 8px;
+}
+.insp-section.selected {
+  border-color: var(--accent);
+}
+.danger-icon:not(:disabled):hover {
+  color: var(--danger, #c0392b);
+}
+.insp-section-bar {
+  display: flex;
+  align-items: center;
+  padding-right: 6px;
+}
+.insp-section-bar .insp-section-head {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.insp-section-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  padding: 6px 8px;
+  font-weight: 600;
+  text-align: left;
+  color: var(--text);
+}
+.insp-section-head:hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.insp-section-head .chevron {
+  flex: none;
+  color: var(--text-2);
+  transition: transform 0.12s;
+}
+.insp-section.open .insp-section-head .chevron {
+  transform: rotate(90deg);
+}
+.insp-section-body {
+  padding: 0 8px 8px;
+}
+.insp-section-body > fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+.insp-section-body > fieldset > legend {
+  padding: 0;
+  font-weight: 400;
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+.insp-pane-title {
+  font-weight: 600;
+  margin: 2px 0 6px;
+}
+/* The Sample tab is just the list: let it grow; the panel scrolls only when the window is short. */
+.insp-panel .reorder-list {
+  max-height: none;
+  overflow: visible;
+}
+.insp-panel .ridge-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 4px;
+}
+
+/* Ridge settings read like an Office format pane: one setting per line, label left, control right. */
+.insp-panel .grid2 {
+  grid-template-columns: minmax(0, 1fr);
+}
+.insp-panel .field:not(.check):not(.tt-wide):not(:has(textarea)) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 26px;
+  white-space: nowrap;
+}
+.insp-panel .field:not(.check) > select {
+  width: auto;
+  min-width: 0;
+  max-width: 62%;
+  flex: 0 1 auto;
+}
+.insp-panel .field:not(.check) > input[type="number"] {
+  width: 76px;
+  flex: none;
+}
+.insp-panel .field:not(.check):not(.tt-wide) > input[type="text"] {
+  width: auto;
+  min-width: 0;
+  flex: 1;
+}
+.insp-panel .field.check {
+  white-space: nowrap;
+}
+.insp-panel .field.short-text:not(.check):not(.tt-wide) > input[type="text"] {
+  flex: 0 0 62%;
+}
+.insp-panel .field.tt-wide > input {
+  width: 100%;
+}
+.insp-panel .slider-field input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+.insp-panel .unit-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+.inspector .unit-input input[type="number"] {
+  width: 52px;
+}
+
+.swatch-auto {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.tt-btn.on {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
+.ridge-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.reset-icon {
+  flex: none;
+}
+
+.axis-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.reset-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  padding: 0;
+}
+
+/* Settings that only apply when the checkbox above them is on sit one step in. */
+.insp-panel .sub-option,
+.ridge-combine .sub-option {
+  margin-left: 20px;
+}
+.insp-panel .sub-option-2 {
+  margin-left: 40px;
+}
+
+/* One type scale for the ridge settings and the side panels beside the Gate and Ridge plots
+   (populations, reference plots): 12px throughout, primary text for labels and controls,
+   muted only for hints. Section titles stay bold at the same size. */
+.insp-panel,
+.ridge-combine {
+  font-size: 12px;
+}
+.insp-panel .field,
+.insp-panel .field.check,
+.insp-panel .insp-section-head,
+.insp-panel .insp-section-body > fieldset > legend,
+.insp-panel .insp-pane-title,
+.insp-panel .tt-btn.tt-text,
+.insp-panel .group-picker,
+.insp-panel .small,
+.plot-side .pop-tree,
+.plot-side .pop-tree :is(button, input, .pane-title),
+.plot-side .ref-plots,
+.plot-side :is(.ref-plots, .tab-strip) :is(button, select, input, .field, .small, .pane-title),
+.ridge-combine .field,
+.ridge-combine .small,
+.ridge-combine .pane-title,
+.ridge-combine .group-picker {
+  font-size: 12px;
+}
+.insp-panel .field,
+.insp-panel .insp-section-body > fieldset > legend,
+.ridge-combine .field {
+  color: var(--text);
+}
+.insp-panel .field:has(> input:disabled),
+.insp-panel .field:has(> select:disabled),
+.ridge-combine .field:has(> input:disabled),
+.ridge-combine .field:has(> select:disabled) {
+  color: var(--muted);
+}
+.insp-panel select,
+.insp-panel input,
+.insp-panel button:not(.tt-btn),
+.ridge-combine select,
+.ridge-combine input,
+.ridge-combine button:not(.tt-btn) {
+  font-size: 12px;
+}
+
+.export-menu {
+  position: relative;
+}
+.export-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 200px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.15);
+}
+.swap-axes {
+  margin-bottom: 8px;
+}
+.swap-axes > button,
+.export-menu > button,
+button.icon-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.side-export {
+  flex: 0 0 auto;
+}
+.side-export,
+.side-export > button {
+  font-size: 12px;
+}
+.side-export > button {
+  width: 100%;
+  justify-content: center;
+}
+.side-export .export-pop {
+  left: 0;
+  right: auto;
+}
+.export-pop .field {
+  justify-content: space-between;
+}
+.export-pop input[type="number"] {
+  width: 76px;
+}
+
+/* Reset buttons: borderless; grey and inert at the default, black and clickable once changed. */
+button.reset-btn,
+button.reset-all,
+.insp-panel .ridge-actions button {
+  border: none;
+  background: transparent;
+  color: var(--text);
+}
+button.reset-btn:hover:not(:disabled),
+button.reset-all:hover:not(:disabled),
+.insp-panel .ridge-actions button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+button.reset-btn:disabled,
+button.reset-all:disabled,
+.insp-panel .ridge-actions button:disabled {
+  color: var(--muted);
+  opacity: 0.6;
+  cursor: default;
+}

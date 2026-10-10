@@ -12,16 +12,18 @@ import {
   setCellPopulation,
   setCellSample,
 } from '../state/commands/grid.ts';
+import { axisPickers } from '../state/commands/plots.ts';
 import { exportPlot } from '../state/export.ts';
 import { mutateGroup, toast, useGroup, useSampleNames, useStore } from '../state/store.ts';
-import { ExportMenu } from './ExportMenu.tsx';
-import { OpenInIcon, SettingsIcon } from './Inspector.tsx';
-import { type Anchor, type PickOption, PickerMenu } from './PickerMenu.tsx';
 import { PlotCanvas } from './PlotCanvas.tsx';
-import { EditScopeToggle, ToolButtons, axisPickers } from './PlotPanel.tsx';
-import { PlotSizeSlider } from './PlotSizeSlider.tsx';
+import { EditScopeToggle, ToolButtons } from './PlotPanel.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
-import { useSize } from './hooks.ts';
+import { ExportMenu } from './controls/ExportMenu.tsx';
+import { useSize } from './hooks/useSize.ts';
+import { type Anchor, type PickOption, PickerMenu } from './ui/PickerMenu.tsx';
+import { PlotSizeSlider } from './ui/PlotSizeSlider.tsx';
+import { SettingsToggle } from './ui/SettingsToggle.tsx';
+import { OpenInIcon } from './ui/icons.tsx';
 
 const KINDS: { id: PlotKind; label: string }[] = [
   { id: 'pseudocolor', label: 'Pseudocolor' },
@@ -163,7 +165,7 @@ export function PlotGridView() {
             }
           />
           <div className="spacer" />
-          <div className="tiles-controls">
+          <div className="view-controls">
             <PlotSizeSlider
               columns={columns}
               min={MIN_COLUMNS}
@@ -176,16 +178,7 @@ export function PlotGridView() {
                 })
               }
             />
-            <button
-              type="button"
-              className="tiles-settings"
-              aria-expanded={gridSettings}
-              aria-label="Settings"
-              title={gridSettings ? 'Hide settings' : 'Show settings'}
-              onClick={() => setViews({ gridSettings: !gridSettings })}
-            >
-              <SettingsIcon />
-            </button>
+            <SettingsToggle open={gridSettings} onToggle={() => setViews({ gridSettings: !gridSettings })} />
           </div>
         </div>
       </div>
