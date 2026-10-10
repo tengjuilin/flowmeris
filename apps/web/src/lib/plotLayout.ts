@@ -45,3 +45,10 @@ export function axisLabel(ws: Workspace, sampleId: string, plot: PlotSpec, axis:
   const ch = ws.samples[sampleId]?.channels.find((c) => c.pnn === a.channel);
   return (custom ?? (ch?.pns ? `${ch.pns} :: ${a.channel}` : a.channel)).trim();
 }
+
+/** What a plot shows, for screen readers: `dot plot of CD4 :: FL1-A versus FL2-A`. */
+export function plotAriaLabel(ws: Workspace, sampleId: string, plot: PlotSpec): string {
+  const is1d = plot.kind === 'histogram' || !plot.y;
+  const y = plot.y && !is1d ? ` versus ${axisLabel(ws, sampleId, plot, 'y')}` : '';
+  return `${plot.kind} plot of ${axisLabel(ws, sampleId, plot, 'x')}${y}`;
+}

@@ -1,7 +1,7 @@
 import type { PlotSpec, Workspace } from '@flowmeris/model';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_FIGURE } from './figure.ts';
-import { axisLabel, plotBox } from './plotLayout.ts';
+import { axisLabel, plotAriaLabel, plotBox } from './plotLayout.ts';
 
 const plot = (figure: Partial<typeof DEFAULT_FIGURE> = {}, kind = 'dot'): PlotSpec =>
   ({
@@ -55,5 +55,10 @@ describe('axisLabel', () => {
     expect(axisLabel(ws, 's', p, 'x')).toBe('Size');
     expect(axisLabel(ws, 's', p, 'y')).toBe('Granularity');
     expect(axisLabel(ws, 's', { ...p, kind: 'histogram' }, 'y')).toBe('FL2-A');
+  });
+
+  it('describe the plot for screen readers', () => {
+    expect(plotAriaLabel(ws, 's', plot())).toBe('dot plot of CD4 :: FL1-A versus FL2-A');
+    expect(plotAriaLabel(ws, 's', plot({}, 'histogram'))).toBe('histogram plot of CD4 :: FL1-A');
   });
 });
