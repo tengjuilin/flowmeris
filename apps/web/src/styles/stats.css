@@ -161,13 +161,13 @@
   text-align: center;
 }
 /* Wide settings (a formula, a reference condition) put the label above the control. */
-.stats-inspector.ridge-inspector .derived-form .field.stack {
+.stats-inspector.insp-panel .derived-form .field.stack {
   flex-direction: column;
   align-items: stretch;
   white-space: normal;
 }
-.stats-inspector.ridge-inspector .derived-form .field.stack > input,
-.stats-inspector.ridge-inspector .derived-form .field.stack select {
+.stats-inspector.insp-panel .derived-form .field.stack > input,
+.stats-inspector.insp-panel .derived-form .field.stack select {
   width: 100%;
   max-width: none;
   min-width: 0;

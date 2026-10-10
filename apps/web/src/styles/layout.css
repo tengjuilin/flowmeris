@@ -216,33 +216,33 @@
   flex: none;
   padding: 5px 7px;
 }
-.tiles-settings {
+.view-settings {
   display: inline-flex;
   padding: 5px 7px;
 }
 /* At the end of the Tiles and Plot toolbars: columns, then the settings panel toggle. Fixed widths, so the
    slider stays put under the pointer while the tiles re-lay out. */
-.tiles-controls {
+.view-controls {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 12px;
 }
-.tiles-controls .field {
+.view-controls .field {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.tiles-controls input[type="range"] {
+.view-controls input[type="range"] {
   width: 160px;
 }
-.tiles-controls .muted {
+.view-controls .muted {
   min-width: 2ch;
   font-variant-numeric: tabular-nums;
 }
 .settings-toggle[aria-expanded="true"],
-.tiles-settings[aria-expanded="true"] {
+.view-settings[aria-expanded="true"] {
   border-color: var(--accent);
   color: var(--accent);
 }

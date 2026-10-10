@@ -201,13 +201,13 @@ export function Section({
   children: ReactNode;
 }) {
   return (
-    <section className={`ridge-section${open ? ' open' : ''}${className ? ` ${className}` : ''}`}>
-      <div className="ridge-section-bar">
+    <section className={`insp-section${open ? ' open' : ''}${className ? ` ${className}` : ''}`}>
+      <div className="insp-section-bar">
         <button
           type="button"
-          className="ridge-section-head"
+          className="insp-section-head"
           aria-expanded={open}
-          aria-controls={`ridge-section-${id}`}
+          aria-controls={`insp-section-${id}`}
           onClick={onToggle}
         >
           <svg className="chevron" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
@@ -230,7 +230,7 @@ export function Section({
         {actions}
       </div>
       {open && (
-        <div id={`ridge-section-${id}`} className="ridge-section-body">
+        <div id={`insp-section-${id}`} className="insp-section-body">
           {children}
         </div>
       )}

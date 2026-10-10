@@ -198,7 +198,7 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
         <ToolButtons is1d={plot.kind === 'histogram'} />
         <EditScopeToggle />
         <div className="spacer" />
-        <div className="tiles-controls">
+        <div className="view-controls">
           <PlotSizeSlider
             columns={columns}
             min={MIN_COLUMNS}
@@ -208,7 +208,7 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
           />
           <button
             type="button"
-            className="tiles-settings"
+            className="view-settings"
             aria-expanded={settingsOpen}
             aria-label="Settings"
             title={settingsOpen ? 'Hide settings' : 'Show settings'}

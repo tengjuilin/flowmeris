@@ -28,7 +28,7 @@ test('ingest an FCS file, draw a gate, see statistics', async ({ page }) => {
   await page.getByRole('tab', { name: 'Axis' }).click();
   const card = (title: string) =>
     page
-      .locator('.inspector .ridge-section')
+      .locator('.inspector .insp-section')
       .filter({ has: page.getByRole('button', { name: title, exact: true }) });
   await card('X axis').getByLabel('Channel').selectOption('SSC-H');
   await card('Y axis').getByLabel('Channel').selectOption('FL1-H');
@@ -169,7 +169,7 @@ test('histogram: y axis picked on its title; a bisector splits the events in two
   await page.getByLabel('Plot type').selectOption('histogram');
   await page.getByRole('tab', { name: 'Axis' }).click();
   const xCard = page
-    .locator('.inspector .ridge-section')
+    .locator('.inspector .insp-section')
     .filter({ has: page.getByRole('button', { name: 'X axis', exact: true }) });
   await xCard.getByLabel('Channel').selectOption('FSC-H');
   await xCard.getByLabel('Scale').selectOption('linear');

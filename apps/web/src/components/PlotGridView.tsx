@@ -163,7 +163,7 @@ export function PlotGridView() {
             }
           />
           <div className="spacer" />
-          <div className="tiles-controls">
+          <div className="view-controls">
             <PlotSizeSlider
               columns={columns}
               min={MIN_COLUMNS}
@@ -178,7 +178,7 @@ export function PlotGridView() {
             />
             <button
               type="button"
-              className="tiles-settings"
+              className="view-settings"
               aria-expanded={gridSettings}
               aria-label="Settings"
               title={gridSettings ? 'Hide settings' : 'Show settings'}

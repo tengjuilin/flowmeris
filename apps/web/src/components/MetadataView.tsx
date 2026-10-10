@@ -510,7 +510,7 @@ export function MetadataView() {
         </button>
         <button
           type="button"
-          className="tiles-settings"
+          className="view-settings"
           aria-expanded={settingsOpen}
           aria-label="Settings"
           title={settingsOpen ? 'Hide settings' : 'Show settings'}

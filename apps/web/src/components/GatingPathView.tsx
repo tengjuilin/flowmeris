@@ -581,7 +581,7 @@ export function GatingPathView() {
           Backgating
         </label>
         <div className="spacer" />
-        <div className="tiles-controls">
+        <div className="view-controls">
           <label className="field" title="Plot size">
             Plot size
             <input

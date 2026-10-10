@@ -751,9 +751,9 @@ export function RidgeInspector() {
     });
 
   return (
-    <aside className="inspector ridge-inspector" aria-label="Ridge plot settings">
-      <div className="ridge-inspector-head">
-        <div className="tabs ridge-tabs" role="tablist" aria-label="Ridge plot settings">
+    <aside className="inspector insp-panel" aria-label="Ridge plot settings">
+      <div className="insp-head">
+        <div className="tabs insp-tabs" role="tablist" aria-label="Ridge plot settings">
           {RIDGE_TABS.map((t) => (
             <button
               key={t.id}
@@ -769,7 +769,7 @@ export function RidgeInspector() {
             </button>
           ))}
         </div>
-        <div className="ridge-inspector-global">
+        <div className="insp-global">
           <span className="field">Reset this panel</span>
           <button
             type="button"
@@ -959,7 +959,7 @@ export function RidgeInspector() {
             {selected.size > 1 && (
               <p className="small muted">{selected.size} selected — a color change applies to all of them.</p>
             )}
-            <ol className="ridge-samples" onDragLeave={() => setDrop(null)}>
+            <ol className="reorder-list" onDragLeave={() => setDrop(null)}>
               {ordered.map((id, i) => {
                 const custom = style.sampleColors[id] !== undefined;
                 const isSel = selected.has(id);

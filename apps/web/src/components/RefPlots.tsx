@@ -31,9 +31,9 @@ export function RefPlots() {
   const curSample = ui.sampleId && group.sampleIds.includes(ui.sampleId) ? ui.sampleId : group.sampleIds[0];
 
   const tabs = (
-    <div className="ref-tabs" role="tablist" aria-label="Reference plots">
+    <div className="tab-strip" role="tablist" aria-label="Reference plots">
       {refs.map((r) => (
-        <div key={r.id} className={`ref-tab${r.id === ref?.id ? ' on' : ''}`}>
+        <div key={r.id} className={`tab-strip-tab${r.id === ref?.id ? ' on' : ''}`}>
           <button
             type="button"
             role="tab"
@@ -67,7 +67,7 @@ export function RefPlots() {
       ))}
       <button
         type="button"
-        className="icon ref-add"
+        className="icon tab-strip-add"
         title="Add a reference plot"
         onClick={() => addRef(group.id)}
         aria-label="Add a reference plot"

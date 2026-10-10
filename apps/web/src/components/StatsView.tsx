@@ -928,9 +928,9 @@ export function StatsInspector() {
   const pending = complete ? '' : ' (statistics are still being computed)';
 
   return (
-    <aside className="inspector ridge-inspector stats-inspector" aria-label="Statistics settings">
-      <div className="ridge-inspector-head">
-        <div className="tabs ridge-tabs" role="tablist" aria-label="Statistics settings">
+    <aside className="inspector insp-panel stats-inspector" aria-label="Statistics settings">
+      <div className="insp-head">
+        <div className="tabs insp-tabs" role="tablist" aria-label="Statistics settings">
           {STATS_TABS.map((t) => (
             <button
               key={t.id}

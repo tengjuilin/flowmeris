@@ -115,7 +115,7 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
   }, [group?.id, plot?.id]);
   if (!group || !plot)
     return (
-      <aside className="inspector ridge-inspector" aria-label={`${NAMES[target]} settings`}>
+      <aside className="inspector insp-panel" aria-label={`${NAMES[target]} settings`}>
         {grid && group && <p className="muted small">Select a plot in the grid to change its settings.</p>}
       </aside>
     );
@@ -178,9 +178,9 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
   );
 
   return (
-    <aside className="inspector ridge-inspector" aria-label={`${NAMES[target]} settings`}>
-      <div className="ridge-inspector-head">
-        <div className="tabs ridge-tabs" role="tablist" aria-label={`${NAMES[target]} settings`}>
+    <aside className="inspector insp-panel" aria-label={`${NAMES[target]} settings`}>
+      <div className="insp-head">
+        <div className="tabs insp-tabs" role="tablist" aria-label={`${NAMES[target]} settings`}>
           {GATE_TABS.map((t) => (
             <button
               key={t.id}
@@ -196,7 +196,7 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
             </button>
           ))}
         </div>
-        <div className="ridge-inspector-global">
+        <div className="insp-global">
           <span className="field">Reset this panel</span>
           <button
             type="button"
@@ -656,11 +656,11 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
                 />
                 Show tick labels
               </label>
-              <div className="ridge-pane-title">X axis</div>
+              <div className="insp-pane-title">X axis</div>
               <TicksEditor ticks={fig.xTicks} onCommit={(t) => set('xTicks', t, 'X ticks')} />
               {is2d && (
                 <>
-                  <div className="ridge-pane-title">Y axis</div>
+                  <div className="insp-pane-title">Y axis</div>
                   <TicksEditor ticks={fig.yTicks} onCommit={(t) => set('yTicks', t, 'Y ticks')} />
                 </>
               )}

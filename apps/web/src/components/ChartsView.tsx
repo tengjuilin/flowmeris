@@ -752,15 +752,15 @@ export function ChartsView() {
   };
 
   const tabs = (
-    <div className="ref-tabs chart-tabs" role="tablist" aria-label="Charts">
+    <div className="tab-strip chart-tabs" role="tablist" aria-label="Charts">
       {group.statPlots.map((p) => (
-        <div key={p.id} className={`ref-tab${p.id === plot?.id ? ' on' : ''}`}>
+        <div key={p.id} className={`tab-strip-tab${p.id === plot?.id ? ' on' : ''}`}>
           <button type="button" role="tab" aria-selected={p.id === plot?.id} onClick={() => setChartId(p.id)}>
             {p.name}
           </button>
         </div>
       ))}
-      <button type="button" className="ref-add" onClick={() => addChart()} title="New chart">
+      <button type="button" className="tab-strip-add" onClick={() => addChart()} title="New chart">
         + Chart
       </button>
     </div>

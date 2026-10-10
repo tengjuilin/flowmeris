@@ -223,7 +223,7 @@ export function ChartInspector(props: {
         )}
         {props.seriesLabel ? (
           <>
-            <ol className="ridge-samples" onDragLeave={() => setDrop(null)}>
+            <ol className="reorder-list" onDragLeave={() => setDrop(null)}>
               {series.map((s, i) => {
                 const k = keys[i]!;
                 const custom = st.seriesColors[k] !== undefined;

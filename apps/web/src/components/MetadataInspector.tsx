@@ -367,9 +367,9 @@ export function MetadataInspector() {
   };
 
   return (
-    <aside className="inspector ridge-inspector meta-inspector" aria-label="Metadata settings">
-      <div className="ridge-inspector-head">
-        <div className="tabs ridge-tabs" role="tablist" aria-label="Metadata settings">
+    <aside className="inspector insp-panel meta-inspector" aria-label="Metadata settings">
+      <div className="insp-head">
+        <div className="tabs insp-tabs" role="tablist" aria-label="Metadata settings">
           {META_TABS.map((t) => (
             <button
               key={t.id}

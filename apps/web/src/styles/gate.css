@@ -346,7 +346,7 @@
   gap: 8px;
   text-align: center;
 }
-.ref-tabs {
+.tab-strip {
   display: flex;
   flex-shrink: 0;
   align-items: flex-end;
@@ -356,17 +356,17 @@
   margin: 0 -8px 6px;
   padding: 0 8px;
 }
-.ref-tab {
+.tab-strip-tab {
   display: flex;
   align-items: center;
   flex: 0 1 auto;
   min-width: 0;
   border-bottom: 2px solid transparent;
 }
-.ref-tab.on {
+.tab-strip-tab.on {
   border-bottom-color: var(--accent);
 }
-.ref-tab > button[role="tab"] {
+.tab-strip-tab > button[role="tab"] {
   border: none;
   border-radius: 0;
   background: none;
@@ -378,12 +378,12 @@
   white-space: nowrap;
   display: block;
 }
-.ref-tab.on > button[role="tab"] {
+.tab-strip-tab.on > button[role="tab"] {
   color: var(--text);
   font-weight: 600;
 }
-.ref-tab > button.icon,
-.ref-add {
+.tab-strip-tab > button.icon,
+.tab-strip-add {
   align-self: center;
   justify-content: center;
   width: 20px;
@@ -391,7 +391,7 @@
   padding: 0;
 }
 /* Clear the tabs' 2px underline so + lines up with ✕. */
-.ref-add {
+.tab-strip-add {
   margin-bottom: 2px;
 }
 .ref-controls {
