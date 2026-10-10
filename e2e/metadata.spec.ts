@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { writeFcs } from '../packages/fcs/src/write.ts';
+import { downloadBytes, downloadText, parseCsv } from './helpers.ts';
 
 /** A small FCS file whose FL1-A median is `median` (every event has that value). */
 function fcs(median: number): Buffer {
@@ -83,4 +84,22 @@ test('sample variables from a CSV, replicate means, and a chart', async ({ page 
   await page.locator('.chart-controls label', { hasText: 'Colour by' }).locator('select').selectOption('');
   await expect(page.locator('svg.stat-chart .chart-err')).toHaveCount(2);
   await expect(page.locator('svg.stat-chart .chart-hit')).toHaveCount(2);
+
+  // Exports: the plotted means as CSV, and a 300 dpi PNG (pixel size and pHYs chunk).
+  const csv = await downloadText(page, () => page.getByRole('button', { name: 'CSV', exact: true }).click());
+  expect(csv.name).toMatch(/_data\.csv$/);
+  const [header, ...points] = parseCsv(csv.text);
+  expect(header).toEqual(['Dose', 'All events | Median GFP (FL1-A) (mean)', 'SEM', 'n']);
+  expect(points.map((r) => r.map(Number))).toEqual([
+    [1, 105, expect.closeTo(5, 9), 2],
+    [10, 210, expect.closeTo(10, 9), 2],
+  ]);
+  const png = await downloadBytes(page, () => page.getByRole('button', { name: 'PNG', exact: true }).click());
+  expect(png.bytes.subarray(1, 4).toString('latin1')).toBe('PNG');
+  const svgW = Number(await page.locator('svg.stat-chart').getAttribute('width'));
+  expect(png.bytes.readUInt32BE(16)).toBe(Math.round((svgW * 300) / 96));
+  expect(png.bytes.readUInt32BE(20)).toBe(Math.round((300 * 300) / 96));
+  const phys = png.bytes.indexOf('pHYs');
+  expect(phys).toBeGreaterThan(0);
+  expect(png.bytes.readUInt32BE(phys + 4)).toBe(Math.round(300 / 0.0254));
 });

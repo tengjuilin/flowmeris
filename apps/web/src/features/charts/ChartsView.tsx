@@ -16,30 +16,13 @@ import {
   seriesKey,
 } from '../../lib/chartStyle.ts';
 import { download, safeName } from '../../lib/download.ts';
-import { standaloneSvg } from '../../lib/export/svg.ts';
+import { standaloneSvg, svgToPng } from '../../lib/export/svg.ts';
 import { useAnalysisTable } from '../../state/hooks/stats.ts';
 import { toast, useGroup, useStore } from '../../state/store.ts';
 import { ChartInspector } from './ChartInspector.tsx';
 
 import { Chart } from './Chart.tsx';
 import { ColumnSelect, columnOptions } from './ColumnSelect.tsx';
-
-function svgToPng(svg: string, w: number, h: number, scale: number): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = w * scale;
-      canvas.height = h * scale;
-      const ctx = canvas.getContext('2d')!;
-      ctx.scale(scale, scale);
-      ctx.drawImage(img, 0, 0, w, h);
-      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('PNG encoding failed'))), 'image/png');
-    };
-    img.onerror = () => reject(new Error('Could not render the SVG'));
-    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-  });
-}
 
 export function ChartsView() {
   const group = useGroup();
@@ -142,8 +125,8 @@ export function ChartsView() {
   const exportPng = async () => {
     if (!svgRef.current) return;
     try {
-      const blob = await svgToPng(standaloneSvg(svgRef.current), width, height, 300 / 96);
-      download(`${safeName(`${group.name}_${plot.name}`)}.png`, blob, 'image/png');
+      const png = await svgToPng(svgRef.current, 300);
+      download(`${safeName(`${group.name}_${plot.name}`)}.png`, png, 'image/png');
     } catch (e) {
       toast(`PNG export failed: ${e instanceof Error ? e.message : String(e)}`);
     }

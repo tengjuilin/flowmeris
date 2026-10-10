@@ -43,13 +43,19 @@ export async function importDesign(page: Page, csv: string, variables: number) {
   await page.getByRole('button', { name: `Import ${variables} variable(s)` }).click();
 }
 
-/** Text of a downloaded file, from the click that triggers it. */
-export async function downloadText(page: Page, trigger: () => Promise<void>) {
+/** Name and bytes of a downloaded file, from the click that triggers it. */
+export async function downloadBytes(page: Page, trigger: () => Promise<void>) {
   const [download] = await Promise.all([page.waitForEvent('download'), trigger()]);
   const stream = await download.createReadStream();
   const chunks: Buffer[] = [];
   for await (const c of stream) chunks.push(c as Buffer);
-  return { name: download.suggestedFilename(), text: Buffer.concat(chunks).toString('utf8') };
+  return { name: download.suggestedFilename(), bytes: Buffer.concat(chunks) };
+}
+
+/** Text of a downloaded file, from the click that triggers it. */
+export async function downloadText(page: Page, trigger: () => Promise<void>) {
+  const { name, bytes } = await downloadBytes(page, trigger);
+  return { name, text: bytes.toString('utf8') };
 }
 
 /** Parse a CSV of plain fields (quoted fields with commas allowed). */
