@@ -23,6 +23,34 @@
   border-radius: 8px;
   padding: 8px;
 }
+/* The plot's title: population and sample, then buttons that open the plot in the Plot or Tiles view
+   (as in a grid cell's title). */
+.gate-plot-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  flex: none;
+  padding: 0 0 4px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.gate-plot-title > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gate-plot-title > .spacer {
+  flex: 1 1 0;
+}
+.gate-plot-title > button.icon.labeled {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  padding: 2px;
+  font-size: 11px;
+}
 .ref-plots {
   /* Never shrinks below its controls plus the plot's minimum, so a long population tree scrolls first. */
   flex: 1 0 auto;

@@ -1,10 +1,13 @@
+import type { Group, PlotSpec } from '@flowmeris/model';
 import { useRef } from 'react';
 import { ExportMenu } from '../../components/controls/ExportMenu.tsx';
 import { useSize } from '../../components/hooks/useSize.ts';
+import { OpenInIcon } from '../../components/ui/icons.tsx';
 import type { PlotHandle } from '../../lib/export/plot.ts';
+import { openGatePlotInGrid, openInTilesView } from '../../state/commands/grid.ts';
 import { axisPickers, drill } from '../../state/commands/plots.ts';
 import { exportPlot } from '../../state/export.ts';
-import { useGroup, useStore } from '../../state/store.ts';
+import { useGroup, useSampleNames, useStore } from '../../state/store.ts';
 import { EditScopeToggle, PlotCanvas, ToolButtons, usePlotForPopulation } from '../plot/index.ts';
 
 /** The Gate view's plot, for the export card beside it. */
@@ -42,6 +45,42 @@ export function GateToolbar() {
   );
 }
 
+/** The Gate view plot's title: its population and sample, and buttons opening it in the Plot or Tiles view. */
+function PlotTitle({ group, plot, sampleId }: { group: Group; plot: PlotSpec; sampleId: string }) {
+  const name = useSampleNames(group)[sampleId] ?? sampleId;
+  const pop = group.template.populations[plot.population]?.name ?? 'All events';
+  return (
+    <div className="gate-plot-title">
+      <span title={`${pop} – ${name}`}>
+        {pop}
+        <span className="muted"> – </span>
+        {name}
+      </span>
+      <span className="spacer" />
+      <button
+        type="button"
+        className="icon labeled"
+        title="Open in the Plot view (as a new plot unless it is already there)"
+        aria-label="Open this plot in the Plot view"
+        onClick={() => openGatePlotInGrid(group, plot, sampleId)}
+      >
+        <OpenInIcon />
+        Plot
+      </button>
+      <button
+        type="button"
+        className="icon labeled"
+        title="Open in the Tiles view"
+        aria-label="Open this plot in the Tiles view"
+        onClick={() => openInTilesView(group, plot, sampleId, name, 'Open Gate plot in Tiles view')}
+      >
+        <OpenInIcon />
+        Tiles
+      </button>
+    </div>
+  );
+}
+
 export function PlotPanel() {
   const ws = useStore((s) => s.ws);
   const ui = useStore((s) => s.ui);
@@ -64,6 +103,7 @@ export function PlotPanel() {
   }
   return (
     <div className="plot-panel">
+      <PlotTitle group={group} plot={plot} sampleId={sampleId} />
       <div className="plot-box" ref={box}>
         {size.width > 0 && (
           <PlotCanvas

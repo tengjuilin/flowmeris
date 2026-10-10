@@ -1,4 +1,4 @@
-import type { Group, PlotCell, PlotKind, PlotSpec, Workspace } from '@flowmeris/model';
+import type { Group, PlotCell, PlotKind, PlotSpec, PlotStyle, Workspace } from '@flowmeris/model';
 import { newId } from '@flowmeris/model';
 import { defaultAxis, defaultChannels } from '../../lib/axisDefaults.ts';
 import { TILE_FIGURE, TILE_STYLE, withAxesChange } from '../../lib/figure.ts';
@@ -90,42 +90,52 @@ export function openInGateView(group: Group, cell: PlotCell, sampleId: string | 
   });
 }
 
+/** What a plot shows, for opening it in another view: a grid cell, a tile or the Gate view's plot. */
+type ShownPlot = Pick<PlotSpec, 'population' | 'kind' | 'x' | 'y' | 'style'>;
+
 /**
- * Whether `plot` has `cell`'s type and axes: the x and y channel, compensation, scale and range, or for a
+ * Whether `plot` has `from`'s type and axes: the x and y channel, compensation, scale and range, or for a
  * histogram the x axis and what its y axis shows (`histNorm`).
  */
-function sameTypeAndAxes(plot: PlotSpec, cell: PlotCell): boolean {
+function sameTypeAndAxes(plot: PlotSpec, from: ShownPlot): boolean {
   return (
-    plot.kind === cell.kind &&
-    sameJson(plot.x, cell.x) &&
-    (cell.kind === 'histogram' ? plot.style.histNorm === cell.style.histNorm : sameJson(plot.y, cell.y))
+    plot.kind === from.kind &&
+    sameJson(plot.x, from.x) &&
+    (from.kind === 'histogram' ? plot.style.histNorm === from.style.histNorm : sameJson(plot.y, from.y))
   );
 }
 
 /**
- * Open a cell in the Tiles view: its population, with its sample selected (highlighted), and the
- * population's Tiles plot set to the cell's type and axes (`sameTypeAndAxes`). That is one undo step, and none when the Tiles
- * plot already matches. The Tiles plot keeps its own appearance. A sample unchecked in the sidebar has no
- * tile; a toast says to check it, naming the sample `name`.
+ * Open a plot (a grid cell, or the Gate view's plot) in the Tiles view: its population, with its sample
+ * selected (highlighted), and the population's Tiles plot set to its type and axes (`sameTypeAndAxes`).
+ * That is one undo step named `label`, and none when the Tiles plot already matches. The Tiles plot keeps
+ * its own appearance. A sample unchecked in the sidebar has no tile; a toast says to check it, naming the
+ * sample `name`.
  */
-export function openInTilesView(group: Group, cell: PlotCell, sampleId: string | undefined, name = sampleId) {
-  const tile = group.tilePlots.find((p) => p.population === cell.population);
-  if (!tile || !sameTypeAndAxes(tile, cell)) {
-    mutateGroup(group.id, 'Open grid plot in Tiles view', (g, w) => {
+export function openInTilesView(
+  group: Group,
+  from: ShownPlot,
+  sampleId: string | undefined,
+  name = sampleId,
+  label = 'Open grid plot in Tiles view',
+) {
+  const tile = group.tilePlots.find((p) => p.population === from.population);
+  if (!tile || !sameTypeAndAxes(tile, from)) {
+    mutateGroup(group.id, label, (g, w) => {
       const p =
-        g.tilePlots.find((x) => x.population === cell.population) ?? newTilePlot(w, g, cell.population);
+        g.tilePlots.find((x) => x.population === from.population) ?? newTilePlot(w, g, from.population);
       withAxesChange(p, () => {
-        p.kind = cell.kind;
-        p.x = { ...cell.x };
-        if (cell.kind !== 'histogram' && cell.y) p.y = { ...cell.y };
+        p.kind = from.kind;
+        p.x = { ...from.x };
+        if (from.kind !== 'histogram' && from.y) p.y = { ...from.y };
       });
       // After the axes change, which may restore the settings saved for the new channel pair.
-      if (cell.kind === 'histogram') p.style.histNorm = cell.style.histNorm;
+      if (from.kind === 'histogram') p.style.histNorm = from.style.histNorm;
     });
   }
   useStore.getState().setUi({
     view: 'tiles',
-    popId: cell.population,
+    popId: from.population,
     selectedGateId: null,
     ...(sampleId ? { sampleId } : {}),
   });
@@ -134,11 +144,11 @@ export function openInTilesView(group: Group, cell: PlotCell, sampleId: string |
 }
 
 /**
- * Open a Tiles plot of `sampleId` in the Plot view: select the grid plot already showing it (same
- * population, type and axes, pinned to that sample), else put a copy pinned to the sample in the next
- * empty cell, leaving the other grid plots as they are.
+ * Open `plot` of `sampleId` in the Plot view: select the grid plot already showing it (same population,
+ * type and axes, pinned to that sample), else put a copy with `style` pinned to the sample in the next
+ * empty cell (undo step `label`), leaving the other grid plots as they are.
  */
-export function openTileInGrid(group: Group, plot: PlotSpec, sampleId: string) {
+function openInGrid(group: Group, plot: ShownPlot, sampleId: string, label: string, style: PlotStyle) {
   const same = (c: PlotCell | null): c is PlotCell =>
     !!c &&
     c.sampleId === sampleId &&
@@ -149,7 +159,7 @@ export function openTileInGrid(group: Group, plot: PlotSpec, sampleId: string) {
   let id = group.grid.cells.find(same)?.id;
   if (!id) {
     const cellId = newId('cell_');
-    mutateGroup(group.id, 'Open tile in Plot view', (g) => {
+    mutateGroup(group.id, label, (g) => {
       const slot = g.grid.cells.findIndex((c) => c === null);
       const c: PlotCell = {
         id: cellId,
@@ -159,11 +169,7 @@ export function openTileInGrid(group: Group, plot: PlotSpec, sampleId: string) {
         kind: plot.kind,
         x: { ...plot.x },
         ...(plot.y && plot.kind !== 'histogram' ? { y: { ...plot.y } } : {}),
-        // A tile drawn with the Tiles defaults leaves the cell on the grid defaults (the same).
-        style:
-          plot.style.figure === TILE_FIGURE
-            ? structuredClone({ ...plot.style, figure: undefined })
-            : structuredClone(plot.style),
+        style: structuredClone(style),
       };
       if (slot >= 0) g.grid.cells[slot] = c;
       else g.grid.cells.push(c);
@@ -171,6 +177,21 @@ export function openTileInGrid(group: Group, plot: PlotSpec, sampleId: string) {
     id = cellId;
   }
   useStore.getState().setUi({ view: 'plot', sampleId, gridCellId: id, selectedGateId: null });
+}
+
+/** Open a Tiles plot of `sampleId` in the Plot view (`openInGrid`). */
+export function openTileInGrid(group: Group, plot: PlotSpec, sampleId: string) {
+  // A tile drawn with the Tiles defaults leaves the cell on the grid defaults (the same).
+  const style = plot.style.figure === TILE_FIGURE ? { ...plot.style, figure: undefined } : plot.style;
+  openInGrid(group, plot, sampleId, 'Open tile in Plot view', style);
+}
+
+/**
+ * Open the Gate view's plot of `sampleId` in the Plot view (`openInGrid`). Its figure options (larger
+ * text) stay with the Gate view's plot; the cell is drawn with the grid defaults.
+ */
+export function openGatePlotInGrid(group: Group, plot: PlotSpec, sampleId: string) {
+  openInGrid(group, plot, sampleId, 'Open Gate plot in Plot view', { ...plot.style, figure: undefined });
 }
 
 export function setCellPopulation(groupId: string, cellId: string, popId: string) {

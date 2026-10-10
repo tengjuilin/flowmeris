@@ -165,6 +165,35 @@ test('plot grid: open a plot in Tiles with its sample, type and axes', async ({ 
   await expect(page.locator('.toast').filter({ hasText: 'A02 is unchecked in the sidebar' })).toBeVisible();
 });
 
+test('gate: open the plot in Plot and in Tiles from its title', async ({ page }) => {
+  await loadWells(page, { A01: 100, A02: 200, B01: 110 });
+  await page.locator('.sample-list button', { hasText: 'A02' }).click();
+  const title = page.locator('.gate-plot-title');
+  await expect(title).toContainText('All events – A02');
+
+  // Plot: a grid plot pinned to A02, added once.
+  await title.getByRole('button', { name: 'Open this plot in the Plot view' }).click();
+  await expect(tab(page, 'Plot')).toHaveAttribute('aria-selected', 'true');
+  const pinned = page.locator('.plot-grid .grid-cell.on');
+  await expect(pinned.locator('.cell-sample')).toHaveText('A02');
+  await expect(pinned.locator('.badge', { hasText: 'follows' })).toHaveCount(0);
+  const cells = page.locator('.plot-grid .grid-cell:not(.empty-cell)');
+  const before = await cells.count();
+  await tab(page, 'Gate').click();
+  await title.getByRole('button', { name: 'Open this plot in the Plot view' }).click();
+  await expect(tab(page, 'Plot')).toHaveAttribute('aria-selected', 'true');
+  await expect(cells).toHaveCount(before);
+
+  // Tiles: A02 highlighted, every tile a histogram as in the Gate view.
+  await tab(page, 'Gate').click();
+  await page.getByLabel('Plot type').selectOption('histogram');
+  await title.getByRole('button', { name: 'Open this plot in the Tiles view' }).click();
+  await expect(tab(page, 'Tiles')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.tiles-grid .tile.on .tile-title')).toContainText('A02');
+  for (const t of await page.locator('.tiles-grid .tile').all())
+    await expect(t.getByRole('button', { name: /^Y axis: .*Change what the y axis shows/ })).toBeVisible();
+});
+
 test('gating path: steps, plot size, Path and Tree each with their own size, panel resizing', async ({
   page,
 }) => {
@@ -173,7 +202,9 @@ test('gating path: steps, plot size, Path and Tree each with their own size, pan
     .getByTestId('file-input')
     .first()
     .setInputFiles([fixture('flowkit/gate_ref/data1.fcs')]);
-  await expect(page.getByText('All events')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'All events', exact: true })).toBeVisible({
+    timeout: 20_000,
+  });
   // Gate 1 of All events, Gate 2 of Gate 1.
   await drawGate(page, 0.15, 0.85, 0.7, 0.2);
   await expect(page.locator('.pop-row', { hasText: 'Gate 1' })).toBeVisible();

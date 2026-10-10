@@ -3,7 +3,15 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { cellSample } from '../../lib/gridCells.ts';
 import { newTilePlot } from '../../lib/plotFactories.ts';
 import { APP_INFO, useStore } from '../store.ts';
-import { addCell, editCell, openInTilesView, openTileInGrid, removeCell, setCellSample } from './grid.ts';
+import {
+  addCell,
+  editCell,
+  openGatePlotInGrid,
+  openInTilesView,
+  openTileInGrid,
+  removeCell,
+  setCellSample,
+} from './grid.ts';
 
 const S = useStore.getState;
 const g = () => S().ws.groups[0]!;
@@ -121,5 +129,42 @@ describe('grid commands', () => {
     openInTilesView(g(), g().grid.cells[0]!, 'b', 'B02');
     expect(S().ui).toMatchObject({ view: 'tiles', sampleId: 'b', excluded: { b: true } });
     expect(S().status.toast?.text).toMatch(/B02 is unchecked in the sidebar/);
+  });
+
+  it('open the Gate plot in the grid once, pinned to its sample, on the grid figure defaults', () => {
+    const plot = {
+      id: 'unsaved',
+      population: 'root',
+      kind: 'contour',
+      x: { channel: 'FL1-A', comp: 'group', transform: 'x', range: [0, 1] },
+      y: { channel: 'SSC-A', comp: 'group', transform: 'x', range: [0, 1] },
+      style: { pointPx: 3, figure: { titleFontSize: 20 } },
+    } as unknown as PlotSpec;
+    openGatePlotInGrid(g(), plot, 'b');
+    openGatePlotInGrid(g(), plot, 'b');
+    const cells = g().grid.cells;
+    expect(cells).toHaveLength(1);
+    expect(cells[0]).toMatchObject({ sampleId: 'b', kind: 'contour', x: plot.x, y: plot.y });
+    expect(cells[0]!.style).toEqual({ pointPx: 3 });
+    // Opening never saves the Gate view's plot.
+    expect(g().plots).toHaveLength(0);
+    expect(S().ui).toMatchObject({ view: 'plot', sampleId: 'b', gridCellId: cells[0]!.id });
+  });
+
+  it('open the Gate plot in Tiles under its own undo step name', () => {
+    const plot = {
+      id: 'unsaved',
+      population: 'root',
+      kind: 'histogram',
+      x: { channel: 'FL1-A', comp: 'group', transform: 'x', range: [0, 1] },
+      style: { histNorm: 'count' },
+    } as unknown as PlotSpec;
+    S().mutate('Tiles plot', (w) => void newTilePlot(w, w.groups[0]!, 'root'));
+    openInTilesView(g(), plot, 'a', 'A01', 'Open Gate plot in Tiles view');
+    const tile = g().tilePlots.find((p) => p.population === 'root')!;
+    expect([tile.kind, tile.x, tile.style.histNorm]).toEqual(['histogram', plot.x, 'count']);
+    expect(S().past.at(-1)?.label).toBe('Open Gate plot in Tiles view');
+    expect(g().plots).toHaveLength(0);
+    expect(S().ui).toMatchObject({ view: 'tiles', popId: 'root', sampleId: 'a' });
   });
 });

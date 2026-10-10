@@ -19,6 +19,11 @@
   the first change you make to it: drawing or moving a gate on it, or changing its axes, plot type or
   style. That change and the new plot are one undo step, *Add plot and …*; undoing it leaves the plot
   unsaved again. A Gating path plot drawn on a gate's axes opens the same way.
+- **Plot** and **Tiles** in the plot's title (above it, with the population and sample) open it in that
+  view, as from a Plot grid plot or a tile. **Plot** selects the grid plot that already shows it for this
+  sample, or adds one pinned to the sample, drawn with the grid's text sizes. **Tiles** opens the
+  population with the sample highlighted and sets the Tiles plot type and axes to the plot's (see the
+  Plot grid below). Neither saves a plot that is shown unsaved.
 - **Click an axis title** to pick another channel for that axis; it takes the channel's default scale. This
   works on every plot with axis titles: the Gate view, Plot grid, Tiles, reference plots and the Ridge
   view. Arrow keys and Enter pick from the list; long lists can be filtered by typing.
