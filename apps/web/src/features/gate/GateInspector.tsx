@@ -5,6 +5,7 @@ import type { Panel } from '../../components/ui/Section.tsx';
 import { carryToPopulation } from '../../lib/figure.ts';
 import { gateMatchesAxes } from '../../lib/geometry.ts';
 import { type PlotPanelTab, panelAtDefaults, resetPanel } from '../../lib/plotPanels.ts';
+import { UNSAVED_PLOT_ID } from '../../lib/unsavedPlot.ts';
 import { type PlotTarget, plotsOf as targetPlots } from '../../state/commands/plots.ts';
 import { useRememberedTab } from '../../state/prefs.ts';
 import { useGroup, useStore } from '../../state/store.ts';
@@ -60,22 +61,34 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
     toggle: (id) => setClosed((c) => ({ ...c, [id]: !c[id] })),
   };
   // While settings are carried across populations, the population opened next takes the settings of
-  // the one left (keeping its own title, ticks and axis titles).
-  const last = useRef<{ groupId: string; plotId: string } | null>(null);
+  // the one left (keeping its own title, ticks and axis titles). An unsaved plot takes them unsaved.
+  const last = useRef<{ groupId: string; key: string; unsaved: PlotSpec | null } | null>(null);
+  const key = plot && `${plot.id}|${plot.population}`;
   useEffect(() => {
-    if (!group || !plot) return;
+    if (!group || !plot || !key) return;
     const prev = last.current;
-    last.current = { groupId: group.id, plotId: plot.id };
-    if (grid || !prev || prev.groupId !== group.id || prev.plotId === plot.id || !follow(group)) return;
-    const from = plotsOf(group).find((p) => p.id === prev.plotId);
+    const unsaved = plot.id === UNSAVED_PLOT_ID;
+    last.current = { groupId: group.id, key, unsaved: unsaved ? plot : null };
+    if (grid || !prev || prev.groupId !== group.id || prev.key === key || !follow(group)) return;
+    // The unsaved plot just saved by an edit is the same plot.
+    if (prev.unsaved && !unsaved && prev.unsaved.population === plot.population) return;
+    const fromId = prev.key.slice(0, prev.key.indexOf('|'));
+    const from = prev.unsaved ?? plotsOf(group).find((p) => p.id === fromId);
     if (!from || !carryToPopulation(structuredClone(from), structuredClone(plot))) return;
+    if (unsaved) {
+      const carried = structuredClone(plot);
+      carryToPopulation(structuredClone(from), carried);
+      last.current.unsaved = carried;
+      useStore.getState().setUi({ unsavedPlot: carried });
+      return;
+    }
     mutate('Carry settings to population', (w) => {
       const g = w.groups.find((x) => x.id === group.id);
-      const src = g && plotsOf(g).find((p) => p.id === prev.plotId);
+      const src = prev.unsaved ?? (g && plotsOf(g).find((p) => p.id === fromId));
       const dst = g && plotsOf(g).find((p) => p.id === plot.id);
       if (src && dst) carryToPopulation(src, dst);
     });
-  }, [group?.id, plot?.id]);
+  }, [group?.id, key]);
   if (!group || !plot)
     return (
       <aside className="inspector insp-panel" aria-label={`${NAMES[target]} settings`}>
