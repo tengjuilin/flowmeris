@@ -53,11 +53,14 @@ export function populationPlot(ws: Workspace, g: Group, popId: string): PlotSpec
 }
 
 /**
- * Add the population's Tiles plot: a copy of the Gate view's plot type and axes (or the defaults when it
- * has none) with the Tiles default appearance. Not linked to the Gate view's plot afterwards.
+ * Add the population's Tiles plot: a copy of the Gate view's plot type and axes (the plot the population
+ * gets when it has none, `populationPlot`, until one is saved) with the Tiles default appearance. Not
+ * linked to the Gate view's plot afterwards.
  */
 export function newTilePlot(ws: Workspace, g: Group, population: string): PlotSpec {
-  const src = g.plots.find((p) => p.population === population);
+  const src =
+    g.plots.find((p) => p.population === population) ??
+    (g.template.populations[population] ? populationPlot(ws, g, population) : undefined);
   const [xc, yc] = defaultChannels(ws, g);
   const plot: PlotSpec = {
     id: newId('tpl_'),

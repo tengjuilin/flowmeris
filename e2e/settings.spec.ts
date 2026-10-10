@@ -53,6 +53,12 @@ test('carrying settings applies them to the population opened next, not on toggl
 test('apply and reset buttons in the Settings tab', async ({ page }) => {
   await open(page);
   await visit(page, 'Gate 1');
+  // Opening a population saves no plot; an edit does. Apply reaches only saved plots.
+  await tab(page, 'Figure');
+  await pointSize(page).fill('5');
+  await pointSize(page).press('Enter');
+  await pointSize(page).fill('3');
+  await pointSize(page).press('Enter');
   await visit(page, 'All events');
   await tab(page, 'Settings');
   await page.getByLabel('Carry settings to next populations').uncheck();
@@ -81,5 +87,22 @@ test('apply and reset buttons in the Settings tab', async ({ page }) => {
   await tab(page, 'Settings');
   await resetThis.click();
   await tab(page, 'Figure');
+  await expect(pointSize(page)).toHaveValue('3');
+});
+
+test('opening a population saves its plot only with the first edit, in one undo step', async ({ page }) => {
+  await open(page);
+  const undo = page.getByRole('button', { name: 'Undo', exact: true });
+  await expect(undo).toHaveAttribute('title', /^Undo: Add gate/);
+  await visit(page, 'Gate 1');
+  await tab(page, 'Figure');
+  await expect(pointSize(page)).toHaveValue('3');
+  await expect(undo).toHaveAttribute('title', /^Undo: Add gate/);
+
+  await pointSize(page).fill('5');
+  await pointSize(page).press('Enter');
+  await expect(undo).toHaveAttribute('title', /^Undo: Add plot and /);
+  await undo.click();
+  await expect(undo).toHaveAttribute('title', /^Undo: Add gate/);
   await expect(pointSize(page)).toHaveValue('3');
 });

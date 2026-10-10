@@ -1,33 +1,17 @@
 import type { Group, PlotCell, PlotSpec, Workspace } from '@flowmeris/model';
-import { newId } from '@flowmeris/model';
 import { defaultAxis } from '../../lib/axisDefaults.ts';
 import { withAxesChange } from '../../lib/figure.ts';
-import { populationPlot } from '../../lib/plotFactories.ts';
+import { UNSAVED_PLOT_ID } from '../../lib/unsavedPlot.ts';
 import { mutateGroup, useStore } from '../store.ts';
 
 /** Commands on a group's plots: the Gate view's, the Tiles view's and the Plot view's grid. */
 
-/** Make sure the active population has a plot (creates one with the parent's axes). */
-export function ensurePlot(popId: string): string {
-  const st = useStore.getState();
-  const g = st.ws.groups.find((x) => x.id === st.ui.groupId);
-  if (!g) return '';
-  const existing = g.plots.find((p) => p.population === popId);
-  if (existing) return existing.id;
-  let id = '';
-  st.mutate('Add plot', (ws) => {
-    const gg = ws.groups.find((x) => x.id === g.id)!;
-    const plot = populationPlot(ws, gg, popId);
-    gg.plots.push(plot);
-    id = plot.id;
-  });
-  return id;
-}
-
-/** Select population `popId` in the Gate view, making its plot first if it has none. */
+/**
+ * Select population `popId` in the Gate view. A population without a saved plot shows one unsaved until
+ * it is edited (lib/unsavedPlot.ts).
+ */
 export function drill(popId: string) {
-  const id = ensurePlot(popId);
-  useStore.getState().setUi({ popId, plotId: id, selectedGateId: null });
+  useStore.getState().setUi({ popId, plotId: null, unsavedPlot: null, selectedGateId: null });
 }
 
 /** The fields the plot-type and axis pickers edit; shared by saved plots and reference plots. */
@@ -98,21 +82,14 @@ export function axisPickers(group: Group, plot: PlotSpec, edit?: EditAxes) {
 
 /**
  * Open a Gating path plot of `popId` in the Gate view: a saved plot (`real`) as it is, a plot built from a
- * gate's axes saved first as a new plot, or with no plot the population's own (`drill`).
+ * gate's axes unsaved until it is edited, or with no plot the population's own (`drill`).
  */
 export function openPathPlot(popId: string, plot: PlotSpec | null, real: boolean) {
   const st = useStore.getState();
   if (plot && real) st.setUi({ popId, plotId: plot.id, selectedGateId: null, view: 'gate' });
   else if (plot) {
-    // A preview built from the gate's axes: save it as a plot so the Gate view shows the same axes.
-    const g = st.ws.groups.find((x) => x.id === st.ui.groupId);
-    if (!g) return;
-    const id = newId('plt_');
-    st.mutate('Add plot', (ws) => {
-      const gg = ws.groups.find((x) => x.id === g.id)!;
-      gg.plots.push({ ...structuredClone(plot), id });
-    });
-    st.setUi({ popId, plotId: id, selectedGateId: null, view: 'gate' });
+    const unsavedPlot = { ...structuredClone(plot), id: UNSAVED_PLOT_ID };
+    st.setUi({ popId, plotId: UNSAVED_PLOT_ID, unsavedPlot, selectedGateId: null, view: 'gate' });
   } else {
     drill(popId);
     useStore.getState().setUi({ view: 'gate' });

@@ -14,6 +14,11 @@
 - Labels show the percentage of the parent population for the current sample, updated live while dragging.
 - **Double-click inside a gate** (or a quadrant/spider region) to open that population. Its plot starts
   with the parent's axes.
+- Opening a population that has no plot, from the Gate tab, the population tree or the Gating path,
+  shows a plot without saving it, so looking around never changes the workspace. The plot is saved with
+  the first change you make to it: drawing or moving a gate on it, or changing its axes, plot type or
+  style. That change and the new plot are one undo step, *Add plot and …*; undoing it leaves the plot
+  unsaved again. A Gating path plot drawn on a gate's axes opens the same way.
 - **Click an axis title** to pick another channel for that axis; it takes the channel's default scale. This
   works on every plot with axis titles: the Gate view, Plot grid, Tiles, reference plots and the Ridge
   view. Arrow keys and Enter pick from the list; long lists can be filtered by typing.

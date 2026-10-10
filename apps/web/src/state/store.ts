@@ -1,10 +1,11 @@
 import type { AnalysisContext } from '@flowmeris/engine';
-import { type Group, type Workspace, newWorkspace } from '@flowmeris/model';
+import { type Group, type PlotSpec, type Workspace, newWorkspace } from '@flowmeris/model';
 import { type Patch, applyPatches, enablePatches, produce, produceWithPatches } from 'immer';
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import { gridCarry } from '../lib/gridCarry.ts';
 import { displayNames } from '../lib/names.ts';
+import { addUnsaved, gateViewPlot, settleUnsaved } from '../lib/unsavedPlot.ts';
 import { readSession, writeSession } from './prefs.ts';
 
 enablePatches();
@@ -40,6 +41,11 @@ interface UiState {
   sampleId: string | null;
   popId: string;
   plotId: string | null;
+  /**
+   * A Gate-view plot shown without being saved (lib/unsavedPlot.ts), such as a Gating path plot built from
+   * a gate's axes. Cleared when another population or group is shown.
+   */
+  unsavedPlot: PlotSpec | null;
   view: View;
   tool: Tool;
   /** Whether gate edits change the group template or only the current sample (override). */
@@ -102,6 +108,8 @@ interface History {
   redo: Patch[];
   undo: Patch[];
   merge?: { key: string; at: number };
+  /** The step saved the Gate view's unsaved plot (its label says so, also when later edits merge in). */
+  savedPlot?: true;
 }
 
 interface Store {
@@ -119,6 +127,8 @@ interface Store {
    * Apply an undoable change to the workspace document. Changes sharing a
    * `merge` key less than a second apart (slider drags, colour picking,
    * typing) collapse into one undo step. The rules in AFTER_EDIT then run on the result.
+   * In the Gate view, an edit that changes its unsaved plot, or a gate drawn on it, saves the plot in the
+   * same step (lib/unsavedPlot.ts).
    */
   mutate: (label: string, fn: (ws: Workspace) => void, merge?: string) => void;
   /** Change the workspace without an undo step, for bookkeeping the user did not ask for (e.g. a view's plot made on first visit). */
@@ -157,6 +167,7 @@ export const useStore = create<Store>((set, get) => ({
     sampleId: null,
     popId: 'root',
     plotId: null,
+    unsavedPlot: null,
     // A page reload stays on the same tab (and, in `views`, the same Gating path layout).
     view: readSession(VIEW_KEY, VIEW_IDS, 'gate'),
     tool: 'select',
@@ -200,7 +211,12 @@ export const useStore = create<Store>((set, get) => ({
         }
       : { ...here, view: to.view };
     set((s) => ({
-      ui: { ...s.ui, ...loc, selectedGateId: null },
+      ui: {
+        ...s.ui,
+        ...loc,
+        selectedGateId: null,
+        unsavedPlot: loc.popId === s.ui.popId && loc.groupId === s.ui.groupId ? s.ui.unsavedPlot : null,
+      },
       nav:
         dir < 0
           ? { back: rest, forward: [...nav.forward, here] }
@@ -210,7 +226,13 @@ export const useStore = create<Store>((set, get) => ({
   },
   mutate(label, fn, merge) {
     const before = get().ws;
-    let [next, redo, undo] = produceWithPatches(before, (draft) => void fn(draft as Workspace));
+    const shown = unsavedShown(get());
+    let savedId: string | null = null;
+    let [next, redo, undo] = produceWithPatches(before, (draft) => {
+      const added = shown && addUnsaved(draft as Workspace, shown);
+      fn(draft as Workspace);
+      if (added) savedId = settleUnsaved(draft as Workspace, added);
+    });
     // A change that changes nothing is no undo step (stamped only once the edit is known to change something).
     if (redo.length === 0) return;
     for (const rule of AFTER_EDIT) {
@@ -230,21 +252,30 @@ export const useStore = create<Store>((set, get) => ({
       undo = [...u, ...undo];
     }
     const now = Date.now();
+    const saved = savedId !== null;
+    if (saved) label = `Add plot and ${label.charAt(0).toLowerCase()}${label.slice(1)}`;
+    // The saved plot stays selected under its new id.
+    const ui = savedId ? { ...get().ui, plotId: savedId, unsavedPlot: null } : get().ui;
     set((s) => {
       const last = s.past[s.past.length - 1];
       if (merge && last?.merge?.key === merge && now - last.merge.at < 1000 && s.future.length === 0) {
-        const merged = {
-          label,
+        const merged: History = {
+          label: last.savedPlot ? last.label : label,
           redo: [...last.redo, ...redo],
           undo: [...undo, ...last.undo],
           merge: { key: merge, at: now },
+          ...((last.savedPlot || saved) && { savedPlot: true as const }),
         };
-        return { ws: next, past: [...s.past.slice(0, -1), merged] };
+        return { ws: next, ui, past: [...s.past.slice(0, -1), merged] };
       }
-      const h: History = merge
-        ? { label, redo, undo, merge: { key: merge, at: now } }
-        : { label, redo, undo };
-      return { ws: next, past: [...s.past.slice(-199), h], future: [] };
+      const h: History = {
+        label,
+        redo,
+        undo,
+        ...(merge && { merge: { key: merge, at: now } }),
+        ...(saved && { savedPlot: true as const }),
+      };
+      return { ws: next, ui, past: [...s.past.slice(-199), h], future: [] };
     });
   },
   mutateQuiet(fn) {
@@ -274,6 +305,7 @@ export const useStore = create<Store>((set, get) => ({
         sampleId: ws.groups[0]?.sampleIds[0] ?? null,
         popId: 'root',
         plotId: null,
+        unsavedPlot: null,
         selectedGateId: null,
         refPlotId: null,
         gridCellId: null,
@@ -284,6 +316,9 @@ export const useStore = create<Store>((set, get) => ({
   setUi(patch) {
     const prev = get().ui;
     const ui = { ...prev, ...patch };
+    // An unsaved plot belongs to the population it was shown for.
+    if (!('unsavedPlot' in patch) && (ui.popId !== prev.popId || ui.groupId !== prev.groupId))
+      ui.unsavedPlot = null;
     // A tab switch, by a tab or by a button that opens a sample in another tab, is a step Back returns
     // from. Changes within a tab (another sample or population) are not steps of their own.
     const switched = ui.view !== prev.view;
@@ -302,6 +337,13 @@ export const useStore = create<Store>((set, get) => ({
     set((s) => ({ status: { ...s.status, ...patch } }));
   },
 }));
+
+/** The Gate view's plot when it is unsaved, for `mutate` to give to an edit. */
+function unsavedShown({ ws, ui }: Pick<Store, 'ws' | 'ui'>) {
+  const g = ui.view === 'gate' ? ws.groups.find((x) => x.id === ui.groupId) : undefined;
+  const shown = g && gateViewPlot(ws, g, ui);
+  return shown && !shown.saved ? { groupId: g.id, ...shown } : null;
+}
 
 function locationOf(ui: UiState): NavLocation {
   const { view, groupId, sampleId, popId, plotId, gridCellId } = ui;

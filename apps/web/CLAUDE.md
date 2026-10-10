@@ -63,7 +63,8 @@ What is in `src/lib/`:
 |---|---|
 | `keys.ts` | worker-pool cache keys: `lineageKey`, `plotKey` |
 | `gates.ts` | `addGate`: a new gate's populations and their names |
-| `axisDefaults.ts`, `plotFactories.ts` | default axes and channels, scale kinds, factory axes (`axisAtFactory`, `resetAxisToFactory`); new Gate-view and Tiles plots |
+| `axisDefaults.ts`, `plotFactories.ts` | default axes and channels, scale kinds, factory axes (`axisAtFactory`, `resetAxisToFactory`); new Gate-view and Tiles plots (`populationPlot`: a population's first plot) |
+| `unsavedPlot.ts` | the Gate view's plot (`gateViewPlot`), which may be unsaved (`UNSAVED_PLOT_ID`), and saving it with the first edit that changes it (`addUnsaved`, `settleUnsaved`, used by `mutate`) |
 | `figure.ts`, `ridgeStyle.ts`, `styleScope.ts` | plot and ridge appearance; settings kept per channel and shared across populations (`styleScope` is the shared logic) |
 | `gridCarry.ts` | grid-plot settings copied to the other grid plots |
 | `ridgeRows.ts`, `ridgeLayout.ts`, `ridgePanels.ts` | which ridges a ridge plot draws (samples or combined replicates); its labels, pixel layout and paths (`ridgeLabels`, `ridgeFrame`, `ridgePaths`); its settings panel's card and tab resets, reordering (`moveRidges`) and base font scaling |
@@ -90,6 +91,12 @@ What is in `src/lib/`:
 - `mutate`: `fn` receives an immer draft. `label` is the undo entry's name. `merge` is a key that folds
   repeated edits from one gesture (a drag, typing) into one undo step within 1 s; it must be unique per
   gesture. `mutateQuiet` changes the workspace without an undo step (for derived data only).
+- Opening a population never changes the workspace: the Gate view shows its plot unsaved (`ui.unsavedPlot`,
+  or built by `gateViewPlot`) until an edit in the Gate view changes the plot or a gate on it. `mutate`
+  then saves it in that edit's undo step, labelled `Add plot and …`, and selects it under its new id.
+  Edits find the unsaved plot in the draft by its id, `UNSAVED_PLOT_ID`, as they find a saved one. The
+  one exception: when its axes need a transform or axis default the workspace lacks (rare: a channel no
+  plot used), `usePlotForPopulation` registers them with `mutateQuiet` so the plot can be drawn.
 - After every edit, `mutate` applies the rules listed in `AFTER_EDIT` in `store.ts` (today: grid-plot
   settings carried to the other grid plots, `lib/gridCarry.ts`) and stamps `modifiedAt`.
 - Helpers whose doc comment says "call inside `mutate`" take a draft (for example `defaultAxis` in
