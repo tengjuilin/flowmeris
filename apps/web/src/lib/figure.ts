@@ -112,14 +112,18 @@ export function withBaseFont(plot: PlotSpec, px: number): PlotSpec {
   return { ...plot, style: { ...plot.style, figure } };
 }
 
-/** SVG text styling for `t`, falling back to the figure's font family `base` and color `baseColor`. */
-export function textCss(t: TextStyle, base: string, baseColor: string): CSSProperties {
+/**
+ * SVG text styling for `t`, falling back to the figure's font family `base` and color `baseColor`. With
+ * neither colour, the text keeps the colour its CSS gives it.
+ */
+export function textCss(t: TextStyle, base: string, baseColor: string | undefined): CSSProperties {
+  const fill = t.color ?? baseColor;
   return {
     fontFamily: fontStack(t.fontFamily ?? base),
     fontWeight: t.bold ? 700 : 400,
     fontStyle: t.italic ? 'italic' : 'normal',
     textDecoration: t.underline ? 'underline' : 'none',
-    fill: t.color ?? baseColor,
+    ...(fill !== undefined && { fill }),
   };
 }
 

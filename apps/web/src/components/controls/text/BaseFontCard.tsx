@@ -15,8 +15,10 @@ export function BaseFontCard({
   defaultFont,
   onFont,
   color,
-  defaultColor,
+  colorAtDefault,
+  defaultColorName = 'black',
   onColor,
+  onResetColor,
   size,
   onSize,
   sizeTitle,
@@ -25,17 +27,20 @@ export function BaseFontCard({
   font: string;
   defaultFont: string;
   onFont: (font: string) => void;
+  /** The colour shown: the base font colour, or the default it falls back to. */
   color: string;
-  defaultColor: string;
-  /** `merge` is set while the colour is being picked, so one pick is one undo step. */
-  onColor: (color: string, merge?: string) => void;
+  colorAtDefault: boolean;
+  /** Names the default colour in the reset button's tooltip. */
+  defaultColorName?: string;
+  /** `merge` groups the changes of one colour pick into one undo step. */
+  onColor: (color: string, merge: string) => void;
+  onResetColor: () => void;
   size: number;
   /** Called only when the size changes. */
   onSize: (px: number) => void;
   /** The size field's tooltip: which sizes it scales. */
   sizeTitle: string;
 }) {
-  const atDefault = color === defaultColor;
   return (
     <Card {...card}>
       <FontSelect label="Base font" value={font} onChange={(v) => onFont(v ?? defaultFont)} />
@@ -45,10 +50,12 @@ export function BaseFontCard({
         value={color}
         onChange={(v) => onColor(v, 'fontColor')}
         reset={{
-          disabled: atDefault,
-          label: 'Reset base font color to black',
-          title: atDefault ? 'Base font color is the default' : 'Reset base font color to black',
-          onReset: () => onColor(defaultColor),
+          disabled: colorAtDefault,
+          label: `Reset base font color to ${defaultColorName}`,
+          title: colorAtDefault
+            ? 'Base font color is the default'
+            : `Reset base font color to ${defaultColorName}`,
+          onReset: onResetColor,
         }}
       />
       <NumInput

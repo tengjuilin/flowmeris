@@ -82,8 +82,10 @@ or hidden groups.
   order. **Colour** is the colour axis: **Colour by**, a categorical palette or a single colour, and each
   series' colour and legend label (also used in the tooltip, the Data table and the CSV export). Drag ⠿ to
   reorder series, or **Reverse**. Changing **Colour by** clears these. **Gridlines** turns them on or off.
-- **Text:** font, tick labels (on or off, and their size), axis title size, and the legend (top, right or
-  hidden, and its size).
+- **Text:** the **Base font** (any font from the list or installed on this computer, a colour, which is
+  the theme's text colour until you pick one, and a size that scales the other sizes with it); then
+  **Tick labels** (on or off), **Axis titles** and the **Legend** (its position: top, right or hidden),
+  each with its own font, size, bold, italic, underline and colour, as in the plot panels.
 - **Settings:** **Duplicate this chart** (as a new tab, with its settings) or delete it; **Apply same
   settings for all charts** of the group (each keeps its axis titles; an axis's scale, range and ticks go
   only to charts plotting the same column, and series colours, labels and order only to charts coloured by

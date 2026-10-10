@@ -15,8 +15,9 @@ export function TextTab({ r, fx, card }: RidgeTabProps) {
         defaultFont="arial"
         onFont={(v) => set('fontFamily', v, 'Ridge font')}
         color={style.fontColor}
-        defaultColor={DEFAULT_RIDGE_STYLE.fontColor}
+        colorAtDefault={style.fontColor === DEFAULT_RIDGE_STYLE.fontColor}
         onColor={(v, merge) => set('fontColor', v, 'Ridge font color', merge)}
+        onResetColor={() => set('fontColor', DEFAULT_RIDGE_STYLE.fontColor, 'Ridge font color')}
         size={style.fontSize}
         onSize={(v) =>
           update('Ridge base font size', (l) => void scaleRidgeFonts(l.style, v), 'style:fontSize')

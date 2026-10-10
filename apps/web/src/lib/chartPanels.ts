@@ -46,10 +46,13 @@ export const CHART_CARD_KEYS: Partial<Record<ChartCard, CardKeys>> = {
   yAxis: { style: ['yMin', 'yMax', 'yTicks'], plot: ['yScale', 'yLabel'] },
   color: { style: ['colorMode', 'color', 'seriesColors', 'seriesLabels', 'seriesOrder'], plot: [] },
   grid: { style: ['showGrid'], plot: [] },
-  font: { style: ['fontFamily'], plot: [] },
-  tickText: { style: ['showTickLabels', 'tickFontSize'], plot: [] },
-  axisTitleText: { style: ['titleFontSize'], plot: [] },
-  legend: { style: ['legend', 'legendFontSize'], plot: [] },
+  baseFont: {
+    style: ['fontFamily', 'fontColor', 'fontSize', 'tickFontSize', 'titleFontSize', 'legendFontSize'],
+    plot: [],
+  },
+  tickText: { style: ['showTickLabels', 'tickFontSize', 'tickText'], plot: [] },
+  axisTitleText: { style: ['titleFontSize', 'titleText'], plot: [] },
+  legend: { style: ['legend', 'legendFontSize', 'legendText'], plot: [] },
 };
 
 /** Whether the settings of `card` are at their defaults for chart `p`. */

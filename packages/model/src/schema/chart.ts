@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { HexColor, Id, Num } from './common.ts';
+import { TextStyleSchema } from './figure.ts';
 
 /** A chart of the statistics table (Charts view). */
 const TickListSchema = z.array(z.object({ value: Num, label: z.string().optional() }));
@@ -42,11 +43,19 @@ export const ChartStyleSchema = z.object({
   yTicks: TickListSchema.optional(),
   showGrid: z.boolean().default(true),
   showTickLabels: z.boolean().default(true),
+  /** A key of the app's font list (earlier charts used only 'sans', 'serif' and 'mono'), or any installed font. */
+  fontFamily: z.string().min(1).max(80).default('sans'),
+  /** Omitted = the app theme's text colours. */
+  fontColor: HexColor.optional(),
+  /** Base font size (px); editing it rescales the tick, axis title and legend sizes by the same ratio. */
+  fontSize: Num.min(4).max(48).default(12),
   tickFontSize: Num.min(4).max(48).default(11),
+  tickText: TextStyleSchema.default({}),
   titleFontSize: Num.min(4).max(48).default(12),
+  titleText: TextStyleSchema.default({ bold: true }),
   legend: z.enum(['top', 'right', 'none']).default('top'),
   legendFontSize: Num.min(4).max(48).default(12),
-  fontFamily: z.enum(['sans', 'serif', 'mono']).default('sans'),
+  legendText: TextStyleSchema.default({}),
   /** Chart width in px; omitted = fit the view. */
   width: Num.min(240).max(10000).optional(),
   height: Num.min(160).max(10000).default(440),

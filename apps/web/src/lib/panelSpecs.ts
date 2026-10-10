@@ -125,7 +125,7 @@ export type ChartCard =
   | 'yAxis'
   | 'color'
   | 'grid'
-  | 'font'
+  | 'baseFont'
   | 'tickText'
   | 'axisTitleText'
   | 'legend'
@@ -153,7 +153,12 @@ export const CHART_PANEL: PanelSpec<ChartPanelTab, ChartCard> = {
     {
       id: 'text',
       label: 'Text',
-      cards: { font: 'Font', tickText: 'Tick labels', axisTitleText: 'Axis titles', legend: 'Legend' },
+      cards: {
+        baseFont: 'Base font',
+        tickText: 'Tick labels',
+        axisTitleText: 'Axis titles',
+        legend: 'Legend',
+      },
     },
     {
       id: 'settings',

@@ -90,6 +90,16 @@ describe('ridge layout style', () => {
 });
 
 describe('chart style', () => {
+  it('loads an earlier chart style: its font is kept and the text styles take their defaults', () => {
+    const st = ChartStyleSchema.parse({ fontFamily: 'serif', tickFontSize: 9 });
+    expect(st.fontFamily).toBe('serif');
+    expect(st.fontColor).toBeUndefined();
+    expect(st.tickText).toEqual({ bold: false, italic: false, underline: false });
+    expect(st.titleText.bold).toBe(true);
+    expect([st.fontSize, st.tickFontSize]).toEqual([12, 9]);
+    expect(ChartStyleSchema.parse({ fontFamily: 'Helvetica Neue' }).fontFamily).toBe('Helvetica Neue');
+  });
+
   it('loads charts saved without a style', () => {
     const ws = newWorkspace('t', { version: '0', commit: 'x', kernels: 'ts-1' });
     const g = newGroup('g', [], ['FSC-A']);

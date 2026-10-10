@@ -66,6 +66,26 @@ describe('chart settings panel', () => {
     expect(p.error).toBe('sem');
   });
 
+  it('the text cards reset their text styles and the base font resets its colour and sizes', () => {
+    const p = chart('a');
+    p.style.tickText = { bold: true, italic: false, underline: false };
+    p.style.legendText = { bold: false, italic: true, underline: false, color: '#ff0000' };
+    p.style.fontColor = '#333333';
+    p.style.fontSize = 18;
+    expect(chartCardAtDefaults(p, 'tickText')).toBe(false);
+    expect(chartCardAtDefaults(p, 'legend')).toBe(false);
+    expect(chartCardAtDefaults(p, 'baseFont')).toBe(false);
+    resetChartCard(p, 'tickText');
+    expect(p.style.tickText.bold).toBe(false);
+    expect(p.style.legendText.italic).toBe(true);
+    resetChartCard(p, 'baseFont');
+    expect('fontColor' in p.style).toBe(false);
+    expect(p.style.fontSize).toBe(DEFAULT_CHART_STYLE.fontSize);
+    expect(chartPanelAtDefaults('text', p)).toBe(false);
+    resetChartPanel('text', p);
+    expect(chartPanelAtDefaults('text', p)).toBe(true);
+  });
+
   it('a tab reset covers the cards on that tab and leaves the columns', () => {
     const p = chart('a', { yScale: 'log10', x: 'var:time' });
     p.style.legend = 'none';

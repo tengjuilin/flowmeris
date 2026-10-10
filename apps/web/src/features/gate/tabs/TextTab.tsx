@@ -19,8 +19,9 @@ export function TextTab({ card, fx }: TabProps) {
         defaultFont={DEFAULT_FIGURE.fontFamily}
         onFont={(v) => set('fontFamily', v, 'Plot font')}
         color={fig.fontColor}
-        defaultColor={DEFAULT_FIGURE.fontColor}
+        colorAtDefault={fig.fontColor === DEFAULT_FIGURE.fontColor}
         onColor={(v, merge) => set('fontColor', v, 'Plot font color', merge)}
+        onResetColor={() => set('fontColor', DEFAULT_FIGURE.fontColor, 'Plot font color')}
         size={fig.fontSize}
         onSize={(v) =>
           edit('Plot base font size', (f) => void scaleFontSizes(f, BASE_FONT_SIZES, v), 'fontSize')

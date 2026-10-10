@@ -21,5 +21,5 @@ grid, `⌘X` / `⌘C` / `⌘V` cut, copy and paste the selected plot.
 
 Settings panels: most views have a settings panel at the right, in tabs of collapsible cards. Each panel
 remembers its last tab and the cards you collapsed, in this browser; every card starts open.
-In the plot and ridge panels, the **Text** tab starts with the **Base font** card (the font, colour and size
+In the plot, ridge and chart panels, the **Text** tab starts with the **Base font** card (the font, colour and size
 every text starts from; changing the size scales the others), followed by one card per kind of text.

@@ -5,7 +5,7 @@ import { type Anchor, pickerTrigger } from '../../components/ui/PickerMenu.tsx';
 import { type Axis, dataExtents, makeAxis, validFix } from '../../lib/chartAxis.ts';
 import { bandSlots, chartMargins } from '../../lib/chartLayout.ts';
 import { cellText, seriesColor, seriesKey } from '../../lib/chartStyle.ts';
-import { FONT_STACKS } from '../../lib/figure.ts';
+import { fontStack } from '../../lib/figure.ts';
 import {
   ChartAxes,
   type ChartFrame,
@@ -106,7 +106,7 @@ export function Chart(props: {
         height={H}
         role="img"
         aria-label={`${yTitle || yCol.label} by ${xTitle || xCol.label}${props.seriesLabel ? ` and ${props.seriesLabel}` : ''}`}
-        style={{ fontFamily: FONT_STACKS[st.fontFamily] }}
+        style={{ fontFamily: fontStack(st.fontFamily) }}
       >
         {clip && (
           <defs>
