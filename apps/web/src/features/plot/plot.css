@@ -1,0 +1,134 @@
+/* The plot (PlotCanvas) and its gate tools: raster, axes, gates, labels, handles, drafts and messages. */
+.tool-seg button {
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  justify-content: center;
+}
+.plot-box {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+.plot {
+  position: relative;
+  user-select: none;
+}
+.plot-raster {
+  position: absolute;
+  image-rendering: pixelated;
+}
+.plot-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.plot-overlay.tool-rect,
+.plot-overlay.tool-ellipse,
+.plot-overlay.tool-polygon,
+.plot-overlay.tool-quadrant,
+.plot-overlay.tool-spider,
+.plot-overlay.tool-range {
+  cursor: crosshair;
+}
+.plot-frame {
+  fill: none;
+  stroke: var(--border);
+}
+.axis line {
+  stroke: var(--grid);
+}
+.axis text {
+  fill: var(--text-2);
+  font-size: 11px;
+}
+.axis .axis-title {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.hist {
+  fill: color-mix(in srgb, var(--accent) 35%, transparent);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+.contour {
+  fill: none;
+  stroke: var(--text-2);
+  stroke-width: 0.9;
+}
+.gate {
+  fill: none;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.gate-closed {
+  fill: rgba(0, 0, 0, 0.02);
+}
+.gate.selected {
+  stroke-width: 2.5;
+}
+.gate.overridden {
+  stroke: var(--gate-override) !important;
+  stroke-dasharray: 6 4;
+}
+.gate-fill {
+  opacity: 0.12;
+}
+.gate-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  fill: var(--text);
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 3px;
+  pointer-events: none;
+}
+.gate-label.movable {
+  pointer-events: auto;
+  cursor: move;
+  user-select: none;
+}
+.draft-label {
+  fill: var(--accent);
+}
+.handle {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  cursor: grab;
+}
+.handle-mid {
+  fill: var(--accent);
+  opacity: 0.6;
+  cursor: copy;
+}
+.draft {
+  fill: color-mix(in srgb, var(--accent) 12%, transparent);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+.draft-vertex {
+  fill: var(--accent);
+}
+.plot-message {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--text-2);
+  padding: 12px;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+}
+.plot-note {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.plot-warning {
+  font-size: 11.5px;
+  color: var(--warn);
+  margin-top: 4px;
+}
