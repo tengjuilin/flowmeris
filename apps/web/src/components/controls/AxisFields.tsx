@@ -10,6 +10,7 @@ import {
   scaleKindOf,
   transformOfKind,
 } from '../../lib/axisDefaults.ts';
+import { cofactorError, transformError } from '../../lib/transformCheck.ts';
 import { contextFor, toast, useGroup, useStore } from '../../state/store.ts';
 import { NumInput } from '../ui/NumInput.tsx';
 import { ResetIcon } from '../ui/icons.tsx';
@@ -49,10 +50,9 @@ export function AxisFields({
   const top = 'T' in def ? def.T : 262144;
 
   const setDef = (t: Transform, keepRange = false) => {
-    try {
-      makeScale(t);
-    } catch (e) {
-      toast(e instanceof Error ? e.message : String(e));
+    const error = transformError(t);
+    if (error) {
+      toast(error);
       return;
     }
     apply(
@@ -173,7 +173,11 @@ export function AxisFields({
               live={live}
               label="Cofactor"
               value={asinhCofactor(def)}
-              onCommit={(c) => c > 0 && setDef(asinhDefFromCofactor(c, def.T, def.A))}
+              onCommit={(c) => {
+                const error = cofactorError(c);
+                if (error) toast(error);
+                else setDef(asinhDefFromCofactor(c, def.T, def.A));
+              }}
               title="asinh(x / cofactor); stored as Gating-ML fasinh (T, M, A)"
             />
             <NumInput
