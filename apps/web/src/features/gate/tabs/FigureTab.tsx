@@ -1,5 +1,4 @@
 import type { PlotCell } from '@flowmeris/model';
-import { CellOverlayFields, CellSourceFields } from '../../../components/PlotGridView.tsx';
 import { FontSelect } from '../../../components/controls/FontSelect.tsx';
 import { ColorField } from '../../../components/ui/ColorField.tsx';
 import { NumInput } from '../../../components/ui/NumInput.tsx';
@@ -11,6 +10,7 @@ import { targetEdit } from '../../../state/commands/plots.ts';
 import { PlotKindSelect } from '../../plot/index.ts';
 import { StyleEditor } from '../StyleEditor.tsx';
 import { type TabProps, cardProps } from '../figureEdits.ts';
+import { CellOverlayFields, CellSourceFields } from './GridCellFields.tsx';
 
 /** The Figure tab: plot type and title, a grid plot's samples and overlay, display, and the base font. */
 export function FigureTab({

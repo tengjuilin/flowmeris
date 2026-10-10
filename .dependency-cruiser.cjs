@@ -110,6 +110,14 @@ module.exports = {
       },
     },
     {
+      name: 'web-components-shared-only',
+      comment:
+        'components/ holds only shared ui/, controls/ and hooks/: a view, its settings panel and their parts go in features/<name>/.',
+      severity: 'error',
+      from: { path: '^apps/web/src/components/[^/]+$' },
+      to: {},
+    },
+    {
       name: 'web-feature-public-api',
       comment: 'A feature folder is used through its index.ts; only its own files import its other files.',
       severity: 'error',

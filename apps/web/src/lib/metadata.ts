@@ -1,5 +1,5 @@
 import { type Variable, type Workspace, newId } from '@flowmeris/model';
-import { type Cell, compareCells, parseNumber } from '@flowmeris/table';
+import { type Cell, compareCells, parseNumber, wellFromSample } from '@flowmeris/table';
 
 /** A typed value from text: a number for numeric variables (undefined if not one), trimmed text otherwise; '' clears. */
 export function coerce(v: Variable, raw: string): number | string | undefined | null {
@@ -108,4 +108,27 @@ export function pasteTargets(
       if (r < nrow && c < ncol && raw !== undefined) out.push({ r, c, raw });
     }
   return out;
+}
+
+/** Variable of the Metadata view: the selected one, else the first ('' = all cards closed, still the first). */
+export function activeVariable(vars: Variable[], id: string | null): Variable | undefined {
+  return vars.find((v) => v.id === id) ?? vars[0];
+}
+
+/**
+ * Set the well of each sample without one from its $WELLID keyword or file name; returns how many were
+ * found. Call inside `mutate`.
+ */
+export function detectWells(ws: Workspace, sampleIds: string[]): number {
+  let n = 0;
+  for (const id of sampleIds) {
+    const s = ws.samples[id];
+    if (!s || s.well) continue;
+    const well = wellFromSample(s);
+    if (well) {
+      s.well = well;
+      n++;
+    }
+  }
+  return n;
 }

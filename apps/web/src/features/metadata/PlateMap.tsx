@@ -1,38 +1,10 @@
-import type { Group, Variable, Workspace } from '@flowmeris/model';
-import { ALL_WELLS, PLATE_COLS, PLATE_ROWS, wellIndex, wellName } from '@flowmeris/table';
+import type { Group, Variable } from '@flowmeris/model';
+import { ALL_WELLS, PLATE_COLS, PLATE_ROWS, wellName } from '@flowmeris/table';
 import { useEffect, useMemo, useState } from 'react';
-import { distinctValues } from '../lib/metadata.ts';
-import { inkOn, valueColors } from '../lib/palette.ts';
-import { useSampleNames, useStore } from '../state/store.ts';
-
-function fmtValue(x: unknown): string {
-  if (typeof x !== 'number') return x === undefined ? '' : String(x);
-  const a = Math.abs(x);
-  return a !== 0 && (a < 1e-3 || a >= 1e5) ? x.toExponential(2) : String(Number(x.toPrecision(4)));
-}
-
-/** Wells of the rectangle spanned by two wells. */
-function rect(a: string, b: string): string[] {
-  const [r0, c0] = wellIndex(a);
-  const [r1, c1] = wellIndex(b);
-  const out: string[] = [];
-  for (let r = Math.min(r0, r1); r <= Math.max(r0, r1); r++)
-    for (let c = Math.min(c0, c1); c <= Math.max(c0, c1); c++) out.push(wellName(r, c));
-  return out;
-}
-
-/** Samples of each well, among the given samples. */
-export function samplesByWell(ws: Workspace, sampleIds: string[]): Map<string, string[]> {
-  const m = new Map<string, string[]>();
-  for (const id of sampleIds) {
-    const w = ws.samples[id]?.well;
-    if (!w) continue;
-    const list = m.get(w);
-    if (list) list.push(id);
-    else m.set(w, [id]);
-  }
-  return m;
-}
+import { distinctValues } from '../../lib/metadata.ts';
+import { inkOn, valueColors } from '../../lib/palette.ts';
+import { fmtWellValue, rampGradient, samplesByWell, wellRect } from '../../lib/plate.ts';
+import { useSampleNames, useStore } from '../../state/store.ts';
 
 /**
  * 96-well plate map: select wells (click, drag, shift/⌘-click, row and column
@@ -143,7 +115,7 @@ export function PlateMap({ group, variable }: { group: Group; variable: Variable
                     aria-pressed={sel.has(w)}
                     className={`well${ids.length ? '' : ' empty'}${sel.has(w) ? ' on' : ''}`}
                     style={bg ? { background: bg, color: inkOn(bg) } : undefined}
-                    title={`${w}${ids.length ? `\n${ids.map((id) => names[id] ?? ws.samples[id]?.fileName).join('\n')}` : '\n(no sample)'}${variable ? `\n${variable.name}: ${fmtValue(v)}${mixed}` : ''}`}
+                    title={`${w}${ids.length ? `\n${ids.map((id) => names[id] ?? ws.samples[id]?.fileName).join('\n')}` : '\n(no sample)'}${variable ? `\n${variable.name}: ${fmtWellValue(v)}${mixed}` : ''}`}
                     onPointerDown={(e) => {
                       e.preventDefault();
                       const add = e.shiftKey || e.metaKey || e.ctrlKey;
@@ -152,10 +124,10 @@ export function PlateMap({ group, variable }: { group: Group; variable: Variable
                       setSel(new Set([...base, w]));
                     }}
                     onPointerEnter={() => {
-                      if (drag) setSel(new Set([...drag.base, ...rect(drag.anchor, w)]));
+                      if (drag) setSel(new Set([...drag.base, ...wellRect(drag.anchor, w)]));
                     }}
                   >
-                    <span className="well-value">{fmtValue(v)}</span>
+                    <span className="well-value">{fmtWellValue(v)}</span>
                     {ids.length > 1 && <span className="well-count">×{ids.length}</span>}
                   </button>
                 );
@@ -171,14 +143,14 @@ export function PlateMap({ group, variable }: { group: Group; variable: Variable
           ))}
           {colors?.scale && (
             <span>
-              {fmtValue(colors.scale.min)}
+              {fmtWellValue(colors.scale.min)}
               <span
                 className="ramp"
                 style={{
-                  background: `linear-gradient(to right, ${[0, 0.25, 0.5, 0.75, 1].map((t) => colors.color(colors.scale!.log ? colors.scale!.min * (colors.scale!.max / colors.scale!.min) ** t : colors.scale!.min + t * (colors.scale!.max - colors.scale!.min))).join(',')})`,
+                  background: rampGradient(colors.scale, colors.color),
                 }}
               />
-              {fmtValue(colors.scale.max)}
+              {fmtWellValue(colors.scale.max)}
               {colors.scale.log && <span className="muted"> (log)</span>}
             </span>
           )}

@@ -1,9 +1,7 @@
 /* ---------------------------------------------------------------------------
    Metadata: variables, table, plate map, import
    --------------------------------------------------------------------------- */
-.metadata-view,
-.charts-view,
-.stats-view {
+.metadata-view {
   min-width: 0;
 }
 .variable-bar {

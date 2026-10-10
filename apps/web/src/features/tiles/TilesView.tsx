@@ -1,6 +1,5 @@
 import type { Group, PlotSpec } from '@flowmeris/model';
 import { memo, useMemo, useRef, useState } from 'react';
-import { PopulationTree } from '../../components/PopulationTree.tsx';
 import { useSettled } from '../../components/hooks/useSettled.ts';
 import { useSize } from '../../components/hooks/useSize.ts';
 import { useVisible } from '../../components/hooks/useVisible.ts';
@@ -13,6 +12,7 @@ import { openTileInGrid } from '../../state/commands/grid.ts';
 import { axisPickers, drill, tilesEdit } from '../../state/commands/plots.ts';
 import { useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../../state/store.ts';
 import { EditScopeToggle, PlotCanvas, ToolButtons, useTilePlot } from '../plot/index.ts';
+import { PopulationTree } from '../tree/index.ts';
 
 const Tile = memo(function Tile({
   group,

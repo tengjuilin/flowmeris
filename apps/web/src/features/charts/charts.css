@@ -1,6 +1,9 @@
 /* ---------------------------------------------------------------------------
    Charts
    --------------------------------------------------------------------------- */
+.charts-view {
+  min-width: 0;
+}
 /* Chart beside its settings panel; the panel sits flush with the window edge, as in the Ridge view. */
 .charts-layout {
   display: grid;

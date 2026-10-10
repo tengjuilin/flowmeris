@@ -2,48 +2,22 @@ import type { Group, Variable } from '@flowmeris/model';
 import {
   MATCH_MODES,
   type MatchMode,
-  type MatchTarget,
   detectPlateGrid,
   gridToRecords,
-  inferType,
   matchSamples,
   suggestKey,
 } from '@flowmeris/table';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { addVariable, coerce, setValue } from '../lib/metadata.ts';
-import type { Sheet } from '../lib/sheets.ts';
-import { toast, useSampleNames, useStore } from '../state/store.ts';
-
-/** Where an imported column goes: a new variable (with a name and type) or an existing one. */
-interface Target {
-  include: boolean;
-  to: 'new' | string;
-  name: string;
-  type: Variable['type'];
-}
-
-/** Columns that identify samples (as in the Metadata view's export), left out unless ticked. */
-const SAMPLE_ID_HEADERS = new Set(['file_name', 'filename', 'file', 'sample', 'well']);
-
-function initialTargets(
-  headers: string[],
-  columns: string[][],
-  variables: Variable[],
-  skip: number,
-): Target[] {
-  return headers.map((h, i) => {
-    const existing = variables.find((v) => v.name.toLowerCase() === h.trim().toLowerCase());
-    return {
-      include:
-        i !== skip &&
-        columns[i]!.some((x) => x.trim() !== '') &&
-        (!!existing || !SAMPLE_ID_HEADERS.has(h.trim().toLowerCase())),
-      to: existing?.id ?? 'new',
-      name: h,
-      type: existing?.type ?? inferType(columns[i]!),
-    };
-  });
-}
+import {
+  type ImportCount,
+  type Target,
+  importPlate,
+  importTable,
+  initialTargets,
+  matchTargets,
+} from '../../lib/metaImport.ts';
+import type { Sheet } from '../../lib/sheets.ts';
+import { toast, useSampleNames, useStore } from '../../state/store.ts';
 
 function TargetRow(props: {
   label: string;
@@ -130,22 +104,10 @@ export function ImportDialog({
     dialog.current?.showModal();
   }, []);
 
-  const targets = useMemo((): MatchTarget[] => {
-    const ids = scope === 'group' ? group.sampleIds : Object.keys(ws.samples);
-    return ids.flatMap((id) => {
-      const s = ws.samples[id];
-      return s
-        ? [
-            {
-              id,
-              fileName: s.fileName,
-              name: s.label ?? names[id] ?? s.fileName,
-              ...(s.well ? { well: s.well } : {}),
-            },
-          ]
-        : [];
-    });
-  }, [scope, group.sampleIds, ws.samples, names]);
+  const targets = useMemo(
+    () => matchTargets(ws, scope === 'group' ? group.sampleIds : Object.keys(ws.samples), names),
+    [scope, group.sampleIds, ws.samples, names],
+  );
 
   const blocks = useMemo(() => detectPlateGrid(sheet.grid), [sheet]);
   const records = useMemo(() => gridToRecords(sheet.grid), [sheet]);
@@ -187,49 +149,13 @@ export function ImportDialog({
   };
 
   const run = () => {
-    let bad = 0;
-    let set = 0;
+    let n: ImportCount = { set: 0, bad: 0 };
     mutate('Import sample variables', (w) => {
-      const resolve = (t: Target) => {
-        const id = t.to === 'new' ? addVariable(w, t.name, t.type) : t.to;
-        return w.variables.find((v) => v.id === id)!;
-      };
-      if (plate) {
-        pt.forEach((t, i) => {
-          if (!t.include) return;
-          const v = resolve(t);
-          const values = blocks[i]!.values;
-          for (const s of targets) {
-            const raw = s.well ? values[s.well] : undefined;
-            if (raw === undefined) continue;
-            const x = coerce(v, raw);
-            if (x === undefined) bad++;
-            else {
-              setValue(w, s.id, v.id, x);
-              set++;
-            }
-          }
-        });
-      } else {
-        tt.forEach((t, c) => {
-          if (!t.include || c === k.column) return;
-          const v = resolve(t);
-          records.rows.forEach((r, i) => {
-            const x = coerce(v, r[c] ?? '');
-            if (x === undefined) {
-              bad++;
-              return;
-            }
-            if (x === null) return;
-            for (const id of match.byRow[i]!) {
-              setValue(w, id, v.id, x);
-              set++;
-            }
-          });
-        });
-      }
+      n = plate
+        ? importPlate(w, blocks, pt, targets)
+        : importTable(w, records.rows, tt, k.column, match.byRow);
     });
-    toast(`Imported ${set} value(s)${bad ? ` · ${bad} non-numeric value(s) skipped` : ''}.`);
+    toast(`Imported ${n.set} value(s)${n.bad ? ` · ${n.bad} non-numeric value(s) skipped` : ''}.`);
     close();
   };
 

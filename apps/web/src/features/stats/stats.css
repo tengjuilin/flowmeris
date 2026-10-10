@@ -1,6 +1,9 @@
 /* ---------------------------------------------------------------------------
    Statistics settings panel: add statistic, derived columns, replicates, export columns
    --------------------------------------------------------------------------- */
+.stats-view {
+  min-width: 0;
+}
 .stats-status {
   margin: 4px 0 0;
 }

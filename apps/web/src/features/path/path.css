@@ -1,0 +1,229 @@
+/* The Gating path view: path and tree layouts, their cards and chips, and the populations panel. */
+/* The gate leading on along the path, set by PlotCanvas's focusPopId: highlighted, the others dimmed. */
+.gate.focus {
+  stroke-width: 3;
+}
+.gate-dim {
+  opacity: 0.3;
+}
+.gate-label.focus {
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: underline;
+}
+/* The toolbar stays put while the plots scroll under it (as in Tiles). */
+.path-view {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+.path-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  /* Plots are sized from the width: keep the scrollbar's room so they don't flip-flop. */
+  scrollbar-gutter: stable;
+}
+/* Steps (a plot and its arrow) in fixed-width columns; the populations card takes the top-right cells. */
+.path-row {
+  display: grid;
+  align-items: start;
+  gap: 12px 0;
+}
+.path-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+/* The plots reach the view's bottom edge, under the populations panel floating over its bottom right.
+   The tree scrolls both ways inside itself, and dragging its empty space pans it. */
+.path-view > .path-body {
+  margin-bottom: -10px;
+}
+.path-body.tree {
+  overflow: hidden;
+}
+.path-body.tree > .path-tree {
+  height: 100%;
+  cursor: grab;
+}
+.path-tree.panning {
+  cursor: grabbing;
+  user-select: none;
+}
+/* The populations panel's top edge: drag to resize it, double-click to fit or minimise it. */
+.path-resize {
+  flex: none;
+  height: 10px;
+  cursor: row-resize;
+  touch-action: none;
+  position: relative;
+}
+.path-resize::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 3px;
+  width: 40px;
+  height: 4px;
+  margin-left: -20px;
+  border-radius: 2px;
+  background: var(--border);
+}
+.path-resize:hover::after,
+.path-resize:focus-visible::after {
+  background: var(--accent);
+}
+/* The resize grip and the panel below it: over the bottom right of the view, flush with its edges (over its
+   padding), and as wide as the rows need (measured), so each count stays near its name. */
+.path-dock {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  width: var(--pop-list-w, auto);
+  max-width: calc(100% + 20px);
+  margin: 0 -10px -10px;
+}
+.path-panel {
+  flex: none;
+}
+.path-panel .pop-tree {
+  flex: 1 1 auto;
+  max-height: none;
+  border-width: 1px 0 0 1px;
+  border-radius: 8px 0 0 0;
+  padding-top: 0;
+}
+/* The title stays in place while the populations scroll under it. */
+.path-panel .pane-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+  padding-top: 8px;
+}
+.path-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+}
+.path-card .tile-title .swatch,
+.path-arrow-label .swatch {
+  display: inline-block;
+  vertical-align: -1px;
+}
+.path-missing,
+.path-end {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  max-width: 220px;
+}
+.path-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: none;
+  width: 96px;
+  padding: 0 4px 0 0;
+  overflow-wrap: anywhere;
+  font-size: 11.5px;
+  text-align: center;
+}
+.path-arrow-head {
+  font-size: 28px;
+  line-height: 1;
+  color: var(--text-2);
+}
+.path-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.path-chip.on,
+.path-node.on > .path-node-plots .path-card {
+  border-color: var(--accent);
+}
+.path-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.path-node-plots {
+  display: flex;
+  gap: 8px;
+}
+/* Tree connectors: each child hangs from a horizontal bar under its parent. */
+.path-tree {
+  overflow: auto;
+}
+.path-tree ul {
+  display: flex;
+  justify-content: center;
+  list-style: none;
+  margin: 0;
+  padding: 16px 0 0;
+  position: relative;
+}
+.path-tree > ul {
+  padding-top: 0;
+  width: max-content;
+  min-width: 100%;
+}
+.path-tree li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 16px 6px 0;
+}
+.path-tree > ul > li {
+  padding-top: 0;
+}
+.path-tree li::before,
+.path-tree li::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 50%;
+  width: 50%;
+  height: 16px;
+  border-top: 1px solid var(--grid);
+}
+.path-tree li::after {
+  right: auto;
+  left: 50%;
+  border-left: 1px solid var(--grid);
+}
+.path-tree li:first-child::before,
+.path-tree li:last-child::after {
+  border-top: none;
+}
+.path-tree li:only-child::before {
+  display: none;
+}
+.path-tree > ul > li::before,
+.path-tree > ul > li::after {
+  display: none;
+}
+.path-tree ul ul::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 16px;
+  border-left: 1px solid var(--grid);
+}
