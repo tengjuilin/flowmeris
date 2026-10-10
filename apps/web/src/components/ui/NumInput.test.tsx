@@ -35,13 +35,38 @@ describe('NumInput', () => {
     expect(input.value).toBe('2'); // the draft is cleared; the host has not changed `value`
   });
 
-  it('commits 0 for an emptied field (the browser also empties a number field holding text)', () => {
+  it.each([
+    ['emptied', ''],
+    ['blank', '  '],
+    ['not a number', 'abc'],
+  ])('commits nothing for a field %s, and shows the value again', (_, text) => {
     const onCommit = vi.fn();
     render(<NumInput label="Width" value={2} onCommit={onCommit} />);
+    const input = screen.getByLabelText('Width') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: text } });
+    fireEvent.blur(input);
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(input.value).toBe('2');
+  });
+
+  it('with live, an emptied field commits the value from before typing again', () => {
+    const onCommit = vi.fn();
+    const { rerender } = render(<NumInput live label="Width" value={12} onCommit={onCommit} />);
+    const input = screen.getByLabelText('Width') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '1' } }); // deleting the 2 of 12
+    rerender(<NumInput live label="Width" value={1} onCommit={onCommit} />);
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.blur(input);
+    expect(onCommit.mock.calls).toEqual([[1], [12]]);
+  });
+
+  it('with live, an emptied field commits nothing when typing changed nothing', () => {
+    const onCommit = vi.fn();
+    render(<NumInput live label="Width" value={12} onCommit={onCommit} />);
     const input = screen.getByLabelText('Width');
     fireEvent.change(input, { target: { value: '' } });
     fireEvent.blur(input);
-    expect(onCommit).toHaveBeenCalledWith(0);
+    expect(onCommit).not.toHaveBeenCalled();
   });
 
   it('with live, commits while typing but not an empty field', () => {

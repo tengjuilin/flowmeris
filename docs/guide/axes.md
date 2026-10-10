@@ -11,5 +11,7 @@ $T$ = `$PnR`) for fluorescence channels. In the inspector each axis offers:
 - **Arcsinh**: cofactor $c$ of $\operatorname{asinh}(x/c)$ and top $T$.
 - **Min/Max (data)**: the displayed range in data units.
 
+A number field left empty, or holding something that is not a number, goes back to its previous value.
+
 Changing a scale sets that channel's default for new plots in the group. Existing gates keep their own
 scale. Definitions: [Transforms](../methods/transforms).
