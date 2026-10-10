@@ -1,9 +1,8 @@
 import { type Group, type Variable, removeVariable } from '@flowmeris/model';
-import { wellIndex } from '@flowmeris/table';
 import { useEffect, useState } from 'react';
 import { addVariable, coerce, distinctValues, retype, setValue } from '../lib/metadata.ts';
+import { type Series, fillSeries, samplesByWell, seriesSteps, seriesValue } from '../lib/plate.ts';
 import { toast, useGroup, useStore } from '../state/store.ts';
-import { samplesByWell } from './PlateMap.tsx';
 import { InspectorTabs } from './ui/InspectorTabs.tsx';
 import { Section } from './ui/Section.tsx';
 import { DeleteIcon } from './ui/icons.tsx';
@@ -196,29 +195,17 @@ function ValuesTab({ group, variable }: { group: Group; variable: Variable | und
     apply(v, `Set ${variable.name}`);
   };
 
-  const start = Number(series.start);
-  const k = Number(series.factor);
-  const seriesOk = series.start.trim() !== '' && series.factor.trim() !== '' && Number.isFinite(start + k);
-  const axis = series.along === 'cols' ? 1 : 0;
-  // Selected columns (or rows), left to right (or top to bottom): each gets the next value of the series.
-  const steps = [...new Set(plateSel.map((w) => wellIndex(w)[axis]))].sort((a, b) => a - b);
-  const valueAt = (i: number) =>
-    Number((series.op === 'mul' ? start * k ** i : start + k * i).toPrecision(12));
+  const fill: Series = { ...series, start: Number(series.start), step: Number(series.factor) };
+  const seriesOk =
+    series.start.trim() !== '' && series.factor.trim() !== '' && Number.isFinite(fill.start + fill.step);
+  const steps = seriesSteps(plateSel, series.along);
 
-  const fillSeries = () => {
+  const fillSelection = () => {
     if (!seriesOk) {
       toast('Series start and step must be numbers.');
       return;
     }
-    mutate(`Fill ${variable.name} series`, (w) => {
-      for (const well of plateSel) {
-        const i = steps.indexOf(wellIndex(well)[axis]);
-        for (const id of byWell.get(well) ?? []) {
-          const s = w.samples[id];
-          if (s) s.meta[variable.id] = valueAt(i);
-        }
-      }
-    });
+    mutate(`Fill ${variable.name} series`, (w) => fillSeries(w, variable.id, plateSel, byWell, fill));
   };
 
   return (
@@ -334,10 +321,10 @@ function ValuesTab({ group, variable }: { group: Group; variable: Variable | und
           </div>
           {seriesOk && steps.length > 0 && (
             <p className="series-preview small" aria-label="Series preview">
-              Values: {steps.map((_, i) => valueAt(i)).join(', ')}
+              Values: {steps.map((_, i) => seriesValue(fill, i)).join(', ')}
             </p>
           )}
-          <button type="button" className="primary wide" onClick={fillSeries} disabled={none || !seriesOk}>
+          <button type="button" className="primary wide" onClick={fillSelection} disabled={none || !seriesOk}>
             Fill selection
           </button>
         </Section>

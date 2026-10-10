@@ -1,4 +1,4 @@
-import type { Gate, Group, PlotSpec, Population, Workspace } from '@flowmeris/model';
+import type { Group, PlotSpec, Population, Workspace } from '@flowmeris/model';
 import { newId, populationLineage, populationsDepthFirst } from '@flowmeris/model';
 import {
   type CSSProperties,
@@ -13,18 +13,14 @@ import {
 } from 'react';
 import { getPool } from '../engine-client/pool.ts';
 import { PlotCanvas, plotBox } from '../features/plot/index.ts';
-import { DEFAULT_STYLE, withBaseFont } from '../lib/figure.ts';
-import { gateMatchesAxes } from '../lib/geometry.ts';
+import { withBaseFont } from '../lib/figure.ts';
+import { type Count, type Counts, pathSteps, pctOfParent, treeLayout } from '../lib/gatingPath.ts';
 import { lineageKey } from '../lib/keys.ts';
 import { drill } from '../state/commands/plots.ts';
 import { contextFor, useGroup, useStore } from '../state/store.ts';
 import { PopulationTree } from './PopulationTree.tsx';
 import { useDebounced } from './hooks/useSettled.ts';
 import { useSize } from './hooks/useSize.ts';
-
-type Count = { count: number; parent: number };
-type Counts = Record<string, Count>;
-type PlotChoice = { plot: PlotSpec; real: boolean; gateIds: string[] };
 
 /** Base font size (px) of the plots, as in Tiles. */
 const FONT_PX = 11;
@@ -37,80 +33,6 @@ const MIN_PLOT = 120;
 const MAX_PLOT = 800;
 /** The populations panel leaves at least MIN_BODY of the view above it. */
 const MIN_BODY = 120;
-
-const byName = (a: Population, b: Population) => a.name.localeCompare(b.name, undefined, { numeric: true });
-
-/**
- * The plot of `popId` on which `gate` (a child gate) is drawn: the population's own plot when its axes
- * match the gate, otherwise a read-only plot built from the gate's channels and the group's axis defaults.
- * Returns `real: false` for the latter so clicking it does not pretend to open a saved plot.
- */
-function plotForGate(g: Group, popId: string, gate: Gate): { plot: PlotSpec; real: boolean } | null {
-  const own = g.plots.filter((p) => p.population === popId);
-  const match = own.find((p) => gateMatchesAxes(gate, p.x, p.kind === 'histogram' ? undefined : p.y));
-  if (match) return { plot: match, real: true };
-  const axes = gate.dims.map((d) => {
-    const def = g.axisDefaults[d.channel];
-    const tr = def?.transform ?? d.transform;
-    return tr ? { channel: d.channel, comp: d.comp, transform: tr, range: def?.range ?? [0, 1] } : null;
-  });
-  if (axes.some((a) => !a)) return own[0] ? { plot: own[0], real: true } : null;
-  const is1d = axes.length === 1;
-  const base = own.find((p) => (p.kind === 'histogram') === is1d);
-  // The settings this channel pair would have if never opened: its saved ones, not those in use.
-  const key = `${axes[0]!.channel}|${is1d ? '' : axes[1]!.channel}`;
-  const plot: PlotSpec = {
-    id: `path_${popId}_${gate.id}`,
-    population: popId,
-    kind: is1d ? 'histogram' : base?.kind && base.kind !== 'histogram' ? base.kind : 'pseudocolor',
-    x: axes[0]!,
-    style:
-      base?.stylesByAxes?.[key] ??
-      (base?.styleFollow === false ? base.styleBase : undefined) ??
-      DEFAULT_STYLE,
-  };
-  if (!is1d) plot.y = axes[1]!;
-  return { plot, real: false };
-}
-
-/** The distinct plots needed to show every child gate of `popId` (children `kids`), each with the gates it shows. */
-function plotsForChildren(g: Group, popId: string, kids: Population[]): PlotChoice[] {
-  const gateIds = [...new Set(kids.flatMap((p) => (p.gate ? [p.gate] : [])))];
-  const out: PlotChoice[] = [];
-  for (const id of gateIds) {
-    const gate = g.template.gates[id];
-    const r = gate && plotForGate(g, popId, gate);
-    if (!r) continue;
-    const same = out.find((o) => o.plot.id === r.plot.id);
-    if (same) same.gateIds.push(id);
-    else out.push({ ...r, gateIds: [id] });
-  }
-  return out;
-}
-
-/**
- * Children (sorted) and child-gate plots of every population, built in one pass over the template.
- * Memoised per group so re-renders (counts arriving, slider moves) reuse the same plot objects.
- */
-function treeLayout(g: Group): { kids: Map<string, Population[]>; plots: Map<string, PlotChoice[]> } {
-  const kids = new Map<string, Population[]>();
-  for (const p of Object.values(g.template.populations)) {
-    if (!p.parent) continue;
-    const list = kids.get(p.parent);
-    if (list) list.push(p);
-    else kids.set(p.parent, [p]);
-  }
-  const plots = new Map<string, PlotChoice[]>();
-  for (const [id, list] of kids) {
-    list.sort(byName);
-    plots.set(id, plotsForChildren(g, id, list));
-  }
-  return { kids, plots };
-}
-
-function pct(x: Count | undefined): string {
-  return x && x.parent > 0 ? `${((100 * x.count) / x.parent).toFixed(2)}%` : '…';
-}
 
 /** Where a tree is scrolled to, with its scrollable size then. */
 type TreeView = { left: number; top: number; sw: number; sh: number };
@@ -211,7 +133,7 @@ const StepCard = memo(function StepCard({
         <span className="muted num">
           {/* A space until the count arrives, so the title keeps its height. */}
           {c ? c.count.toLocaleString() : '\u00a0'}
-          {pop.parent && c ? ` · ${pct(c)}` : ''}
+          {pop.parent && c ? ` · ${pctOfParent(c)}` : ''}
         </span>
       </button>
       <WhenVisible width={box.width} height={box.height}>
@@ -253,7 +175,7 @@ function PopChip({ pop, count: c, on }: { pop: Population; count: Count | undefi
       <span className="swatch" style={{ background: pop.color }} aria-hidden="true" />
       <strong>{pop.name}</strong>
       <span className="num">{c ? c.count.toLocaleString() : ''}</span>
-      {pop.parent && <span className="num muted">{pct(c)}</span>}
+      {pop.parent && <span className="num muted">{pctOfParent(c)}</span>}
     </button>
   );
 }
@@ -326,17 +248,7 @@ export function GatingPathView() {
     [bgPopId, bgColor],
   );
   const layout = useMemo(() => (group ? treeLayout(group) : null), [group]);
-  const pathSteps = useMemo(
-    () =>
-      group
-        ? lineage.slice(0, -1).map((pop, i) => {
-            const next = lineage[i + 1]!;
-            const gate = group.template.gates[next.gate!]!;
-            return { pop, next, r: plotForGate(group, pop.id, gate) };
-          })
-        : [],
-    [group, lineage],
-  );
+  const steps = useMemo(() => (group ? pathSteps(group, lineage) : []), [group, lineage]);
   const finalPlots = (targetPop && layout?.plots.get(targetPop.id)) || [];
 
   const key = useMemo(
@@ -442,14 +354,14 @@ export function GatingPathView() {
   };
 
   // --- path: one plot per ancestor, showing the gate that leads to the next step -------------
-  const noGates = pathSteps.length === 0 && finalPlots.length === 0;
+  const noGates = steps.length === 0 && finalPlots.length === 0;
   const renderPath = () => (
     <div
       className="path-row"
       // Room below, so the last row can be scrolled out from under the populations panel.
       style={{ gridTemplateColumns: `repeat(${columns}, ${stepW}px)`, paddingBottom: panelHeight + 24 }}
     >
-      {pathSteps.map(({ pop, next, r }) => (
+      {steps.map(({ pop, next, r }) => (
         <div className="path-step" key={pop.id}>
           {r ? (
             card(pop, r.plot, r.real, pop.id)
@@ -464,7 +376,7 @@ export function GatingPathView() {
               <span className="swatch" style={{ background: next.color }} /> {next.name}
               <br />
               <span className="num">{counts[next.id] ? counts[next.id]!.count.toLocaleString() : ''}</span>{' '}
-              <span className="num muted">{pct(counts[next.id])}</span>
+              <span className="num muted">{pctOfParent(counts[next.id])}</span>
             </span>
             <span className="path-arrow-head">→</span>
           </div>
