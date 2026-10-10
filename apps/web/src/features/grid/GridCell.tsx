@@ -45,7 +45,10 @@ function openOnPress(open: (el: HTMLElement) => void) {
   };
 }
 
-/** One plot of the grid: its title (population and sample pickers, open in Gate or Tiles), legend and plot. */
+/**
+ * One plot of the grid: its title (population and sample pickers, open in Gate or Tiles; dragged to move
+ * the plot), legend and plot.
+ */
 export function GridCell({
   ws,
   group,
@@ -58,6 +61,9 @@ export function GridCell({
   onActivate,
   onDrill,
   handle,
+  extraClass = '',
+  slotProps,
+  titleProps,
 }: {
   ws: Workspace;
   group: Group;
@@ -70,6 +76,11 @@ export function GridCell({
   onActivate: () => void;
   onDrill: (popId: string) => void;
   handle: React.RefObject<PlotHandle> | undefined;
+  /** More classes of the cell (cut, dragged, drop target). */
+  extraClass?: string;
+  /** Props of the cell as a drop target, and of its title as a drag handle (useGridDrag). */
+  slotProps?: React.HTMLAttributes<HTMLDivElement>;
+  titleProps?: React.HTMLAttributes<HTMLDivElement> & { draggable?: boolean };
 }) {
   const pop = group.template.populations[cell.population];
   const selected = useStore((s) => s.ui.sampleId);
@@ -82,11 +93,12 @@ export function GridCell({
   const side = Math.max(0, Math.min(size, size - titleH));
   return (
     <div
-      className={`grid-cell${active ? ' on' : ''}`}
+      {...slotProps}
+      className={`grid-cell${active ? ' on' : ''}${extraClass}`}
       style={{ height: size || undefined }}
       onPointerDownCapture={onActivate}
     >
-      <div className="cell-title">
+      <div className="cell-title" title="Drag to move this plot" {...titleProps}>
         <button
           type="button"
           className="link cell-pop"

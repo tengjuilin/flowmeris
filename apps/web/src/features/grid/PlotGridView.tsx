@@ -1,5 +1,5 @@
 import type { PlotKind } from '@flowmeris/model';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { ExportMenu } from '../../components/controls/ExportMenu.tsx';
 import { useSize } from '../../components/hooks/useSize.ts';
 import { PlotSizeSlider } from '../../components/ui/PlotSizeSlider.tsx';
@@ -7,12 +7,14 @@ import { SettingsToggle } from '../../components/ui/SettingsToggle.tsx';
 import type { PlotHandle } from '../../lib/export/plot.ts';
 import { type RowFit, nearestColumns, rowMaxColumns, rowPlotSize, sideSpan } from '../../lib/fitSize.ts';
 import { cellSample, plotOf } from '../../lib/gridCells.ts';
-import { addCell, removeCell, setCellPopulation } from '../../state/commands/grid.ts';
+import { addCell, setCellPopulation } from '../../state/commands/grid.ts';
 import { exportPlot } from '../../state/export.ts';
 import { mutateGroup, toast, useGroup, useSampleNames, useStore } from '../../state/store.ts';
 import { EditScopeToggle, ToolButtons } from '../plot/index.ts';
 import { PopulationTree } from '../tree/index.ts';
 import { GridCell } from './GridCell.tsx';
+import { useGridDrag } from './useGridDrag.ts';
+import { useGridKeys } from './useGridKeys.ts';
 
 const KINDS: { id: PlotKind; label: string }[] = [
   { id: 'pseudocolor', label: 'Pseudocolor' },
@@ -42,28 +44,8 @@ export function PlotGridView() {
   const { width } = useSize(box);
   const handle = useRef<PlotHandle>(null);
   const [treeWidth, setTreeWidth] = useState(0);
-  // Delete (or Backspace) removes the selected plot, unless a gate is selected (then it removes the
-  // gate), a polygon is being drawn, or the key goes to a text field or menu.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
-      const t = e.target;
-      if (
-        t instanceof Element &&
-        t.closest('input, select, textarea, [contenteditable="true"], [role="dialog"]')
-      )
-        return;
-      const { ui: u, ws: w } = useStore.getState();
-      if (u.tool !== 'select' || u.selectedGateId || !u.gridCellId) return;
-      const g = w.groups.find((x) => x.id === u.groupId);
-      if (!g?.grid.cells.some((c) => c?.id === u.gridCellId)) return;
-      e.preventDefault();
-      removeCell(g.id, u.gridCellId);
-      useStore.getState().setUi({ gridCellId: null });
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  useGridKeys();
+  const drag = useGridDrag(group?.id ?? '', group?.grid.cells ?? []);
   if (!group) return <div className="empty">Select or add a group.</div>;
 
   const { cells } = group.grid;
@@ -79,6 +61,7 @@ export function PlotGridView() {
         ? nearestColumns(group.grid.size, sizeFor, MIN_COLUMNS, maxColumns)
         : Math.max(MIN_COLUMNS, Math.min(maxColumns, group.grid.columns));
   const active = cells.find((c) => c?.id === ui.gridCellId) ?? null;
+  const clip = ui.gridClip?.groupId === group.id ? ui.gridClip : null;
   const activeSample = active ? cellSample(group, active, ui.sampleId) : undefined;
   const { gap } = GRID_ROW;
   const cellW = width > 0 ? sizeFor(columns) : 0;
@@ -174,9 +157,20 @@ export function PlotGridView() {
               onActivate={() => cell.id !== ui.gridCellId && setUi({ gridCellId: cell.id })}
               onDrill={onDrill}
               handle={cell.id === active?.id ? handle : undefined}
+              extraClass={(clip?.cut && clip.cell.id === cell.id ? ' cut' : '') + drag.dragClass(i)}
+              slotProps={drag.target(i)}
+              titleProps={drag.handle(i)}
             />
           ) : (
-            <div key={`empty${i}`} className="grid-cell empty-cell" style={{ height: cellW || undefined }}>
+            // Clicking an empty slot selects it to paste a cut or copied plot into (⌘V).
+            <div
+              key={`empty${i}`}
+              {...drag.target(i)}
+              className={`grid-cell empty-cell${!active && ui.gridSlot === i ? ' on' : ''}${drag.dragClass(i)}`}
+              style={{ height: cellW || undefined }}
+              aria-label={`Empty slot ${i + 1}`}
+              onPointerDown={() => setUi({ gridCellId: null, gridSlot: i })}
+            >
               <span className="muted small">Add plot</span>
               <div className="add-kinds">
                 {KINDS.map((k) => (

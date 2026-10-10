@@ -83,6 +83,14 @@ of empty cells, and is saved with the group in the workspace.
   histogram, what its y axis shows) to the plot's (one undo step); the tiles keep their own appearance. If
   the sample is unchecked in the sidebar, a message asks you to check it to see its tile.
 - **Delete** (or Backspace) removes the selected plot, unless a gate is selected (that removes the gate).
+- **Drag a plot by its title** to move it. Dropped on the left or right half of another plot (a blue line
+  marks the side), it goes before or after that plot, and the slots in between shift by one to make room.
+  Dropped on an empty slot, it moves there and leaves its old slot empty. Each move is one undo step.
+- **⌘C** / **⌘X** (Ctrl+C / Ctrl+X on Windows and Linux) copy or cut the selected plot, and **⌘V** pastes it
+  into the selected slot. Click an empty slot to select it; pasting onto a selected plot replaces that
+  plot. A copy is pasted as the plot was when copied, and can be pasted again. A cut plot is dashed until
+  you paste it, then it moves, leaving its slot empty; **Esc** cancels the cut. Plots paste within their
+  group.
 - Deleting a gate moves plots of its populations back to the gate's parent population.
 
 ## Gating path

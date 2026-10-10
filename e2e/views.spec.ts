@@ -127,6 +127,73 @@ test('plot grid: add, size, settings, delete, open in another tab', async ({ pag
   await expect(page.locator('.sample-list button.on .name')).toHaveText('A02');
 });
 
+test('plot grid: drag plots to rearrange them; cut, copy and paste them', async ({ page }) => {
+  await loadWells(page, { A01: 100, A02: 200, B01: 110 });
+  await tab(page, 'Plot').click();
+  const cells = page.locator('.plot-grid .grid-cell:not(.empty-cell)');
+  const samples = () => cells.locator('.cell-sample').allTextContents();
+  /** A free spot of a plot's title, between its pickers and its buttons (the empty spacer). */
+  const titleSpot = async (i: number) => {
+    const title = (await cells.nth(i).locator('.cell-title').boundingBox())!;
+    const gap = (await cells.nth(i).locator('.cell-title .spacer').boundingBox())!;
+    return { x: gap.x - title.x + gap.width / 2, y: title.height / 2 };
+  };
+  const select = async (i: number) =>
+    cells
+      .nth(i)
+      .locator('.cell-title')
+      .click({ position: await titleSpot(i) });
+  while ((await cells.count()) > 0) {
+    await select(0);
+    await page.keyboard.press('Delete');
+  }
+  // Three plots pinned to A01, A02 and B01, so their order shows in their titles.
+  for (const name of ['A01', 'A02', 'B01']) {
+    await page.locator('.plot-grid .empty-cell').first().getByRole('button', { name: 'Dot' }).click();
+    const cell = page.locator('.plot-grid .grid-cell.on');
+    await cell.locator('.cell-sample').click();
+    await page.getByRole('dialog').getByText(name, { exact: true }).click();
+    await expect(cell.locator('.cell-sample')).toHaveText(name);
+  }
+  expect(await samples()).toEqual(['A01', 'A02', 'B01']);
+
+  // Dragged by its title onto the right half of a plot: after it; onto the left half: before it.
+  const dropOn = async (from: number, to: number, side: 'left' | 'right') => {
+    const box = (await cells.nth(to).boundingBox())!;
+    await cells
+      .nth(from)
+      .locator('.cell-title')
+      .dragTo(cells.nth(to), {
+        sourcePosition: await titleSpot(from),
+        targetPosition: { x: box.width * (side === 'left' ? 0.25 : 0.75), y: box.height / 2 },
+      });
+  };
+  await dropOn(0, 2, 'right');
+  await expect.poll(samples).toEqual(['A02', 'B01', 'A01']);
+  await dropOn(2, 0, 'left');
+  await expect.poll(samples).toEqual(['A01', 'A02', 'B01']);
+
+  // Copy, then paste into a selected empty slot.
+  await select(0);
+  await page.keyboard.press('ControlOrMeta+c');
+  const empty = page.locator('.plot-grid .empty-cell').first();
+  await empty.locator('.muted').click();
+  await expect(page.locator('.plot-grid .empty-cell.on')).toHaveCount(1);
+  await page.keyboard.press('ControlOrMeta+v');
+  await expect.poll(samples).toEqual(['A01', 'A02', 'B01', 'A01']);
+
+  // Cut A02 (dashed until pasted), then paste over the first plot: it moves there, replacing it.
+  await select(1);
+  await page.keyboard.press('ControlOrMeta+x');
+  await expect(cells.nth(1)).toHaveClass(/\bcut\b/);
+  await select(0);
+  await page.keyboard.press('ControlOrMeta+v');
+  await expect.poll(samples).toEqual(['A02', 'B01', 'A01']);
+  await expect(page.locator('.plot-grid .grid-cell.cut')).toHaveCount(0);
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect.poll(samples).toEqual(['A01', 'A02', 'B01', 'A01']);
+});
+
 test('plot grid: open a plot in Tiles with its sample, type and axes', async ({ page }) => {
   await loadWells(page, { A01: 100, A02: 200, B01: 110 });
   await tab(page, 'Plot').click();

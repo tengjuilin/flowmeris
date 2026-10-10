@@ -161,3 +161,32 @@
   flex-shrink: 4;
   min-width: 3em;
 }
+/* Moving plots: a plot is dragged by its title; a line on the left or right edge of the plot under the
+   pointer shows where it will go, an outline the empty slot it will fill. A cut plot is dashed until
+   pasted. An empty slot is selected (to paste into) like a plot. */
+.cell-title[draggable="true"] {
+  cursor: grab;
+}
+.cell-title > button {
+  cursor: pointer;
+}
+.grid-cell.dragging {
+  opacity: 0.4;
+}
+.grid-cell.cut {
+  border-style: dashed;
+  opacity: 0.6;
+}
+.grid-cell.drop-before {
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+.grid-cell.drop-after {
+  box-shadow: inset -4px 0 0 var(--accent);
+}
+.grid-cell.drop-into {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.empty-cell.on {
+  border-style: solid;
+}

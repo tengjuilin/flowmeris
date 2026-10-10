@@ -16,4 +16,5 @@
 7. **Export** statistics, plots, Gating-ML and the workspace (see [Exports](./exports)).
 
 Keyboard: `V` select, `R` rectangle, `E` ellipse, `P` polygon, `Q` quadrant, `S` spider, `H` range
-(histograms); arrow keys nudge the selected gate (Shift = 10 px); `Esc` cancels; `⌘Z` / `⇧⌘Z` undo/redo.
+(histograms); arrow keys nudge the selected gate (Shift = 10 px); `Esc` cancels; `⌘Z` / `⇧⌘Z` undo/redo. In the Plot
+grid, `⌘X` / `⌘C` / `⌘V` cut, copy and paste the selected plot.

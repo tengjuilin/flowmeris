@@ -2,6 +2,7 @@ import type { Group, PlotCell, PlotKind, PlotSpec, PlotStyle, Workspace } from '
 import { newId } from '@flowmeris/model';
 import { defaultAxis, defaultChannels } from '../../lib/axisDefaults.ts';
 import { TILE_FIGURE, TILE_STYLE, withAxesChange } from '../../lib/figure.ts';
+import { type DropSide, moveSlot, putSlot } from '../../lib/gridMove.ts';
 import { sameJson } from '../../lib/json.ts';
 import { newTilePlot } from '../../lib/plotFactories.ts';
 import { mutateGroup, toast, useStore } from '../store.ts';
@@ -88,6 +89,51 @@ export function openInGateView(group: Group, cell: PlotCell, sampleId: string | 
     selectedGateId: null,
     ...(sampleId ? { sampleId } : {}),
   });
+}
+
+/** Drag the plot in slot `from` to slot `to` (lib/gridMove.ts `moveSlot`) and select it. */
+export function moveCell(groupId: string, from: number, to: number, side: DropSide) {
+  let id: string | undefined;
+  mutateGroup(groupId, 'Move grid plot', (g) => {
+    id = g.grid.cells[from]?.id;
+    g.grid.cells = moveSlot(g.grid.cells, from, to, side);
+  });
+  if (id) useStore.getState().setUi({ gridCellId: id });
+}
+
+/** Cut (⌘X: moved on paste) or copy (⌘C) the grid plot `cellId`. */
+export function clipCell(group: Group, cellId: string, cut: boolean) {
+  const cell = group.grid.cells.find((c) => c?.id === cellId);
+  if (cell) useStore.getState().setUi({ gridClip: { groupId: group.id, cell: structuredClone(cell), cut } });
+}
+
+/**
+ * Paste the cut or copied grid plot into slot `slot`, replacing the plot there, and select it. A copy is a
+ * new plot (it can be pasted again); a cut plot moves, leaving its slot empty, and the clipboard empties.
+ * Plots paste within the group they were copied from.
+ */
+export function pasteCell(group: Group, slot: number) {
+  const clip = useStore.getState().ui.gridClip;
+  if (!clip) return;
+  if (clip.groupId !== group.id) {
+    toast('Paste a plot into the group it was cut or copied from.');
+    return;
+  }
+  const from = group.grid.cells.findIndex((c) => c?.id === clip.cell.id);
+  if (clip.cut && from < 0) {
+    toast('The cut plot was deleted.');
+    useStore.getState().setUi({ gridClip: null });
+    return;
+  }
+  const id = clip.cut ? clip.cell.id : newId('cell_');
+  if (!clip.cut || from !== slot)
+    mutateGroup(group.id, clip.cut ? 'Move grid plot' : 'Paste grid plot', (g) => {
+      const at = g.grid.cells.findIndex((c) => c?.id === clip.cell.id);
+      g.grid.cells = clip.cut
+        ? putSlot(g.grid.cells, slot, g.grid.cells[at]!, at)
+        : putSlot(g.grid.cells, slot, { ...structuredClone(clip.cell), id });
+    });
+  useStore.getState().setUi({ gridCellId: id, ...(clip.cut ? { gridClip: null } : {}) });
 }
 
 /** What a plot shows, for opening it in another view: a grid cell, a tile or the Gate view's plot. */

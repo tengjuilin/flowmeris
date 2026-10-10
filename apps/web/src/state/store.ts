@@ -1,5 +1,5 @@
 import type { AnalysisContext } from '@flowmeris/engine';
-import { type Group, type PlotSpec, type Workspace, newWorkspace } from '@flowmeris/model';
+import { type Group, type PlotCell, type PlotSpec, type Workspace, newWorkspace } from '@flowmeris/model';
 import { type Patch, applyPatches, enablePatches, produce, produceWithPatches } from 'immer';
 import { useMemo } from 'react';
 import { create } from 'zustand';
@@ -55,6 +55,10 @@ interface UiState {
   refPlotId: string | null;
   /** Active (gateable) cell of the Plot view's grid. */
   gridCellId: string | null;
+  /** Empty slot of the Plot view's grid selected to paste into (while no cell is active). */
+  gridSlot: number | null;
+  /** Grid plot cut or copied (⌘X / ⌘C) in group `groupId`; `cell` is the plot as it was copied. */
+  gridClip: { groupId: string; cell: PlotCell; cut: boolean } | null;
   /** Variable selected in the Metadata view (open in its panel, coloured on the plate map). */
   metaVarId: string | null;
   /** Wells selected on the plate map. */
@@ -175,6 +179,8 @@ export const useStore = create<Store>((set, get) => ({
     selectedGateId: null,
     refPlotId: null,
     gridCellId: null,
+    gridSlot: null,
+    gridClip: null,
     metaVarId: null,
     plateSel: [],
     excluded: {},
@@ -309,6 +315,8 @@ export const useStore = create<Store>((set, get) => ({
         selectedGateId: null,
         refPlotId: null,
         gridCellId: null,
+        gridSlot: null,
+        gridClip: null,
         excluded: {},
       },
     }));
@@ -319,6 +327,8 @@ export const useStore = create<Store>((set, get) => ({
     // An unsaved plot belongs to the population it was shown for.
     if (!('unsavedPlot' in patch) && (ui.popId !== prev.popId || ui.groupId !== prev.groupId))
       ui.unsavedPlot = null;
+    // One grid selection: an active cell or an empty slot, in the current group.
+    if (ui.gridCellId || ui.groupId !== prev.groupId) ui.gridSlot = null;
     // A tab switch, by a tab or by a button that opens a sample in another tab, is a step Back returns
     // from. Changes within a tab (another sample or population) are not steps of their own.
     const switched = ui.view !== prev.view;

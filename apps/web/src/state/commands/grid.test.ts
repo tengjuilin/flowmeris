@@ -5,10 +5,13 @@ import { newTilePlot } from '../../lib/plotFactories.ts';
 import { APP_INFO, useStore } from '../store.ts';
 import {
   addCell,
+  clipCell,
   editCell,
+  moveCell,
   openGatePlotInGrid,
   openInTilesView,
   openTileInGrid,
+  pasteCell,
   removeCell,
   setCellSample,
 } from './grid.ts';
@@ -166,5 +169,100 @@ describe('grid commands', () => {
     expect(S().past.at(-1)?.label).toBe('Open Gate plot in Tiles view');
     expect(g().plots).toHaveLength(0);
     expect(S().ui).toMatchObject({ view: 'tiles', popId: 'root', sampleId: 'a' });
+  });
+
+  describe('moving plots', () => {
+    /** Plots in slots 0, 1 and 2 (dot, density, contour), and their ids. */
+    const three = () => {
+      for (const [i, k] of (['dot', 'density', 'contour'] as const).entries()) addCell('g', i, k, 'root');
+      return g().grid.cells.map((c) => c!.id);
+    };
+    const ids = () => g().grid.cells.map((c) => c?.id ?? null);
+
+    it('drag a plot after another, or into an empty slot, as one undo step, and select it', () => {
+      const [a, b, c] = three();
+      moveCell('g', 0, 2, 'after');
+      expect(ids()).toEqual([b, c, a]);
+      expect(S().ui.gridCellId).toBe(a);
+      expect(S().past.at(-1)?.label).toBe('Move grid plot');
+      moveCell('g', 1, 4, 'into');
+      expect(ids()).toEqual([b, null, a, null, c]);
+      S().undo();
+      expect(ids()).toEqual([b, c, a]);
+    });
+
+    it('copy and paste into an empty slot and over a plot, more than once', () => {
+      const [a, b] = three();
+      clipCell(g(), a!, false);
+      pasteCell(g(), 4);
+      const copy = g().grid.cells[4]!;
+      expect(copy.id).not.toBe(a);
+      expect(copy.kind).toBe('dot');
+      expect(S().ui.gridCellId).toBe(copy.id);
+      expect(S().past.at(-1)?.label).toBe('Paste grid plot');
+      pasteCell(g(), 1);
+      expect(g().grid.cells[1]?.kind).toBe('dot');
+      expect(ids()).not.toContain(b);
+      expect(S().ui.gridClip).not.toBeNull();
+    });
+
+    it('paste the plot as it was copied', () => {
+      const [a] = three();
+      clipCell(g(), a!, false);
+      editCell('g', a!, 'Point size', (c) => void (c.style.pointPx = 9));
+      pasteCell(g(), 3);
+      expect(g().grid.cells[3]?.style.pointPx).not.toBe(9);
+    });
+
+    it('cut and paste moves the plot, with its later edits, once; over a plot it replaces it', () => {
+      const [a, b, c] = three();
+      clipCell(g(), a!, true);
+      editCell('g', a!, 'Point size', (x) => void (x.style.pointPx = 9));
+      pasteCell(g(), 2);
+      expect(ids()).toEqual([null, b, a]);
+      expect(ids()).not.toContain(c);
+      expect(g().grid.cells[2]?.style.pointPx).toBe(9);
+      expect(S().past.at(-1)?.label).toBe('Move grid plot');
+      expect(S().ui).toMatchObject({ gridCellId: a, gridClip: null });
+      const past = S().past.length;
+      pasteCell(g(), 0);
+      expect(S().past.length).toBe(past);
+    });
+
+    it('cut and paste into its own slot changes nothing', () => {
+      const [a, b, c] = three();
+      const past = S().past.length;
+      clipCell(g(), b!, true);
+      pasteCell(g(), 1);
+      expect(ids()).toEqual([a, b, c]);
+      expect(S().past.length).toBe(past);
+      expect(S().ui.gridClip).toBeNull();
+    });
+
+    it('a cut plot deleted before pasting, or a paste into another group, says why', () => {
+      const [a, b] = three();
+      clipCell(g(), a!, true);
+      removeCell('g', a!);
+      pasteCell(g(), 0);
+      expect(S().status.toast?.text).toBe('The cut plot was deleted.');
+      expect(S().ui.gridClip).toBeNull();
+      clipCell(g(), b!, false);
+      S().mutate('Other group', (w) => {
+        const o = newGroup('H', ['a'], ['FSC-A']);
+        o.id = 'h';
+        w.groups.push(o);
+      });
+      pasteCell(S().ws.groups[1]!, 0);
+      expect(S().ws.groups[1]!.grid.cells).toHaveLength(0);
+      expect(S().status.toast?.text).toMatch(/group it was cut or copied from/);
+    });
+
+    it('selecting a plot clears the selected empty slot', () => {
+      three();
+      S().setUi({ gridCellId: null, gridSlot: 5 });
+      expect(S().ui.gridSlot).toBe(5);
+      S().setUi({ gridCellId: g().grid.cells[0]!.id });
+      expect(S().ui.gridSlot).toBeNull();
+    });
   });
 });
