@@ -1,4 +1,4 @@
-import { encodePngCompressed } from '../download.ts';
+import { encodePngCompressed } from '@flowmeris/render';
 
 /**
  * Plot and figure export (method M-EXPORT-PLOT): on-screen SVG figures as standalone SVG, PNG and
