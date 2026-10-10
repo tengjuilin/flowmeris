@@ -19,6 +19,8 @@
   view. Arrow keys and Enter pick from the list; long lists can be filtered by typing.
 - Quadrant and spider gates create four populations, Q1 (top-left) to Q4 (bottom-left) clockwise, named
   by marker sign (e.g. `CD4+ CD8−`). Rename any population by double-clicking it in the population tree.
+- A new population takes the first of the eight palette colours no other population in the group uses,
+  so a deleted population's colour comes back first. Past eight populations the colours repeat in order.
 - A bisector (FlowJo's binary histogram gate) splits the histogram's events into two populations that
   never overlap and together hold every event: `CD4−` left of the line and `CD4+` at or right of it. Their
   percentages, labelled in the plot's top corners, add up to 100% of the parent
