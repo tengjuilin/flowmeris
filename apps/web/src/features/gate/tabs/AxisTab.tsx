@@ -1,7 +1,7 @@
 import { TicksEditor } from '../../../components/controls/TicksEditor.tsx';
+import { ColorField } from '../../../components/ui/ColorField.tsx';
 import { NumInput } from '../../../components/ui/NumInput.tsx';
 import { Section } from '../../../components/ui/Section.tsx';
-import { ResetIcon } from '../../../components/ui/icons.tsx';
 import { withAxesChange } from '../../../lib/figure.ts';
 import { clamp } from '../../../lib/math.ts';
 import { AxisEditor } from '../AxisEditor.tsx';
@@ -86,28 +86,19 @@ export function AxisTab({ plot, target, panel, fx }: TabProps) {
         )}
         {...cardProps(panel, 'ticks')}
       >
-        <label className="field inline">
-          Tick color
-          <span className="swatch-auto">
-            <input
-              type="color"
-              className="swatch"
-              aria-label="Tick color"
-              value={fig.axisColor ?? '#c8c8c8'}
-              onChange={(e) => set('axisColor', e.target.value, 'Tick color', 'axisColor')}
-            />
-            <button
-              type="button"
-              className="reset-btn"
-              disabled={!fig.axisColor}
-              aria-label="Reset tick color to the theme's"
-              title={fig.axisColor ? "Reset tick color to the theme's" : 'Tick color is the default'}
-              onClick={() => set('axisColor', undefined, 'Tick color')}
-            >
-              <ResetIcon />
-            </button>
-          </span>
-        </label>
+        <ColorField
+          inline
+          label="Tick color"
+          inputLabel="Tick color"
+          value={fig.axisColor ?? '#c8c8c8'}
+          onChange={(v) => set('axisColor', v, 'Tick color', 'axisColor')}
+          reset={{
+            disabled: !fig.axisColor,
+            label: "Reset tick color to the theme's",
+            title: fig.axisColor ? "Reset tick color to the theme's" : 'Tick color is the default',
+            onReset: () => set('axisColor', undefined, 'Tick color'),
+          }}
+        />
         <NumInput
           live
           label="Tick width (px)"
@@ -115,28 +106,19 @@ export function AxisTab({ plot, target, panel, fx }: TabProps) {
           value={fig.tickWidth}
           onCommit={(v) => set('tickWidth', clamp(v, 0, 10), 'Tick width', 'tickWidth')}
         />
-        <label className="field inline">
-          Spine color
-          <span className="swatch-auto">
-            <input
-              type="color"
-              className="swatch"
-              aria-label="Spine color"
-              value={fig.spineColor ?? '#c8c8c8'}
-              onChange={(e) => set('spineColor', e.target.value, 'Spine color', 'spineColor')}
-            />
-            <button
-              type="button"
-              className="reset-btn"
-              disabled={!fig.spineColor}
-              aria-label="Reset spine color to the theme's"
-              title={fig.spineColor ? "Reset spine color to the theme's" : 'Spine color is the default'}
-              onClick={() => set('spineColor', undefined, 'Spine color')}
-            >
-              <ResetIcon />
-            </button>
-          </span>
-        </label>
+        <ColorField
+          inline
+          label="Spine color"
+          inputLabel="Spine color"
+          value={fig.spineColor ?? '#c8c8c8'}
+          onChange={(v) => set('spineColor', v, 'Spine color', 'spineColor')}
+          reset={{
+            disabled: !fig.spineColor,
+            label: "Reset spine color to the theme's",
+            title: fig.spineColor ? "Reset spine color to the theme's" : 'Spine color is the default',
+            onReset: () => set('spineColor', undefined, 'Spine color'),
+          }}
+        />
         <NumInput
           live
           label="Spine width (px)"

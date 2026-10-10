@@ -112,16 +112,20 @@ export function withBaseFont(plot: PlotSpec, px: number): PlotSpec {
   return { ...plot, style: { ...plot.style, figure } };
 }
 
-/** SVG text styling for one kind of plot text; color falls back to the base color. */
-export function figureText(fig: PlotFigure, t: TextStyle, size: number): CSSProperties {
+/** SVG text styling for `t`, falling back to the figure's font family `base` and color `baseColor`. */
+export function textCss(t: TextStyle, base: string, baseColor: string): CSSProperties {
   return {
-    fontSize: size,
-    fontFamily: fontStack(t.fontFamily ?? fig.fontFamily),
+    fontFamily: fontStack(t.fontFamily ?? base),
     fontWeight: t.bold ? 700 : 400,
     fontStyle: t.italic ? 'italic' : 'normal',
     textDecoration: t.underline ? 'underline' : 'none',
-    fill: t.color ?? fig.fontColor,
+    fill: t.color ?? baseColor,
   };
+}
+
+/** SVG text styling for one kind of plot text; color falls back to the base color. */
+export function figureText(fig: PlotFigure, t: TextStyle, size: number): CSSProperties {
+  return { fontSize: size, ...textCss(t, fig.fontFamily, fig.fontColor) };
 }
 
 /** Figure options that stay with each population's plot when settings are carried or applied across populations. */

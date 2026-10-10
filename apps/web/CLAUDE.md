@@ -20,11 +20,13 @@ code now. Update it when the layout changes.
 | `src/state/hooks/` | data hooks that fetch from the worker pool: `stats.ts` (`useSampleStats`, `useAnalysisTable`) |
 | `src/state/export.ts` | figure export wired to the store, pool and toasts (`exportPlot`, `exportSvgFigure`) |
 | `src/lib/` | pure logic, tested in Node: no store, pool, workers or components (`pnpm lint:deps` checks this). Functions documented "call inside `mutate`" work on a workspace draft |
-| `src/components/ui/` | generic controls that take data and callbacks as props: `icons.tsx`, `Section` (collapsible settings card), `InspectorTabs` and `PanelReset`, `NumInput`/`OptNumInput`, `Slider`/`PercentSlider`, `SettingsToggle`, `ActionRow`, `PickerMenu`, `GroupPicker`, `PlotSizeSlider`, `SupLabel`. No store or pool imports (`lint:deps`) |
+| `src/components/ui/` | generic controls that take data and callbacks as props: `icons.tsx`, `Section` (collapsible settings card), `InspectorTabs` and `PanelReset`, `NumInput`/`OptNumInput`, `Slider`/`PercentSlider`, `SettingsToggle`, `ActionRow`, `PickerMenu`, `GroupPicker`, `PlotSizeSlider`, `SupLabel`, `ColorField` (swatch with reset), `ReorderList` (drag-to-reorder rows, with `useRowSelection`). No store or pool imports (`lint:deps`) |
 | `src/components/controls/` | settings controls shared by several views, which may use the store: `AxisFields` (scale and range), `TicksEditor`, `FontSelect`, `TextStyleEditor`, `ExportMenu` |
 | `src/components/hooks/` | DOM and timing hooks: `useSize`, `useWidth`, `useVisible`, `useSettled`/`useDebounced` |
 | `src/features/plot/` | one plot: `PlotCanvas` (composes `usePlotData`, `useGateEditing`/`useGatePreview`, `GateShapes`, `DraftShapes`, `PlotAxes`, `PlotPaths`), `PlotControls` (plot type, channels and scales, drawing tools, edit scope), `usePlot` (`usePlotForPopulation`, `useTilePlot`) |
 | `src/features/gate/` | the Gate view: `PlotPanel` (with its toolbar and export card), `RefPlots`, and the plot settings panel `Inspector` (`GateInspector.tsx`, tabs in `tabs/`, cards `AxisEditor`, `StyleEditor`, `GateEditor`), also used by the Plot grid and Tiles views |
+| `src/features/ridge/` | the Ridge view: `RidgeView` (and `RidgeExportCard`), `useRidge` (the current population's ridge layout and its rows), `useRidgeCurves`, `RidgeCombinePanel` (Replicates card), and `RidgeInspector` (tabs in `tabs/`, edits in `ridgeEdits.ts`) |
+| `src/features/tiles/` | the Tiles view (`TilesView`); its settings panel is `features/gate`'s `Inspector target="tiles"` |
 | `src/components/` | the other views and inspectors (see below), moving to `features/` |
 | `src/styles/` | all CSS, global, in files imported in cascade order by `styles/index.css` (with the features' CSS) |
 
@@ -39,10 +41,10 @@ Views (`ui.view`). Each is defined once in `app/views.tsx`; to add one, add its 
 | `metadata` | `MetadataView` | `MetadataInspector` (toggled by `views.metaSettings`) |
 | `gate` | `PlotPanel` → `PlotCanvas`, plus `PopulationTree` and `RefPlots` | `Inspector` (`features/gate`) |
 | `plot` (Plot grid) | `PlotGridView` | `Inspector target="grid"` (toggled by `views.gridSettings`) |
-| `tiles` | `TilesView` in `GroupViews.tsx` | `Inspector target="tiles"` (toggled by `views.tilesSettings`) |
+| `tiles` | `TilesView` (`features/tiles`) | `Inspector target="tiles"` (toggled by `views.tilesSettings`) |
 | `path` | `GatingPathView` | – |
 | `stats` | `StatsView` | `StatsInspector` (in `StatsView.tsx`) |
-| `ridge` | `RidgeView` in `GroupViews.tsx`, plus `RidgeCombinePanel` | `RidgeInspector` |
+| `ridge` | `RidgeView`, plus `RidgeCombinePanel` (`features/ridge`) | `RidgeInspector` (`features/ridge`) |
 | `charts` | `ChartsView` | `ChartInspector`, rendered by `ChartsView` |
 | `compensation` | `CompensationView` | – |
 | `samples` | `SamplesView` in `CompensationView.tsx` | – |
@@ -56,19 +58,19 @@ What is in `src/lib/`:
 | `axisDefaults.ts`, `plotFactories.ts` | default axes and channels, scale kinds, factory axes (`axisAtFactory`, `resetAxisToFactory`); new Gate-view and Tiles plots |
 | `figure.ts`, `ridgeStyle.ts`, `styleScope.ts` | plot and ridge appearance; settings kept per channel and shared across populations (`styleScope` is the shared logic) |
 | `gridCarry.ts` | grid-plot settings copied to the other grid plots |
-| `ridgeRows.ts` | which ridges a ridge plot draws (samples or combined replicates) |
+| `ridgeRows.ts`, `ridgeLayout.ts`, `ridgePanels.ts` | which ridges a ridge plot draws (samples or combined replicates); its labels, pixel layout and paths (`ridgeLabels`, `ridgeFrame`, `ridgePaths`); its settings panel's card and tab resets, reordering (`moveRidges`) and base font scaling |
 | `statsTable.ts`, `statsFormat.ts`, `chartSelection.ts`, `formula.ts` | statistics table rows and columns, number formatting, chart data, formula editing |
 | `metadata.ts`, `palette.ts` | sample variables (values, types, paste); colours of populations and values |
 | `ingest.ts`, `files.ts`, `names.ts` | grouping loaded files; data-file extensions; short sample names |
 | `export/` | figure export: `svg.ts`, `pdf.ts`, `figure.ts`, `plot.ts` (takes its data as a `PlotExportSource`) |
-| `geometry.ts`, `fitSize.ts`, `text.ts`, `format.ts`, `json.ts`, `download.ts`, `sheets.ts` | gate drawing geometry, sizing, label wrapping, number formats, JSON copy/compare, downloads, spreadsheets |
+| `geometry.ts`, `fitSize.ts`, `order.ts`, `text.ts`, `format.ts`, `json.ts`, `download.ts`, `sheets.ts` | gate drawing geometry; sizing (`nearestColumns`, and `RowFit` for rows of plots in Tiles and the Plot grid); moving ids in a list (`moveIds`); label wrapping, number formats, JSON copy/compare, downloads, spreadsheets |
 | `ticks.ts`, `math.ts` | custom ticks (`parseTicks`, `formatTicks`, `customTicks`), histogram y ticks; `clamp` |
 | `plotFrame.ts`, `plotLayout.ts`, `plotPaths.ts` | a plot's pixel mapping and gate hit testing (`hitGate`, `popAt`); margins and titles (`plotBox`, `axisLabel`); histogram and contour SVG paths |
 | `gateEdit.ts` | gate shapes from drags and handles (`applyHandle`, `translate`, `shapeFromDrag`, `newGateBase`) |
 | `plotPanels.ts` | the plot settings panel's per-tab defaults and reset (`panelAtDefaults`, `resetPanel`) |
 
-`RidgeInspector.tsx` still exports `useRidge`, `textCss` and `ridgeColor`, used by the
-ridge plot in `GroupViews.tsx`. Search for a symbol before assuming where it lives.
+`figure.ts` has the SVG text styling (`textCss`, `figureText`) and fonts (`FONT_STACKS`, `fontStack`);
+`ridgeStyle.ts` the ridge defaults and colours (`ridgeColor`). Search for a symbol before assuming where it lives.
 
 ## Store rules
 
@@ -116,15 +118,17 @@ ridge plot in `GroupViews.tsx`. Search for a symbol before assuming where it liv
 
 All CSS is global, with flat class names. `styles/index.css` imports the files in cascade order (later
 files win at equal specificity): `styles/*.css` and each feature's own file (`features/plot/plot.css`,
-`features/gate/gate.css`). Moving a rule to another file can change what wins: compare the built CSS
-(`apps/web/dist/assets/*.css`) before and after, and check any rule that now comes after another
-rule with the same specificity that sets the same property on the same elements. Theme tokens, in light
+`features/gate/gate.css`, `features/tiles/tiles.css`, `features/ridge/ridge.css`). Moving a rule to
+another file can change what wins: compare the built CSS (`apps/web/dist/assets/*.css`) before and
+after, and check any rule that now comes after another rule with the same specificity that sets the
+same property on the same elements. Theme tokens, in light
 and dark, are at the top of `base.css`; the breakpoints at 1100 px and 700 px are in `responsive.css`.
 
 Classes shared across views:
 - `insp-panel`, `insp-head`, `insp-tabs`, `insp-global`, `insp-section*` and `insp-pane-title`: every
   settings panel (rendered by `ui/InspectorTabs`, `ui/PanelReset` and `ui/Section`);
-- `reorder-list`: the drag-to-reorder lists of ridge rows and chart series;
+- `reorder-list`, `reorder-grip` and `list-actions` (`styles/lists.css`): the drag-to-reorder lists of ridge rows
+  and chart series (`ui/ReorderList`), and the buttons above them;
 - `view-controls` and `view-settings`: the controls at the end of the Tiles, Plot grid, Path and Metadata
   toolbars (`ui/SettingsToggle`);
 - `tab-strip`, `tab-strip-tab` and `tab-strip-add`: the reference-plot and chart tabs.

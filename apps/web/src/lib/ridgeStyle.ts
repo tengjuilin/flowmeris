@@ -1,10 +1,13 @@
 import {
   type Group,
+  type RidgeCombine,
+  RidgeCombineSchema,
   type RidgeLayout,
   type RidgeSettings,
   type RidgeStyle,
   RidgeStyleSchema,
 } from '@flowmeris/model';
+import { CATEGORICAL } from '@flowmeris/render';
 import { jsonClone, sameJson } from './json.ts';
 import {
   type StyleScopes,
@@ -26,6 +29,23 @@ import {
 
 export const DEFAULT_RIDGE_STYLE: RidgeStyle = RidgeStyleSchema.parse({});
 export const DEFAULT_OVERLAP = 0.6;
+export const DEFAULT_RIDGE_COMBINE: RidgeCombine = RidgeCombineSchema.parse({});
+
+/** A copy of `c` that is safe to take of an Immer draft (`structuredClone` cannot clone one). */
+export const copyCombine = (c: RidgeCombine): RidgeCombine => ({
+  ...c,
+  by: [...c.by],
+  hidden: [...c.hidden],
+  exclude: [...c.exclude],
+});
+
+/** The fill color of ridge `ridgeId`, the `index`th drawn: its own, else the palette's or the single color. */
+export function ridgeColor(style: RidgeStyle, ridgeId: string, index: number): string {
+  return (
+    style.sampleColors[ridgeId] ??
+    (style.colorMode === 'palette' ? CATEGORICAL[index % CATEGORICAL.length]! : style.color)
+  );
+}
 
 /** Style keys that stay with each population's ridge plot when settings are carried or applied across populations. */
 const PER_POPULATION = ['ticks', 'axisTitle'] as const;

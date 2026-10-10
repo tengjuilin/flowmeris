@@ -1,12 +1,13 @@
 import { type ChartStyle, ChartStyleSchema, type StatPlot } from '@flowmeris/model';
 import { CATEGORICAL } from '@flowmeris/render';
 import type { Cell, PlotSeries } from '@flowmeris/table';
-import { useState } from 'react';
 import { pointKey } from '../lib/chartSelection.ts';
 import { clamp } from '../lib/math.ts';
+import { moveIds } from '../lib/order.ts';
 import { TicksEditor } from './controls/TicksEditor.tsx';
 import { GroupPicker, toggleIds } from './ui/GroupPicker.tsx';
 import { NumInput, OptNumInput } from './ui/NumInput.tsx';
+import { ReorderList } from './ui/ReorderList.tsx';
 import { Slider } from './ui/Slider.tsx';
 
 export const DEFAULT_CHART_STYLE: ChartStyle = ChartStyleSchema.parse({});
@@ -20,6 +21,9 @@ export function seriesColor(style: ChartStyle, key: string, index: number): stri
     (style.colorMode === 'palette' ? CATEGORICAL[index % CATEGORICAL.length]! : style.color)
   );
 }
+
+/** A series' name in the legend by default. */
+const seriesName = (s: PlotSeries) => (s.key === undefined || s.key === null ? '(none)' : String(s.key));
 
 /** Series in display order: those in `order` first, the rest in category order. */
 export function orderSeries(series: PlotSeries[], order: string[]): PlotSeries[] {
@@ -130,14 +134,10 @@ export function ChartInspector(props: {
       merge && `chart:${plot.id}:${merge}`,
     );
   const keys = series.map((s) => seriesKey(s.key));
-  const [dragKey, setDragKey] = useState<string | null>(null);
-  const [drop, setDrop] = useState<{ key: string; after: boolean } | null>(null);
 
-  const moveTo = (key: string, target: string, after: boolean) => {
-    if (key === target) return;
-    const rest = keys.filter((k) => k !== key);
-    const at = rest.indexOf(target) + (after ? 1 : 0);
-    set('seriesOrder', [...rest.slice(0, at), key, ...rest.slice(at)], 'Reorder chart series');
+  const moveTo = (moved: string[], target: string, after: boolean) => {
+    const next = moveIds(keys, moved, target, after);
+    if (next) set('seriesOrder', next, 'Reorder chart series');
   };
 
   const bar = plot.kind === 'bar';
@@ -169,53 +169,17 @@ export function ChartInspector(props: {
         )}
         {props.seriesLabel ? (
           <>
-            <ol className="reorder-list" onDragLeave={() => setDrop(null)}>
-              {series.map((s, i) => {
-                const k = keys[i]!;
+            <ReorderList
+              ids={keys}
+              name={(k) => seriesName(series[keys.indexOf(k)]!)}
+              gripTitle="Drag to reorder"
+              onMove={moveTo}
+            >
+              {(k, i) => {
                 const custom = st.seriesColors[k] !== undefined;
-                const name = s.key === undefined || s.key === null ? '(none)' : String(s.key);
+                const name = seriesName(series[i]!);
                 return (
-                  <li
-                    key={k}
-                    className={[
-                      dragKey === k ? 'dragging' : '',
-                      drop?.key === k ? (drop.after ? 'drop-after' : 'drop-before') : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    onDragOver={(e) => {
-                      if (!dragKey) return;
-                      e.preventDefault();
-                      const r = e.currentTarget.getBoundingClientRect();
-                      const after = e.clientY > r.top + r.height / 2;
-                      if (drop?.key !== k || drop.after !== after) setDrop({ key: k, after });
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (dragKey && drop) moveTo(dragKey, drop.key, drop.after);
-                      setDragKey(null);
-                      setDrop(null);
-                    }}
-                  >
-                    <span
-                      className="ridge-grip"
-                      draggable
-                      title="Drag to reorder"
-                      aria-label={`Drag ${name} to reorder`}
-                      onDragStart={(e) => {
-                        e.dataTransfer.effectAllowed = 'move';
-                        e.dataTransfer.setData('text/plain', k);
-                        const row = e.currentTarget.parentElement;
-                        if (row) e.dataTransfer.setDragImage(row, 8, 8);
-                        setDragKey(k);
-                      }}
-                      onDragEnd={() => {
-                        setDragKey(null);
-                        setDrop(null);
-                      }}
-                    >
-                      ⠿
-                    </span>
+                  <>
                     <input
                       type="color"
                       className={custom ? 'custom' : ''}
@@ -264,11 +228,11 @@ export function ChartInspector(props: {
                         ×
                       </button>
                     )}
-                  </li>
+                  </>
                 );
-              })}
-            </ol>
-            <div className="ridge-actions">
+              }}
+            </ReorderList>
+            <div className="list-actions">
               <button
                 type="button"
                 onClick={() => set('seriesOrder', [...keys].reverse(), 'Reverse chart series')}

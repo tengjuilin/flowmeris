@@ -3,7 +3,7 @@ import { populationLineage, populationsDepthFirst } from '@flowmeris/model';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { EditScopeToggle, PlotCanvas, ToolButtons } from '../features/plot/index.ts';
 import type { PlotHandle } from '../lib/export/plot.ts';
-import { nearestColumns } from '../lib/fitSize.ts';
+import { type RowFit, nearestColumns, rowMaxColumns, rowPlotSize, sideSpan } from '../lib/fitSize.ts';
 import { cellSample, overlayColors, plotOf } from '../lib/gridCells.ts';
 import {
   addCell,
@@ -32,11 +32,9 @@ const KINDS: { id: PlotKind; label: string }[] = [
   { id: 'histogram', label: 'Histogram' },
 ];
 
-/** Grid gap, and the narrowest cell offered (as for tiles), so plots keep room for their axes. */
-const GAP = 8;
-const MIN_CELL = 160;
-const MIN_COLUMNS = 2;
-const MAX_COLUMNS = 12;
+/** Grid cells 8 px apart, at least 160 px wide (as tiles), so plots keep room for their axes. */
+const GRID_ROW: RowFit = { gap: 8, pad: 0, minSize: 160, minColumns: 2, maxColumns: 12 };
+const { minColumns: MIN_COLUMNS, maxColumns: MAX_COLUMNS } = GRID_ROW;
 /** Narrowest populations card; it spans as many cells as reach this width, or its rows' width (as in Tiles). */
 const SIDE_MIN = 280;
 
@@ -111,11 +109,8 @@ export function PlotGridView() {
   // Cell sizes are discrete (as in Tiles): each fills the row with a whole number of cells, at least
   // MIN_CELL wide. The slider picks one; as the window changes, the number of columns changes to keep
   // the size near it.
-  const maxColumns = Math.max(
-    MIN_COLUMNS,
-    Math.min(MAX_COLUMNS, Math.floor((width + GAP) / (MIN_CELL + GAP))),
-  );
-  const sizeFor = (n: number) => Math.floor((width - GAP * (n - 1)) / n);
+  const maxColumns = rowMaxColumns(width, GRID_ROW);
+  const sizeFor = (n: number) => rowPlotSize(width, n, GRID_ROW);
   const columns =
     width <= 0
       ? Math.max(MIN_COLUMNS, Math.min(MAX_COLUMNS, group.grid.columns))
@@ -124,12 +119,12 @@ export function PlotGridView() {
         : Math.max(MIN_COLUMNS, Math.min(maxColumns, group.grid.columns));
   const active = cells.find((c) => c?.id === ui.gridCellId) ?? null;
   const activeSample = active ? cellSample(group, active, ui.sampleId) : undefined;
-  const gap = GAP;
+  const { gap } = GRID_ROW;
   const cellW = width > 0 ? sizeFor(columns) : 0;
   // The populations card takes the top-right cells (as in Tiles), as many as show its rows in full;
   // the plot slots flow around it.
   const sideW = Math.max(SIDE_MIN, treeWidth);
-  const span = cellW > 0 ? Math.min(columns, Math.ceil((sideW + gap) / (cellW + gap))) : 1;
+  const span = cellW > 0 ? sideSpan(sideW, cellW, columns, GRID_ROW) : 1;
   const rows = Math.max(2, Math.ceil((cells.length + span) / columns) + 1);
   const slots = Array.from({ length: rows * columns - span }, (_, i) => cells[i] ?? null);
   const sampleName = (id: string) => names[id] ?? ws.samples[id]?.fileName ?? id;
