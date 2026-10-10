@@ -12,7 +12,7 @@ Each record states a decision and why it was made. Code comments cite them by nu
 | [0005](./0005-gate-transform-space) | Gates live in their own transform space | Accepted |
 | [0006](./0006-typescript-kernels) | TypeScript kernels first | Accepted |
 | [0007](./0007-local-only-data) | Local-only data handling | Accepted |
-| [0008](./0008-web-layout-and-layering) | Web app layout and import layering | Proposed |
+| [0008](./0008-web-layout-and-layering) | Web app layout and import layering | Accepted |
 | [0009](./0009-store-commands) | Store commands and explicit side effects | Accepted |
 | [0010](./0010-worker-api) | Worker API contract | Accepted |
 
