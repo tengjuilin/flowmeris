@@ -1,4 +1,4 @@
-import { ResetIcon } from './icons.tsx';
+import { ResetIcon } from '../icons.tsx';
 
 export interface InspectorTab<T extends string> {
   id: T;

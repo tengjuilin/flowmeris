@@ -1,18 +1,13 @@
 import { TextStyleEditor } from '../../../components/controls/TextStyleEditor.tsx';
-import { Section } from '../../../components/ui/Section.tsx';
-import { type TabProps, cardProps } from '../figureEdits.ts';
+import { Card } from '../../../components/ui/settings/index.ts';
+import type { TabProps } from '../figureEdits.ts';
 
 /** The Text tab: style and size of the plot title, tick labels, axis titles and gate labels. */
-export function TextTab({ panel, fx }: TabProps) {
+export function TextTab({ card, fx }: TabProps) {
   const { fig, set, resetOf } = fx;
   return (
     <>
-      <Section
-        id="titleText"
-        title="Plot title"
-        {...resetOf(['titleText', 'titleFontSize'], 'plot title text')}
-        {...cardProps(panel, 'titleText')}
-      >
+      <Card {...card('titleText', resetOf(['titleText', 'titleFontSize'], 'plot title text'))}>
         <TextStyleEditor
           label="Plot title"
           value={fig.titleText}
@@ -22,13 +17,8 @@ export function TextTab({ panel, fx }: TabProps) {
           size={fig.titleFontSize}
           onSize={(v) => set('titleFontSize', v, 'Plot title size')}
         />
-      </Section>
-      <Section
-        id="tickText"
-        title="Tick labels"
-        {...resetOf(['tickText', 'tickFontSize'], 'tick label text')}
-        {...cardProps(panel, 'tickText')}
-      >
+      </Card>
+      <Card {...card('tickText', resetOf(['tickText', 'tickFontSize'], 'tick label text'))}>
         <TextStyleEditor
           label="Tick labels"
           value={fig.tickText}
@@ -38,13 +28,8 @@ export function TextTab({ panel, fx }: TabProps) {
           size={fig.tickFontSize}
           onSize={(v) => set('tickFontSize', v, 'Tick label size')}
         />
-      </Section>
-      <Section
-        id="axisTitleText"
-        title="Axis titles"
-        {...resetOf(['axisTitleText', 'axisTitleFontSize'], 'axis title text')}
-        {...cardProps(panel, 'axisTitleText')}
-      >
+      </Card>
+      <Card {...card('axisTitleText', resetOf(['axisTitleText', 'axisTitleFontSize'], 'axis title text'))}>
         <TextStyleEditor
           label="Axis titles"
           value={fig.axisTitleText}
@@ -54,13 +39,8 @@ export function TextTab({ panel, fx }: TabProps) {
           size={fig.axisTitleFontSize}
           onSize={(v) => set('axisTitleFontSize', v, 'Axis title size')}
         />
-      </Section>
-      <Section
-        id="gateText"
-        title="Gate labels"
-        {...resetOf(['gateText', 'gateFontSize'], 'gate label text')}
-        {...cardProps(panel, 'gateText')}
-      >
+      </Card>
+      <Card {...card('gateText', resetOf(['gateText', 'gateFontSize'], 'gate label text'))}>
         <TextStyleEditor
           label="Gate labels"
           value={fig.gateText}
@@ -70,7 +50,7 @@ export function TextTab({ panel, fx }: TabProps) {
           size={fig.gateFontSize}
           onSize={(v) => set('gateFontSize', v, 'Gate label size')}
         />
-      </Section>
+      </Card>
     </>
   );
 }

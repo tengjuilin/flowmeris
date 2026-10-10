@@ -5,8 +5,8 @@ import { clamp } from './math.ts';
 import { moveIds } from './order.ts';
 import { DEFAULT_OVERLAP, DEFAULT_RIDGE_STYLE } from './ridgeStyle.ts';
 
-/** The tabs of the ridge plot settings panel. */
-export type RidgePanelTab = 'sample' | 'axis' | 'text' | 'figure' | 'settings';
+import type { RidgePanelTab } from './panelSpecs.ts';
+export type { RidgePanelTab };
 
 type Keys = (keyof RidgeStyle)[];
 

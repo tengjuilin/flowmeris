@@ -9,9 +9,9 @@ import {
   resetStyleKeys,
   styleKeysAtDefaults,
 } from './figure.ts';
+import type { PlotPanelTab } from './panelSpecs.ts';
 
-/** The tabs of the plot settings panel (Gate view, Tiles, Plot grid). */
-export type PlotPanelTab = 'settings' | 'gate' | 'figure' | 'axis' | 'text';
+export type { PlotPanelTab };
 
 /**
  * Whether the settings of tab `tab` are at the defaults for plot `p`: a Gate-view plot's (`gateView`) or

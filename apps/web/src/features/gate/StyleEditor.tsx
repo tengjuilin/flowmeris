@@ -1,17 +1,19 @@
 import type { PlotSpec } from '@flowmeris/model';
 import { COLORMAPS } from '@flowmeris/render';
 import { NumInput } from '../../components/ui/NumInput.tsx';
-import { type Panel, Section } from '../../components/ui/Section.tsx';
+import { Card } from '../../components/ui/settings/index.ts';
 import { DEFAULT_FIGURE, DEFAULT_STYLE, TILE_FIGURE } from '../../lib/figure.ts';
+import type { PlotCard } from '../../lib/panelSpecs.ts';
+import type { CardOf } from '../../lib/settingsPanel.ts';
 import { type PlotTarget, plotsOf } from '../../state/commands/plots.ts';
 import { useGroup, useStore } from '../../state/store.ts';
 
 /** The Display card: how events are drawn (colour map, point size, smoothing and so on) and the off-scale note. */
 export function StyleEditor({
   plot,
-  panel,
+  card,
   target = 'gate',
-}: { plot: PlotSpec; panel: Panel; target?: PlotTarget }) {
+}: { plot: PlotSpec; card: CardOf<PlotCard>; target?: PlotTarget }) {
   const group = useGroup()!;
   const mutate = useStore((s) => s.mutate);
   const set = (fn: (st: PlotSpec['style']) => void) =>
@@ -27,18 +29,15 @@ export function StyleEditor({
       (k) => JSON.stringify(st[k]) !== JSON.stringify(DEFAULT_STYLE[k]),
     );
   return (
-    <Section
-      id="display"
-      title="Display"
-      open={panel.isOpen('display')}
-      onToggle={() => panel.toggle('display')}
-      changed={changed}
-      onReset={() =>
-        set((s) => {
-          Object.assign(s, structuredClone(DEFAULT_STYLE));
-          if (s.figure) s.figure.showOffScaleNote = true;
-        })
-      }
+    <Card
+      {...card('display', {
+        changed,
+        onReset: () =>
+          set((s) => {
+            Object.assign(s, structuredClone(DEFAULT_STYLE));
+            if (s.figure) s.figure.showOffScaleNote = true;
+          }),
+      })}
     >
       {plot.kind !== 'histogram' && (
         <div className="grid2">
@@ -156,6 +155,6 @@ export function StyleEditor({
         />
         Show off-scale note
       </label>
-    </Section>
+    </Card>
   );
 }

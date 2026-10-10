@@ -1,4 +1,4 @@
-import { Section } from '../../../components/ui/Section.tsx';
+import { Card } from '../../../components/ui/settings/index.ts';
 import { ChartAxisFields } from '../ChartAxisFields.tsx';
 import { ChartColorFields } from '../ChartColorFields.tsx';
 import type { ChartTabProps } from '../chartTabs.ts';
@@ -7,16 +7,16 @@ import type { ChartTabProps } from '../chartTabs.ts';
 export function AxisTab({ c, plot, card }: ChartTabProps) {
   return (
     <>
-      <Section {...card('xAxis', 'X axis')}>
+      <Card {...card('xAxis')}>
         <ChartAxisFields which="x" c={c} plot={plot} />
-      </Section>
-      <Section {...card('yAxis', 'Y axis')}>
+      </Card>
+      <Card {...card('yAxis')}>
         <ChartAxisFields which="y" c={c} plot={plot} />
-      </Section>
-      <Section {...card('color', 'Colour')}>
+      </Card>
+      <Card {...card('color')}>
         <ChartColorFields c={c} plot={plot} />
-      </Section>
-      <Section {...card('grid', 'Gridlines')}>
+      </Card>
+      <Card {...card('grid')}>
         <label className="field check">
           <input
             type="checkbox"
@@ -25,7 +25,7 @@ export function AxisTab({ c, plot, card }: ChartTabProps) {
           />
           Show gridlines
         </label>
-      </Section>
+      </Card>
     </>
   );
 }

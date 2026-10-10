@@ -1,6 +1,6 @@
 import type { Group, Variable } from '@flowmeris/model';
 import { useState } from 'react';
-import { Section } from '../../components/ui/Section.tsx';
+import { Card } from '../../components/ui/settings/index.ts';
 import { coerce, distinctValues, setValue } from '../../lib/metadata.ts';
 import { type Series, fillSeries, samplesByWell, seriesSteps, seriesValue } from '../../lib/plate.ts';
 import { toast, useStore } from '../../state/store.ts';
@@ -65,7 +65,7 @@ export function ValuesTab({ group, variable }: { group: Group; variable: Variabl
         <strong>{plateSel.length}</strong> {plateSel.length === 1 ? 'well' : 'wells'},{' '}
         <strong>{selected.length}</strong> {selected.length === 1 ? 'sample' : 'samples'}
       </p>
-      <Section
+      <Card
         id="setValue"
         title={`Set ${variable.name}`}
         open={open.set}
@@ -109,9 +109,9 @@ export function ValuesTab({ group, variable }: { group: Group; variable: Variabl
             ))}
           </div>
         )}
-      </Section>
+      </Card>
       {variable.type === 'numeric' && (
-        <Section
+        <Card
           id="fillSeries"
           title="Fill series"
           open={open.series}
@@ -178,7 +178,7 @@ export function ValuesTab({ group, variable }: { group: Group; variable: Variabl
           <button type="button" className="primary wide" onClick={fillSelection} disabled={none || !seriesOk}>
             Fill selection
           </button>
-        </Section>
+        </Card>
       )}
     </>
   );

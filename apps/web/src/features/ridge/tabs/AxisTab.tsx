@@ -1,7 +1,7 @@
 import { AxisFields } from '../../../components/controls/AxisFields.tsx';
 import { TicksEditor } from '../../../components/controls/TicksEditor.tsx';
 import { ColorField } from '../../../components/ui/ColorField.tsx';
-import { Section } from '../../../components/ui/Section.tsx';
+import { Card } from '../../../components/ui/settings/index.ts';
 import { axisAtFactory, factoryAxis, resetAxisToFactory } from '../../../lib/axisDefaults.ts';
 import { withRidgeChannel } from '../../../lib/ridgeStyle.ts';
 import { useStore } from '../../../state/store.ts';
@@ -20,7 +20,7 @@ export function AxisTab({ r, group, fx, card }: RidgeTabProps) {
   };
   return (
     <>
-      <Section id="scale" {...axisReset} title="Scale and range" {...card('scale')}>
+      <Card {...card('scale', axisReset)}>
         {axis && (
           <label className="field">
             Channel
@@ -57,8 +57,8 @@ export function AxisTab({ r, group, fx, card }: RidgeTabProps) {
             apply={(label, fn) => update(label, (l, w, g) => fn(l.axis, w, g), `axis:${label}`)}
           />
         )}
-      </Section>
-      <Section id="ticks" {...resetOf('ticks', 'ticks')} title="Ticks" {...card('ticks')}>
+      </Card>
+      <Card {...card('ticks', resetOf('ticks', 'ticks'))}>
         <ColorField
           label="Axis color"
           inputLabel="Axis color"
@@ -94,8 +94,8 @@ export function AxisTab({ r, group, fx, card }: RidgeTabProps) {
           Show tick labels
         </label>
         <TicksEditor ticks={style.ticks} onCommit={(t) => set('ticks', t, 'Ridge ticks')} />
-      </Section>
-      <Section id="title" {...resetOf('title', 'title')} title="Title" {...card('title')}>
+      </Card>
+      <Card {...card('title', resetOf('title', 'title'))}>
         <label className="field" title="Leave empty for the default; type a space for no title">
           Axis title
           <input
@@ -105,7 +105,7 @@ export function AxisTab({ r, group, fx, card }: RidgeTabProps) {
             onChange={(e) => set('axisTitle', e.target.value || undefined, 'Ridge axis title', 'title')}
           />
         </label>
-      </Section>
+      </Card>
     </>
   );
 }

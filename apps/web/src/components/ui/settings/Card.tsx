@@ -1,8 +1,12 @@
 import type { ReactNode } from 'react';
-import { ResetIcon } from './icons.tsx';
+import type { CardProps } from '../../../lib/settingsPanel.ts';
+import { ResetIcon } from '../icons.tsx';
 
-/** A collapsible group of settings, with its reset button at the top right; shared by the Gate and ridge settings. */
-export function Section({
+/**
+ * A card of a settings panel: a collapsible group of settings, with its reset button (or other `actions`)
+ * at the top right. Its props usually come from `card(id)` of `useSettingsPanel`.
+ */
+export function Card({
   id,
   title,
   open,
@@ -12,15 +16,7 @@ export function Section({
   actions,
   className,
   children,
-}: {
-  id: string;
-  title: string;
-  open: boolean;
-  onToggle: () => void;
-  /** Whether any setting in the section differs from its default; enables the reset button. */
-  changed?: boolean;
-  /** Leave out to show no reset button. */
-  onReset?: () => void;
+}: CardProps & {
   /** Buttons at the top right in place of the reset button. */
   actions?: ReactNode;
   className?: string;
@@ -63,5 +59,3 @@ export function Section({
     </section>
   );
 }
-
-export type Panel = { isOpen: (id: string) => boolean; toggle: (id: string) => void };

@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { type PanelState, readPanelState, toggleCard } from '../lib/settingsPanel.ts';
+import {
+  type CardOf,
+  type PanelSpec,
+  type PanelState,
+  cardTitle,
+  readPanelState,
+  tabIds,
+  toggleCard,
+} from '../lib/settingsPanel.ts';
 
 /**
  * UI preferences kept in browser storage: per tab for the session (sessionStorage: the open view, the
@@ -53,4 +61,20 @@ export function usePanelState<T extends string>(key: string, tabs: readonly T[],
     isOpen: (id: string) => !panel.closed.includes(id),
     toggle: (id: string) => change((p) => toggleCard(p, id)),
   };
+}
+
+/**
+ * A settings panel's open tab and its cards' props (`card(id)`), remembered under the spec's key (or
+ * `key`, for one spec shown in several views).
+ */
+export function useSettingsPanel<T extends string, C extends string>(spec: PanelSpec<T, C>, key = spec.key) {
+  const { tab, setTab, isOpen, toggle } = usePanelState(key, tabIds(spec), spec.defaultTab);
+  const card: CardOf<C> = (id, reset, title) => ({
+    id: `${spec.idPrefix}-${id}`,
+    title: title ?? cardTitle(spec, id) ?? id,
+    open: isOpen(id),
+    onToggle: () => toggle(id),
+    ...reset,
+  });
+  return { tab, setTab, card };
 }

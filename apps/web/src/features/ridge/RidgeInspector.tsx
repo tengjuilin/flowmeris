@@ -1,28 +1,19 @@
 import type { RidgeLayout } from '@flowmeris/model';
 import { useEffect, useRef } from 'react';
-import { InspectorTabs, PanelReset } from '../../components/ui/InspectorTabs.tsx';
 import { useRowSelection } from '../../components/ui/ReorderList.tsx';
-import { type RidgePanelTab, resetRidgePanel, ridgePanelAtDefaults } from '../../lib/ridgePanels.ts';
+import { SettingsPanel } from '../../components/ui/settings/index.ts';
+import { RIDGE_PANEL } from '../../lib/panelSpecs.ts';
+import { resetRidgePanel, ridgePanelAtDefaults } from '../../lib/ridgePanels.ts';
 import { carryRidge } from '../../lib/ridgeStyle.ts';
-import { usePanelState } from '../../state/prefs.ts';
+import { useSettingsPanel } from '../../state/prefs.ts';
 import { useStore } from '../../state/store.ts';
-import { type RidgeCard, type RidgeTabProps, ridgeEdits } from './ridgeEdits.ts';
+import { type RidgeTabProps, ridgeEdits } from './ridgeEdits.ts';
 import { AxisTab } from './tabs/AxisTab.tsx';
 import { FigureTab } from './tabs/FigureTab.tsx';
 import { SampleTab } from './tabs/SampleTab.tsx';
 import { SettingsTab } from './tabs/SettingsTab.tsx';
 import { TextTab } from './tabs/TextTab.tsx';
 import { useRidge } from './useRidge.ts';
-
-const RIDGE_TABS: { id: RidgePanelTab; label: string }[] = [
-  { id: 'figure', label: 'Figure' },
-  { id: 'sample', label: 'Sample' },
-  { id: 'axis', label: 'Axis' },
-  { id: 'text', label: 'Text' },
-  { id: 'settings', label: 'Settings' },
-];
-
-const PANEL_KEY = 'flowmeris.ridgePanel';
 
 /** The ridge plot settings panel. */
 export function RidgeInspector() {
@@ -33,11 +24,7 @@ export function RidgeInspector() {
   // Kept here, not in the Sample tab, so the selection survives switching tabs.
   const selection = useRowSelection(rows.map((x) => x.id));
   // The last tab and collapsed cards, remembered in this browser.
-  const { tab, setTab, isOpen, toggle } = usePanelState<RidgePanelTab>(
-    PANEL_KEY,
-    RIDGE_TABS.map((t) => t.id),
-    'figure',
-  );
+  const { tab, setTab, card } = useSettingsPanel(RIDGE_PANEL);
   // While settings are carried across populations, the population opened next takes the ridge settings
   // of the one left (keeping its own ticks and axis title).
   const last = useRef<{ groupId: string; popId: string; layoutId: string } | null>(null);
@@ -64,34 +51,25 @@ export function RidgeInspector() {
     r,
     group,
     fx: ridgeEdits(r, group),
-    card: (id: RidgeCard) => ({ open: isOpen(id), onToggle: () => toggle(id) }),
+    card,
   };
 
   return (
-    <aside className="inspector insp-panel" aria-label="Ridge plot settings">
-      <div className="insp-head">
-        <InspectorTabs
-          idPrefix="ridge"
-          label="Ridge plot settings"
-          tabs={RIDGE_TABS}
-          current={tab}
-          onSelect={setTab}
-        />
-        <PanelReset
-          title="Reset the settings in this panel for this ridge plot"
-          disabled={ridgePanelAtDefaults(tab, layout, ws, group, current)}
-          onClick={() =>
-            r.update(`Reset ridge ${tab} settings`, (l, w, g) => resetRidgePanel(tab, l, w, g, current))
-          }
-        />
-      </div>
-      <div id="ridge-tabpanel" role="tabpanel" aria-labelledby={`ridge-tab-${tab}`}>
-        {tab === 'settings' && <SettingsTab {...props} />}
-        {tab === 'sample' && <SampleTab {...props} selection={selection} />}
-        {tab === 'axis' && <AxisTab {...props} />}
-        {tab === 'text' && <TextTab {...props} />}
-        {tab === 'figure' && <FigureTab {...props} />}
-      </div>
-    </aside>
+    <SettingsPanel
+      spec={RIDGE_PANEL}
+      tab={tab}
+      onTab={setTab}
+      reset={{
+        disabled: ridgePanelAtDefaults(tab, layout, ws, group, current),
+        onClick: () =>
+          r.update(`Reset ridge ${tab} settings`, (l, w, g) => resetRidgePanel(tab, l, w, g, current)),
+      }}
+    >
+      {tab === 'settings' && <SettingsTab {...props} />}
+      {tab === 'sample' && <SampleTab {...props} selection={selection} />}
+      {tab === 'axis' && <AxisTab {...props} />}
+      {tab === 'text' && <TextTab {...props} />}
+      {tab === 'figure' && <FigureTab {...props} />}
+    </SettingsPanel>
   );
 }

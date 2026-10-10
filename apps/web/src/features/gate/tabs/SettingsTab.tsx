@@ -1,7 +1,7 @@
 import type { Group } from '@flowmeris/model';
 import { ActionRow } from '../../../components/ui/ActionRow.tsx';
-import { Section } from '../../../components/ui/Section.tsx';
 import { ApplyIcon, ResetIcon } from '../../../components/ui/icons.tsx';
+import { Card } from '../../../components/ui/settings/index.ts';
 import {
   DEFAULT_STYLE,
   TILE_STYLE,
@@ -20,13 +20,13 @@ import {
 } from '../../../lib/figure.ts';
 import { plotsOf as targetPlots } from '../../../state/commands/plots.ts';
 import { useStore } from '../../../state/store.ts';
-import { type TabProps, cardProps } from '../figureEdits.ts';
+import type { TabProps } from '../figureEdits.ts';
 
 /**
  * The Settings tab: apply this plot's settings to the others now, carry them to the plots opened next,
  * and reset settings across plots. A grid plot's tab applies to the grid's plots.
  */
-export function SettingsTab({ group, plot, target, panel }: TabProps) {
+export function SettingsTab({ group, plot, target, card }: TabProps) {
   const mutate = useStore((s) => s.mutate);
   const tiles = target === 'tiles';
   /** The plots this panel edits: the group's Tiles plots, grid plots or Gate-view plots. */
@@ -37,7 +37,7 @@ export function SettingsTab({ group, plot, target, panel }: TabProps) {
   if (target === 'grid')
     return (
       <>
-        <Section id="apply" title="Apply settings" {...cardProps(panel, 'apply')}>
+        <Card {...card('apply')}>
           <ActionRow
             label="Apply same settings for all grid plots"
             title="Give every plot in the grid this plot's settings now (each keeps its title, ticks and axis titles)"
@@ -67,8 +67,8 @@ export function SettingsTab({ group, plot, target, panel }: TabProps) {
             />
             Carry settings to all grid plots
           </label>
-        </Section>
-        <Section id="resetAll" title="Reset settings" {...cardProps(panel, 'resetAll')}>
+        </Card>
+        <Card {...card('resetAll')}>
           <ActionRow
             label="All settings in this plot"
             title="Reset the settings of this grid plot"
@@ -94,12 +94,12 @@ export function SettingsTab({ group, plot, target, panel }: TabProps) {
               })
             }
           />
-        </Section>
+        </Card>
       </>
     );
   return (
     <>
-      <Section id="apply" title="Apply settings" {...cardProps(panel, 'apply')}>
+      <Card {...card('apply')}>
         <ActionRow
           label="Apply same settings for all populations"
           title="Give every population's plot this plot's settings now (each keeps its title, ticks and axis titles)"
@@ -163,8 +163,8 @@ export function SettingsTab({ group, plot, target, panel }: TabProps) {
           />
           Carry settings to next plots
         </label>
-      </Section>
-      <Section id="resetAll" title="Reset settings" {...cardProps(panel, 'resetAll')}>
+      </Card>
+      <Card {...card('resetAll')}>
         <ActionRow
           label="All settings in this plot"
           title="Reset the settings of this plot (this population, these X/Y channels)"
@@ -217,7 +217,7 @@ export function SettingsTab({ group, plot, target, panel }: TabProps) {
             })
           }
         />
-      </Section>
+      </Card>
     </>
   );
 }

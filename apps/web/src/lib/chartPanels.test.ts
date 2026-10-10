@@ -2,7 +2,6 @@ import type { StatPlot } from '@flowmeris/model';
 import { describe, expect, it } from 'vitest';
 import {
   CHART_CARD_KEYS,
-  CHART_TAB_CARDS,
   applyChartToAll,
   chartAtDefaults,
   chartCardAtDefaults,
@@ -14,6 +13,8 @@ import {
   resetChartPanel,
 } from './chartPanels.ts';
 import { DEFAULT_CHART_STYLE } from './chartStyle.ts';
+import { CHART_PANEL } from './panelSpecs.ts';
+import { cardsOfTab } from './settingsPanel.ts';
 
 function chart(id: string, over: Partial<StatPlot> = {}): StatPlot {
   return {
@@ -43,7 +44,7 @@ describe('chart settings panel', () => {
   });
 
   it('every card with settings is on exactly one tab', () => {
-    const onTabs = Object.values(CHART_TAB_CARDS).flat();
+    const onTabs = CHART_PANEL.tabs.flatMap((t) => cardsOfTab(CHART_PANEL, t.id));
     for (const card of Object.keys(CHART_CARD_KEYS)) expect(onTabs.filter((c) => c === card)).toHaveLength(1);
   });
 

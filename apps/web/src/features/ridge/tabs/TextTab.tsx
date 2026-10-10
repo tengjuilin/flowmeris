@@ -1,5 +1,5 @@
 import { TextStyleEditor } from '../../../components/controls/TextStyleEditor.tsx';
-import { Section } from '../../../components/ui/Section.tsx';
+import { Card } from '../../../components/ui/settings/index.ts';
 import type { RidgeTabProps } from '../ridgeEdits.ts';
 
 /** The Text tab: style and size of the ridge labels, tick labels and axis title. */
@@ -8,12 +8,7 @@ export function TextTab({ r, fx, card }: RidgeTabProps) {
   const { set, resetOf } = fx;
   return (
     <>
-      <Section
-        id="labelText"
-        {...resetOf('labelText', 'ridge label text')}
-        title="Ridge labels"
-        {...card('labelText')}
-      >
+      <Card {...card('labelText', resetOf('labelText', 'ridge label text'))}>
         <TextStyleEditor
           label="Ridge labels"
           value={style.labelText}
@@ -25,13 +20,8 @@ export function TextTab({ r, fx, card }: RidgeTabProps) {
           align={style.labelAlign}
           onAlign={(a) => set('labelAlign', a, 'Ridge label alignment')}
         />
-      </Section>
-      <Section
-        id="tickText"
-        {...resetOf('tickText', 'tick label text')}
-        title="Tick labels"
-        {...card('tickText')}
-      >
+      </Card>
+      <Card {...card('tickText', resetOf('tickText', 'tick label text'))}>
         <TextStyleEditor
           label="Tick labels"
           value={style.tickText}
@@ -41,13 +31,8 @@ export function TextTab({ r, fx, card }: RidgeTabProps) {
           size={style.tickFontSize}
           onSize={(v) => set('tickFontSize', v, 'Ridge tick label size')}
         />
-      </Section>
-      <Section
-        id="titleText"
-        {...resetOf('titleText', 'axis title text')}
-        title="Axis title"
-        {...card('titleText')}
-      >
+      </Card>
+      <Card {...card('titleText', resetOf('titleText', 'axis title text'))}>
         <TextStyleEditor
           label="Axis title"
           value={style.titleText}
@@ -57,7 +42,7 @@ export function TextTab({ r, fx, card }: RidgeTabProps) {
           size={style.titleFontSize}
           onSize={(v) => set('titleFontSize', v, 'Ridge title size')}
         />
-      </Section>
+      </Card>
     </>
   );
 }

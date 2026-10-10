@@ -1,6 +1,6 @@
 import { ActionRow } from '../../../components/ui/ActionRow.tsx';
-import { Section } from '../../../components/ui/Section.tsx';
 import { ApplyIcon, ResetIcon } from '../../../components/ui/icons.tsx';
+import { Card } from '../../../components/ui/settings/index.ts';
 import {
   allRidgesAtDefaults,
   applyRidgeToChannels,
@@ -26,7 +26,7 @@ export function SettingsTab({ r, group, fx, card }: RidgeTabProps) {
   const mutate = useStore((s) => s.mutate);
   return (
     <>
-      <Section id="apply" title="Apply settings" {...card('apply')}>
+      <Card {...card('apply')}>
         <ActionRow
           label="Apply same settings for all populations"
           title="Give every population's ridge plot this ridge plot's settings now (each keeps its ticks and axis title)"
@@ -77,8 +77,8 @@ export function SettingsTab({ r, group, fx, card }: RidgeTabProps) {
           />
           Carry settings to next plots
         </label>
-      </Section>
-      <Section id="resetAll" title="Reset settings" {...card('resetAll')}>
+      </Card>
+      <Card {...card('resetAll')}>
         <ActionRow
           label="All settings in this plot"
           title="Reset the settings of this ridge plot (this population, this axis channel)"
@@ -120,7 +120,7 @@ export function SettingsTab({ r, group, fx, card }: RidgeTabProps) {
             })
           }
         />
-      </Section>
+      </Card>
     </>
   );
 }

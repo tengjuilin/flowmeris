@@ -1,6 +1,6 @@
 import type { ChartStyle } from '@flowmeris/model';
 import { NumInput } from '../../../components/ui/NumInput.tsx';
-import { Section } from '../../../components/ui/Section.tsx';
+import { Card } from '../../../components/ui/settings/index.ts';
 import { clamp } from '../../../lib/math.ts';
 import type { ChartTabProps } from '../chartTabs.ts';
 
@@ -10,7 +10,7 @@ export function TextTab({ c, plot, card }: ChartTabProps) {
   const st = plot.style;
   return (
     <>
-      <Section {...card('font', 'Font')}>
+      <Card {...card('font')}>
         <label className="field">
           Font
           <select
@@ -22,8 +22,8 @@ export function TextTab({ c, plot, card }: ChartTabProps) {
             <option value="mono">Monospace</option>
           </select>
         </label>
-      </Section>
-      <Section {...card('tickText', 'Tick labels')}>
+      </Card>
+      <Card {...card('tickText')}>
         <label className="field check">
           <input
             type="checkbox"
@@ -38,16 +38,16 @@ export function TextTab({ c, plot, card }: ChartTabProps) {
           value={st.tickFontSize}
           onCommit={(v) => set('tickFontSize', clamp(v, 4, 48), 'Chart tick label size')}
         />
-      </Section>
-      <Section {...card('axisTitleText', 'Axis titles')}>
+      </Card>
+      <Card {...card('axisTitleText')}>
         <NumInput
           label="Axis title size (px)"
           step={0.5}
           value={st.titleFontSize}
           onCommit={(v) => set('titleFontSize', clamp(v, 4, 48), 'Chart title size')}
         />
-      </Section>
-      <Section {...card('legend', 'Legend')}>
+      </Card>
+      <Card {...card('legend')}>
         <label
           className="field"
           title={c.allSeries.length > 1 ? undefined : 'Shown when there are two or more series'}
@@ -68,7 +68,7 @@ export function TextTab({ c, plot, card }: ChartTabProps) {
           value={st.legendFontSize}
           onCommit={(v) => set('legendFontSize', clamp(v, 4, 48), 'Chart legend size')}
         />
-      </Section>
+      </Card>
     </>
   );
 }

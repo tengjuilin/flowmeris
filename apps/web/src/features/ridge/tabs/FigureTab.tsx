@@ -3,8 +3,8 @@ import type { ComponentProps } from 'react';
 import { FontSelect } from '../../../components/controls/FontSelect.tsx';
 import { ColorField } from '../../../components/ui/ColorField.tsx';
 import { NumInput } from '../../../components/ui/NumInput.tsx';
-import { Section } from '../../../components/ui/Section.tsx';
 import { PercentSlider } from '../../../components/ui/Slider.tsx';
+import { Card } from '../../../components/ui/settings/index.ts';
 import { clamp } from '../../../lib/math.ts';
 import { scaleRidgeFonts } from '../../../lib/ridgePanels.ts';
 import { DEFAULT_RIDGE_STYLE } from '../../../lib/ridgeStyle.ts';
@@ -19,12 +19,7 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
   const { set, resetOf } = fx;
   return (
     <>
-      <Section
-        id="ridgeStyle"
-        {...resetOf('ridgeStyle', 'ridge style')}
-        title="Ridge style"
-        {...card('ridgeStyle')}
-      >
+      <Card {...card('ridgeStyle', resetOf('ridgeStyle', 'ridge style'))}>
         <label className="field">
           Color
           <select
@@ -84,8 +79,8 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
             onCommit={(v) => set('strokeWidth', clamp(v, 0, 10), 'Ridge outline width')}
           />
         </div>
-      </Section>
-      <Section id="labels" {...resetOf('labels', 'ridge labels')} title="Ridge labels" {...card('labels')}>
+      </Card>
+      <Card {...card('labels', resetOf('labels', 'ridge labels'))}>
         <label className="field check">
           <input
             type="checkbox"
@@ -133,8 +128,8 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
             <option value="widen">Widen the label column</option>
           </select>
         </label>
-      </Section>
-      <Section id="layout" {...resetOf('layout', 'layout', true)} title="Layout" {...card('layout')}>
+      </Card>
+      <Card {...card('layout', resetOf('layout', 'layout', true))}>
         <PercentSlider
           label="Overlap"
           value={overlap}
@@ -210,8 +205,8 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
             </div>
           )}
         </div>
-      </Section>
-      <Section id="histogram" {...resetOf('histogram', 'histogram')} title="Histogram" {...card('histogram')}>
+      </Card>
+      <Card {...card('histogram', resetOf('histogram', 'histogram'))}>
         <div className="grid2">
           <LiveNum
             label="Bins"
@@ -228,8 +223,8 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
             onCommit={(v) => set('smoothing', clamp(v, 0, 20), 'Ridge smoothing')}
           />
         </div>
-      </Section>
-      <Section id="baseFont" {...resetOf('baseFont', 'base font')} title="Base font" {...card('baseFont')}>
+      </Card>
+      <Card {...card('baseFont', resetOf('baseFont', 'base font'))}>
         <FontSelect
           label="Base font"
           value={style.fontFamily}
@@ -260,7 +255,7 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
             update('Ridge base font size', (l) => void scaleRidgeFonts(l.style, v), 'style:fontSize');
           }}
         />
-      </Section>
+      </Card>
     </>
   );
 }

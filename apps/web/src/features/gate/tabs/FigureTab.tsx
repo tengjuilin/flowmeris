@@ -2,14 +2,14 @@ import type { PlotCell } from '@flowmeris/model';
 import { FontSelect } from '../../../components/controls/FontSelect.tsx';
 import { ColorField } from '../../../components/ui/ColorField.tsx';
 import { NumInput } from '../../../components/ui/NumInput.tsx';
-import { Section } from '../../../components/ui/Section.tsx';
+import { Card } from '../../../components/ui/settings/index.ts';
 import { DEFAULT_FIGURE } from '../../../lib/figure.ts';
 import { clamp } from '../../../lib/math.ts';
 import { clearCellOverlay } from '../../../state/commands/grid.ts';
 import { targetEdit } from '../../../state/commands/plots.ts';
 import { PlotKindSelect } from '../../plot/index.ts';
 import { StyleEditor } from '../StyleEditor.tsx';
-import { type TabProps, cardProps } from '../figureEdits.ts';
+import type { TabProps } from '../figureEdits.ts';
 import { CellOverlayFields, CellSourceFields } from './GridCellFields.tsx';
 
 /** The Figure tab: plot type and title, a grid plot's samples and overlay, display, and the base font. */
@@ -17,7 +17,7 @@ export function FigureTab({
   group,
   plot,
   target,
-  panel,
+  card,
   fx,
   gridPlot,
 }: TabProps & { gridPlot: PlotCell | undefined }) {
@@ -26,7 +26,7 @@ export function FigureTab({
   const plotEdit = target === 'gate' ? undefined : targetEdit(group.id, plot.id, target);
   return (
     <>
-      <Section id="plot" title="Plot" {...resetOf(['title'], 'plot title')} {...cardProps(panel, 'plot')}>
+      <Card {...card('plot', resetOf(['title'], 'plot title'))}>
         <PlotKindSelect group={group} plot={plot} edit={plotEdit} label="Plot type" />
         <label className="field short-text">
           Plot title
@@ -38,35 +38,34 @@ export function FigureTab({
           />
         </label>
         {grid && gridPlot && <CellSourceFields group={group} cell={gridPlot} />}
-      </Section>
+      </Card>
       {grid && gridPlot && (
-        <Section
-          id="overlay"
-          title="Sample overlay"
-          changed={gridPlot.overlay.length > 0}
-          onReset={() => clearCellOverlay(group.id, gridPlot.id)}
-          {...cardProps(panel, 'overlay')}
+        <Card
+          {...card('overlay', {
+            changed: gridPlot.overlay.length > 0,
+            onReset: () => clearCellOverlay(group.id, gridPlot.id),
+          })}
         >
           <CellOverlayFields group={group} cell={gridPlot} />
-        </Section>
+        </Card>
       )}
-      <StyleEditor target={target} plot={plot} panel={panel} />
-      <Section
-        id="baseFont"
-        title="Base font"
-        {...resetOf(
-          [
-            'fontFamily',
-            'fontColor',
-            'fontSize',
-            'titleFontSize',
-            'tickFontSize',
-            'axisTitleFontSize',
-            'gateFontSize',
-          ],
-          'base font',
+      <StyleEditor target={target} plot={plot} card={card} />
+      <Card
+        {...card(
+          'baseFont',
+          resetOf(
+            [
+              'fontFamily',
+              'fontColor',
+              'fontSize',
+              'titleFontSize',
+              'tickFontSize',
+              'axisTitleFontSize',
+              'gateFontSize',
+            ],
+            'base font',
+          ),
         )}
-        {...cardProps(panel, 'baseFont')}
       >
         <FontSelect
           label="Base font"
@@ -112,7 +111,7 @@ export function FigureTab({
             );
           }}
         />
-      </Section>
+      </Card>
     </>
   );
 }
