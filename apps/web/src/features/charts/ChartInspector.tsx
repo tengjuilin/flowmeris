@@ -1,7 +1,6 @@
 import { InspectorTabs, PanelReset } from '../../components/ui/InspectorTabs.tsx';
 import {
   CHART_CARD_KEYS,
-  CHART_TAB_CARDS,
   type ChartCard,
   type ChartPanelTab,
   chartCardAtDefaults,
@@ -26,22 +25,16 @@ const CHART_TABS: { id: ChartPanelTab; label: string }[] = [
 const TAB_LABEL = Object.fromEntries(CHART_TABS.map((t) => [t.id, t.label.toLowerCase()]));
 
 const PANEL_KEY = 'flowmeris.chartPanel';
-/** Every card starts open; what the user collapses is remembered in this browser. */
-const DEFAULT_OPEN: Partial<Record<ChartCard, boolean>> = Object.fromEntries(
-  Object.values(CHART_TAB_CARDS)
-    .flat()
-    .map((c) => [c, true]),
-);
 
 /** The Charts view's settings panel: Figure / Axis / Text / Settings tabs of collapsible cards. */
 export function ChartInspector() {
   const c = useChart();
   const { plot, edit } = c;
-  const { tab, open, setTab, toggle } = usePanelState<ChartPanelTab, ChartCard>(
+  // The last tab and collapsed cards, remembered in this browser.
+  const { tab, setTab, isOpen, toggle } = usePanelState<ChartPanelTab>(
     PANEL_KEY,
     CHART_TABS.map((t) => t.id),
-    { tab: 'figure', open: DEFAULT_OPEN },
-    {},
+    'figure',
   );
   if (!c.group) return null;
   if (!plot)
@@ -54,7 +47,7 @@ export function ChartInspector() {
   const card = (id: ChartCard, title: string): CardProps => ({
     id: `chart-${id}`,
     title,
-    open: !!open[id],
+    open: isOpen(id),
     onToggle: () => toggle(id),
     ...(CHART_CARD_KEYS[id] && {
       changed: !chartCardAtDefaults(plot, id),

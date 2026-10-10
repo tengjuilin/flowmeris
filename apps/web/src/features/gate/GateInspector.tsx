@@ -1,5 +1,5 @@
 import type { Group, PlotSpec } from '@flowmeris/model';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { InspectorTabs, PanelReset } from '../../components/ui/InspectorTabs.tsx';
 import type { Panel } from '../../components/ui/Section.tsx';
 import { carryToPopulation } from '../../lib/figure.ts';
@@ -7,7 +7,7 @@ import { gateMatchesAxes } from '../../lib/geometry.ts';
 import { type PlotPanelTab, panelAtDefaults, resetPanel } from '../../lib/plotPanels.ts';
 import { UNSAVED_PLOT_ID } from '../../lib/unsavedPlot.ts';
 import { type PlotTarget, plotsOf as targetPlots } from '../../state/commands/plots.ts';
-import { useRememberedTab } from '../../state/prefs.ts';
+import { usePanelState } from '../../state/prefs.ts';
 import { useGroup, useStore } from '../../state/store.ts';
 import { usePlotForPopulation, useTilePlot } from '../plot/index.ts';
 import { GateEditor } from './GateEditor.tsx';
@@ -49,17 +49,13 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
   const plotsOf = (g: Group) => targetPlots(g, target);
   const follow = (g: Group) => (tiles ? g.tilePlotStyleFollow : g.plotStyleFollow);
   const mutate = useStore((s) => s.mutate);
-  const [tab, setTab] = useRememberedTab<PlotPanelTab>(
+  // The last tab and collapsed cards, remembered in this browser.
+  const { tab, setTab, isOpen, toggle } = usePanelState<PlotPanelTab>(
     TAB_KEYS[target],
     GATE_TABS.map((t) => t.id),
     'figure',
   );
-  // Every card starts open; collapsing one lasts for the session.
-  const [closed, setClosed] = useState<Record<string, boolean>>({});
-  const panel: Panel = {
-    isOpen: (id) => !closed[id],
-    toggle: (id) => setClosed((c) => ({ ...c, [id]: !c[id] })),
-  };
+  const panel: Panel = { isOpen, toggle };
   // While settings are carried across populations, the population opened next takes the settings of
   // the one left (keeping its own title, ticks and axis titles). An unsaved plot takes them unsaved.
   const last = useRef<{ groupId: string; key: string; unsaved: PlotSpec | null } | null>(null);

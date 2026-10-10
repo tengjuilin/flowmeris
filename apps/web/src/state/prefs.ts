@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { type PanelState, readPanelState, toggleCard } from '../lib/settingsPanel.ts';
 
 /**
  * UI preferences kept in browser storage: per tab for the session (sessionStorage: the open view, the
- * Gating path layout) or across sessions (localStorage: inspector tabs and open sections). Storage can
+ * Gating path layout) or across sessions (localStorage: settings panels' tabs and collapsed cards). Storage can
  * be unavailable (private windows, blocked site data): reads then fall back and writes are dropped.
  */
 
@@ -22,46 +23,25 @@ export function writeSession(key: string, value: string) {
   } catch {}
 }
 
-/** A saved JSON preference, or undefined when unset, unreadable or not JSON. */
-export function readLocal(key: string): unknown {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw === null ? undefined : JSON.parse(raw);
-  } catch {
-    return undefined;
-  }
-}
-
 export function writeLocal(key: string, value: unknown) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {}
 }
 
-/** An inspector's remembered tab and open sections. */
-export interface PanelState<T extends string, S extends string> {
-  tab: T;
-  open: Partial<Record<S, boolean>>;
-}
-
 /**
- * An inspector's tab and open sections, remembered in this browser under `key`. A saved state whose tab
- * is not one of `tabs` is ignored. On load the saved open sections are laid over `keepOpen` (sections
- * that start open even when the saved state predates them); with nothing saved, `initial` is used.
+ * A settings panel's tab and collapsed cards, remembered in this browser under `key`. Every card starts
+ * open. A saved tab that is not one of `tabs` gives `fallback`.
  */
-export function usePanelState<T extends string, S extends string>(
-  key: string,
-  tabs: readonly T[],
-  initial: PanelState<T, S>,
-  keepOpen: Partial<Record<S, boolean>>,
-) {
-  const [panel, setPanel] = useState<PanelState<T, S>>(() => {
-    const saved = readLocal(key) as Partial<PanelState<T, S>> | null | undefined;
-    return saved && saved.tab !== undefined && tabs.includes(saved.tab)
-      ? { tab: saved.tab, open: { ...keepOpen, ...saved.open } }
-      : initial;
+export function usePanelState<T extends string>(key: string, tabs: readonly T[], fallback: T) {
+  const [panel, setPanel] = useState<PanelState<T>>(() => {
+    let raw: string | null = null;
+    try {
+      raw = localStorage.getItem(key);
+    } catch {}
+    return readPanelState(raw, tabs, fallback);
   });
-  const change = (fn: (p: PanelState<T, S>) => PanelState<T, S>) =>
+  const change = (fn: (p: PanelState<T>) => PanelState<T>) =>
     setPanel((p) => {
       const next = fn(p);
       writeLocal(key, next);
@@ -69,27 +49,8 @@ export function usePanelState<T extends string, S extends string>(
     });
   return {
     tab: panel.tab,
-    open: panel.open,
     setTab: (tab: T) => change((p) => ({ ...p, tab })),
-    toggle: (id: S) => change((p) => ({ ...p, open: { ...p.open, [id]: !p.open[id] } })),
+    isOpen: (id: string) => !panel.closed.includes(id),
+    toggle: (id: string) => change((p) => toggleCard(p, id)),
   };
-}
-
-/** A tab remembered in this browser under `key` (stored as plain text); `fallback` when unset or unknown. */
-export function useRememberedTab<T extends string>(key: string, tabs: readonly T[], fallback: T) {
-  const [tab, setTabState] = useState<T>(() => {
-    try {
-      const t = localStorage.getItem(key) as T | null;
-      return t !== null && tabs.includes(t) ? t : fallback;
-    } catch {
-      return fallback;
-    }
-  });
-  const setTab = (t: T) => {
-    setTabState(t);
-    try {
-      localStorage.setItem(key, t);
-    } catch {}
-  };
-  return [tab, setTab] as const;
 }

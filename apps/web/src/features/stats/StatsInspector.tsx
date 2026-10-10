@@ -34,16 +34,6 @@ const STATS_TABS: { id: StatsTab; label: string }[] = [
 ];
 
 const STATS_PANEL_KEY = 'flowmeris.statsPanel';
-const STATS_DEFAULT_OPEN: Partial<Record<StatsSectionId, boolean>> = {
-  addStat: true,
-  derived: true,
-  combine: true,
-  summaries: true,
-  tableCsv: true,
-  statsCsv: true,
-  gatingMl: true,
-  events: true,
-};
 
 /** Settings panel of the Statistics view: statistics and derived columns, replicates, exports. */
 export function StatsInspector() {
@@ -52,13 +42,13 @@ export function StatsInspector() {
   const group = useGroup();
   const { stats, perSample, aggregated, errors } = useAnalysisTable(group);
   const { pops, rows, busy, complete, marker, shown } = stats;
-  // The last tab and open sections, remembered in this browser.
-  const { tab, open, setTab, toggle } = usePanelState<StatsTab, StatsSectionId>(
+  // The last tab and collapsed cards, remembered in this browser.
+  const { tab, setTab, isOpen, toggle } = usePanelState<StatsTab>(
     STATS_PANEL_KEY,
     STATS_TABS.map((t) => t.id),
-    { tab: 'statistics', open: STATS_DEFAULT_OPEN },
-    STATS_DEFAULT_OPEN,
+    'statistics',
   );
+  const card = (id: StatsSectionId) => ({ id, open: isOpen(id), onToggle: () => toggle(id) });
 
   if (!group) return null;
   const display = aggregated ?? perSample;
@@ -126,52 +116,27 @@ export function StatsInspector() {
       <div id="stats-tabpanel" role="tabpanel" aria-labelledby={`stats-tab-${tab}`}>
         {tab === 'statistics' && (
           <>
-            <Section
-              id="addStat"
-              title="New statistic"
-              open={!!open.addStat}
-              onToggle={() => toggle('addStat')}
-            >
+            <Section title="New statistic" {...card('addStat')}>
               <AddStatForm group={group} pops={pops} marker={marker} />
             </Section>
-            <Section
-              id="derived"
-              title="Derived columns"
-              open={!!open.derived}
-              onToggle={() => toggle('derived')}
-            >
+            <Section title="Derived columns" {...card('derived')}>
               <DerivedPanel group={group} columns={perSample.columns} errors={errors} valuesOf={valuesOf} />
             </Section>
           </>
         )}
         {tab === 'replicates' && (
           <>
-            <Section
-              id="combine"
-              title="Combine replicates"
-              open={!!open.combine}
-              onToggle={() => toggle('combine')}
-            >
+            <Section title="Combine replicates" {...card('combine')}>
               <GroupByFields group={group} />
             </Section>
-            <Section
-              id="summaries"
-              title="Summaries"
-              open={!!open.summaries}
-              onToggle={() => toggle('summaries')}
-            >
+            <Section title="Summaries" {...card('summaries')}>
               <SummaryFields group={group} />
             </Section>
           </>
         )}
         {tab === 'export' && (
           <>
-            <Section
-              id="tableCsv"
-              title="Statistics table"
-              open={!!open.tableCsv}
-              onToggle={() => toggle('tableCsv')}
-            >
+            <Section title="Statistics table" {...card('tableCsv')}>
               <ActionRow
                 label="CSV (table)"
                 title={
@@ -185,12 +150,7 @@ export function StatsInspector() {
               />
               <ColumnsChecklist group={group} table={perSample} />
             </Section>
-            <Section
-              id="statsCsv"
-              title="Statistics with provenance"
-              open={!!open.statsCsv}
-              onToggle={() => toggle('statsCsv')}
-            >
+            <Section title="Statistics with provenance" {...card('statsCsv')}>
               <ActionRow
                 label="CSV (tidy)"
                 title={`Download one row per sample × population × statistic, with provenance${pending}`}
@@ -206,7 +166,7 @@ export function StatsInspector() {
                 onClick={() => exportStats('wide')}
               />
             </Section>
-            <Section id="gatingMl" title="Gates" open={!!open.gatingMl} onToggle={() => toggle('gatingMl')}>
+            <Section title="Gates" {...card('gatingMl')}>
               <ActionRow
                 label="Gating-ML"
                 title="Download Gating-ML 2.0 for the group template (+ effective gates of overridden samples)"
@@ -215,7 +175,7 @@ export function StatsInspector() {
                 onClick={exportGml}
               />
             </Section>
-            <Section id="events" title="Events" open={!!open.events} onToggle={() => toggle('events')}>
+            <Section title="Events" {...card('events')}>
               <ActionRow
                 label="FCS (raw)"
                 title="Download FCS 3.1 with linearised, uncompensated values; original keywords and $SPILLOVER kept"

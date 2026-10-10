@@ -108,3 +108,18 @@ test('opening a population saves its plot only with the first edit, in one undo 
   await expect(undo).toHaveAttribute('title', /^Undo: Add gate/);
   await expect(pointSize(page)).toHaveValue('3');
 });
+
+test('a collapsed card stays collapsed after leaving the view', async ({ page }) => {
+  await open(page);
+  await tab(page, 'Text');
+  const card = page.getByRole('button', { name: 'Tick labels', exact: true });
+  await expect(card).toHaveAttribute('aria-expanded', 'true');
+  await card.click();
+  await expect(card).toHaveAttribute('aria-expanded', 'false');
+  const view = (name: string) =>
+    page.locator('[role="tablist"]:not([aria-label])').getByRole('tab', { name, exact: true }).click();
+  await view('Statistics');
+  await view('Gate');
+  await expect(page.getByRole('tab', { name: 'Text', selected: true })).toBeVisible();
+  await expect(card).toHaveAttribute('aria-expanded', 'false');
+});

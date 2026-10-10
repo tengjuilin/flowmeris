@@ -18,3 +18,6 @@
 Keyboard: `V` select, `R` rectangle, `E` ellipse, `P` polygon, `Q` quadrant, `S` spider, `H` range
 (histograms); arrow keys nudge the selected gate (Shift = 10 px); `Esc` cancels; `⌘Z` / `⇧⌘Z` undo/redo. In the Plot
 grid, `⌘X` / `⌘C` / `⌘V` cut, copy and paste the selected plot.
+
+Settings panels: most views have a settings panel at the right, in tabs of collapsible cards. Each panel
+remembers its last tab and the cards you collapsed, in this browser; every card starts open.

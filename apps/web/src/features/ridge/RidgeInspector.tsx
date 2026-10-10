@@ -22,16 +22,6 @@ const RIDGE_TABS: { id: RidgePanelTab; label: string }[] = [
   { id: 'settings', label: 'Settings' },
 ];
 
-/** The first section of each tab, and the Settings tab's cards, start open (the Sample tab has no sections). */
-const DEFAULT_OPEN: Partial<Record<RidgeCard, boolean>> = {
-  apply: true,
-  resetAll: true,
-  ridgeStyle: true,
-  scale: true,
-  labels: true,
-  labelText: true,
-};
-
 const PANEL_KEY = 'flowmeris.ridgePanel';
 
 /** The ridge plot settings panel. */
@@ -42,12 +32,11 @@ export function RidgeInspector() {
   const mutate = useStore((s) => s.mutate);
   // Kept here, not in the Sample tab, so the selection survives switching tabs.
   const selection = useRowSelection(rows.map((x) => x.id));
-  // The last tab and open sections, remembered in this browser.
-  const { tab, open, setTab, toggle } = usePanelState<RidgePanelTab, RidgeCard>(
+  // The last tab and collapsed cards, remembered in this browser.
+  const { tab, setTab, isOpen, toggle } = usePanelState<RidgePanelTab>(
     PANEL_KEY,
     RIDGE_TABS.map((t) => t.id),
-    { tab: 'figure', open: DEFAULT_OPEN },
-    { apply: true, resetAll: true },
+    'figure',
   );
   // While settings are carried across populations, the population opened next takes the ridge settings
   // of the one left (keeping its own ticks and axis title).
@@ -75,7 +64,7 @@ export function RidgeInspector() {
     r,
     group,
     fx: ridgeEdits(r, group),
-    card: (id) => ({ open: !!open[id], onToggle: () => toggle(id) }),
+    card: (id: RidgeCard) => ({ open: isOpen(id), onToggle: () => toggle(id) }),
   };
 
   return (
