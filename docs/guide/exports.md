@@ -8,7 +8,7 @@
 | Sample variables | Metadata → *Export CSV* | file, well and variables of each sample — a template to fill in and import |
 | Gates | Statistics → settings › Export → *Gating-ML* | Gating-ML 2.0 for the template, plus one file per overridden sample |
 | Gated events | Statistics → settings › Export → *FCS (raw)* / *CSV (compensated)* | events of the current population for the selected sample |
-| Plots | Plot toolbar → *SVG* / *PNG*; Ridge → *SVG* | vector axes and gates with a 300-dpi embedded raster; PNG at 300 dpi |
+| Plots | Gate or Plot toolbar → *SVG* / *PNG*; Ridge → *SVG* | vector axes and gates with a 300-dpi embedded raster; PNG at 300 dpi. In the Plot view, the selected plot with the sample it shows (overlays are not drawn) |
 | Analysis | Header → *Save workspace* | JSON ([format](../methods/workspace)) |
 
 ## Reporting checklist (MIFlowCyt)

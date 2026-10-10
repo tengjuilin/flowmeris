@@ -116,6 +116,7 @@ export function PlotGridView() {
                     format,
                     ws.samples[activeSample ?? '']?.fileName ?? 'plot',
                     dpi,
+                    activeSample,
                   )
             }
           />

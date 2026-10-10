@@ -13,17 +13,18 @@ export function exportSvgFigure(svg: SVGSVGElement, format: ImageFormat, baseNam
 }
 
 /**
- * The selected group's data for exporting `plot`: events of the selected sample (the group's first
- * sample when none of its samples is selected), rendered by the worker getPool().
+ * The selected group's data for exporting `plot`: events of `sampleId` (by default the selected sample, or
+ * the group's first sample when none of its samples is selected), rendered by the worker getPool().
  */
-function selectedSource(plot: PlotSpec): PlotExportSource {
+export function plotSource(plot: PlotSpec, sampleId?: string): PlotExportSource {
   const st = useStore.getState();
   const g = st.ws.groups.find((x) => x.id === st.ui.groupId)!;
-  const sampleId = st.ui.sampleId && g.sampleIds.includes(st.ui.sampleId) ? st.ui.sampleId : g.sampleIds[0]!;
+  const id =
+    sampleId ?? (st.ui.sampleId && g.sampleIds.includes(st.ui.sampleId) ? st.ui.sampleId : g.sampleIds[0]!);
   return {
     raster: (p, width, height) =>
-      getPool().raster(contextFor(st.ws, g), { sampleId, plot: p, width, height, dotColor: '#222222' }),
-    sha256: st.ws.samples[st.ui.sampleId ?? '']?.sha256,
+      getPool().raster(contextFor(st.ws, g), { sampleId: id, plot: p, width, height, dotColor: '#222222' }),
+    sha256: st.ws.samples[id]?.sha256,
     transforms: {
       x: st.ws.transforms[plot.x.transform],
       y: plot.y ? st.ws.transforms[plot.y.transform] : undefined,
@@ -33,9 +34,16 @@ function selectedSource(plot: PlotSpec): PlotExportSource {
 }
 
 /**
- * Export a plot of the selected group. SVG is written as built; PNG, JPEG and PDF render that SVG (axes
+ * Export a plot of the selected group, with the events of `sampleId` (default: as plotSource). SVG is written as built; PNG, JPEG and PDF render that SVG (axes
  * and gates stay vector in the PDF, the event raster is embedded at `dpi`).
  */
-export function exportPlot(h: PlotHandle, plot: PlotSpec, format: ImageFormat, baseName: string, dpi = 300) {
-  return exportPlotFigure(h, plot, format, baseName, dpi, selectedSource(plot), toast);
+export function exportPlot(
+  h: PlotHandle,
+  plot: PlotSpec,
+  format: ImageFormat,
+  baseName: string,
+  dpi = 300,
+  sampleId?: string,
+) {
+  return exportPlotFigure(h, plot, format, baseName, dpi, plotSource(plot, sampleId), toast);
 }
