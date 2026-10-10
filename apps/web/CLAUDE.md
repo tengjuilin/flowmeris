@@ -3,8 +3,8 @@
 The React 18 app (Vite). All analysis runs in a pool of Web Workers. The UI keeps the workspace (a JSON
 document, `@flowmeris/model` `Workspace`) in one zustand store with patch-based undo.
 
-The layout below is being migrated to feature folders (ADR-0008); this file describes the state of the
-code now. Update it when the layout changes.
+Every view is in a feature folder (ADR-0008); `components/` holds only the controls and hooks shared by
+several features. Update this file when the layout changes.
 
 ## Where things are
 
@@ -16,7 +16,7 @@ code now. Update it when the layout changes.
 | `src/state/persist.ts` | IndexedDB autosave of `ws` (ring of 20 snapshots) |
 | `src/engine-client/` | `pool.ts`: the worker pool (ADR-0003, ADR-0010), `getPool()`; `scheduler.ts`: its request queue and result cache |
 | `src/workers/compute.worker.ts` | worker side: wraps `@flowmeris/engine` behind Comlink (`ComputeApi`) |
-| `src/state/commands/` | named store commands: `gates.ts`, `plots.ts` (incl. `drill`), `grid.ts`, `refPlots.ts`, `ingest.ts`, `workspace.ts` (open, save, new) |
+| `src/state/commands/` | named store commands: `gates.ts`, `plots.ts` (incl. `drill`, and `openPathPlot` for the Gating path), `grid.ts`, `refPlots.ts`, `metadata.ts` (delete a variable, detect wells), `ingest.ts`, `workspace.ts` (open, save, new) |
 | `src/state/hooks/` | data hooks that fetch from the worker pool: `stats.ts` (`useSampleStats`, `useAnalysisTable`) |
 | `src/state/export.ts` | figure export wired to the store, pool and toasts (`exportPlot`, `exportSvgFigure`) |
 | `src/lib/` | pure logic, tested in Node: no store, pool, workers or components (`pnpm lint:deps` checks this). Functions documented "call inside `mutate`" work on a workspace draft |
@@ -29,27 +29,33 @@ code now. Update it when the layout changes.
 | `src/features/tiles/` | the Tiles view (`TilesView`); its settings panel is `features/gate`'s `Inspector target="tiles"` |
 | `src/features/stats/` | the Statistics view: `StatsView` (the table), `StatsInspector` with `StatsFields` (new statistic, grouping, summaries, export columns) and `DerivedColumns` (formula and normalization forms, `FormulaInput`); `useGroupMutate` edits the group |
 | `src/features/charts/` | the Charts view: `ChartsView` (tabs, toolbar, data table), `Chart` (layout in `frameChart`; axes, series marks, legend and tooltip in `ChartParts`), `ChartInspector` with `ChartAxisFields` (a chart axis in data units, unrelated to the cytometry `AxisFields`) |
-| `src/components/` | the other views and inspectors (see below), moving to `features/` |
+| `src/features/tree/` | `PopulationTree`: the population tree with counts, beside the plots of the Gate, Plot grid, Tiles and Gating path views |
+| `src/features/grid/` | the Plot grid view: `PlotGridView` and `GridCell`; its settings panel is `features/gate`'s `Inspector target="grid"`, whose Figure tab has the cell's population, sample and overlay fields (`gate/tabs/GridCellFields.tsx`) |
+| `src/features/path/` | the Gating path view: `GatingPathView` (Path and Tree layouts), `PathCards` (`StepCard`, `PopChip`, `WhenVisible`, `ViewErrorBoundary`), `PopulationsPanel` |
+| `src/features/metadata/` | the Metadata view: `MetadataView` (toolbar, variable chips), `MetaTable`, `PlateMap`, `ImportDialog`, and the settings panel `MetadataInspector` with `VariableFields` and `ValuesTab` |
+| `src/features/samples/`, `src/features/compensation/`, `src/features/sidebar/` | the Samples view, the Compensation view, and the sidebar of groups and samples |
 | `src/styles/` | all CSS, global, in files imported in cascade order by `styles/index.css` (with the features' CSS) |
 
 A feature folder's public API is its `index.ts`: other code imports only that (`pnpm lint:deps`). Files inside
-a feature import each other directly.
+a feature import each other directly. A new view, panel or part of one goes in a feature folder; only
+controls and hooks shared by several features go in `components/ui`, `components/controls` or
+`components/hooks` (`lint:deps` rejects a file directly in `components/`).
 
 Views (`ui.view`). Each is defined once in `app/views.tsx`; to add one, add its id to `VIEW_IDS` in
 `state/store.ts`, its entry to `VIEW_DEFS` and its place in `VIEW_ORDER`:
 
 | `ui.view` | View component | Settings panel |
 |---|---|---|
-| `metadata` | `MetadataView` | `MetadataInspector` (toggled by `views.metaSettings`) |
-| `gate` | `PlotPanel` → `PlotCanvas`, plus `PopulationTree` and `RefPlots` | `Inspector` (`features/gate`) |
-| `plot` (Plot grid) | `PlotGridView` | `Inspector target="grid"` (toggled by `views.gridSettings`) |
+| `metadata` | `MetadataView` (`features/metadata`) | `MetadataInspector` (toggled by `views.metaSettings`) |
+| `gate` | `PlotPanel` → `PlotCanvas`, plus `PopulationTree` (`features/tree`) and `RefPlots` | `Inspector` (`features/gate`) |
+| `plot` (Plot grid) | `PlotGridView` (`features/grid`) | `Inspector target="grid"` (toggled by `views.gridSettings`) |
 | `tiles` | `TilesView` (`features/tiles`) | `Inspector target="tiles"` (toggled by `views.tilesSettings`) |
-| `path` | `GatingPathView` | – |
+| `path` | `GatingPathView` (`features/path`) | – |
 | `stats` | `StatsView` (`features/stats`) | `StatsInspector` (`features/stats`) |
 | `ridge` | `RidgeView`, plus `RidgeCombinePanel` (`features/ridge`) | `RidgeInspector` (`features/ridge`) |
 | `charts` | `ChartsView` (`features/charts`) | `ChartInspector`, rendered by `ChartsView` |
-| `compensation` | `CompensationView` | – |
-| `samples` | `SamplesView` in `CompensationView.tsx` | – |
+| `compensation` | `CompensationView` (`features/compensation`) | – |
+| `samples` | `SamplesView` (`features/samples`) | – |
 
 What is in `src/lib/`:
 
@@ -63,7 +69,7 @@ What is in `src/lib/`:
 | `ridgeRows.ts`, `ridgeLayout.ts`, `ridgePanels.ts` | which ridges a ridge plot draws (samples or combined replicates); its labels, pixel layout and paths (`ridgeLabels`, `ridgeFrame`, `ridgePaths`); its settings panel's card and tab resets, reordering (`moveRidges`) and base font scaling |
 | `statsTable.ts`, `statsFormat.ts`, `statsHeader.ts`, `statsExport.ts`, `derived.ts`, `formula.ts` | statistics table rows and columns, number formatting, header sections, dividers and pinned columns; export file names, Gating-ML files and the export column checklist; derived column defaults and descriptions; formula editing |
 | `chartAxis.ts`, `chartLayout.ts`, `chartStyle.ts`, `chartSelection.ts` | chart axes (`makeAxis`, `validFix`, `dataExtents`, `barPath`); margins and band slots; default style, series colour and order, the first chart (`defaultPlot`), the chart CSV; hidden points and excluded rows |
-| `metadata.ts`, `palette.ts` | sample variables (values, types, paste); colours of populations and values |
+| `metadata.ts`, `metaTable.ts`, `plate.ts`, `metaImport.ts`, `palette.ts` | sample variables (values, types, paste, the shown variable, wells detected); the Metadata table's cells (linked Well, Row and Column, `writeMetaCell`); the plate map (samples by well, series fills); importing a table or plate layout; colours of populations and values |
 | `ingest.ts`, `files.ts`, `names.ts` | grouping loaded files; data-file extensions; short sample names |
 | `export/` | figure export: `svg.ts`, `pdf.ts`, `figure.ts`, `plot.ts` (takes its data as a `PlotExportSource`) |
 | `geometry.ts`, `fitSize.ts`, `order.ts`, `text.ts`, `format.ts`, `json.ts`, `download.ts`, `sheets.ts` | gate drawing geometry; sizing (`nearestColumns`, and `RowFit` for rows of plots in Tiles and the Plot grid); moving ids in a list (`moveIds`); label wrapping, number formats, JSON copy/compare, downloads, spreadsheets |
@@ -71,6 +77,7 @@ What is in `src/lib/`:
 | `plotFrame.ts`, `plotLayout.ts`, `plotPaths.ts` | a plot's pixel mapping and gate hit testing (`hitGate`, `popAt`); margins and titles (`plotBox`, `axisLabel`); histogram and contour SVG paths |
 | `gateEdit.ts` | gate shapes from drags and handles (`applyHandle`, `translate`, `shapeFromDrag`, `newGateBase`) |
 | `plotPanels.ts` | the plot settings panel's per-tab defaults and reset (`panelAtDefaults`, `resetPanel`) |
+| `gatingPath.ts` | the Gating path: the plot showing each gate (`plotForGate`, built from the gate's axes when no saved plot matches), the tree (`treeLayout`), the path's steps |
 
 `figure.ts` has the SVG text styling (`textCss`, `figureText`) and fonts (`FONT_STACKS`, `fontStack`);
 `ridgeStyle.ts` the ridge defaults and colours (`ridgeColor`). Search for a symbol before assuming where it lives.
@@ -122,7 +129,8 @@ What is in `src/lib/`:
 All CSS is global, with flat class names. `styles/index.css` imports the files in cascade order (later
 files win at equal specificity): `styles/*.css` and each feature's own file (`features/plot/plot.css`,
 `features/gate/gate.css`, `features/tiles/tiles.css`, `features/ridge/ridge.css`,
-`features/stats/stats.css`, `features/charts/charts.css`). Moving a rule to
+`features/grid/grid.css`, `features/path/path.css`, `features/stats/stats.css`,
+`features/metadata/metadata.css`, `features/charts/charts.css`). Moving a rule to
 another file can change what wins: compare the built CSS (`apps/web/dist/assets/*.css`) before and
 after, and check any rule that now comes after another rule with the same specificity that sets the
 same property on the same elements. Theme tokens, in light

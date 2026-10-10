@@ -1,6 +1,6 @@
 # ADR-0008 Web app layout and import layering
 
-**Status.** Proposed. It is being adopted in phases (`lib/` is pure, `state/` and `app/` checked since P2; `features/plot` and `features/gate` since P3b, `features/ridge` and `features/tiles` since P3c, `features/stats` and `features/charts` since P3d, the other views to follow); [`apps/web/CLAUDE.md`](https://github.com/tengjuilin/flowmeris/blob/main/apps/web/CLAUDE.md) shows the current layout.
+**Status.** Proposed. It is being adopted in phases (`lib/` is pure, `state/` and `app/` checked since P2; `features/plot` and `features/gate` since P3b, `features/ridge` and `features/tiles` since P3c, `features/stats` and `features/charts` since P3d, and every other view since P3e, leaving `components/` with only the shared `ui/`, `controls/` and `hooks/`); [`apps/web/CLAUDE.md`](https://github.com/tengjuilin/flowmeris/blob/main/apps/web/CLAUDE.md) shows the current layout.
 
 **Decision.** `apps/web/src` is organised in layers, and imports only point down:
 
