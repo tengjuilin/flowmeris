@@ -1,7 +1,7 @@
-import { type ChartStyle, ChartStyleSchema, type StatPlot } from '@flowmeris/model';
-import { CATEGORICAL } from '@flowmeris/render';
-import type { Cell, PlotSeries } from '@flowmeris/table';
+import type { ChartStyle, StatPlot } from '@flowmeris/model';
+import type { PlotSeries } from '@flowmeris/table';
 import { pointKey } from '../lib/chartSelection.ts';
+import { DEFAULT_CHART_STYLE, seriesColor, seriesKey, seriesName } from '../lib/chartStyle.ts';
 import { clamp } from '../lib/math.ts';
 import { moveIds } from '../lib/order.ts';
 import { TicksEditor } from './controls/TicksEditor.tsx';
@@ -9,31 +9,6 @@ import { GroupPicker, toggleIds } from './ui/GroupPicker.tsx';
 import { NumInput, OptNumInput } from './ui/NumInput.tsx';
 import { ReorderList } from './ui/ReorderList.tsx';
 import { Slider } from './ui/Slider.tsx';
-
-export const DEFAULT_CHART_STYLE: ChartStyle = ChartStyleSchema.parse({});
-
-/** Key of a series in `ChartStyle` maps: the JSON of its value. */
-export const seriesKey = (k: Cell) => JSON.stringify(k ?? null);
-
-export function seriesColor(style: ChartStyle, key: string, index: number): string {
-  return (
-    style.seriesColors[key] ??
-    (style.colorMode === 'palette' ? CATEGORICAL[index % CATEGORICAL.length]! : style.color)
-  );
-}
-
-/** A series' name in the legend by default. */
-const seriesName = (s: PlotSeries) => (s.key === undefined || s.key === null ? '(none)' : String(s.key));
-
-/** Series in display order: those in `order` first, the rest in category order. */
-export function orderSeries(series: PlotSeries[], order: string[]): PlotSeries[] {
-  if (!order.length) return series;
-  const rank = new Map(order.map((k, i) => [k, i]));
-  return series
-    .map((s, i) => ({ s, r: rank.get(seriesKey(s.key)) ?? order.length + i }))
-    .sort((a, b) => a.r - b.r)
-    .map((x) => x.s);
-}
 
 function AxisFields(props: {
   which: 'x' | 'y';

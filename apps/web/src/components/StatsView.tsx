@@ -1,4 +1,4 @@
-import { exportGatingML, tidyRows, toCsv, wideRows } from '@flowmeris/export';
+import { tidyRows, toCsv, wideRows } from '@flowmeris/export';
 import {
   type AggFunc,
   type DerivedColumn,
@@ -13,11 +13,27 @@ import {
 import { type Cell, type ColumnDef, type Table, tableRows } from '@flowmeris/table';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getPool } from '../engine-client/pool.ts';
-import { download, safeName } from '../lib/download.ts';
-import { stripDataExt } from '../lib/files.ts';
-import { PLAIN_DECIMAL, fracDigits } from '../lib/format.ts';
+import { columnsBefore, defaultNormalizeSource, derivedSummary, normalizeAutoName } from '../lib/derived.ts';
+import { download } from '../lib/download.ts';
+import { PLAIN_DECIMAL } from '../lib/format.ts';
 import { type Completion, type FormulaProblem, checkFormula, completionsAt } from '../lib/formula.ts';
-import { DEFAULT_SIG_FIGS, exportKeys, fmtStat as fmt, sectionOf } from '../lib/statsFormat.ts';
+import {
+  distinctValues,
+  eventsFileName,
+  exportColumnSections,
+  gatingMlFiles,
+  statsCsvName,
+  toggleExportColumns,
+} from '../lib/statsExport.ts';
+import { DEFAULT_SIG_FIGS, exportKeys, fmtStat as fmt } from '../lib/statsFormat.ts';
+import {
+  fracLengths,
+  headerSections,
+  pinnedCount,
+  sectionStarts,
+  sigOf,
+  statOf,
+} from '../lib/statsHeader.ts';
 import type { StatColumn } from '../lib/statsTable.ts';
 import { useAnalysisTable } from '../state/hooks/stats.ts';
 import { usePanelState } from '../state/prefs.ts';
@@ -312,13 +328,7 @@ function NormalizeForm(props: {
       name: '',
       kind: 'normalize',
       // The most recently added value statistic (median, mean…), else a frequency.
-      source:
-        [...props.columns]
-          .reverse()
-          .find((c) => (c.kind === 'stat' && !/\|(count|pctParent)$/.test(c.key)) || c.kind === 'derived')
-          ?.key ??
-        [...props.columns].reverse().find((c) => c.kind === 'stat')?.key ??
-        '',
+      source: defaultNormalizeSource(props.columns),
       refVariable: variables[0]?.id ?? '',
       refValue: '',
       within: [],
@@ -341,16 +351,7 @@ function NormalizeForm(props: {
       </div>
     );
   const refValues = props.valuesOf(d.refVariable);
-  const src = props.columns.find((c) => c.key === d.source);
-  const refVar = variables.find((v) => v.id === d.refVariable);
-  const srcName = src ? (src.label.split(' | ').pop() ?? src.label) : '?';
-  const ref = `${refVar?.name ?? '?'} ${d.refValue}`;
-  const autoName =
-    d.mode === 'ratio'
-      ? `${srcName} / ${ref}`
-      : d.mode === 'percent'
-        ? `${srcName} % of ${ref}`
-        : `${srcName} − ${ref}`;
+  const autoName = normalizeAutoName(d, props.columns, variables);
   return (
     <div className="derived-form">
       <label className="field">
@@ -465,11 +466,7 @@ function DerivedPanel(props: {
   const [form, setForm] = useState<{ kind: 'formula' | 'normalize'; id?: string } | null>(null);
   const derived = group.analysis.derived;
   const editing = form?.id ? derived.find((d) => d.id === form.id) : undefined;
-  // Columns a derived column may use: everything before it.
-  const before = (id?: string) => {
-    const idx = id ? props.columns.findIndex((c) => c.key === `derived:${id}`) : -1;
-    return idx < 0 ? props.columns : props.columns.slice(0, idx);
-  };
+  const before = (id?: string) => columnsBefore(props.columns, id);
   const save = (d: DerivedColumn) => {
     edit(editing ? 'Edit derived column' : 'Add derived column', (g) => {
       const i = g.analysis.derived.findIndex((x) => x.id === d.id);
@@ -506,11 +503,7 @@ function DerivedPanel(props: {
                 ✕
               </button>
               {!(props.errors[d.id] && d.kind === 'formula') && (
-                <div className="derived-detail mono">
-                  {d.kind === 'formula'
-                    ? `= ${d.expr}`
-                    : `${d.mode} to ${variables.find((v) => v.id === d.refVariable)?.name ?? '?'} = ${d.refValue}${d.within.length ? ` within ${d.within.map((w) => variables.find((v) => v.id === w)?.name ?? '?').join(', ')}` : ''}`}
-                </div>
+                <div className="derived-detail mono">{derivedSummary(d, variables)}</div>
               )}
               {props.errors[d.id] && d.kind !== 'formula' && (
                 <span className="badge danger">{props.errors[d.id]}</span>
@@ -738,26 +731,8 @@ function ColumnsChecklist({ group, table }: { group: Group; table: Table }) {
   const on = new Set(selected ?? table.columns.map((c) => c.key));
   const set = (keys: string[] | undefined) =>
     edit('Choose export columns', (g) => void (g.analysis.exportColumns = keys));
-  const toggle = (keys: string[], value: boolean) => {
-    const next = new Set(on);
-    for (const k of keys) value ? next.add(k) : next.delete(k);
-    const list = table.columns.map((c) => c.key).filter((k) => next.has(k));
-    set(list.length === table.columns.length ? undefined : list);
-  };
-  const sections: { title: string; cols: ColumnDef[] }[] = [];
-  for (const c of table.columns) {
-    const title =
-      c.kind === 'sample'
-        ? 'Sample'
-        : c.kind === 'variable'
-          ? 'Variables'
-          : c.kind === 'derived'
-            ? 'Derived'
-            : (group.template.populations[c.pop ?? '']?.name ?? 'Statistics');
-    const last = sections[sections.length - 1];
-    if (last?.title === title) last.cols.push(c);
-    else sections.push({ title, cols: [c] });
-  }
+  const toggle = (keys: string[], value: boolean) => set(toggleExportColumns(table, selected, keys, value));
+  const sections = exportColumnSections(table, group);
   const n = table.columns.filter((c) => on.has(c.key)).length;
   return (
     <div className="columns-menu">
@@ -859,27 +834,12 @@ export function StatsInspector() {
   if (!group) return null;
   const display = aggregated ?? perSample;
 
-  const valuesOf = (variableId: string): Cell[] => {
-    const seen = new Map<string, Cell>();
-    for (const r of perSample.rows) {
-      const v = r.values[`var:${variableId}`];
-      if (v !== undefined && v !== '') seen.set(JSON.stringify(v), v);
-    }
-    return [...seen.values()].sort((a, b) =>
-      typeof a === 'number' && typeof b === 'number'
-        ? a - b
-        : String(a).localeCompare(String(b), undefined, { numeric: true }),
-    );
-  };
+  const valuesOf = (variableId: string): Cell[] => distinctValues(perSample.rows, variableId);
 
   const exportTable = () => {
     const keys = exportKeys(display, !!aggregated, group.analysis.exportColumns);
     const kind = aggregated ? 'grouped' : 'samples';
-    download(
-      `${safeName(`${group.name}_statistics_${kind}`)}.csv`,
-      toCsv(tableRows(display, keys)),
-      'text/csv',
-    );
+    download(statsCsvName(group.name, kind), toCsv(tableRows(display, keys)), 'text/csv');
   };
 
   const exportStats = (kind: 'tidy' | 'wide') => {
@@ -888,23 +848,12 @@ export function StatsInspector() {
     const g = { ...group, sampleIds: shown };
     const cells = rows.flatMap((r) => (r.stale || !r.table ? [] : r.table.cells));
     const out = kind === 'tidy' ? tidyRows(ws, g, cells, APP_INFO.version) : wideRows(ws, g, cells);
-    download(`${safeName(`${group.name}_statistics_${kind}`)}.csv`, toCsv(out), 'text/csv');
+    download(statsCsvName(group.name, kind), toCsv(out), 'text/csv');
   };
 
   const exportGml = () => {
-    const ws = useStore.getState().ws;
-    download(
-      `${safeName(group.name)}_template.gating-ml.xml`,
-      exportGatingML(ws, group, { appVersion: APP_INFO.version }),
-      'application/xml',
-    );
-    const withOv = [...new Set(group.overrides.map((o) => o.sampleId))];
-    for (const sid of withOv)
-      download(
-        `${safeName(`${group.name}_${ws.samples[sid]?.fileName ?? sid}`)}_effective.gating-ml.xml`,
-        exportGatingML(ws, group, { appVersion: APP_INFO.version, sampleId: sid }),
-        'application/xml',
-      );
+    for (const f of gatingMlFiles(useStore.getState().ws, group, APP_INFO.version))
+      download(f.name, f.xml, 'application/xml');
   };
 
   const exportEvents = async (format: 'fcs' | 'csv', mode: 'raw' | 'compensated') => {
@@ -920,10 +869,7 @@ export function StatsInspector() {
       FLOWMERIS_POPULATION: path,
       FLOWMERIS_VALUES: mode === 'raw' ? 'linearised, uncompensated' : 'linearised, compensated',
     });
-    download(
-      `${safeName(`${stripDataExt(s.fileName)}_${group.template.populations[popId]?.name ?? 'population'}`)}.${format}`,
-      bytes,
-    );
+    download(eventsFileName(s.fileName, group.template.populations[popId]?.name, format), bytes);
   };
 
   const eventSample = useStore.getState().ws.samples[selectedSample ?? group.sampleIds[0] ?? ''];
@@ -1112,26 +1058,8 @@ export function StatsView() {
   if (!group) return <div className="empty">Select a group.</div>;
 
   // Header: sections (sample, variables, each population, derived) over short column labels.
-  const sections: { id: string; span: number }[] = [];
-  for (const c of display.columns) {
-    const id = sectionOf(c, byKey);
-    const last = sections[sections.length - 1];
-    if (last?.id === id) last.span++;
-    else sections.push({ id, span: 1 });
-  }
-  // Columns that get a left divider: the first of every section after the first.
-  const sectionStart = new Set<string>();
-  let colIdx = 0;
-  for (const sec of sections.slice(0, -1)) {
-    colIdx += sec.span;
-    sectionStart.add(display.columns[colIdx]!.key);
-  }
-  // A grouped table also divides the summaries (mean, SD, …) of different source columns.
-  if (aggregated)
-    display.columns.forEach((c, i) => {
-      const prev = display.columns[i - 1];
-      if (prev && c.source && c.source !== prev.source) sectionStart.add(c.key);
-    });
+  const sections = headerSections(display.columns, byKey);
+  const sectionStart = sectionStarts(display.columns, sections, !!aggregated);
   const sectionHead = (id: string) => {
     if (id.startsWith('pop:')) {
       const p = group.template.populations[id.slice(4)];
@@ -1151,42 +1079,10 @@ export function StatsView() {
     }
     return statByKey.get(c.key)?.label ?? c.label;
   };
-  const statOf = (c: ColumnDef): string | undefined =>
-    c.func === 'n'
-      ? 'n'
-      : c.func === 'cv'
-        ? 'cv'
-        : c.kind === 'variable'
-          ? 'value'
-          : statByKey.get(c.source ?? c.key)?.stat;
-  // Derived columns (and their replicate summaries) show their own significant figures; summaries of
-  // a sample variable (e.g. the mean dose of a group) the default ones.
   const derivedById = new Map(group.analysis.derived.map((d) => [d.id, d]));
-  const sigOf = (c: ColumnDef): number | undefined => {
-    const key = c.source ?? c.key;
-    if (byKey.get(key)?.kind === 'variable') return DEFAULT_SIG_FIGS;
-    if (!key.startsWith('derived:')) return undefined;
-    return derivedById.get(key.slice('derived:'.length))?.sigFigs ?? DEFAULT_SIG_FIGS;
-  };
-  // Longest fractional part of each column, so its decimal points line up.
-  const fracLen = new Map<string, number>();
-  for (const c of display.columns) {
-    if (c.type !== 'numeric') continue;
-    let n = 0;
-    for (const row of display.rows) {
-      const v = row.values[c.key];
-      if (typeof v === 'number') n = Math.max(n, fracDigits(fmt(v, statOf(c), sigOf(c))));
-    }
-    fracLen.set(c.key, n);
-  }
-
-  // Columns pinned on horizontal scroll: the sample name, or every column the replicates are combined by.
-  const nPin = aggregated
-    ? Math.max(
-        1,
-        display.columns.findIndex((c) => c.kind === 'aggregate'),
-      )
-    : 1;
+  const text = (c: ColumnDef, v: Cell) => fmt(v, statOf(c, statByKey), sigOf(c, byKey, derivedById));
+  const fracLen = fracLengths(display, text);
+  const nPin = pinnedCount(display.columns, !!aggregated);
   const pin = (i: number, cls?: string) =>
     i < nPin
       ? {
@@ -1299,7 +1195,7 @@ export function StatsView() {
                         title={aggregated ? undefined : samples[r.id]?.relativePath}
                         {...pin(i)}
                       >
-                        {fmt(r.values[c.key], statOf(c), sigOf(c))}
+                        {text(c, r.values[c.key])}
                         {!aggregated && overridden.has(r.id) && <span className="badge warn">override</span>}
                         {!aggregated && missing[r.id] && <span className="badge danger">missing</span>}
                       </th>
@@ -1316,7 +1212,7 @@ export function StatsView() {
                             .join(' ') || undefined,
                         )}
                       >
-                        {alignedNumber(fmt(r.values[c.key], statOf(c), sigOf(c)), fracLen.get(c.key) ?? 0)}
+                        {alignedNumber(text(c, r.values[c.key]), fracLen.get(c.key) ?? 0)}
                       </td>
                     ),
                   )}

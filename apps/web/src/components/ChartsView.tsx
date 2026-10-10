@@ -9,185 +9,30 @@ import {
   compareCells,
   summaryForPlot,
 } from '@flowmeris/table';
-import { formatLinear, formatPow10, niceLinearTicks } from '@flowmeris/transforms';
 import { useCallback, useId, useMemo, useRef, useState } from 'react';
+import { type Axis, barPath, makeAxis, validFix } from '../lib/chartAxis.ts';
 import { includedRows, visiblePoints } from '../lib/chartSelection.ts';
+import {
+  CHART_ERRORS,
+  CHART_KINDS,
+  cellText,
+  chartCsvRows,
+  columnGroups,
+  defaultPlot,
+  fmtChart,
+  orderSeries,
+  seriesColor,
+  seriesKey,
+} from '../lib/chartStyle.ts';
 import { download, safeName } from '../lib/download.ts';
 import { standaloneSvg } from '../lib/export/svg.ts';
 import { FONT_STACKS } from '../lib/figure.ts';
 import { useAnalysisTable } from '../state/hooks/stats.ts';
 import { toast, useGroup, useStore } from '../state/store.ts';
-import {
-  ChartInspector,
-  DEFAULT_CHART_STYLE,
-  orderSeries,
-  seriesColor,
-  seriesKey,
-} from './ChartInspector.tsx';
+import { ChartInspector } from './ChartInspector.tsx';
 import { useWidth } from './hooks/useWidth.ts';
 import { type Anchor, type PickOption, PickerMenu, pickerTrigger } from './ui/PickerMenu.tsx';
 import { SupLabel } from './ui/SupLabel.tsx';
-
-const ERRORS: { id: StatPlot['error']; label: string }[] = [
-  { id: 'none', label: 'None' },
-  { id: 'sd', label: 'SD' },
-  { id: 'sem', label: 'SEM' },
-  { id: 'ci95', label: '95% CI' },
-];
-
-const KINDS: { id: StatPlot['kind']; label: string }[] = [
-  { id: 'scatter', label: 'Scatter' },
-  { id: 'line', label: 'Line' },
-  { id: 'bar', label: 'Bar' },
-  { id: 'dot', label: 'Dot' },
-];
-
-function fmt(v: number): string {
-  if (!Number.isFinite(v)) return '—';
-  const a = Math.abs(v);
-  return a !== 0 && (a < 1e-3 || a >= 1e6) ? v.toExponential(3) : String(Number(v.toPrecision(5)));
-}
-
-const cellText = (x: Cell) => (typeof x === 'number' ? fmt(x) : String(x ?? ''));
-
-/** A sensible first chart: x = a numeric variable (else any), y = the first added statistic, series = a categorical variable. */
-function defaultPlot(columns: ColumnDef[], n: number): StatPlot {
-  const vars = columns.filter((c) => c.kind === 'variable');
-  const x =
-    vars.find((c) => c.type === 'numeric') ?? vars[0] ?? columns.find((c) => c.key === 'sample:name')!;
-  const stats = columns.filter((c) => c.kind === 'stat' || c.kind === 'derived');
-  const y =
-    stats.find((c) => c.kind === 'derived') ??
-    stats.find((c) => !c.key.endsWith('|count') && !c.key.endsWith('|pctParent')) ??
-    stats.find((c) => c.key.endsWith('|pctParent')) ??
-    stats[0]!;
-  const series = vars.find((c) => c.type === 'categorical' && c.key !== x.key);
-  return {
-    id: newId('sp_'),
-    name: `Chart ${n + 1}`,
-    kind: x.type === 'numeric' ? 'line' : 'bar',
-    x: x.key,
-    y: y.key,
-    ...(series ? { series: series.key.slice(4) } : {}),
-    xScale: 'linear',
-    yScale: 'linear',
-    error: 'sem',
-    showPoints: true,
-    hiddenPoints: [],
-    excludeRows: [],
-    style: structuredClone(DEFAULT_CHART_STYLE),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Scales
-// ---------------------------------------------------------------------------
-
-interface Axis {
-  /** Data value → px. */
-  map: (v: number) => number;
-  ticks: { pos: number; label: string; major: boolean }[];
-  lo: number;
-  hi: number;
-}
-
-/** User-fixed ends of an axis, in data units. */
-interface Fix {
-  min?: number;
-  max?: number;
-}
-
-function linearAxis(lo: number, hi: number, p0: number, p1: number, zero: boolean, fix: Fix): Axis {
-  let a = fix.min ?? (zero ? Math.min(0, lo) : lo);
-  let b = fix.max ?? (zero ? Math.max(0, hi) : hi);
-  if (!(b > a)) {
-    const d = Math.abs(fix.min ?? fix.max ?? a) * 0.1 || 1;
-    if (fix.min === undefined && fix.max === undefined) {
-      a -= d;
-      b += d;
-    } else if (fix.min === undefined) a = b - 2 * d;
-    else b = a + 2 * d;
-  }
-  const pad = (b - a) * 0.05;
-  if (fix.min === undefined && !(zero && a === 0)) a -= pad;
-  if (fix.max === undefined && !(zero && b === 0)) b += pad;
-  let t = niceLinearTicks(a, b, 6);
-  if (fix.min === undefined) a = Math.min(a, t[0]!);
-  if (fix.max === undefined) b = Math.max(b, t[t.length - 1]!);
-  const eps = (b - a) * 1e-9;
-  t = t.filter((v) => v >= a - eps && v <= b + eps);
-  const map = (v: number) => p0 + ((v - a) / (b - a)) * (p1 - p0);
-  return { map, lo: a, hi: b, ticks: t.map((v) => ({ pos: map(v), label: formatLinear(v), major: true })) };
-}
-
-function logAxis(lo: number, hi: number, p0: number, p1: number, fix: Fix): Axis {
-  let a = Math.log10(fix.min ?? lo);
-  let b = Math.log10(fix.max ?? hi);
-  if (!(b > a)) {
-    if (fix.min === undefined && fix.max === undefined) {
-      a -= 0.5;
-      b += 0.5;
-    } else if (fix.min === undefined) a = b - 1;
-    else b = a + 1;
-  }
-  const pad = (b - a) * 0.05;
-  if (fix.min === undefined) a -= pad;
-  if (fix.max === undefined) b += pad;
-  const map = (v: number) => p0 + ((Math.log10(v) - a) / (b - a)) * (p1 - p0);
-  const ticks: Axis['ticks'] = [];
-  const decades = b - a;
-  const eps = decades * 1e-9;
-  for (let k = Math.floor(a); k <= Math.ceil(b); k++)
-    for (let m = 1; m <= 9; m++) {
-      const v = m * 10 ** k;
-      const l = Math.log10(v);
-      if (l < a - eps || l > b + eps) continue;
-      const major = m === 1;
-      const label = major ? formatPow10(1, k) : decades < 1.5 && (m === 2 || m === 5) ? formatLinear(v) : '';
-      ticks.push({ pos: map(v), label, major });
-    }
-  if (!ticks.some((t) => t.label)) {
-    // Less than a decade with no 1/2/5 multiple inside: label the ends.
-    for (const v of [10 ** a, 10 ** b])
-      ticks.push({ pos: map(v), label: formatLinear(Number(v.toPrecision(2))), major: true });
-  }
-  return { map, lo: 10 ** a, hi: 10 ** b, ticks };
-}
-
-/** A fixed range that cannot be drawn (min ≥ max, or ≤ 0 on a log axis) is ignored. */
-function validFix(min: number | undefined, max: number | undefined, log: boolean): Fix {
-  const ok = (v: number | undefined) => v !== undefined && Number.isFinite(v) && (!log || v > 0);
-  if (ok(min) && ok(max) && !(max! > min!)) return {};
-  return { ...(ok(min) ? { min } : {}), ...(ok(max) ? { max } : {}) };
-}
-
-/** An axis over the data extent [lo, hi], with the user's range and custom ticks applied. */
-function makeAxis(
-  lo: number,
-  hi: number,
-  p0: number,
-  p1: number,
-  opts: { log: boolean; zero: boolean; fix: Fix; ticks: ChartStyle['xTicks'] },
-): Axis {
-  const axis = opts.log ? logAxis(lo, hi, p0, p1, opts.fix) : linearAxis(lo, hi, p0, p1, opts.zero, opts.fix);
-  if (!opts.ticks) return axis;
-  const [a, b] = [Math.min(axis.lo, axis.hi), Math.max(axis.lo, axis.hi)];
-  const eps = (b - a) * 1e-9;
-  axis.ticks = opts.ticks
-    .filter((t) => t.value >= a - eps && t.value <= b + eps && (!opts.log || t.value > 0))
-    .map((t) => ({ pos: axis.map(t.value), label: t.label ?? formatLinear(t.value), major: true }));
-  return axis;
-}
-
-/** Bar path with a rounded data end (r px) and a square baseline end. */
-function barPath(x: number, w: number, yBase: number, yVal: number, r: number): string {
-  const up = yVal < yBase;
-  const h = Math.abs(yBase - yVal);
-  const rr = Math.min(r, w / 2, h);
-  if (up)
-    return `M${x},${yBase}V${yVal + rr}Q${x},${yVal} ${x + rr},${yVal}H${x + w - rr}Q${x + w},${yVal} ${x + w},${yVal + rr}V${yBase}Z`;
-  return `M${x},${yBase}V${yVal - rr}Q${x},${yVal} ${x + rr},${yVal}H${x + w - rr}Q${x + w},${yVal} ${x + w},${yVal - rr}V${yBase}Z`;
-}
 
 // ---------------------------------------------------------------------------
 // Chart
@@ -598,11 +443,11 @@ function Chart(props: {
           </div>
           <div>
             {plot.error === 'none' || !Number.isFinite(hover.point.err) ? (
-              <>mean {fmt(hover.point.mean)}</>
+              <>mean {fmtChart(hover.point.mean)}</>
             ) : (
               <>
-                mean {fmt(hover.point.mean)} ± {fmt(hover.point.err)} (
-                {ERRORS.find((e) => e.id === plot.error)?.label})
+                mean {fmtChart(hover.point.mean)} ± {fmtChart(hover.point.err)} (
+                {CHART_ERRORS.find((e) => e.id === plot.error)?.label})
               </>
             )}
           </div>
@@ -637,15 +482,6 @@ function svgToPng(svg: string, w: number, h: number, scale: number): Promise<Blo
     img.onerror = () => reject(new Error('Could not render the SVG'));
     img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   });
-}
-
-/** Columns under the headings the axis pickers list them by. */
-function columnGroups(columns: ColumnDef[]): { title: string; cols: ColumnDef[] }[] {
-  return [
-    { title: 'Variables', cols: columns.filter((c) => c.kind === 'variable' || c.kind === 'sample') },
-    { title: 'Statistics', cols: columns.filter((c) => c.kind === 'stat') },
-    { title: 'Derived', cols: columns.filter((c) => c.kind === 'derived') },
-  ].filter((g) => g.cols.length);
 }
 
 function columnOptions(columns: ColumnDef[]): PickOption[] {
@@ -788,25 +624,14 @@ export function ChartsView() {
       toast(`PNG export failed: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
-  const errLabel = ERRORS.find((e) => e.id === plot.error)!.label;
+  const errLabel = CHART_ERRORS.find((e) => e.id === plot.error)!.label;
   const exportCsv = () => {
-    const header = [
-      ...(seriesLabel ? [seriesLabel] : []),
-      xCol?.label ?? plot.x,
-      `${yCol?.label ?? plot.y} (mean)`,
-      ...(plot.error !== 'none' ? [`${errLabel}`] : []),
-      'n',
-    ];
-    const rows = summary.flatMap((s) =>
-      s.points.map((p) => [
-        ...(seriesLabel ? [plot.style.seriesLabels[seriesKey(s.key)] ?? s.key ?? ''] : []),
-        p.x,
-        p.mean,
-        ...(plot.error !== 'none' ? [p.err] : []),
-        p.n,
-      ]),
-    );
-    download(`${safeName(`${group.name}_${plot.name}`)}_data.csv`, toCsv([header, ...rows]), 'text/csv');
+    const rows = chartCsvRows(plot, summary, {
+      series: seriesLabel,
+      x: xCol?.label ?? plot.x,
+      y: yCol?.label ?? plot.y,
+    });
+    download(`${safeName(`${group.name}_${plot.name}`)}_data.csv`, toCsv(rows), 'text/csv');
   };
 
   const style: ChartStyle = plot.style;
@@ -826,7 +651,7 @@ export function ChartsView() {
             />
           </label>
           <div className="seg">
-            {KINDS.map((k) => (
+            {CHART_KINDS.map((k) => (
               <button
                 key={k.id}
                 type="button"
@@ -908,7 +733,7 @@ export function ChartsView() {
                 edit('Change chart error bars', (p) => void (p.error = e.target.value as StatPlot['error']))
               }
             >
-              {ERRORS.map((e) => (
+              {CHART_ERRORS.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.label}
                 </option>
@@ -1011,10 +836,10 @@ export function ChartsView() {
                         </td>
                       )}
                       <td className={typeof p.x === 'number' ? undefined : 'text-cell'}>{cellText(p.x)}</td>
-                      <td>{fmt(p.mean)}</td>
-                      {plot.error !== 'none' && <td>{fmt(p.err)}</td>}
+                      <td>{fmtChart(p.mean)}</td>
+                      {plot.error !== 'none' && <td>{fmtChart(p.err)}</td>}
                       <td>{p.n}</td>
-                      <td className="muted small text-cell">{p.values.map(fmt).join(', ')}</td>
+                      <td className="muted small text-cell">{p.values.map(fmtChart).join(', ')}</td>
                     </tr>
                   )),
                 )}
