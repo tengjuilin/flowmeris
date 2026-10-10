@@ -68,9 +68,9 @@ package name, never by a path into another package's `src/`. `pnpm lint:deps` en
   needs a new ADR.
 - **Refactors do not change behaviour.** A behaviour change, even a fix found while refactoring, goes
   in its own commit with a test that shows it.
-- **File size.** Keep `.ts`/`.tsx` files under 500 lines and split them by responsibility. Files in
-  `tools/size-allowlist.json` predate the limit: they may shrink but not grow. After shrinking one, run
-  `node tools/check-size.mjs --tighten`.
+- **File size.** Keep `.ts`/`.tsx` files under 500 lines and split them by responsibility.
+  `tools/size-allowlist.json` would list files over the limit (empty now). Do not add to it: split the
+  file instead.
 - **Known boundary violations** would be listed in `.dependency-cruiser-known-violations.json` (empty
   now). Do not add to it: fix the import instead.
 - **Style.** Biome (`biome.json`): 2 spaces, single quotes, line width 110. Imports carry their `.ts`

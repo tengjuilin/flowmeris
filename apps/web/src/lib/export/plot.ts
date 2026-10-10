@@ -1,6 +1,7 @@
 import type { RasterResponse } from '@flowmeris/engine';
 import type { PlotSpec, Transform } from '@flowmeris/model';
-import { download, encodePngCompressed, safeName } from '../download.ts';
+import { encodePngCompressed } from '@flowmeris/render';
+import { download, safeName } from '../download.ts';
 import { stripDataExt } from '../files.ts';
 import { exportSvgFigure } from './figure.ts';
 import { type ImageFormat, bytesToBase64, inlineStyles } from './svg.ts';

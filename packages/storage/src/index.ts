@@ -1,4 +1,4 @@
-import type { SampleData, StorageAdapter } from '@flowmeris/engine';
+import type { SampleData, StorageAdapter } from '@flowmeris/model';
 
 /**
  * Origin Private File System storage for decoded sample columns (browser only).

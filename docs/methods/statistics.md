@@ -1,6 +1,6 @@
 # Statistics
 
-Implementation: `packages/stats`, `packages/engine` (`stats()`). Tests: `packages/stats/src/stats.test.ts`.
+Implementation: `packages/stats` (`summary.ts`, `percentile.ts`, `tdist.ts`), `packages/engine` (`handlers/stats.ts`). Tests: `packages/stats/src/stats.test.ts`.
 
 Statistics are computed on the events of a population, by default in **linear, compensated** units
 (the group's compensation setting). NaN values are excluded and counted in `n_excluded`.

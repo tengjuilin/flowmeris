@@ -1,3 +1,7 @@
+import type { ChannelScaling } from '@flowmeris/model';
+
+export type { ChannelScaling };
+
 export type FcsDataType = 'I' | 'F' | 'D' | 'A';
 export type ChannelKind = 'scatter' | 'fluor' | 'time' | 'other';
 
@@ -15,20 +19,6 @@ export interface FcsHeader {
   dataEnd: number;
   analysisStart: number;
   analysisEnd: number;
-}
-
-/** How stored channel values map to linear data values (M-FCS-LIN). */
-export interface ChannelScaling {
-  /** $PnE f1 (decades); 0 = linear. */
-  logDecades: number;
-  /** $PnE f2 (value at channel 0); 1.0 substituted when f1>0 and f2=0 (Q-PNE-ZERO-F2). */
-  logOffset: number;
-  /** $PnR. */
-  range: number;
-  /** Divisor applied after log decoding ($PnG, or 1). Forced to 1 for the time channel. */
-  gain: number;
-  /** Multiplier applied to the time channel ($TIMESTEP), else 1. */
-  timestep: number;
 }
 
 export interface FcsChannel {

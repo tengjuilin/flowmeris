@@ -1,7 +1,8 @@
+import { inflateSync } from 'node:zlib';
 import { sha256Hex } from '@flowmeris/model';
 import { Rng, TOL, compareArrays, readGolden } from '@flowmeris/testkit';
 import { describe, expect, it } from 'vitest';
-import { colormapLut, encodePng, histogram, raster2d } from './index.ts';
+import { colormapLut, encodePng, encodePngCompressed, histogram, pngScanlines, raster2d } from './index.ts';
 
 const style = {
   colormap: 'viridis',
@@ -80,6 +81,17 @@ describe('histogram & colormaps & PNG', () => {
     const png = encodePng(new Uint8ClampedArray(4 * 4 * 4).fill(200), 4, 4, 300);
     expect(Array.from(png.slice(0, 8))).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     expect(new TextDecoder().decode(png.slice(37, 41))).toBe('pHYs');
+  });
+  it('compresses the same scanlines with native deflate', async () => {
+    const rgba = Uint8ClampedArray.from({ length: 5 * 3 * 4 }, (_, i) => (i % 4) * 60);
+    const plain = encodePng(rgba, 5, 3, 600);
+    const png = await encodePngCompressed(rgba, 5, 3, 600);
+    // Same signature, IHDR and pHYs; only the IDAT chunk differs.
+    expect(png.slice(0, 54)).toEqual(plain.slice(0, 54));
+    const idatLen = new DataView(png.buffer, png.byteOffset).getUint32(54);
+    expect(new TextDecoder().decode(png.slice(58, 62))).toBe('IDAT');
+    expect(new Uint8Array(inflateSync(png.slice(62, 62 + idatLen)))).toEqual(pngScanlines(rgba, 5, 3));
+    expect(idatLen).toBeLessThan(new DataView(plain.buffer, plain.byteOffset).getUint32(54));
   });
 });
 
