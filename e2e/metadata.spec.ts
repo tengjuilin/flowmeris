@@ -28,7 +28,9 @@ test('sample variables from a CSV, replicate means, and a chart', async ({ page 
         buffer: fcs(m),
       })),
     );
-  await expect(page.getByText('All events')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'All events', exact: true })).toBeVisible({
+    timeout: 20_000,
+  });
 
   // Wells are read from the file names; import the design keyed by well.
   await page.getByRole('tab', { name: 'Metadata' }).click();

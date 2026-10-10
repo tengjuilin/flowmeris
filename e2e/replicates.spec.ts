@@ -27,7 +27,9 @@ test('choosing which grouped replicates the ridge plot and charts show', async (
         buffer: fcs(m),
       })),
     );
-  await expect(page.getByText('All events')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'All events', exact: true })).toBeVisible({
+    timeout: 20_000,
+  });
   await page.getByRole('tab', { name: 'Metadata' }).click();
   await page.getByTestId('meta-input').setInputFiles({
     name: 'design.csv',
@@ -104,7 +106,9 @@ test('ridge replicate settings follow the population unless switched off', async
         buffer: fcs(m),
       })),
     );
-  await expect(page.getByText('All events')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'All events', exact: true })).toBeVisible({
+    timeout: 20_000,
+  });
   await page.getByRole('tab', { name: 'Metadata' }).click();
   await page.getByTestId('meta-input').setInputFiles({
     name: 'design.csv',

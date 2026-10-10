@@ -21,7 +21,9 @@ test('ingest an FCS file, draw a gate, see statistics', async ({ page }) => {
     .getByTestId('file-input')
     .first()
     .setInputFiles([fixture('flowkit/gate_ref/data1.fcs')]);
-  await expect(page.getByText('All events')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'All events', exact: true })).toBeVisible({
+    timeout: 20_000,
+  });
   await expect(page.getByText('13,367').first()).toBeVisible();
 
   // Axes SSC-H × FL1-H (linear, T = $PnR = 1024), as in the ISAC "Rectangle1" compliance gate.
@@ -72,7 +74,9 @@ test('gating path shows each step and backgating for one sample', async ({ page 
     .getByTestId('file-input')
     .first()
     .setInputFiles([fixture('flowkit/gate_ref/data1.fcs')]);
-  await expect(page.getByText('All events')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'All events', exact: true })).toBeVisible({
+    timeout: 20_000,
+  });
 
   await page.getByRole('button', { name: 'Rectangle' }).click();
   const svg = page.locator('svg.plot-overlay');
@@ -104,7 +108,9 @@ test('a gate label can be dragged off the events and put back', async ({ page })
     .getByTestId('file-input')
     .first()
     .setInputFiles([fixture('flowkit/gate_ref/data1.fcs')]);
-  await expect(page.getByText('All events')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'All events', exact: true })).toBeVisible({
+    timeout: 20_000,
+  });
 
   await page.getByRole('button', { name: 'Rectangle' }).click();
   const svg = page.locator('svg.plot-overlay');
@@ -163,7 +169,9 @@ test('histogram: y axis picked on its title; a bisector splits the events in two
     .getByTestId('file-input')
     .first()
     .setInputFiles([fixture('flowkit/gate_ref/data1.fcs')]);
-  await expect(page.getByText('All events')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'All events', exact: true })).toBeVisible({
+    timeout: 20_000,
+  });
 
   // FSC-H on a linear axis (flin, T = $PnR = 1024), as in the ISAC "Range1" compliance gate (FSC-H ≥ 100).
   await page.getByLabel('Plot type').selectOption('histogram');

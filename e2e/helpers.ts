@@ -29,7 +29,9 @@ export async function loadWells(page: Page, medians: Record<string, number>) {
         buffer: fcs(m),
       })),
     );
-  await expect(page.getByText('All events')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'All events', exact: true })).toBeVisible({
+    timeout: 20_000,
+  });
 }
 
 /** Import sample variables from a CSV keyed by well (in the Metadata tab). */

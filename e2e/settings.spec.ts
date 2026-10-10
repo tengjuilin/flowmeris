@@ -11,7 +11,9 @@ async function open(page: Page) {
     .getByTestId('file-input')
     .first()
     .setInputFiles([fixture('flowkit/gate_ref/data1.fcs')]);
-  await expect(page.getByText('All events')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'All events', exact: true })).toBeVisible({
+    timeout: 20_000,
+  });
   // A child population, so there are two populations to move between.
   const b = (await page.locator('svg.plot-overlay').boundingBox())!;
   await page.getByRole('button', { name: 'Rectangle' }).click();
