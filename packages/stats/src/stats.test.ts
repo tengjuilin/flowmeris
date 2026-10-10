@@ -133,7 +133,13 @@ describe('M-STAT definitions', () => {
             return percentileSorted(sorted, p!);
           };
           const got = summarize(xs, reqs);
-          reqs.forEach((r, i) => expect(got[i]!.value + 0).toBe(want(r.stat, r.p) + 0));
+          reqs.forEach((r, i) => {
+            const w = want(r.stat, r.p);
+            // A median of zero gives an infinite RCV whose sign follows the zero's (-0 or 0), which
+            // depends on which of equal values a sort or selection lands on: only |RCV| is defined.
+            if (r.stat === 'rcv' && !Number.isFinite(w)) expect(Math.abs(got[i]!.value)).toBe(Math.abs(w));
+            else expect(got[i]!.value + 0).toBe(w + 0);
+          });
           // Many ranks: the full-sort path.
           const ps = Array.from({ length: 40 }, (_, k) => k * 2.5);
           const many = summarize(
@@ -144,6 +150,8 @@ describe('M-STAT definitions', () => {
           ps.forEach((p, i) => expect(many[i]!.value + 0).toBe(want('percentile', p) + 0));
         },
       ),
+      // Zero medians of either sign, found by earlier runs.
+      { examples: [[[0, -0, -1]], [[0, 0, -0, 5e-324, 1, 0, 0, 1, 0]]] },
     );
   });
   it('selection matches a full sort on large inputs (random, ties, presorted)', () => {

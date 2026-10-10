@@ -4,10 +4,15 @@ import type { Cell } from '@flowmeris/table';
 
 /** Colours: of populations, of sample-variable values, and text readable on them. */
 
-/** Next population colour: categorical palette in fixed order (dataviz rule: never cycled). */
+/**
+ * Next population colour: the first categorical palette colour no population of the group uses, so a
+ * deleted population's colour is reused first; once all are used, the palette cycles by count.
+ */
 export function nextColor(g: Group): string {
-  const used = Object.keys(g.template.populations).length - 1;
-  return CATEGORICAL[Math.min(used, CATEGORICAL.length - 1)]!;
+  const pops = Object.values(g.template.populations);
+  const used = new Set(pops.map((p) => p.color.toLowerCase()));
+  const free = CATEGORICAL.find((c) => !used.has(c.toLowerCase()));
+  return free ?? CATEGORICAL[(pops.length - 1) % CATEGORICAL.length]!;
 }
 
 /** Colour of each value of a variable: palette slots for categories, a viridis ramp (log when wide and positive) for numbers. */

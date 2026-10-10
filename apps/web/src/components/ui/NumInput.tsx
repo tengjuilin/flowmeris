@@ -2,7 +2,9 @@ import { useState } from 'react';
 
 /**
  * A labelled number field. Typing edits a draft; the value is committed on blur or Enter (or while
- * typing, with `live`), and text that is not a finite number is dropped.
+ * typing, with `live`). An empty field, or text that is not a finite number (the browser empties a number
+ * field holding text), commits nothing and shows the value from before the edit again; with `live`, that
+ * value is committed again if typing changed it.
  */
 export function NumInput({
   value,
@@ -20,25 +22,27 @@ export function NumInput({
   /** Also commit while typing, so what the input drives updates live. */
   live?: boolean;
 }) {
-  const [text, setText] = useState<string | null>(null);
+  // The text being typed, and the value when typing started.
+  const [draft, setDraft] = useState<{ text: string; start: number } | null>(null);
+  const parse = (text: string) => (text.trim() === '' ? Number.NaN : Number(text));
   return (
     <label className="field" title={title}>
       {label}
       <input
         type="number"
         step={step ?? 'any'}
-        value={text ?? String(Number(value.toPrecision(8)))}
+        value={draft?.text ?? String(Number(value.toPrecision(8)))}
         onChange={(e) => {
-          setText(e.target.value);
-          const v = Number(e.target.value);
-          if (live && e.target.value.trim() !== '' && Number.isFinite(v)) onCommit(v);
+          setDraft({ text: e.target.value, start: draft?.start ?? value });
+          const v = parse(e.target.value);
+          if (live && Number.isFinite(v)) onCommit(v);
         }}
         onBlur={() => {
-          if (text !== null) {
-            const v = Number(text);
-            if (Number.isFinite(v)) onCommit(v);
-            setText(null);
-          }
+          if (draft === null) return;
+          const v = parse(draft.text);
+          if (Number.isFinite(v)) onCommit(v);
+          else if (live && value !== draft.start) onCommit(draft.start);
+          setDraft(null);
         }}
         onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
       />

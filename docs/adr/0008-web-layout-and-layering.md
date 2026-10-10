@@ -1,6 +1,6 @@
 # ADR-0008 Web app layout and import layering
 
-**Status.** Proposed. It is being adopted in phases (`lib/` is pure, `state/` and `app/` checked since P2; `features/plot` and `features/gate` since P3b, `features/ridge` and `features/tiles` since P3c, `features/stats` and `features/charts` since P3d, and every other view since P3e, leaving `components/` with only the shared `ui/`, `controls/` and `hooks/`); [`apps/web/CLAUDE.md`](https://github.com/tengjuilin/flowmeris/blob/main/apps/web/CLAUDE.md) shows the current layout.
+**Status.** Accepted. Adopted in phases P2 to P4 of the 2026 refactor; `pnpm lint:deps` and `pnpm lint:size` enforce it, and neither has known violations or allowlisted files. [`apps/web/CLAUDE.md`](https://github.com/tengjuilin/flowmeris/blob/main/apps/web/CLAUDE.md) shows the current layout.
 
 **Decision.** `apps/web/src` is organised in layers, and imports only point down:
 
@@ -18,7 +18,7 @@ feature's CSS file is imported by `styles/index.css` in cascade order rather tha
 
 Packages never import `apps/`. A package imports only the workspace packages declared in its
 `package.json`, and only through their entry points. Source files are capped at 500 lines; files that were
-larger when the cap was introduced are allowlisted and may only shrink.
+larger when the cap was introduced were allowlisted and could only shrink (all were split by P4).
 
 **Why.** Coding agents (and people) change one feature at a time. When a feature lives in one folder,
 logic is pure and tested, and boundaries are checked by `pnpm lint:deps` and `pnpm lint:size`, the
