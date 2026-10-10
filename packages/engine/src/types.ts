@@ -1,27 +1,14 @@
-import type { ChannelScaling } from '@flowmeris/fcs';
-import type { CompMatrix, Gate, Group, PlotSpec, Region, StatSpec, Transform } from '@flowmeris/model';
-
-/** Event data for one dataset of one FCS file, as held by a worker. */
-export interface SampleData {
-  sampleId: string;
-  sha256: string;
-  datasetIndex: number;
-  eventCount: number;
-  channels: { pnn: string; scaling: ChannelScaling }[];
-  /**
-   * Stored (pre-linearisation) columns. A column may be null until it is first
-   * needed when the sample was opened lazily (see `loadColumn`).
-   */
-  columns: (Float32Array | Float64Array | null)[];
-  keywords: Record<string, string>;
-  /** Reads one stored column; present when `columns` may hold unloaded (null) entries. */
-  loadColumn?: (ci: number) => Promise<Float32Array | Float64Array>;
-}
-
-/** Where a worker obtains sample data (OPFS in the browser, memory in tests). */
-export interface StorageAdapter {
-  loadSample(sampleId: string): Promise<SampleData>;
-}
+import type {
+  CompMatrix,
+  Gate,
+  Group,
+  PlotSpec,
+  Region,
+  SampleData,
+  StatSpec,
+  StorageAdapter,
+  Transform,
+} from '@flowmeris/model';
 
 /**
  * The slice of the workspace a computation needs. Sent with every request so
@@ -86,4 +73,4 @@ export interface GatePreviewResponse {
   regions: Partial<Record<Region, number>>;
 }
 
-export type { StatSpec };
+export type { SampleData, StatSpec, StorageAdapter };

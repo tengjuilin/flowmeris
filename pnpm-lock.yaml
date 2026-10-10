@@ -203,6 +203,10 @@ importers:
         version: link:../testkit
 
   packages/fcs:
+    dependencies:
+      '@flowmeris/model':
+        specifier: workspace:*
+        version: link:../model
     devDependencies:
       '@flowmeris/testkit':
         specifier: workspace:*
@@ -285,9 +289,6 @@ importers:
 
   packages/storage:
     dependencies:
-      '@flowmeris/engine':
-        specifier: workspace:*
-        version: link:../engine
       '@flowmeris/model':
         specifier: workspace:*
         version: link:../model

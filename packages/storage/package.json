@@ -8,7 +8,6 @@
   },
   "sideEffects": false,
   "dependencies": {
-    "@flowmeris/engine": "workspace:*",
     "@flowmeris/model": "workspace:*"
   },
   "devDependencies": {}
