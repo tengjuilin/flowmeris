@@ -90,18 +90,21 @@ export function openInGateView(group: Group, cell: PlotCell, sampleId: string | 
   });
 }
 
-/** Whether `plot` has `cell`'s type and axes (channel, compensation, scale and range); a histogram's y is ignored. */
+/**
+ * Whether `plot` has `cell`'s type and axes: the x and y channel, compensation, scale and range, or for a
+ * histogram the x axis and what its y axis shows (`histNorm`).
+ */
 function sameTypeAndAxes(plot: PlotSpec, cell: PlotCell): boolean {
   return (
     plot.kind === cell.kind &&
     sameJson(plot.x, cell.x) &&
-    (cell.kind === 'histogram' || sameJson(plot.y, cell.y))
+    (cell.kind === 'histogram' ? plot.style.histNorm === cell.style.histNorm : sameJson(plot.y, cell.y))
   );
 }
 
 /**
  * Open a cell in the Tiles view: its population, with its sample selected (highlighted), and the
- * population's Tiles plot set to the cell's type and axes. That is one undo step, and none when the Tiles
+ * population's Tiles plot set to the cell's type and axes (`sameTypeAndAxes`). That is one undo step, and none when the Tiles
  * plot already matches. The Tiles plot keeps its own appearance. A sample unchecked in the sidebar has no
  * tile; a toast says to check it, naming the sample `name`.
  */
@@ -116,6 +119,8 @@ export function openInTilesView(group: Group, cell: PlotCell, sampleId: string |
         p.x = { ...cell.x };
         if (cell.kind !== 'histogram' && cell.y) p.y = { ...cell.y };
       });
+      // After the axes change, which may restore the settings saved for the new channel pair.
+      if (cell.kind === 'histogram') p.style.histNorm = cell.style.histNorm;
     });
   }
   useStore.getState().setUi({

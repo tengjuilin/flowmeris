@@ -135,15 +135,24 @@ test('plot grid: open a plot in Tiles with its sample, type and axes', async ({ 
   await cell.locator('.cell-sample').click();
   await page.getByRole('dialog').getByText('A02', { exact: true }).click();
   await expect(cell.locator('.cell-sample')).toHaveText('A02');
+  // By keyboard: WebKit misplaces the hit box of rotated SVG text.
+  await cell.getByRole('button', { name: /^Y axis: % of max/ }).press('Enter');
+  await page
+    .getByRole('dialog', { name: 'Y axis shows' })
+    .getByRole('button', { name: /^Count/ })
+    .click();
+  await expect(cell.locator('text.axis-title', { hasText: /^Count$/ })).toBeVisible();
   const xTitle = await cell.locator('text.axis-title').first().textContent();
 
-  // Tiles: the plot's sample is highlighted and every tile is a histogram on the same x axis.
+  // Tiles: the plot's sample is highlighted and every tile is a histogram on the same x and y axes.
   await cell.getByRole('button', { name: 'Open this plot in the Tiles view' }).click();
   await expect(tab(page, 'Tiles')).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('.tiles-grid .tile')).toHaveCount(3);
   await expect(page.locator('.tiles-grid .tile.on .tile-title')).toContainText('A02');
   for (const t of await page.locator('.tiles-grid .tile').all()) {
-    await expect(t.getByRole('button', { name: /^Y axis: .*Change what the y axis shows/ })).toBeVisible();
+    await expect(
+      t.getByRole('button', { name: /^Y axis: Count\. Change what the y axis shows/ }),
+    ).toBeVisible();
     await expect(t.locator('text.axis-title').first()).toHaveText(xTitle!);
   }
 

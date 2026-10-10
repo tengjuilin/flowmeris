@@ -74,9 +74,9 @@ of empty cells, and is saved with the group in the workspace.
   (or set the sample back to *Follow selected*).
 - **Export**, next to **Edit template** / **This sample only**, saves the selected plot as PDF, PNG, JPG or SVG.
 - **Gate** and **Tiles** in a plot's title open it in that view. **Tiles** opens the plot's population with
-  its sample highlighted, and sets the Tiles plot type and axes (channels, scales and ranges) to the plot's
-  (one undo step); the tiles keep their own appearance. If the sample is unchecked in the sidebar, a message
-  asks you to check it to see its tile.
+  its sample highlighted, and sets the Tiles plot type and axes (channels, scales and ranges; for a
+  histogram, what its y axis shows) to the plot's (one undo step); the tiles keep their own appearance. If
+  the sample is unchecked in the sidebar, a message asks you to check it to see its tile.
 - **Delete** (or Backspace) removes the selected plot, unless a gate is selected (that removes the gate).
 - Deleting a gate moves plots of its populations back to the gate's parent population.
 

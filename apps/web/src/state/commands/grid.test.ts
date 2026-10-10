@@ -102,6 +102,19 @@ describe('grid commands', () => {
     expect(g().tilePlots.find((p) => p.population === 'root')?.kind).toBe('pseudocolor');
   });
 
+  it('open a histogram in Tiles with what its y axis shows', () => {
+    addCell('g', 0, 'histogram', 'root', ['SSC-A']);
+    const id = g().grid.cells[0]!.id;
+    editCell('g', id, 'Y axis', (c) => void (c.style.histNorm = 'area'));
+    S().mutate('Tiles plot', (w) => void newTilePlot(w, w.groups[0]!, 'root'));
+    openInTilesView(g(), g().grid.cells[0]!, 'a');
+    expect(g().tilePlots.find((p) => p.population === 'root')?.style.histNorm).toBe('area');
+    // A different y axis on the same channel is a change too.
+    editCell('g', id, 'Y axis', (c) => void (c.style.histNorm = 'count'));
+    openInTilesView(g(), g().grid.cells[0]!, 'a');
+    expect(g().tilePlots.find((p) => p.population === 'root')?.style.histNorm).toBe('count');
+  });
+
   it('open a plot in Tiles whose sample is unchecked: select it and say to check it', () => {
     addCell('g', 0, 'dot', 'root');
     S().setUi({ excluded: { b: true } });
