@@ -33,7 +33,7 @@ Every package except `model` and `testkit` may use `testkit` in its tests.
   `pnpm lint:deps` fails otherwise. Packages used only in tests go under `devDependencies`.
 - Numerical code uses float64 (ADR-0002) and follows its method definition in `docs/methods`. Cite the
   method ID in the doc comment.
-- Changing a kernel's results means bumping `KERNEL_VERSION` in `engine/src/engine.ts`, so cached results
+- Changing a kernel's results means bumping `KERNEL_VERSION` in `engine/src/keys.ts`, so cached results
   are not reused (ADR-0004).
 - Known structure debt, to be split by section: `model/src/schema.ts`, `engine/src/engine.ts`,
   `fcs/src/parse.ts`, `render/src/index.ts` and `stats/src/index.ts`. `storage` depends on `engine` only
