@@ -1,6 +1,6 @@
 # FCS parsing
 
-Implementation: `packages/fcs` (`parse.ts`, `linearize.ts`, `write.ts`). Tests: `packages/fcs/src/fcs.test.ts`.
+Implementation: `packages/fcs` (`parse.ts` with `header.ts`, `text.ts`, `dataset.ts` and `data.ts`; `linearize.ts`, `write.ts`). Tests: `packages/fcs/src/fcs.test.ts`.
 
 Flowmeris reads FCS 2.0, 3.0, 3.1 and 3.2 files (Spidlen et al. 2010, 2021), including files with
 several datasets chained by `$NEXTDATA`. Each dataset becomes one *sample*.
