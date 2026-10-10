@@ -87,8 +87,8 @@ of empty cells, and is saved with the group in the workspace.
   marks the side), it goes before or after that plot, and the slots in between shift by one to make room.
   Dropped on an empty slot, it moves there and leaves its old slot empty. Each move is one undo step.
 - **⌘C** / **⌘X** (Ctrl+C / Ctrl+X on Windows and Linux) copy or cut the selected plot, and **⌘V** pastes it
-  into the selected slot. Click an empty slot to select it; pasting onto a selected plot replaces that
-  plot. A copy is pasted as the plot was when copied, and can be pasted again. A cut plot is dashed until
+  into the selected slot. Click an empty slot to select it (the gating tools, edit scope and Export are
+  greyed out while it is); pasting onto a selected plot replaces that plot. A copy is pasted as the plot was when copied, and can be pasted again. A cut plot is dashed until
   you paste it, then it moves, leaving its slot empty; **Esc** cancels the cut. Plots paste within their
   group.
 - Deleting a gate moves plots of its populations back to the gate's parent population.

@@ -62,6 +62,8 @@ export function PlotGridView() {
         : Math.max(MIN_COLUMNS, Math.min(maxColumns, group.grid.columns));
   const active = cells.find((c) => c?.id === ui.gridCellId) ?? null;
   const clip = ui.gridClip?.groupId === group.id ? ui.gridClip : null;
+  // The tools act on the selected plot: greyed out while an empty slot is selected instead.
+  const emptySelected = !active && ui.gridSlot !== null && !cells[ui.gridSlot];
   const activeSample = active ? cellSample(group, active, ui.sampleId) : undefined;
   const { gap } = GRID_ROW;
   const cellW = width > 0 ? sizeFor(columns) : 0;
@@ -86,10 +88,11 @@ export function PlotGridView() {
     <div className="grid-view">
       <div className="grid-head">
         <div className="toolbar" role="toolbar" aria-label="Gating tools">
-          <ToolButtons is1d={active?.kind === 'histogram'} />
-          <EditScopeToggle />
+          <ToolButtons is1d={active?.kind === 'histogram'} disabled={emptySelected} />
+          <EditScopeToggle disabled={emptySelected} />
           <ExportMenu
             className="side-export"
+            disabled={emptySelected}
             onExport={(format, dpi) =>
               !active || !handle.current
                 ? void toast('Select a plot to export it.')
@@ -166,7 +169,7 @@ export function PlotGridView() {
             <div
               key={`empty${i}`}
               {...drag.target(i)}
-              className={`grid-cell empty-cell${!active && ui.gridSlot === i ? ' on' : ''}${drag.dragClass(i)}`}
+              className={`grid-cell empty-cell${emptySelected && ui.gridSlot === i ? ' on' : ''}${drag.dragClass(i)}`}
               style={{ height: cellW || undefined }}
               aria-label={`Empty slot ${i + 1}`}
               onPointerDown={() => setUi({ gridCellId: null, gridSlot: i })}

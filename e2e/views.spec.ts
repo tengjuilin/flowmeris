@@ -179,11 +179,17 @@ test('plot grid: drag plots to rearrange them; cut, copy and paste them', async 
   const empty = page.locator('.plot-grid .empty-cell').first();
   await empty.locator('.muted').click();
   await expect(page.locator('.plot-grid .empty-cell.on')).toHaveCount(1);
+  // With an empty slot selected, the tools that act on a plot are greyed out.
+  const toolbar = page.locator('.grid-view').getByRole('toolbar', { name: 'Gating tools' });
+  for (const name of ['Rectangle', 'Edit template', 'Export'])
+    await expect(toolbar.getByRole('button', { name, exact: true })).toBeDisabled();
   await page.keyboard.press('ControlOrMeta+v');
   await expect.poll(samples).toEqual(['A01', 'A02', 'B01', 'A01']);
 
   // Cut A02 (dashed until pasted), then paste over the first plot: it moves there, replacing it.
   await select(1);
+  for (const name of ['Rectangle', 'Edit template', 'Export'])
+    await expect(toolbar.getByRole('button', { name, exact: true })).toBeEnabled();
   await page.keyboard.press('ControlOrMeta+x');
   await expect(cells.nth(1)).toHaveClass(/\bcut\b/);
   await select(0);

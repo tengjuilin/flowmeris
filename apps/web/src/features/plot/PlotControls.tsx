@@ -223,8 +223,11 @@ export function AxisSelects({ group, plot, edit }: { group: Group; plot: PlotSpe
   );
 }
 
-/** Gate drawing tools for a 1D or 2D plot; they act on the Gate view's plot or the Plot view's active cell. */
-export function ToolButtons({ is1d }: { is1d: boolean }) {
+/**
+ * Gate drawing tools for a 1D or 2D plot; they act on the Gate view's plot or the Plot view's active cell.
+ * `disabled` greys them out (no plot to act on); the current tool is then not highlighted.
+ */
+export function ToolButtons({ is1d, disabled = false }: { is1d: boolean; disabled?: boolean }) {
   const tool = useStore((s) => s.ui.tool);
   const setUi = useStore((s) => s.setUi);
   return (
@@ -236,7 +239,8 @@ export function ToolButtons({ is1d }: { is1d: boolean }) {
           title={t.title}
           aria-label={t.label}
           aria-pressed={tool === t.id}
-          className={tool === t.id ? 'on' : ''}
+          className={tool === t.id && !disabled ? 'on' : ''}
+          disabled={disabled}
           onClick={() => setUi({ tool: t.id })}
         >
           <svg
@@ -259,21 +263,24 @@ export function ToolButtons({ is1d }: { is1d: boolean }) {
 }
 
 /** Whether gate edits change the group template or only the plotted sample. */
-export function EditScopeToggle() {
+export function EditScopeToggle({ disabled = false }: { disabled?: boolean }) {
   const editScope = useStore((s) => s.ui.editScope);
   const setUi = useStore((s) => s.setUi);
+  const on = (scope: typeof editScope) => editScope === scope && !disabled;
   return (
     <div className="seg" title="Whether gate edits change the group template or only this sample">
       <button
         type="button"
-        className={editScope === 'template' ? 'on' : ''}
+        className={on('template') ? 'on' : ''}
+        disabled={disabled}
         onClick={() => setUi({ editScope: 'template' })}
       >
         Edit template
       </button>
       <button
         type="button"
-        className={editScope === 'sample' ? 'on warn' : ''}
+        className={on('sample') ? 'on warn' : ''}
+        disabled={disabled}
         onClick={() => setUi({ editScope: 'sample' })}
       >
         This sample only

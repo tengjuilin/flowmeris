@@ -7,10 +7,13 @@ import { ExportIcon } from '../ui/icons.tsx';
 export function ExportMenu({
   onExport,
   className,
+  disabled = false,
 }: {
   /** Write the figure as `format`; `dpi` applies to PNG and JPEG. Returns nothing when there is no figure yet. */
   onExport: (format: ImageFormat, dpi: number) => Promise<void> | undefined;
   className?: string;
+  /** Grey out the button (nothing to export). */
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<ImageFormat>('pdf');
@@ -36,7 +39,7 @@ export function ExportMenu({
   };
   return (
     <div className={className ? `export-menu ${className}` : 'export-menu'} ref={ref}>
-      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+      <button type="button" aria-expanded={open} disabled={disabled} onClick={() => setOpen((o) => !o)}>
         <ExportIcon />
         Export
       </button>
