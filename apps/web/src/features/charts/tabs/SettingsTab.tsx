@@ -1,6 +1,5 @@
-import { ActionRow } from '../../../components/ui/ActionRow.tsx';
-import { ApplyIcon, DeleteIcon, DuplicateIcon, ResetIcon } from '../../../components/ui/icons.tsx';
-import { Card } from '../../../components/ui/settings/index.ts';
+import { DeleteIcon, DuplicateIcon } from '../../../components/ui/icons.tsx';
+import { ActionsCard, ApplyCard, ResetCard } from '../../../components/ui/settings/index.ts';
 import {
   applyChartToAll,
   chartAtDefaults,
@@ -18,55 +17,58 @@ export function SettingsTab({ c, plot, card }: ChartTabProps) {
   const plots = group.statPlots;
   return (
     <>
-      <Card {...card('manage')}>
-        <ActionRow
-          label="Duplicate this chart"
-          title="Add a copy of this chart, with its settings, as a new tab"
-          icon={<DuplicateIcon />}
-          disabled={false}
-          onClick={() => addChart(group.id, duplicateChart(plot), 'Duplicate chart')}
-        />
-        <ActionRow
-          label="Delete this chart"
-          title="Delete this chart (Undo brings it back)"
-          icon={<DeleteIcon />}
-          disabled={false}
-          onClick={() => removeChart(group.id, plot.id)}
-        />
-      </Card>
-      <Card {...card('apply')}>
-        <ActionRow
-          label="Apply same settings for all charts"
-          title="Give every chart of this group this chart's settings now (each keeps its axis titles; axis scales, ranges and ticks go to charts of the same column, series colours to charts coloured by the same variable)"
-          icon={<ApplyIcon />}
-          disabled={chartsMatch(plots, plot.id)}
-          onClick={() =>
-            mutateGroup(group.id, 'Apply chart settings to all charts', (g) =>
-              applyChartToAll(g.statPlots, plot.id),
-            )
-          }
-        />
-      </Card>
-      <Card {...card('resetAll')}>
-        <ActionRow
-          label="All settings in this chart"
-          title="Reset the settings of this chart (its columns, type and hidden groups stay)"
-          icon={<ResetIcon />}
-          disabled={chartAtDefaults(plot)}
-          onClick={() => c.edit('Reset the settings of this chart', (p) => resetChart(p))}
-        />
-        <ActionRow
-          label="All charts"
-          title="Reset the settings of every chart of this group"
-          icon={<ResetIcon />}
-          disabled={plots.every(chartAtDefaults)}
-          onClick={() =>
-            mutateGroup(group.id, 'Reset the settings of every chart', (g) => {
-              for (const p of g.statPlots) resetChart(p);
-            })
-          }
-        />
-      </Card>
+      <ActionsCard
+        card={card('manage')}
+        actions={[
+          {
+            label: 'Duplicate this chart',
+            title: 'Add a copy of this chart, with its settings, as a new tab',
+            icon: <DuplicateIcon />,
+            run: () => addChart(group.id, duplicateChart(plot), 'Duplicate chart'),
+          },
+          {
+            label: 'Delete this chart',
+            title: 'Delete this chart (Undo brings it back)',
+            icon: <DeleteIcon />,
+            run: () => removeChart(group.id, plot.id),
+          },
+        ]}
+      />
+      <ApplyCard
+        card={card('apply')}
+        actions={[
+          {
+            label: 'Apply same settings for all charts',
+            title:
+              "Give every chart of this group this chart's settings now (each keeps its axis titles; axis scales, ranges and ticks go to charts of the same column, series colours to charts coloured by the same variable)",
+            disabled: chartsMatch(plots, plot.id),
+            run: () =>
+              mutateGroup(group.id, 'Apply chart settings to all charts', (g) =>
+                applyChartToAll(g.statPlots, plot.id),
+              ),
+          },
+        ]}
+      />
+      <ResetCard
+        card={card('resetAll')}
+        actions={[
+          {
+            label: 'All settings in this chart',
+            title: 'Reset the settings of this chart (its columns, type and hidden groups stay)',
+            disabled: chartAtDefaults(plot),
+            run: () => c.edit('Reset the settings of this chart', (p) => resetChart(p)),
+          },
+          {
+            label: 'All charts',
+            title: 'Reset the settings of every chart of this group',
+            disabled: plots.every(chartAtDefaults),
+            run: () =>
+              mutateGroup(group.id, 'Reset the settings of every chart', (g) => {
+                for (const p of g.statPlots) resetChart(p);
+              }),
+          },
+        ]}
+      />
     </>
   );
 }

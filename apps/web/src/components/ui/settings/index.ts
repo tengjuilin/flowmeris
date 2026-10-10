@@ -6,3 +6,10 @@
 export { Card } from './Card.tsx';
 export { InspectorTabs, PanelReset, type InspectorTab } from './InspectorTabs.tsx';
 export { EmptyPanel, SettingsPanel } from './SettingsPanel.tsx';
+export {
+  ActionsCard,
+  ApplyCard,
+  ResetCard,
+  type SettingsAction,
+  type SettingsCheck,
+} from './ActionsCard.tsx';
