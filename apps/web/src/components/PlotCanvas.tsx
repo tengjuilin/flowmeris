@@ -1,5 +1,5 @@
 import type { HistogramResponse, RasterResponse } from '@flowmeris/engine';
-import { ellipseAxes, ellipseFromAxes, spiderRegion, validateSpider } from '@flowmeris/gating';
+import { ellipseAxes } from '@flowmeris/gating';
 import {
   type AxisSpec,
   type Gate,
@@ -12,7 +12,7 @@ import {
   isOverridden,
   populationsOfGate,
 } from '@flowmeris/model';
-import { axisTicks, formatLinear } from '@flowmeris/transforms';
+import { axisTicks } from '@flowmeris/transforms';
 import {
   type PointerEvent as RPointerEvent,
   forwardRef,
@@ -26,19 +26,21 @@ import {
   useState,
 } from 'react';
 import { getPool } from '../engine-client/pool.ts';
-import type { PlotHandle, PlotMargin } from '../lib/export/plot.ts';
+import type { PlotHandle } from '../lib/export/plot.ts';
 import { DEFAULT_FIGURE, figureText } from '../lib/figure.ts';
 import {
-  type DimMap,
-  type Pt,
-  dimMap,
-  gateMatchesAxes,
-  outlineGateSpace,
-  pointInPolygonPx,
-  rayEnd,
-  scaleFor,
-} from '../lib/geometry.ts';
+  applyHandle,
+  clampToRange,
+  edgeArms,
+  newGateBase,
+  shapeFromDrag,
+  translate,
+} from '../lib/gateEdit.ts';
+import { type DimMap, type Pt, dimMap, gateMatchesAxes, rayEnd, scaleFor } from '../lib/geometry.ts';
 import { lineageKey, plotKey } from '../lib/keys.ts';
+import { SPAN, type ShownGate, hitGate, plotFrame, popAt, shapePx } from '../lib/plotFrame.ts';
+import { axisLabel, plotBox } from '../lib/plotLayout.ts';
+import { customTicks, formatHistTick, histYTicks } from '../lib/ticks.ts';
 import { createGate, deleteGate, setGateGeometry, setLabelOffset } from '../state/commands/gates.ts';
 import { contextFor, useStore } from '../state/store.ts';
 import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './ui/PickerMenu.tsx';
@@ -89,6 +91,8 @@ const HIST_NORMS: { value: HistNorm; label: string; detail: string }[] = [
   { value: 'area', label: 'Fraction', detail: 'unit area' },
 ];
 
+const UNIT: [number, number] = [0, 1];
+
 type Drag =
   | { kind: 'create'; tool: 'rect' | 'range' | 'ellipse'; start: [number, number]; cur: [number, number] }
   | { kind: 'move'; gateId: string; start: [number, number]; base: Geometry }
@@ -96,63 +100,7 @@ type Drag =
   /** A population's label, its offset in fractions of the plot size. */
   | { kind: 'label'; popId: string; start: [number, number]; base: [number, number]; cur: [number, number] };
 
-const SPAN = 1e6;
-
-function translate(g: Geometry, dx: number, dy: number): Geometry {
-  switch (g.kind) {
-    case 'rect':
-      return {
-        ...g,
-        min: g.min.map((v, i) => (v === null ? null : v + (i === 0 ? dx : dy))),
-        max: g.max.map((v, i) => (v === null ? null : v + (i === 0 ? dx : dy))),
-      };
-    case 'polygon':
-      return { ...g, vertices: g.vertices.map(([x, y]) => [x + dx, y + dy]) };
-    case 'ellipse':
-      return { ...g, mean: [g.mean[0] + dx, g.mean[1] + dy] };
-    case 'quadrant':
-      return { ...g, center: [g.center[0] + dx, g.center[1] + dy] };
-    case 'spider':
-      return {
-        ...g,
-        center: [g.center[0] + dx, g.center[1] + dy],
-        arms: g.arms.map(([x, y]) => [x + dx, y + dy]) as typeof g.arms,
-      };
-    case 'split':
-      return { ...g, at: g.at + dx };
-  }
-}
-
-/**
- * Margins, plot area (pw × ph) and overall size of `plot` drawn in `availWidth` × `availHeight`:
- * a fixed box aspect ratio (figure `boxAspect`) may use less than the space available.
- */
-export function plotBox(plot: PlotSpec, availWidth: number, availHeight: number, compact = false) {
-  const fig = plot.style.figure ?? DEFAULT_FIGURE;
-  // Text positions and margins follow the font sizes.
-  const tickY = 7 + fig.tickFontSize;
-  const xTitleY = (fig.showTickLabels ? tickY : 4) + 10 + fig.axisTitleFontSize;
-  const yTitleX = -(fig.showTickLabels ? 19 + 3 * fig.tickFontSize : 14);
-  const title = fig.title?.trim();
-  const margin: PlotMargin = compact
-    ? { l: 6, r: 4, t: 4, b: 6 }
-    : {
-        l: -yTitleX + fig.axisTitleFontSize + 2,
-        r: 14,
-        t: title ? 14 + fig.titleFontSize * 1.4 : 14,
-        b: xTitleY + 8,
-      };
-  let pw = Math.max(10, availWidth - margin.l - margin.r);
-  let ph = Math.max(10, availHeight - margin.t - margin.b);
-  // A fixed box aspect ratio shrinks the plot area to the largest box of that shape that fits.
-  if (fig.boxAspect) {
-    if (pw / ph > fig.boxAspect) pw = Math.max(10, ph * fig.boxAspect);
-    else ph = Math.max(10, pw / fig.boxAspect);
-  }
-  const width = fig.boxAspect ? pw + margin.l + margin.r : availWidth;
-  const height = fig.boxAspect ? ph + margin.t + margin.b : availHeight;
-  return { margin, pw, ph, width, height, tickY, xTitleY, yTitleX, title };
-}
+export { plotBox };
 
 export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   {
@@ -188,7 +136,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   );
   const is1d = plot.kind === 'histogram' || !plot.y;
   const xr = plot.x.range;
-  const yr = plot.y?.range ?? [0, 1];
+  const yr = plot.y?.range ?? UNIT;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const bgCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -448,32 +396,11 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   }, [countsKey, sampleId, missing]);
 
   // --- coordinate helpers ------------------------------------------------------
-  const X = useCallback((v: number) => ((v - xr[0]) / (xr[1] - xr[0])) * pw, [xr, pw]);
-  const Y = useCallback((v: number) => ph - ((v - yr[0]) / (yr[1] - yr[0])) * ph, [yr, ph]);
-  const toData = (px: number, py: number): [number, number] => [
-    xr[0] + (px / pw) * (xr[1] - xr[0]),
-    yr[0] + ((ph - py) / ph) * (yr[1] - yr[0]),
-  ];
+  const frame = useMemo(() => plotFrame(xr, yr, pw, ph), [xr, yr, pw, ph]);
+  const { X, Y, toData } = frame;
   const evPt = (e: { clientX: number; clientY: number }): [number, number] => {
     const r = svgRef.current!.getBoundingClientRect();
     return [e.clientX - r.left - margin.l, e.clientY - r.top - margin.t];
-  };
-
-  /** Clamp a data point to the plotted range (spider arm handles stay inside the plot). */
-  const clampPt = (p: readonly [number, number]): [number, number] => [
-    Math.min(Math.max(p[0], Math.min(xr[0], xr[1])), Math.max(xr[0], xr[1])),
-    Math.min(Math.max(p[1], Math.min(yr[0], yr[1])), Math.max(yr[0], yr[1])),
-  ];
-  /** Spider arms at the midpoints of the plot's top, right, bottom and left edges. */
-  const edgeArms = (): [[number, number], [number, number], [number, number], [number, number]] => {
-    const mx = (xr[0] + xr[1]) / 2;
-    const my = (yr[0] + yr[1]) / 2;
-    return [
-      [mx, yr[1]],
-      [xr[1], my],
-      [mx, yr[0]],
-      [xr[0], my],
-    ];
   };
 
   const maps = useCallback(
@@ -482,6 +409,9 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
   );
   const geomOf = (gate: Gate): Geometry =>
     draft?.gateId === gate.id ? draft.geom : effectiveGeometry(group, gate.id, sampleId);
+  const shownGates = (): ShownGate[] => gates.map((gate) => ({ gate, geom: geomOf(gate), maps: maps(gate) }));
+  /** Clamp a data point to the plotted range (spider arm handles stay inside the plot). */
+  const clampPt = (p: readonly [number, number]) => clampToRange(p, xr, yr);
 
   // --- preview counts while editing -----------------------------------------------
   // At most one preview is in flight; edits made meanwhile collapse into the latest
@@ -527,7 +457,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       ? !is1d && tool === 'quadrant'
         ? { kind: 'quadrant', center: hover }
         : !is1d && tool === 'spider'
-          ? { kind: 'spider', center: hover, arms: edgeArms() }
+          ? { kind: 'spider', center: hover, arms: edgeArms(xr, yr) }
           : is1d && tool === 'split'
             ? { kind: 'split', at: hover[0] }
             : null
@@ -543,7 +473,10 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       const send = () => {
         hoverBusy.current = true;
         getPool()
-          .preview(ctx, { sampleId, gate: { ...newGateBase(), id: '__hover', geometry: hoverGeom } })
+          .preview(ctx, {
+            sampleId,
+            gate: { ...newGateBase(plot, is1d), id: '__hover', geometry: hoverGeom },
+          })
           .then((r) => live && setHoverCounts({ parent: r.parentCount, regions: r.regions }))
           .catch(() => {})
           .finally(() => {
@@ -569,18 +502,8 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     setGateGeometry(group.id, gateId, geom, useStore.getState().ui.editScope, sampleId);
   };
 
-  const newGateBase = (): Omit<Gate, 'id' | 'geometry'> => ({
-    parentPop: plot.population,
-    dims: is1d
-      ? [{ channel: plot.x.channel, comp: plot.x.comp, transform: plot.x.transform }]
-      : [
-          { channel: plot.x.channel, comp: plot.x.comp, transform: plot.x.transform },
-          { channel: plot.y!.channel, comp: plot.y!.comp, transform: plot.y!.transform },
-        ],
-  });
-
   const finishCreate = (geometry: Geometry) => {
-    const pop = createGate(group.id, { ...newGateBase(), geometry });
+    const pop = createGate(group.id, { ...newGateBase(plot, is1d), geometry });
     const st = useStore.getState();
     const g = st.ws.groups.find((x) => x.id === group.id)!;
     const gid = g.template.populations[pop]?.gate ?? null;
@@ -654,12 +577,12 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         return;
       case 'spider':
         if (!is1d) {
-          finishCreate({ kind: 'spider', center: p, arms: edgeArms() });
+          finishCreate({ kind: 'spider', center: p, arms: edgeArms(xr, yr) });
         }
         return;
       default: {
         // select / move
-        const hit = hitGate(px, py);
+        const hit = hitGate(frame, shownGates(), px, py, is1d);
         setUi({ selectedGateId: hit?.id ?? null });
         if (hit && maps(hit).every((m) => m.identity))
           setDrag({ kind: 'move', gateId: hit.id, start: p, base: geomOf(hit) });
@@ -694,7 +617,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     let next: Geometry | null = null;
     if (drag.kind === 'move')
       next = translate(drag.base, p[0] - drag.start[0], is1d ? 0 : p[1] - drag.start[1]);
-    else next = applyHandle(drag.base, drag.handle, p);
+    else next = applyHandle(drag.base, drag.handle, p, is1d, clampPt);
     // spider points never leave the plot, even when moving the whole gate or one drawn before this rule
     if (next?.kind === 'spider')
       next = { ...next, center: clampPt(next.center), arms: next.arms.map(clampPt) as typeof next.arms };
@@ -716,26 +639,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       const [x0, y0] = drag.start;
       const [x1, y1] = drag.cur;
       const tiny = Math.abs(X(x1) - X(x0)) < 4 && (is1d || Math.abs(Y(y1) - Y(y0)) < 4);
-      if (!tiny) {
-        if (drag.tool === 'range')
-          finishCreate({ kind: 'rect', min: [Math.min(x0, x1)], max: [Math.max(x0, x1)] });
-        else if (drag.tool === 'rect')
-          finishCreate({
-            kind: 'rect',
-            min: [Math.min(x0, x1), Math.min(y0, y1)],
-            max: [Math.max(x0, x1), Math.max(y0, y1)],
-          });
-        else {
-          const e = ellipseFromAxes(
-            (x0 + x1) / 2,
-            (y0 + y1) / 2,
-            Math.abs(x1 - x0) / 2 || 1e-3,
-            Math.abs(y1 - y0) / 2 || 1e-3,
-            0,
-          );
-          finishCreate({ kind: 'ellipse', ...e });
-        }
-      }
+      if (!tiny) finishCreate(shapeFromDrag(drag.tool, drag.start, drag.cur));
     } else if (draft && draft.gateId === drag.gateId) {
       commit(draft.gateId, draft.geom);
     }
@@ -763,7 +667,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       return;
     }
     const [px, py] = evPt(e);
-    const pop = popAt(px, py);
+    const pop = popAt(frame, group.template, shownGates(), px, py, is1d);
     if (pop && onDrill) onDrill(pop);
   };
 
@@ -806,124 +710,6 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  function applyHandle(base: Geometry, handle: string, p: [number, number]): Geometry | null {
-    switch (base.kind) {
-      case 'rect': {
-        const min = [...base.min];
-        const max = [...base.max];
-        if (handle.includes('w')) min[0] = p[0];
-        if (handle.includes('e')) max[0] = p[0];
-        if (!is1d) {
-          if (handle.includes('s')) min[1] = p[1];
-          if (handle.includes('n')) max[1] = p[1];
-        }
-        for (let i = 0; i < min.length; i++) {
-          const a = min[i];
-          const b = max[i];
-          if (a !== null && a !== undefined && b !== null && b !== undefined && a > b) {
-            min[i] = b;
-            max[i] = a;
-          }
-        }
-        return { ...base, min, max };
-      }
-      case 'polygon': {
-        const i = Number(handle.slice(1));
-        const v = base.vertices.map((q, k) => (k === i ? p : q)) as [number, number][];
-        return { ...base, vertices: v };
-      }
-      case 'ellipse': {
-        const ax = ellipseAxes(base.mean, base.cov, base.d2);
-        const dx = p[0] - ax.cx;
-        const dy = p[1] - ax.cy;
-        if (handle === 'a') {
-          const a = Math.max(1e-4, Math.hypot(dx, dy));
-          return { kind: 'ellipse', ...ellipseFromAxes(ax.cx, ax.cy, a, ax.b, Math.atan2(dy, dx)) };
-        }
-        if (handle === 'b') {
-          const b = Math.max(1e-4, Math.abs(-dx * Math.sin(ax.theta) + dy * Math.cos(ax.theta)));
-          return { kind: 'ellipse', ...ellipseFromAxes(ax.cx, ax.cy, ax.a, b, ax.theta) };
-        }
-        return base;
-      }
-      case 'quadrant':
-        return { ...base, center: p };
-      case 'spider': {
-        // arms stay where they are (inside the plot) while the centre moves
-        if (handle === 'c') return { ...base, center: clampPt(p) };
-        const i = Number(handle.slice(3));
-        const arms = base.arms.map((q, k) => (k === i ? clampPt(p) : q)) as typeof base.arms;
-        return validateSpider(base.center, arms) === null ? { ...base, arms } : null;
-      }
-      case 'split':
-        return { ...base, at: p[0] };
-    }
-  }
-
-  // --- hit testing ----------------------------------------------------------------
-  function shapePx(gate: Gate, geom: Geometry): Pt[] {
-    const m = maps(gate);
-    const dense = !m.every((d) => d.identity);
-    const bounds: [[number, number], [number, number]] = [
-      [m[0]!.inv(xr[0] - 10), m[0]!.inv(xr[1] + 10)],
-      m[1] ? [m[1].inv(yr[0] - 10), m[1].inv(yr[1] + 10)] : [0, 1],
-    ];
-    return outlineGateSpace(geom, dense, bounds).map(([a, b]) => ({
-      x: X(m[0]!.f(a)),
-      y: Y(m[1] ? m[1].f(b) : 0),
-    }));
-  }
-
-  function hitGate(px: number, py: number): Gate | undefined {
-    for (const gate of [...gates].reverse()) {
-      const geom = geomOf(gate);
-      if (geom.kind === 'quadrant' || geom.kind === 'spider') {
-        const m = maps(gate);
-        const cx = X(m[0]!.f(geom.center[0]));
-        const cy = Y(m[1]!.f(geom.center[1]));
-        if (Math.hypot(px - cx, py - cy) < 12) return gate;
-        continue;
-      }
-      if (geom.kind === 'split') {
-        if (Math.abs(px - X(maps(gate)[0]!.f(geom.at))) < 6) return gate;
-        continue;
-      }
-      if (is1d && geom.kind === 'rect') {
-        const m = maps(gate)[0]!;
-        const a = X(m.f(geom.min[0] ?? -SPAN));
-        const b = X(m.f(geom.max[0] ?? SPAN));
-        if (px >= a && px <= b) return gate;
-        continue;
-      }
-      if (pointInPolygonPx(shapePx(gate, geom), { x: px, y: py })) return gate;
-    }
-    return undefined;
-  }
-
-  function popAt(px: number, py: number): string | undefined {
-    for (const gate of [...gates].reverse()) {
-      const geom = geomOf(gate);
-      const pops = populationsOfGate(group.template, gate.id);
-      if (geom.kind === 'split') {
-        // Either side of the divider is one of the two populations.
-        const v = maps(gate)[0]!.inv(toData(px, py)[0]);
-        return pops.find((p) => p.region === (v >= geom.at ? 'hi' : 'lo'))?.id;
-      }
-      if (geom.kind === 'quadrant' || geom.kind === 'spider') {
-        const m = maps(gate);
-        const [dx, dy] = toData(px, py);
-        const gx = m[0]!.inv(dx);
-        const gy = m[1]!.inv(dy);
-        let r: number;
-        if (geom.kind === 'spider') r = spiderRegion(geom.center[0], geom.center[1], geom.arms, gx, gy);
-        else r = gy >= geom.center[1] ? (gx >= geom.center[0] ? 2 : 1) : gx >= geom.center[0] ? 3 : 4;
-        return pops.find((p) => p.region === `Q${r}`)?.id;
-      }
-      if (hitGate(px, py)?.id === gate.id) return pops[0]?.id;
-    }
-    return undefined;
-  }
-
   // --- rendering ----------------------------------------------------------------------
   const xTicks = useMemo(() => {
     try {
@@ -947,14 +733,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     }
   }, [ws, plot.y, yr, is1d, fig.yTicks]);
 
-  const channelLabel = (a: AxisSpec) => {
-    const s = ws.samples[sampleId];
-    const ch = s?.channels.find((c) => c.pnn === a.channel);
-    return ch?.pns ? `${ch.pns} :: ${a.channel}` : a.channel;
-  };
-  // A custom axis title replaces the channel label; on a histogram only the x title is customisable.
-  const label = (a: AxisSpec) =>
-    ((a === plot.x ? fig.xTitle : a === plot.y && !is1d ? fig.yTitle : undefined) ?? channelLabel(a)).trim();
+  const label = (axis: 'x' | 'y') => axisLabel(ws, sampleId, plot, axis);
   const tickCss = figureText(fig, fig.tickText, fig.tickFontSize);
   const axisTitleCss = figureText(fig, fig.axisTitleText, fig.axisTitleFontSize);
   const lineCss = { strokeWidth: fig.tickWidth, ...(fig.axisColor ? { stroke: fig.axisColor } : {}) };
@@ -974,7 +753,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
       : onPickChannel
         ? {
             className: 'axis-title pickable',
-            ...pickerTrigger(`${axis.toUpperCase()} axis: ${label(plot[axis]!)}. Change channel`, (anchor) =>
+            ...pickerTrigger(`${axis.toUpperCase()} axis: ${label(axis)}. Change channel`, (anchor) =>
               setAxisMenu({ axis, anchor }),
             ),
           }
@@ -1172,7 +951,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
           });
       }
     } else {
-      const pts = shapePx(gate, geom);
+      const pts = shapePx(frame, m, geom);
       body = (
         <polygon
           points={pts.map((p) => `${p.x},${p.y}`).join(' ')}
@@ -1433,7 +1212,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
         onPointerLeave={() => setHover(null)}
         onDoubleClick={onDoubleClick}
         role="img"
-        aria-label={`${plot.kind} plot of ${label(plot.x)}${plot.y && !is1d ? ` versus ${label(plot.y)}` : ''}`}
+        aria-label={`${plot.kind} plot of ${label('x')}${plot.y && !is1d ? ` versus ${label('y')}` : ''}`}
       >
         <g transform={`translate(${margin.l},${margin.t})`}>
           <defs>
@@ -1504,7 +1283,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
                   </g>
                 ))}
                 <text {...axisTitle('x')} x={pw / 2} y={xTitleY} textAnchor="middle" style={axisTitleCss}>
-                  {label(plot.x)}
+                  {label('x')}
                 </text>
               </g>
               <g className="axis">
@@ -1535,7 +1314,7 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
                   textAnchor="middle"
                   style={axisTitleCss}
                 >
-                  {is1d ? histNormTitle : label(plot.y!)}
+                  {is1d ? histNormTitle : label('y')}
                 </text>
               </g>
             </>
@@ -1589,33 +1368,6 @@ export const PlotCanvas = forwardRef<PlotHandle, Props>(function PlotCanvas(
     </div>
   );
 });
-
-/** User ticks in data units, placed on the scale and kept within the axis range. */
-function customTicks(
-  ticks: { value: number; label?: string }[],
-  apply: (v: number) => number,
-  [lo, hi]: readonly number[],
-) {
-  return ticks
-    .map((t) => ({ pos: apply(t.value), label: t.label ?? formatLinear(t.value), major: true }))
-    .filter((t) => Number.isFinite(t.pos) && t.pos >= lo! - 1e-9 && t.pos <= hi! + 1e-9);
-}
-
-function histYTicks(top: number, norm: string): number[] {
-  if (norm === 'mode') return [0, 0.25, 0.5, 0.75, 1].filter((v) => v <= top);
-  const raw = top / 5;
-  const mag = 10 ** Math.floor(Math.log10(raw || 1));
-  const step = [1, 2, 5, 10].map((m) => m * mag).find((s) => s >= raw) ?? raw;
-  const out: number[] = [];
-  for (let v = 0; v <= top + 1e-12; v += step) out.push(v);
-  return out;
-}
-
-function formatHistTick(v: number, norm: string): string {
-  if (norm === 'mode') return `${Math.round(v * 100)}`;
-  if (norm === 'area') return v.toPrecision(2);
-  return v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(Math.round(v));
-}
 
 /** A plot drawn as dots of at least 2 px, for overlays where every sample needs its own flat colour. */
 function overlayDots(plot: PlotSpec): PlotSpec {
