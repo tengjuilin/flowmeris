@@ -40,13 +40,18 @@
   gap: 8px;
   min-width: 0;
 }
-/* The plots reach the view's bottom edge, under the populations panel floating over its bottom right.
+/* The plots reach the view's bottom edge, under the populations panel floating over its bottom right, and
+   its right edge (over its padding, kept inside instead), so their scrollbar lines up with the panel's.
    The tree scrolls both ways inside itself, and dragging its empty space pans it. */
 .path-view > .path-body {
-  margin-bottom: -10px;
+  margin: 0 -10px -10px 0;
+  padding-right: 10px;
 }
 .path-body.tree {
   overflow: hidden;
+  /* The tree has its own scrollbar: no gutter or padding beside it. */
+  scrollbar-gutter: auto;
+  padding-right: 0;
 }
 .path-body.tree > .path-tree {
   height: 100%;
