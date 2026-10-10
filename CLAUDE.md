@@ -57,6 +57,8 @@ package name, never by a path into another package's `src/`. `pnpm lint:deps` en
   Never edit files in `fixtures/golden` by hand. If a golden test fails, the code is wrong until shown
   otherwise.
 - **E2E**: `e2e/*.spec.ts`. Use them for UI behaviour; select elements by role and label where possible.
+  Locally, run only Chromium and WebKit (`--project=chromium --project=webkit`); you do not need to run
+  Firefox locally, because CI runs it.
 - Tolerances are in `@flowmeris/testkit` (`TOL`); do not loosen them to make a test pass.
 
 ## Conventions
