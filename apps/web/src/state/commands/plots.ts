@@ -2,7 +2,7 @@ import type { Group, PlotCell, PlotSpec, Workspace } from '@flowmeris/model';
 import { newId } from '@flowmeris/model';
 import { defaultAxis } from '../../lib/axisDefaults.ts';
 import { withAxesChange } from '../../lib/figure.ts';
-import { newPlot } from '../../lib/plotFactories.ts';
+import { populationPlot } from '../../lib/plotFactories.ts';
 import { mutateGroup, useStore } from '../store.ts';
 
 /** Commands on a group's plots: the Gate view's, the Tiles view's and the Plot view's grid. */
@@ -17,19 +17,9 @@ export function ensurePlot(popId: string): string {
   let id = '';
   st.mutate('Add plot', (ws) => {
     const gg = ws.groups.find((x) => x.id === g.id)!;
-    const pop = gg.template.populations[popId];
-    const parentGate = pop?.gate ? gg.template.gates[pop.gate] : undefined;
-    const parentPlot = gg.plots.find((p) => p.population === parentGate?.parentPop);
-    const xy: [string, string] | undefined = parentPlot?.y
-      ? [parentPlot.x.channel, parentPlot.y.channel]
-      : undefined;
-    id = newPlot(
-      ws,
-      gg,
-      popId,
-      parentPlot?.kind === 'histogram' ? 'pseudocolor' : (parentPlot?.kind ?? 'pseudocolor'),
-      xy,
-    ).id;
+    const plot = populationPlot(ws, gg, popId);
+    gg.plots.push(plot);
+    id = plot.id;
   });
   return id;
 }

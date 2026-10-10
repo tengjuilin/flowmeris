@@ -12,6 +12,19 @@ export function newPlot(
   kind: PlotKind = 'pseudocolor',
   xy?: [string, string],
 ): PlotSpec {
+  const plot = makePlot(ws, g, population, kind, xy);
+  g.plots.push(plot);
+  return plot;
+}
+
+/** A Gate-view plot of `population`, on `xy` or the default channels, not added to the group. */
+function makePlot(
+  ws: Workspace,
+  g: Group,
+  population: string,
+  kind: PlotKind = 'pseudocolor',
+  xy?: [string, string],
+): PlotSpec {
   const [xc, yc] = xy ?? defaultChannels(ws, g);
   const plot: PlotSpec = {
     id: newId('plt_'),
@@ -21,8 +34,22 @@ export function newPlot(
     style: structuredClone(DEFAULT_STYLE),
   };
   if (kind !== 'histogram') plot.y = { ...defaultAxis(ws, g, yc) };
-  g.plots.push(plot);
   return plot;
+}
+
+/**
+ * The plot a population gets when it has none, not added to the group: its parent plot's channels and
+ * type (a parent histogram gives a pseudocolor plot), else pseudocolor on the default channels.
+ */
+export function populationPlot(ws: Workspace, g: Group, popId: string): PlotSpec {
+  const pop = g.template.populations[popId];
+  const parentGate = pop?.gate ? g.template.gates[pop.gate] : undefined;
+  const parentPlot = g.plots.find((p) => p.population === parentGate?.parentPop);
+  const xy: [string, string] | undefined = parentPlot?.y
+    ? [parentPlot.x.channel, parentPlot.y.channel]
+    : undefined;
+  const kind = parentPlot?.kind === 'histogram' ? 'pseudocolor' : (parentPlot?.kind ?? 'pseudocolor');
+  return makePlot(ws, g, popId, kind, xy);
 }
 
 /**
