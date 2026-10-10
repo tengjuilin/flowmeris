@@ -23,6 +23,7 @@ import { ChartInspector } from './ChartInspector.tsx';
 
 import { Chart } from './Chart.tsx';
 import { ColumnSelect, columnOptions } from './ColumnSelect.tsx';
+import { DecimalCell, fracWidthOf } from './DecimalCell.tsx';
 
 export function ChartsView() {
   const group = useGroup();
@@ -142,6 +143,13 @@ export function ChartsView() {
   };
 
   const style: ChartStyle = plot.style;
+  const points = summary.flatMap((s) => s.points);
+  const fracWidth = {
+    x: fracWidthOf(points.flatMap((p) => (typeof p.x === 'number' ? [p.x] : []))),
+    mean: fracWidthOf(points.map((p) => p.mean)),
+    err: fracWidthOf(points.map((p) => p.err)),
+  };
+
   return (
     <div className="charts-layout">
       <div className="charts-view">
@@ -342,9 +350,13 @@ export function ChartsView() {
                           {style.seriesLabels[seriesKey(s.key)] ?? cellText(s.key)}
                         </td>
                       )}
-                      <td className={typeof p.x === 'number' ? undefined : 'text-cell'}>{cellText(p.x)}</td>
-                      <td>{fmtChart(p.mean)}</td>
-                      {plot.error !== 'none' && <td>{fmtChart(p.err)}</td>}
+                      {typeof p.x === 'number' ? (
+                        <DecimalCell value={p.x} width={fracWidth.x} />
+                      ) : (
+                        <td className="text-cell">{cellText(p.x)}</td>
+                      )}
+                      <DecimalCell value={p.mean} width={fracWidth.mean} />
+                      {plot.error !== 'none' && <DecimalCell value={p.err} width={fracWidth.err} />}
                       <td>{p.n}</td>
                       <td className="muted small text-cell">{p.values.map(fmtChart).join(', ')}</td>
                     </tr>

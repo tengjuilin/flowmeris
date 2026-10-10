@@ -54,6 +54,12 @@ export function fmtChart(v: number): string {
 /** A cell as chart text: numbers as `fmtChart`, missing as empty. */
 export const cellText = (x: Cell) => (typeof x === 'number' ? fmtChart(x) : String(x ?? ''));
 
+/** Splits formatted number text at its decimal point: `1234.6` → `['1234', '.6']`, `3` → `['3', '']`. */
+export function splitDecimal(text: string): [string, string] {
+  const i = text.indexOf('.');
+  return i < 0 ? [text, ''] : [text.slice(0, i), text.slice(i)];
+}
+
 /** A sensible first chart: x = a numeric variable (else any), y = the first added statistic, series = a categorical variable. */
 export function defaultPlot(columns: ColumnDef[], n: number): StatPlot {
   const vars = columns.filter((c) => c.kind === 'variable');

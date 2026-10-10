@@ -10,6 +10,7 @@ import {
   orderSeries,
   seriesColor,
   seriesKey,
+  splitDecimal,
 } from './chartStyle.ts';
 
 const col = (key: string, kind: ColumnDef['kind'], type: ColumnDef['type'] = 'numeric'): ColumnDef => ({
@@ -108,5 +109,13 @@ describe('chart columns and data', () => {
       [1, 2, 3],
       [1, 4, 2],
     ]);
+  });
+});
+
+describe('splitDecimal', () => {
+  it('splits at the decimal point, keeping any exponent in the fraction', () => {
+    expect(splitDecimal('1234.6')).toEqual(['1234', '.6']);
+    expect(splitDecimal('3')).toEqual(['3', '']);
+    expect(splitDecimal('1.234e-4')).toEqual(['1', '.234e-4']);
   });
 });

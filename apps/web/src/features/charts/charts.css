@@ -89,3 +89,12 @@
 .chart-data td {
   text-align: right;
 }
+/* The data table scrolls in its own box so the header row stays pinned. */
+.chart-data .table-wrap {
+  max-height: 60vh;
+}
+/* Fractional part of a number cell, left-aligned at fixed width so the decimal points line up. */
+.decimal-frac {
+  display: inline-block;
+  text-align: left;
+}
