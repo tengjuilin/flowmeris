@@ -20,8 +20,11 @@ code now. Update it when the layout changes.
 | `src/state/hooks/` | data hooks that fetch from the worker pool: `stats.ts` (`useSampleStats`, `useAnalysisTable`) |
 | `src/state/export.ts` | figure export wired to the store, pool and toasts (`exportPlot`, `exportSvgFigure`) |
 | `src/lib/` | pure logic, tested in Node: no store, pool, workers or components (`pnpm lint:deps` checks this). Functions documented "call inside `mutate`" work on a workspace draft |
+| `src/components/ui/` | generic controls that take data and callbacks as props: `icons.tsx`, `Section` (collapsible settings card), `InspectorTabs` and `PanelReset`, `NumInput`/`OptNumInput`, `Slider`/`PercentSlider`, `SettingsToggle`, `ActionRow`, `PickerMenu`, `GroupPicker`, `PlotSizeSlider`, `SupLabel`. No store or pool imports (`lint:deps`) |
+| `src/components/controls/` | settings controls shared by several views, which may use the store: `AxisFields` (scale and range), `TicksEditor`, `FontSelect`, `TextStyleEditor`, `ExportMenu` |
+| `src/components/hooks/` | DOM and timing hooks: `useSize`, `useWidth`, `useVisible`, `useSettled`/`useDebounced` |
 | `src/components/` | views and inspectors (see below) |
-| `src/styles.css` | all CSS, one global file |
+| `src/styles/` | all CSS, global, in files imported in cascade order by `styles/index.css` |
 
 Views (`ui.view`). Each is defined once in `app/views.tsx`; to add one, add its id to `VIEW_IDS` in
 `state/store.ts`, its entry to `VIEW_DEFS` and its place in `VIEW_ORDER`:
@@ -54,11 +57,11 @@ What is in `src/lib/`:
 | `ingest.ts`, `files.ts`, `names.ts` | grouping loaded files; data-file extensions; short sample names |
 | `export/` | figure export: `svg.ts`, `pdf.ts`, `figure.ts`, `plot.ts` (takes its data as a `PlotExportSource`) |
 | `geometry.ts`, `fitSize.ts`, `text.ts`, `format.ts`, `json.ts`, `download.ts`, `sheets.ts` | gate drawing geometry, sizing, label wrapping, number formats, JSON copy/compare, downloads, spreadsheets |
+| `ticks.ts`, `math.ts` | custom tick text (`parseTicks`, `formatTicks`); `clamp` |
 
-Some names do not match what the files hold: `components/Inspector.tsx` is a library of shared
-controls (`Section`, `NumInput`, `AxisEditor`, `StyleEditor`, `GateEditor`, icons), and `RidgeInspector.tsx`
-also exports shared controls (`TicksEditor`, `FontSelect`, `TextStyleEditor`). Search for a symbol
-before assuming where it lives.
+`components/GateInspectorSections.tsx` holds the Gate-view settings cards (`AxisEditor`, `StyleEditor`,
+`GateEditor`). `RidgeInspector.tsx` still exports `useRidge`, `textCss` and `ridgeColor`, used by the
+ridge plot in `GroupViews.tsx`. Search for a symbol before assuming where it lives.
 
 ## Store rules
 
@@ -96,14 +99,23 @@ before assuming where it lives.
 
 - Pure logic goes in `src/lib/*.ts` with a colocated `*.test.ts` (Node, vitest project `unit`). When
   logic inside a component needs testing, move it to `lib/` first.
-- UI behaviour is covered by Playwright in `/e2e` (`corepack pnpm build && corepack pnpm e2e`). To check a
-  change by eye, start the `web` server from `.claude/launch.json`.
+- Components: `src/**/*.test.tsx` (vitest project `dom`: jsdom and `@testing-library/react`, setup in
+  `vitest.dom-setup.ts`). Use it for controls in `components/ui` and `components/controls`; select by
+  role and label, and drive them with `fireEvent`.
+- UI behaviour across views is covered by Playwright in `/e2e` (`corepack pnpm build && corepack pnpm e2e`).
+  To check a change by eye, start the `web` server from `.claude/launch.json`.
 
 ## CSS
 
-`src/styles.css` is global with flat, feature-prefixed class names. Theme tokens are at the top, in light
-and dark. Mind the shared classes whose names suggest a single feature:
-- `ridge-section`, `ridge-tabs`, `ridge-inspector*` and `ridge-samples` style every inspector;
-- `tiles-controls` and `tiles-settings` are reused by the grid and path views.
+All CSS is global, with flat class names, in `src/styles/`. `styles/index.css` imports the files in cascade
+order (later files win at equal specificity), so moving a rule to another file can change what wins:
+check the built CSS (`apps/web/dist/assets/*.css`) or the views after such a move. Theme tokens, in light
+and dark, are at the top of `base.css`; the breakpoints at 1100 px and 700 px are in `responsive.css`.
 
-Changing any of them affects all of those views.
+Classes shared across views:
+- `insp-panel`, `insp-head`, `insp-tabs`, `insp-global`, `insp-section*` and `insp-pane-title`: every
+  settings panel (rendered by `ui/InspectorTabs`, `ui/PanelReset` and `ui/Section`);
+- `reorder-list`: the drag-to-reorder lists of ridge rows and chart series;
+- `view-controls` and `view-settings`: the controls at the end of the Tiles, Plot grid, Path and Metadata
+  toolbars (`ui/SettingsToggle`);
+- `tab-strip`, `tab-strip-tab` and `tab-strip-add`: the reference-plot and chart tabs.
