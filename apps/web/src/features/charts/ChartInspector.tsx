@@ -1,114 +1,16 @@
-import { type ChartStyle, ChartStyleSchema, type StatPlot } from '@flowmeris/model';
-import { CATEGORICAL } from '@flowmeris/render';
-import type { Cell, PlotSeries } from '@flowmeris/table';
-import { pointKey } from '../lib/chartSelection.ts';
-import { clamp } from '../lib/math.ts';
-import { moveIds } from '../lib/order.ts';
-import { TicksEditor } from './controls/TicksEditor.tsx';
-import { GroupPicker, toggleIds } from './ui/GroupPicker.tsx';
-import { NumInput, OptNumInput } from './ui/NumInput.tsx';
-import { ReorderList } from './ui/ReorderList.tsx';
-import { Slider } from './ui/Slider.tsx';
+import type { ChartStyle, StatPlot } from '@flowmeris/model';
+import type { PlotSeries } from '@flowmeris/table';
+import { GroupPicker, toggleIds } from '../../components/ui/GroupPicker.tsx';
+import { NumInput, OptNumInput } from '../../components/ui/NumInput.tsx';
+import { ReorderList } from '../../components/ui/ReorderList.tsx';
+import { Slider } from '../../components/ui/Slider.tsx';
+import { pointKey } from '../../lib/chartSelection.ts';
+import { DEFAULT_CHART_STYLE, seriesColor, seriesKey, seriesName } from '../../lib/chartStyle.ts';
+import { clamp } from '../../lib/math.ts';
+import { moveIds } from '../../lib/order.ts';
 
-export const DEFAULT_CHART_STYLE: ChartStyle = ChartStyleSchema.parse({});
-
-/** Key of a series in `ChartStyle` maps: the JSON of its value. */
-export const seriesKey = (k: Cell) => JSON.stringify(k ?? null);
-
-export function seriesColor(style: ChartStyle, key: string, index: number): string {
-  return (
-    style.seriesColors[key] ??
-    (style.colorMode === 'palette' ? CATEGORICAL[index % CATEGORICAL.length]! : style.color)
-  );
-}
-
-/** A series' name in the legend by default. */
-const seriesName = (s: PlotSeries) => (s.key === undefined || s.key === null ? '(none)' : String(s.key));
-
-/** Series in display order: those in `order` first, the rest in category order. */
-export function orderSeries(series: PlotSeries[], order: string[]): PlotSeries[] {
-  if (!order.length) return series;
-  const rank = new Map(order.map((k, i) => [k, i]));
-  return series
-    .map((s, i) => ({ s, r: rank.get(seriesKey(s.key)) ?? order.length + i }))
-    .sort((a, b) => a.r - b.r)
-    .map((x) => x.s);
-}
-
-function AxisFields(props: {
-  which: 'x' | 'y';
-  plot: StatPlot;
-  defaultTitle: string;
-  numeric: boolean;
-  log: boolean;
-  set: <K extends keyof ChartStyle>(key: K, value: ChartStyle[K], label: string, merge?: string) => void;
-  edit: (label: string, fn: (p: StatPlot) => void, merge?: string) => void;
-}) {
-  const { which, plot, set } = props;
-  const st = plot.style;
-  const X = which.toUpperCase();
-  const minKey = which === 'x' ? 'xMin' : 'yMin';
-  const maxKey = which === 'x' ? 'xMax' : 'yMax';
-  const lo = st[minKey];
-  const hi = st[maxKey];
-  const bad =
-    (lo !== undefined && hi !== undefined && !(hi > lo)) ||
-    (props.log && ((lo !== undefined && lo <= 0) || (hi !== undefined && hi <= 0)));
-  return (
-    <fieldset>
-      <legend>{X} axis</legend>
-      <label className="field" title="Leave empty for the column name; type a space for no title">
-        Title
-        <input
-          type="text"
-          value={(which === 'x' ? plot.xLabel : plot.yLabel) ?? ''}
-          placeholder={props.defaultTitle}
-          onChange={(e) =>
-            props.edit(
-              `Change ${which} title`,
-              (p) => {
-                if (which === 'x') p.xLabel = e.target.value || undefined;
-                else p.yLabel = e.target.value || undefined;
-              },
-              `chart-${which}l:${plot.id}`,
-            )
-          }
-        />
-      </label>
-      {props.numeric ? (
-        <>
-          <div className="grid2">
-            <OptNumInput
-              label="Min"
-              value={lo}
-              title="Axis start in data units; empty = fit the data"
-              onCommit={(v) => set(minKey, v, `Chart ${which} min`)}
-            />
-            <OptNumInput
-              label="Max"
-              value={hi}
-              title="Axis end in data units; empty = fit the data"
-              onCommit={(v) => set(maxKey, v, `Chart ${which} max`)}
-            />
-          </div>
-          {bad && (
-            <p className="field-error small">
-              {props.log ? 'A log axis needs 0 < min < max; ' : 'Min must be below max; '}the range is fitted
-              to the data instead.
-            </p>
-          )}
-          <TicksEditor
-            ticks={which === 'x' ? st.xTicks : st.yTicks}
-            onCommit={(t) => set(which === 'x' ? 'xTicks' : 'yTicks', t, `Chart ${which} ticks`)}
-          />
-        </>
-      ) : (
-        <p className="small muted">Categories, in the variable's level order.</p>
-      )}
-    </fieldset>
-  );
-}
-
+import { ChartAxisFields } from './ChartAxisFields.tsx';
+/** The Charts view's settings panel: series, groups, marks, axes, text and figure size. */
 export function ChartInspector(props: {
   plot: StatPlot;
   /** All series with all their points and rows, in display order (hidden points included). */
@@ -394,7 +296,7 @@ export function ChartInspector(props: {
         )}
       </fieldset>
 
-      <AxisFields
+      <ChartAxisFields
         which="x"
         plot={plot}
         defaultTitle={props.xTitle}
@@ -403,7 +305,7 @@ export function ChartInspector(props: {
         set={set}
         edit={edit}
       />
-      <AxisFields
+      <ChartAxisFields
         which="y"
         plot={plot}
         defaultTitle={props.yTitle}

@@ -309,3 +309,32 @@ table.meta-table {
 table.stats.import-map td {
   text-align: left;
 }
+.meta-table td.sel {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.meta-table.selecting input {
+  user-select: none;
+}
+.meta-table.selecting input::selection {
+  background: transparent;
+}
+/* After .sel so the focused cell keeps its outline inside a selection. */
+.meta-table td:focus-within {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+/* Hidden: measures a digit and "." in the table's font for decimal alignment. */
+.glyph-measure {
+  position: absolute;
+  visibility: hidden;
+  white-space: pre;
+  font-variant-numeric: tabular-nums;
+}
+/* All values of a categorical variable, under its focused cell. */
+.level-menu {
+  gap: 0;
+  padding: 4px;
+  min-width: 0;
+  max-height: 240px;
+  overflow: auto;
+}

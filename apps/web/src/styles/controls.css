@@ -288,3 +288,9 @@
 .span2 {
   grid-column: span 2;
 }
+.row.wrap {
+  flex-wrap: wrap;
+}
+.danger-text {
+  color: var(--danger);
+}
