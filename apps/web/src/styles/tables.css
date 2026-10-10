@@ -169,3 +169,6 @@ table.matrix input {
   top: 60px;
   color: var(--warn);
 }
+table.stats td.text-cell {
+  text-align: left;
+}

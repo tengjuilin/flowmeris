@@ -1,4 +1,5 @@
 import type { ChartStyle } from '@flowmeris/model';
+import type { PlotSeries } from '@flowmeris/table';
 import { formatLinear, formatPow10, niceLinearTicks } from '@flowmeris/transforms';
 
 /** Axes of the statistics charts (Charts view): data value ↔ px, with ticks. */
@@ -113,4 +114,31 @@ export function barPath(x: number, w: number, yBase: number, yVal: number, r: nu
   if (up)
     return `M${x},${yBase}V${yVal + rr}Q${x},${yVal} ${x + rr},${yVal}H${x + w - rr}Q${x + w},${yVal} ${x + w},${yVal + rr}V${yBase}Z`;
   return `M${x},${yBase}V${yVal - rr}Q${x},${yVal} ${x + rr},${yVal}H${x + w - rr}Q${x + w},${yVal} ${x + w},${yVal - rr}V${yBase}Z`;
+}
+
+/**
+ * Extents of what a chart draws: means, error bar ends and (if shown) replicates on y, numeric x values
+ * unless x is a band. Values `okY`/`okX` reject (e.g. ≤ 0 on a log axis) are left out; `dropped` counts
+ * the points that lose their mean or x that way.
+ */
+export function dataExtents(
+  series: PlotSeries[],
+  o: { okX: (v: number) => boolean; okY: (v: number) => boolean; band: boolean; showPoints: boolean },
+) {
+  const y = { min: Number.POSITIVE_INFINITY, max: Number.NEGATIVE_INFINITY };
+  const x = { min: Number.POSITIVE_INFINITY, max: Number.NEGATIVE_INFINITY };
+  const extend = (e: typeof y, v: number) => {
+    e.min = Math.min(e.min, v);
+    e.max = Math.max(e.max, v);
+  };
+  let dropped = 0;
+  for (const p of series.flatMap((s) => s.points)) {
+    const err = Number.isFinite(p.err) ? [p.mean - p.err, p.mean + p.err] : [];
+    for (const v of [p.mean, ...err, ...(o.showPoints ? p.values : [])]) if (o.okY(v)) extend(y, v);
+    if (!o.okY(p.mean)) dropped++;
+    if (o.band || typeof p.x !== 'number') continue;
+    if (o.okX(p.x)) extend(x, p.x);
+    else dropped++;
+  }
+  return { yMin: y.min, yMax: y.max, xMin: x.min, xMax: x.max, dropped };
 }

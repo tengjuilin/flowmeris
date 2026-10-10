@@ -1,5 +1,6 @@
+import type { PlotPoint } from '@flowmeris/table';
 import { describe, expect, it } from 'vitest';
-import { barPath, linearAxis, logAxis, makeAxis, validFix } from './chartAxis.ts';
+import { barPath, dataExtents, linearAxis, logAxis, makeAxis, validFix } from './chartAxis.ts';
 
 describe('chart axes', () => {
   it('a linear axis pads the data by 5%, with nice ticks inside', () => {
@@ -70,5 +71,34 @@ describe('chart axes', () => {
     expect(barPath(0, 10, 0, 40, 4)).toBe('M0,0V36Q0,40 4,40H6Q10,40 10,36V0Z');
     // The radius never exceeds half the width or the height.
     expect(barPath(0, 4, 100, 99, 4)).toBe('M0,100V100Q0,99 1,99H3Q4,99 4,100V100Z');
+  });
+
+  it('extents cover means, error bars and shown replicates, leaving out what the axis cannot show', () => {
+    const pt = (x: PlotPoint['x'], mean: number, err: number, values: number[]): PlotPoint => ({
+      x,
+      mean,
+      err,
+      n: values.length,
+      values,
+      rowIds: [],
+    });
+    const series = [
+      { key: 'a', points: [pt(1, 10, 2, [7, 13]), pt(0, -1, Number.NaN, [-1]), pt(100, 5, 1, [])] },
+    ];
+    const pos = (v: number) => Number.isFinite(v) && v > 0;
+    expect(dataExtents(series, { okX: pos, okY: Number.isFinite, band: false, showPoints: true })).toEqual({
+      yMin: -1,
+      yMax: 13,
+      xMin: 1,
+      xMax: 100,
+      dropped: 1,
+    });
+    expect(dataExtents(series, { okX: pos, okY: pos, band: true, showPoints: false })).toEqual({
+      yMin: 4,
+      yMax: 12,
+      xMin: Number.POSITIVE_INFINITY,
+      xMax: Number.NEGATIVE_INFINITY,
+      dropped: 1,
+    });
   });
 });

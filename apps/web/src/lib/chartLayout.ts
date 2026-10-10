@@ -1,0 +1,31 @@
+import type { ChartStyle } from '@flowmeris/model';
+
+/** Layout of the statistics charts (Charts view): margins and the slots of series within a category. */
+
+/** Margins around the plot area, from the text they hold (px). */
+export function chartMargins(
+  st: ChartStyle,
+  o: { xTitle: boolean; yTitle: boolean; legend: ChartStyle['legend']; legendW: number; yLabelW: number },
+) {
+  const ts = st.titleFontSize;
+  return {
+    l: 14 + (o.yTitle ? ts + 8 : 0) + o.yLabelW + 8,
+    r: 20 + o.legendW,
+    t: 14 + (o.legend === 'top' ? st.legendFontSize + 14 : 0),
+    b: (st.showTickLabels ? st.tickFontSize + 10 : 6) + (o.xTitle ? ts + 18 : 6),
+  };
+}
+
+/**
+ * Where `n` series sit in a category `bandW` px wide: each gets a slot (a bar, or the spread of its
+ * replicates) `slot` px wide, `gap` px apart, the group `groupW` px wide in all. Without a set
+ * `barWidth` (a fraction of the category) slots are at most 24 px.
+ */
+export function bandSlots(bandW: number, n: number, barWidth: number | undefined, bar: boolean) {
+  const gap = bar ? 2 : 4;
+  const slot =
+    barWidth === undefined
+      ? Math.min(24, (bandW * 0.8) / n)
+      : Math.max(1, (bandW * barWidth - (n - 1) * gap) / n);
+  return { slot, gap, groupW: n * slot + (n - 1) * gap };
+}

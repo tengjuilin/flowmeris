@@ -12,7 +12,7 @@
 @import "./tables.css";
 @import "./responsive.css";
 @import "./grid-path.css";
-@import "./stats.css";
+@import "../features/stats/stats.css";
 @import "./metadata.css";
-@import "./charts.css";
+@import "../features/charts/charts.css";
 @import "./inspector.css";
