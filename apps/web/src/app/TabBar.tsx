@@ -1,4 +1,4 @@
-import { SettingsIcon } from '../components/Inspector.tsx';
+import { SettingsIcon } from '../components/ui/icons.tsx';
 import { type NavLocation, useGroup, useStore } from '../state/store.ts';
 import { VIEW_DEFS, VIEW_ORDER } from './views.tsx';
 

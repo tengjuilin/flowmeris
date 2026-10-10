@@ -23,6 +23,7 @@ import {
 import { defaultChannels, factoryAxis } from '../lib/axisDefaults.ts';
 import { FONT_GROUPS, FONT_STACKS, fontStack } from '../lib/figure.ts';
 import { sameJson } from '../lib/json.ts';
+import { clamp } from '../lib/math.ts';
 import { type RidgeRow, applyOrder, comboRows, selectRidges } from '../lib/ridgeRows.ts';
 import {
   DEFAULT_OVERLAP,
@@ -45,8 +46,17 @@ import {
 } from '../lib/ridgeStyle.ts';
 import { usePanelState } from '../state/prefs.ts';
 import { useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
-import { GroupPicker, toggleIds } from './GroupPicker.tsx';
-import { ActionRow, ApplyIcon, AxisFields, NumInput, ResetIcon, Section } from './Inspector.tsx';
+import { AxisFields } from './controls/AxisFields.tsx';
+import { FontSelect } from './controls/FontSelect.tsx';
+import { TextStyleEditor } from './controls/TextStyleEditor.tsx';
+import { TicksEditor } from './controls/TicksEditor.tsx';
+import { ActionRow } from './ui/ActionRow.tsx';
+import { GroupPicker, toggleIds } from './ui/GroupPicker.tsx';
+import { InspectorTabs, PanelReset } from './ui/InspectorTabs.tsx';
+import { NumInput } from './ui/NumInput.tsx';
+import { Section } from './ui/Section.tsx';
+import { PercentSlider } from './ui/Slider.tsx';
+import { ApplyIcon, ResetIcon, ReverseIcon } from './ui/icons.tsx';
 
 /** A number input that updates the plot as you type. */
 const LiveNum = (p: ComponentProps<typeof NumInput>) => <NumInput live {...p} />;
@@ -175,293 +185,6 @@ export function useRidge() {
   };
 }
 
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-
-function formatTicks(ticks: RidgeStyle['ticks']): string {
-  return (ticks ?? [])
-    .map((t) => (t.label === undefined ? String(t.value) : `${t.value} = ${t.label}`))
-    .join('\n');
-}
-
-/** One tick per line or comma: `1000` or `1000 = 1k`. Returns null on a malformed entry. */
-function parseTicks(text: string): RidgeStyle['ticks'] | null {
-  const out: NonNullable<RidgeStyle['ticks']> = [];
-  for (const raw of text.split(/[\n,]/)) {
-    const part = raw.trim();
-    if (!part) continue;
-    const eq = part.indexOf('=');
-    const value = Number((eq < 0 ? part : part.slice(0, eq)).trim());
-    if (!Number.isFinite(value)) return null;
-    out.push(eq < 0 ? { value } : { value, label: part.slice(eq + 1).trim() });
-  }
-  return out;
-}
-
-export function TicksEditor({
-  ticks,
-  onCommit,
-}: { ticks: RidgeStyle['ticks']; onCommit: (t: RidgeStyle['ticks']) => void }) {
-  const [text, setText] = useState<string | null>(null);
-  const [bad, setBad] = useState(false);
-  return (
-    <label
-      className="field"
-      title="Tick marks in data units, one per line: 1000 or 1000 = 1k. Empty = automatic."
-    >
-      Custom ticks
-      <textarea
-        rows={3}
-        placeholder={'Automatic\ne.g. 0\n1000 = 1k\n10000 = 10k'}
-        value={text ?? formatTicks(ticks)}
-        aria-invalid={bad}
-        onChange={(e) => {
-          setText(e.target.value);
-          setBad(false);
-        }}
-        onBlur={() => {
-          if (text === null) return;
-          const t = parseTicks(text);
-          if (!t) return setBad(true);
-          onCommit(t.length ? t : undefined);
-          setText(null);
-        }}
-      />
-      {bad && (
-        <span className="field-error small">
-          Each entry must be a number, optionally followed by “= label”.
-        </span>
-      )}
-    </label>
-  );
-}
-
-const CUSTOM_FONT = '__custom';
-
-/** A font picker: the app's font list, or the name of any font installed on this computer. */
-export function FontSelect({
-  label,
-  value,
-  onChange,
-  inherit,
-  bare,
-}: {
-  label: string;
-  value: string | undefined;
-  onChange: (v: string | undefined) => void;
-  /** Offer "same as the figure" (value undefined), naming the figure's font. */
-  inherit?: string;
-  /** No visible caption: `label` becomes the select's accessible name. */
-  bare?: boolean;
-}) {
-  const custom = value !== undefined && !(value in FONT_STACKS);
-  const [text, setText] = useState<string | null>(null);
-  const commit = () => {
-    if (text !== null) {
-      const t = text.trim();
-      if (t) onChange(t);
-      setText(null);
-    }
-  };
-  return (
-    <>
-      <label className={bare ? 'tt-font' : 'field'}>
-        {!bare && label}
-        <select
-          aria-label={bare ? label : undefined}
-          value={custom ? CUSTOM_FONT : (value ?? '')}
-          onChange={(e) => {
-            const v = e.target.value;
-            onChange(v === '' ? undefined : v === CUSTOM_FONT ? 'Helvetica Neue' : v);
-          }}
-        >
-          {inherit !== undefined && (
-            <option value="">{bare ? inherit : `Same as figure (${inherit})`}</option>
-          )}
-          {FONT_GROUPS.map((g) => (
-            <optgroup key={g.label} label={g.label}>
-              {g.fonts.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.label}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-          <option value={CUSTOM_FONT}>Other installed font…</option>
-        </select>
-      </label>
-      {custom && (
-        <label
-          className={bare ? 'field tt-wide' : 'field'}
-          title="Used if the font is installed on the computer that views or exports the figure"
-        >
-          Font name
-          <input
-            type="text"
-            value={text ?? value}
-            placeholder="e.g. Futura"
-            onChange={(e) => setText(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-          />
-        </label>
-      )}
-    </>
-  );
-}
-
-const ALIGNS: { id: RidgeStyle['labelAlign']; name: string; lines: number[] }[] = [
-  { id: 'start', name: 'Align left', lines: [0, 0, 0, 0] },
-  { id: 'middle', name: 'Center', lines: [2, 0, 2, 0] },
-  { id: 'end', name: 'Align right', lines: [4, 0, 4, 0] },
-];
-
-/** Four text lines, long and short alternating, aligned left, centred or right. */
-function AlignIcon({ lines }: { lines: number[] }) {
-  return (
-    <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true">
-      {lines.map((x, i) => (
-        <rect key={i} x={x} y={i * 3} width={i % 2 ? 14 : 10} height="1.5" fill="currentColor" />
-      ))}
-    </svg>
-  );
-}
-
-/**
- * A word-processor style toolbar for one kind of text: font and size on one row, then
- * bold / italic / underline, color and (for ridge labels) alignment on the next.
- */
-export function TextStyleEditor({
-  label,
-  value,
-  base,
-  baseColor,
-  onChange,
-  size,
-  onSize,
-  align,
-  onAlign,
-}: {
-  label: string;
-  value: TextStyle;
-  base: string;
-  baseColor: string;
-  onChange: (t: TextStyle) => void;
-  size: number;
-  onSize: (v: number) => void;
-  align?: RidgeStyle['labelAlign'];
-  onAlign?: (a: RidgeStyle['labelAlign']) => void;
-}) {
-  const [sizeText, setSizeText] = useState<string | null>(null);
-  const toggle = (k: 'bold' | 'italic' | 'underline', glyph: string, name: string, css: CSSProperties) => (
-    <button
-      type="button"
-      className={value[k] ? 'on' : ''}
-      aria-pressed={value[k]}
-      title={name}
-      aria-label={`${name} ${label.toLowerCase()}`}
-      style={css}
-      onClick={() => onChange({ ...value, [k]: !value[k] })}
-    >
-      {glyph}
-    </button>
-  );
-  const ink = value.color ?? baseColor;
-  return (
-    <div className="text-toolbar">
-      <div className="tt-row">
-        <FontSelect
-          bare
-          label={`${label} font`}
-          value={value.fontFamily}
-          inherit={FONT_GROUPS.flatMap((g) => g.fonts).find((f) => f.id === base)?.label ?? base}
-          onChange={(fontFamily) => onChange({ ...value, fontFamily })}
-        />
-        <input
-          type="number"
-          className="tt-size"
-          step={0.5}
-          title="Font size (px)"
-          aria-label={`${label} size (px)`}
-          value={sizeText ?? String(size)}
-          onChange={(e) => {
-            setSizeText(e.target.value);
-            const v = Number(e.target.value);
-            if (e.target.value.trim() !== '' && Number.isFinite(v)) onSize(clamp(v, 4, 48));
-          }}
-          onBlur={() => setSizeText(null)}
-          onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-        />
-        <button
-          type="button"
-          className="tt-btn"
-          title="Larger"
-          aria-label={`Larger ${label.toLowerCase()}`}
-          onClick={() => onSize(clamp(Math.floor(size) + 1, 4, 48))}
-        >
-          A<sup>+</sup>
-        </button>
-        <button
-          type="button"
-          className="tt-btn small-a"
-          title="Smaller"
-          aria-label={`Smaller ${label.toLowerCase()}`}
-          onClick={() => onSize(clamp(Math.ceil(size) - 1, 4, 48))}
-        >
-          A<sup>−</sup>
-        </button>
-      </div>
-      <div className="tt-row">
-        <div className="seg">
-          {toggle('bold', 'B', 'Bold', { fontWeight: 700 })}
-          {toggle('italic', 'I', 'Italic', { fontStyle: 'italic', fontFamily: 'Georgia, serif' })}
-          {toggle('underline', 'U', 'Underline', { textDecoration: 'underline' })}
-        </div>
-        <span className="tt-sep" aria-hidden="true" />
-        <label className="tt-btn tt-color" title="Text color">
-          <span style={{ color: ink }}>A</span>
-          <span className="tt-bar" style={{ background: ink }} />
-          <input
-            type="color"
-            aria-label={`${label} color`}
-            value={ink}
-            onChange={(e) => onChange({ ...value, color: e.target.value })}
-          />
-        </label>
-        <button
-          type="button"
-          className="reset-btn"
-          title="Reset color to the base font color"
-          aria-label={`Reset ${label.toLowerCase()} color`}
-          disabled={!value.color}
-          onClick={() => onChange({ ...value, color: undefined })}
-        >
-          <ResetIcon />
-        </button>
-        {align && onAlign && (
-          <>
-            <span className="tt-sep" aria-hidden="true" />
-            <div className="seg">
-              {ALIGNS.map((x) => (
-                <button
-                  key={x.id}
-                  type="button"
-                  className={align === x.id ? 'on' : ''}
-                  aria-pressed={align === x.id}
-                  title={x.name}
-                  aria-label={x.name}
-                  onClick={() => onAlign(x.id)}
-                >
-                  <AlignIcon lines={x.lines} />
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
 type RidgeTab = 'sample' | 'axis' | 'text' | 'figure' | 'settings';
 type SectionId =
   | 'apply'
@@ -528,73 +251,6 @@ const PANEL_KEYS: Record<'figure' | 'axis' | 'text', (keyof RidgeStyle)[]> = {
 };
 /** The Sample tab's per-row settings. */
 const ROW_KEYS = ['order', 'sampleColors', 'sampleLabels'] as const;
-
-/** Reverse: two arrows pointing opposite ways, up and down. */
-function ReverseIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M5 13V3M2.5 5.5L5 3l2.5 2.5" />
-      <path d="M11 3v10M8.5 10.5L11 13l2.5-2.5" />
-    </svg>
-  );
-}
-
-/** A slider for a 0–`max` fraction, with a percentage box beside it for typing an exact value. */
-function PercentSlider({
-  label,
-  value,
-  max,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  max: number;
-  onChange: (v: number) => void;
-}) {
-  const [text, setText] = useState<string | null>(null);
-  return (
-    <div className="field slider-field">
-      <span>{label}</span>
-      <input
-        type="range"
-        min={0}
-        max={max}
-        step={0.05}
-        value={value}
-        aria-label={label}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
-      <span className="unit-input">
-        <input
-          type="number"
-          min={0}
-          max={Math.round(max * 100)}
-          step={5}
-          aria-label={`${label} (%)`}
-          value={text ?? String(Math.round(value * 100))}
-          onChange={(e) => {
-            setText(e.target.value);
-            const v = Number(e.target.value);
-            if (e.target.value.trim() !== '' && Number.isFinite(v)) onChange(clamp(v / 100, 0, max));
-          }}
-          onBlur={() => setText(null)}
-          onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-        />
-        %
-      </span>
-    </div>
-  );
-}
 
 const PANEL_KEY = 'flowmeris.ridgePanel';
 
@@ -753,35 +409,18 @@ export function RidgeInspector() {
   return (
     <aside className="inspector insp-panel" aria-label="Ridge plot settings">
       <div className="insp-head">
-        <div className="tabs insp-tabs" role="tablist" aria-label="Ridge plot settings">
-          {RIDGE_TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              id={`ridge-tab-${t.id}`}
-              aria-selected={tab === t.id}
-              aria-controls="ridge-tabpanel"
-              className={tab === t.id ? 'on' : ''}
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div className="insp-global">
-          <span className="field">Reset this panel</span>
-          <button
-            type="button"
-            className="icon reset-all"
-            title="Reset the settings in this panel for this ridge plot"
-            aria-label="Reset the settings in this panel"
-            disabled={panelAtDefaults}
-            onClick={resetPanel}
-          >
-            <ResetIcon />
-          </button>
-        </div>
+        <InspectorTabs
+          idPrefix="ridge"
+          label="Ridge plot settings"
+          tabs={RIDGE_TABS}
+          current={tab}
+          onSelect={setTab}
+        />
+        <PanelReset
+          title="Reset the settings in this panel for this ridge plot"
+          disabled={panelAtDefaults}
+          onClick={resetPanel}
+        />
       </div>
       <div id="ridge-tabpanel" role="tabpanel" aria-labelledby={`ridge-tab-${tab}`}>
         {tab === 'settings' && (

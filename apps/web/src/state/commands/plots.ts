@@ -84,3 +84,23 @@ export function setAxisChannel(edit: EditAxes, axis: 'x' | 'y', channel: string)
     });
   });
 }
+
+/** Changes the axis channel of the population's plot, or of `edit`'s target (for clickable axis titles). */
+export function axisChannelSetter(group: Group, plot: PlotSpec, edit?: EditAxes) {
+  return axisPickers(group, plot, edit).onPickChannel;
+}
+
+/**
+ * Props making a plot's axis titles clickable: the x / y channel, or what a histogram's y axis shows
+ * (`histNorm`), of the population's plot or of `edit`'s target.
+ */
+export function axisPickers(group: Group, plot: PlotSpec, edit?: EditAxes) {
+  const ed: EditAxes = edit ?? ((label, fn) => editPlot(group.id, plot.id, label, fn));
+  return {
+    onPickChannel: (axis: 'x' | 'y', channel: string) => setAxisChannel(ed, axis, channel),
+    onPickHistNorm: (norm: PlotSpec['style']['histNorm']) =>
+      ed('Change histogram y axis', (p) => {
+        p.style.histNorm = norm;
+      }),
+  };
+}

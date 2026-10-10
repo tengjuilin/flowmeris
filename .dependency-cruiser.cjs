@@ -81,6 +81,35 @@ module.exports = {
       to: { path: '^apps/web/src/(components|features|app)/' },
     },
     {
+      name: 'web-ui-is-presentational',
+      comment:
+        'components/ui holds generic controls (inputs, icons, sections, menus): they get data and callbacks as props and import only lib/, hooks and each other.',
+      severity: 'error',
+      from: { path: '^apps/web/src/components/ui/' },
+      to: {
+        path: '^apps/web/src/',
+        pathNot: '^apps/web/src/(components/(ui|hooks)/|lib/)',
+      },
+    },
+    {
+      name: 'web-hooks-are-generic',
+      comment: 'components/hooks are DOM and timing hooks with no knowledge of the store or the views.',
+      severity: 'error',
+      from: { path: '^apps/web/src/components/hooks/' },
+      to: { path: '^apps/web/src/', pathNot: '^apps/web/src/(components/hooks/|lib/)' },
+    },
+    {
+      name: 'web-controls-below-views',
+      comment:
+        'components/controls are settings controls shared by several views; they may use the store but not import a view or a feature.',
+      severity: 'error',
+      from: { path: '^apps/web/src/components/controls/' },
+      to: {
+        path: '^apps/web/src/(components|features|app)/',
+        pathNot: '^apps/web/src/components/(ui|hooks|controls)/',
+      },
+    },
+    {
       name: 'web-app-on-top',
       comment: 'apps/web/src/app (shell, view registry) is the top layer: only main.tsx imports it.',
       severity: 'error',

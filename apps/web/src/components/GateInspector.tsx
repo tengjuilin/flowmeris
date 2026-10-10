@@ -29,20 +29,17 @@ import { clearCellOverlay } from '../state/commands/grid.ts';
 import { type PlotTarget, targetEdit, plotsOf as targetPlots } from '../state/commands/plots.ts';
 import { useRememberedTab } from '../state/prefs.ts';
 import { useGroup, useStore } from '../state/store.ts';
-import {
-  ActionRow,
-  ApplyIcon,
-  AxisEditor,
-  GateEditor,
-  NumInput,
-  type Panel,
-  ResetIcon,
-  Section,
-  StyleEditor,
-} from './Inspector.tsx';
+import { AxisEditor, GateEditor, StyleEditor } from './GateInspectorSections.tsx';
 import { CellOverlayFields, CellSourceFields } from './PlotGridView.tsx';
 import { PlotKindSelect, usePlotForPopulation, useTilePlot } from './PlotPanel.tsx';
-import { FontSelect, TextStyleEditor, TicksEditor } from './RidgeInspector.tsx';
+import { FontSelect } from './controls/FontSelect.tsx';
+import { TextStyleEditor } from './controls/TextStyleEditor.tsx';
+import { TicksEditor } from './controls/TicksEditor.tsx';
+import { ActionRow } from './ui/ActionRow.tsx';
+import { InspectorTabs, PanelReset } from './ui/InspectorTabs.tsx';
+import { NumInput } from './ui/NumInput.tsx';
+import { type Panel, Section } from './ui/Section.tsx';
+import { ApplyIcon, ResetIcon } from './ui/icons.tsx';
 
 type GateTab = 'settings' | 'gate' | 'figure' | 'axis' | 'text';
 const GATE_TABS: { id: GateTab; label: string }[] = [
@@ -180,41 +177,24 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
   return (
     <aside className="inspector insp-panel" aria-label={`${NAMES[target]} settings`}>
       <div className="insp-head">
-        <div className="tabs insp-tabs" role="tablist" aria-label={`${NAMES[target]} settings`}>
-          {GATE_TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              id={`gate-tab-${t.id}`}
-              aria-selected={tab === t.id}
-              aria-controls="gate-tabpanel"
-              className={tab === t.id ? 'on' : ''}
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div className="insp-global">
-          <span className="field">Reset this panel</span>
-          <button
-            type="button"
-            className="icon reset-all"
-            title="Reset the settings in this panel for this plot"
-            aria-label="Reset the settings in this panel"
-            disabled={panelAtDefaults(tab, plot, group, target)}
-            onClick={() =>
-              mutate(`Reset ${tab} settings`, (w) => {
-                const g = w.groups.find((x) => x.id === group.id);
-                const p = g && plotsOf(g).find((x) => x.id === plot.id);
-                if (g && p) resetPanel(tab, p, g, w, target);
-              })
-            }
-          >
-            <ResetIcon />
-          </button>
-        </div>
+        <InspectorTabs
+          idPrefix="gate"
+          label={`${NAMES[target]} settings`}
+          tabs={GATE_TABS}
+          current={tab}
+          onSelect={setTab}
+        />
+        <PanelReset
+          title="Reset the settings in this panel for this plot"
+          disabled={panelAtDefaults(tab, plot, group, target)}
+          onClick={() =>
+            mutate(`Reset ${tab} settings`, (w) => {
+              const g = w.groups.find((x) => x.id === group.id);
+              const p = g && plotsOf(g).find((x) => x.id === plot.id);
+              if (g && p) resetPanel(tab, p, g, w, target);
+            })
+          }
+        />
       </div>
       <div id="gate-tabpanel" role="tabpanel" aria-labelledby={`gate-tab-${tab}`}>
         {tab === 'settings' && grid && (

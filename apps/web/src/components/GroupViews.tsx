@@ -12,55 +12,22 @@ import { lineageKey } from '../lib/keys.ts';
 import { withRidgeChannel } from '../lib/ridgeStyle.ts';
 import { textMeasure, wrapText } from '../lib/text.ts';
 import { openTileInGrid } from '../state/commands/grid.ts';
-import { drill, tilesEdit } from '../state/commands/plots.ts';
+import { axisPickers, drill, tilesEdit } from '../state/commands/plots.ts';
 import { exportSvgFigure } from '../state/export.ts';
 import { contextFor, useGroup, useSampleNames, useSelectedSampleIds, useStore } from '../state/store.ts';
-import { ExportMenu } from './ExportMenu.tsx';
-import { OpenInIcon, SettingsIcon } from './Inspector.tsx';
-import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './PickerMenu.tsx';
 import { PlotCanvas } from './PlotCanvas.tsx';
-import { EditScopeToggle, ToolButtons, axisPickers, useTilePlot } from './PlotPanel.tsx';
-import { PlotSizeSlider } from './PlotSizeSlider.tsx';
+import { EditScopeToggle, ToolButtons, useTilePlot } from './PlotPanel.tsx';
 import { PopulationTree } from './PopulationTree.tsx';
 import { fontStack, ridgeColor, textCss, useRidge } from './RidgeInspector.tsx';
-import { SupLabel } from './SupLabel.tsx';
-import { useSize } from './hooks.ts';
-
-// One observer shared by every tile (hundreds of tiles would otherwise each own one).
-const visibility = new Map<Element, (visible: boolean) => void>();
-let observer: IntersectionObserver | null = null;
-
-function useVisible<T extends Element>(): [React.RefObject<T>, boolean] {
-  const ref = useRef<T>(null);
-  const [vis, setVis] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    observer ??= new IntersectionObserver(
-      (es) => {
-        for (const e of es) visibility.get(e.target)?.(e.isIntersecting);
-      },
-      { rootMargin: '200px' },
-    );
-    visibility.set(el, setVis);
-    observer.observe(el);
-    return () => {
-      visibility.delete(el);
-      observer?.unobserve(el);
-    };
-  }, []);
-  return [ref, vis];
-}
-
-/** The value, once it has stopped changing for `ms` (e.g. a slider being dragged). */
-function useSettled<T>(value: T, ms: number): T {
-  const [settled, setSettled] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setSettled(value), ms);
-    return () => clearTimeout(t);
-  }, [value, ms]);
-  return settled;
-}
+import { ExportMenu } from './controls/ExportMenu.tsx';
+import { useSettled } from './hooks/useSettled.ts';
+import { useSize } from './hooks/useSize.ts';
+import { useVisible } from './hooks/useVisible.ts';
+import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from './ui/PickerMenu.tsx';
+import { PlotSizeSlider } from './ui/PlotSizeSlider.tsx';
+import { SettingsToggle } from './ui/SettingsToggle.tsx';
+import { SupLabel } from './ui/SupLabel.tsx';
+import { OpenInIcon } from './ui/icons.tsx';
 
 const Tile = memo(function Tile({
   group,
@@ -206,16 +173,7 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
             sizeFor={sizeFor}
             onPick={(tilesPlotSize) => setViews({ tilesPlotSize })}
           />
-          <button
-            type="button"
-            className="view-settings"
-            aria-expanded={settingsOpen}
-            aria-label="Settings"
-            title={settingsOpen ? 'Hide settings' : 'Show settings'}
-            onClick={() => setViews({ tilesSettings: !settingsOpen })}
-          >
-            <SettingsIcon />
-          </button>
+          <SettingsToggle open={settingsOpen} onToggle={() => setViews({ tilesSettings: !settingsOpen })} />
         </div>
       </div>
       <div className="tiles" ref={box}>

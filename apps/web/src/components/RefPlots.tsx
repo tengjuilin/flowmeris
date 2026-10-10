@@ -2,11 +2,12 @@ import type { Group, PlotSpec, RefPlot, Workspace } from '@flowmeris/model';
 import { populationLineage, populationsDepthFirst } from '@flowmeris/model';
 import { useRef } from 'react';
 import { groupSample } from '../lib/axisDefaults.ts';
+import { axisPickers } from '../state/commands/plots.ts';
 import { addRef, editRef, removeRef } from '../state/commands/refPlots.ts';
 import { useGroup, useSampleNames, useStore } from '../state/store.ts';
 import { PlotCanvas } from './PlotCanvas.tsx';
-import { AxisSelects, PlotKindSelect, axisPickers } from './PlotPanel.tsx';
-import { useSize } from './hooks.ts';
+import { AxisSelects, PlotKindSelect } from './PlotPanel.tsx';
+import { useSize } from './hooks/useSize.ts';
 
 /** Short tab label: "<x> × <y>" by marker name ($PnS) when there is one. */
 function tabLabel(ws: Workspace, g: Group, r: RefPlot): string {

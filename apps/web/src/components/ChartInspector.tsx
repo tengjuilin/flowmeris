@@ -3,9 +3,11 @@ import { CATEGORICAL } from '@flowmeris/render';
 import type { Cell, PlotSeries } from '@flowmeris/table';
 import { useState } from 'react';
 import { pointKey } from '../lib/chartSelection.ts';
-import { GroupPicker, toggleIds } from './GroupPicker.tsx';
-import { NumInput } from './Inspector.tsx';
-import { TicksEditor } from './RidgeInspector.tsx';
+import { clamp } from '../lib/math.ts';
+import { TicksEditor } from './controls/TicksEditor.tsx';
+import { GroupPicker, toggleIds } from './ui/GroupPicker.tsx';
+import { NumInput, OptNumInput } from './ui/NumInput.tsx';
+import { Slider } from './ui/Slider.tsx';
 
 export const DEFAULT_CHART_STYLE: ChartStyle = ChartStyleSchema.parse({});
 
@@ -27,62 +29,6 @@ export function orderSeries(series: PlotSeries[], order: string[]): PlotSeries[]
     .map((s, i) => ({ s, r: rank.get(seriesKey(s.key)) ?? order.length + i }))
     .sort((a, b) => a.r - b.r)
     .map((x) => x.s);
-}
-
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-
-/** A number that may be left empty (= automatic). */
-function OptNumInput({
-  label,
-  value,
-  onCommit,
-  title,
-  disabled,
-}: {
-  label: string;
-  value: number | undefined;
-  onCommit: (v: number | undefined) => void;
-  title?: string;
-  disabled?: boolean;
-}) {
-  const [text, setText] = useState<string | null>(null);
-  return (
-    <label className="field" title={title}>
-      {label}
-      <input
-        type="number"
-        step="any"
-        placeholder="Auto"
-        disabled={disabled}
-        value={text ?? (value === undefined ? '' : String(Number(value.toPrecision(8))))}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => {
-          if (text === null) return;
-          const v = text.trim() === '' ? undefined : Number(text);
-          if (v === undefined || Number.isFinite(v)) onCommit(v);
-          setText(null);
-        }}
-        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-      />
-    </label>
-  );
-}
-
-/** A 0–1 opacity slider shown as a percentage. */
-function Slider({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
-  return (
-    <label className="field">
-      {label} · {Math.round(value * 100)}%
-      <input
-        type="range"
-        min={0}
-        max={1}
-        step={0.05}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-      />
-    </label>
-  );
 }
 
 function AxisFields(props: {
