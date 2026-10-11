@@ -1,5 +1,7 @@
 import type { ChartStyle, StatPlot } from '@flowmeris/model';
+import { ListActions } from '../../components/ui/ListActions.tsx';
 import { ReorderList } from '../../components/ui/ReorderList.tsx';
+import { ResetIcon } from '../../components/ui/icons.tsx';
 import { seriesColor, seriesKey, seriesName } from '../../lib/chartStyle.ts';
 import { moveIds } from '../../lib/order.ts';
 import type { ChartData } from './useChart.ts';
@@ -65,6 +67,29 @@ export function ChartColorFields({ c, plot }: { c: ChartData; plot: StatPlot }) 
       )}
       {c.seriesLabel ? (
         <>
+          <ListActions
+            onReverse={() => set('seriesOrder', [...keys].reverse(), 'Reverse chart series')}
+            resets={[
+              {
+                label: 'Order',
+                title: 'Reset the order',
+                disabled: !st.seriesOrder.length,
+                run: () => set('seriesOrder', [], 'Reset chart series order'),
+              },
+              {
+                label: 'Colours',
+                title: 'Reset the colours',
+                disabled: !Object.keys(st.seriesColors).length,
+                run: () => set('seriesColors', {}, 'Reset chart series colours'),
+              },
+              {
+                label: 'Labels',
+                title: 'Reset the labels',
+                disabled: !Object.keys(st.seriesLabels).length,
+                run: () => set('seriesLabels', {}, 'Reset chart series labels'),
+              },
+            ]}
+          />
           <ReorderList
             ids={keys}
             name={(k) => seriesName(series[keys.indexOf(k)]!)}
@@ -109,54 +134,24 @@ export function ChartColorFields({ c, plot }: { c: ChartData; plot: StatPlot }) 
                       )
                     }
                   />
-                  {custom && (
-                    <button
-                      type="button"
-                      className="icon"
-                      title="Reset colour"
-                      aria-label={`Reset colour of ${name}`}
-                      onClick={() =>
-                        edit('Reset chart series colour', (p) => {
-                          delete p.style.seriesColors[k];
-                        })
-                      }
-                    >
-                      ×
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="reset-btn"
+                    disabled={!custom}
+                    title="Reset colour to the setting above"
+                    aria-label={`Reset colour of ${name}`}
+                    onClick={() =>
+                      edit('Reset chart series colour', (p) => {
+                        delete p.style.seriesColors[k];
+                      })
+                    }
+                  >
+                    <ResetIcon />
+                  </button>
                 </>
               );
             }}
           </ReorderList>
-          <div className="list-actions">
-            <button
-              type="button"
-              onClick={() => set('seriesOrder', [...keys].reverse(), 'Reverse chart series')}
-            >
-              Reverse
-            </button>
-            <button
-              type="button"
-              disabled={!st.seriesOrder.length}
-              onClick={() => set('seriesOrder', [], 'Reset chart series order')}
-            >
-              Reset order
-            </button>
-            <button
-              type="button"
-              disabled={!Object.keys(st.seriesColors).length}
-              onClick={() => set('seriesColors', {}, 'Reset chart series colours')}
-            >
-              Reset colours
-            </button>
-            <button
-              type="button"
-              disabled={!Object.keys(st.seriesLabels).length}
-              onClick={() => set('seriesLabels', {}, 'Reset chart series labels')}
-            >
-              Reset labels
-            </button>
-          </div>
         </>
       ) : (
         <p className="small muted">Choose “Colour by” to colour by a variable.</p>

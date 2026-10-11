@@ -20,7 +20,7 @@ several features. Update this file when the layout changes.
 | `src/state/hooks/` | data hooks that fetch from the worker pool: `stats.ts` (`useSampleStats`, `useAnalysisTable`) |
 | `src/state/export.ts` | figure export wired to the store, pool and toasts (`exportPlot`, `exportSvgFigure`) |
 | `src/lib/` | pure logic, tested in Node: no store, pool, workers or components (`pnpm lint:deps` checks this). Functions documented "call inside `mutate`" work on a workspace draft |
-| `src/components/ui/` | generic controls that take data and callbacks as props: `icons.tsx`, `settings/` (every settings panel's parts: `SettingsPanel`, `EmptyPanel`, `Card`, `InspectorTabs`, `PanelReset`, and the Settings tab's `ApplyCard`, `ResetCard`, `ActionsCard`; see Settings panels below), `TabStrip` (closable tabs with +), `NumInput`/`OptNumInput`, `Slider`/`PercentSlider`, `SettingsToggle`, `ActionRow`, `PickerMenu`, `GroupPicker`, `PlotSizeSlider`, `SupLabel`, `ColorField` (swatch with reset), `ReorderList` (drag-to-reorder rows, with `useRowSelection`). No store or pool imports (`lint:deps`) |
+| `src/components/ui/` | generic controls that take data and callbacks as props: `icons.tsx`, `settings/` (every settings panel's parts: `SettingsPanel`, `EmptyPanel`, `Card`, `InspectorTabs`, `PanelReset`, and the Settings tab's `ApplyCard`, `ResetCard`, `ActionsCard`; see Settings panels below), `TabStrip` (closable tabs with +), `NumInput`/`OptNumInput`, `Slider`/`PercentSlider`, `SettingsToggle`, `ActionRow`, `PickerMenu`, `GroupPicker`, `PlotSizeSlider`, `SupLabel`, `ColorField` (swatch with reset), `ReorderList` (drag-to-reorder rows, with `useRowSelection`), `ListActions` (the Reverse and reset buttons above such a list). No store or pool imports (`lint:deps`) |
 | `src/components/controls/` | settings controls shared by several views, which may use the store: `AxisFields` (scale and range), `TicksEditor`, `ExportMenu`; `text/` (`BaseFontCard`, `TextCards`: the settings panels' text appearance, built on `FontSelect` and `TextStyleEditor`) |
 | `src/components/hooks/` | DOM and timing hooks: `useSize`, `useWidth`, `useVisible`, `useSettled`/`useDebounced` |
 | `src/features/plot/` | one plot: `PlotCanvas` (composes `usePlotData`, `useGateEditing`/`useGatePreview`, `GateShapes`, `DraftShapes`, `PlotAxes`, `PlotPaths`), `PlotControls` (plot type, channels and scales, drawing tools, edit scope), `usePlot` (`usePlotForPopulation`, `useTilePlot`) |
@@ -183,7 +183,7 @@ Classes shared across views:
 - `insp-panel`, `insp-head`, `insp-tabs`, `insp-global`, `insp-section*` and `insp-pane-title`: every
   settings panel (rendered by `ui/settings`);
 - `reorder-list`, `reorder-grip` and `list-actions` (`styles/lists.css`): the drag-to-reorder lists of ridge rows
-  and chart series (`ui/ReorderList`), and the buttons above them;
+  and chart series (`ui/ReorderList`), and the buttons above them (`ui/ListActions`);
 - `view-controls` and `view-settings`: the controls at the end of the Tiles, Plot grid, Path and Metadata
   toolbars (`ui/SettingsToggle`);
 - `tab-strip`, `tab-strip-tab` and `tab-strip-add`: the reference-plot and chart tabs (`ui/TabStrip`).
