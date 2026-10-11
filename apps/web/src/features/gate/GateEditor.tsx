@@ -1,13 +1,15 @@
 import { ellipseAxes, ellipseFromAxes } from '@flowmeris/gating';
 import { type Geometry, effectiveGeometry, isOverridden, populationsOfGate } from '@flowmeris/model';
 import { NumInput } from '../../components/ui/NumInput.tsx';
-import { type Panel, Section } from '../../components/ui/Section.tsx';
 import { DeleteIcon } from '../../components/ui/icons.tsx';
+import { Card } from '../../components/ui/settings/index.ts';
+import type { PlotCard } from '../../lib/panelSpecs.ts';
+import type { CardOf } from '../../lib/settingsPanel.ts';
 import { deleteGate, promoteOverride, revertOverride, setGateGeometry } from '../../state/commands/gates.ts';
 import { useGroup, useStore } from '../../state/store.ts';
 
 /** One gate's exact coordinates, editable live, with a delete button at the card's top right. */
-export function GateEditor({ gateId, panel }: { gateId: string; panel: Panel }) {
+export function GateEditor({ gateId, card }: { gateId: string; card: CardOf<PlotCard> }) {
   const ui = useStore((s) => s.ui);
   const setUi = useStore((s) => s.setUi);
   const group = useGroup()!;
@@ -28,12 +30,9 @@ export function GateEditor({ gateId, panel }: { gateId: string; panel: Panel }) 
         : (pops[0]?.name ?? 'Gate');
 
   return (
-    <Section
-      id={`gate-${gate.id}`}
-      title={name}
+    <Card
+      {...card(`gate-${gate.id}`, undefined, name)}
       className={ui.selectedGateId === gate.id ? 'selected' : undefined}
-      open={panel.isOpen(`gate-${gate.id}`)}
-      onToggle={() => panel.toggle(`gate-${gate.id}`)}
       actions={
         <button
           type="button"
@@ -154,6 +153,6 @@ export function GateEditor({ gateId, panel }: { gateId: string; panel: Panel }) 
           </button>
         </div>
       )}
-    </Section>
+    </Card>
   );
 }

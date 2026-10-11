@@ -1,7 +1,7 @@
 import type { StatPlot } from '@flowmeris/model';
 import { NumInput, OptNumInput } from '../../../components/ui/NumInput.tsx';
-import { Section } from '../../../components/ui/Section.tsx';
 import { Slider } from '../../../components/ui/Slider.tsx';
+import { Card } from '../../../components/ui/settings/index.ts';
 import { CHART_ERRORS, CHART_KINDS } from '../../../lib/chartStyle.ts';
 import { clamp } from '../../../lib/math.ts';
 import type { ChartTabProps } from '../chartTabs.ts';
@@ -13,7 +13,7 @@ export function FigureTab({ c, plot, card }: ChartTabProps) {
   const bar = plot.kind === 'bar';
   return (
     <>
-      <Section {...card('chart', 'Chart')}>
+      <Card {...card('chart')}>
         <label className="field short-text">
           Name
           <input
@@ -39,8 +39,8 @@ export function FigureTab({ c, plot, card }: ChartTabProps) {
             ))}
           </select>
         </label>
-      </Section>
-      <Section {...card('data', 'Error and replicates')}>
+      </Card>
+      <Card {...card('data')}>
         <label className="field" title="Error bars over the replicates (rows) sharing an x value and colour">
           Error bars
           <select
@@ -64,8 +64,8 @@ export function FigureTab({ c, plot, card }: ChartTabProps) {
           />
           Show replicate points
         </label>
-      </Section>
-      <Section {...card('marks', 'Marks')}>
+      </Card>
+      <Card {...card('marks')}>
         <Slider
           label={bar ? 'Bar opacity' : 'Marker opacity'}
           value={st.fillOpacity}
@@ -151,8 +151,8 @@ export function FigureTab({ c, plot, card }: ChartTabProps) {
             onChange={(v) => set('pointOpacity', v, 'Chart replicate opacity', 'point-opacity')}
           />
         )}
-      </Section>
-      <Section {...card('size', 'Size')}>
+      </Card>
+      <Card {...card('size')}>
         <div className="grid2">
           <label className="field check">
             <input
@@ -177,7 +177,7 @@ export function FigureTab({ c, plot, card }: ChartTabProps) {
           value={st.height}
           onCommit={(v) => set('height', clamp(v, 160, 10000), 'Chart height')}
         />
-      </Section>
+      </Card>
     </>
   );
 }

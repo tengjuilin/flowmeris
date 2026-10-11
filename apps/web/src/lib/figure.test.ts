@@ -152,8 +152,10 @@ describe('resetting', () => {
     expect(styleKeysAtDefaults(p.style, PANEL_FIGURE_KEYS.text, null)).toBe(false);
     resetStyleKeys(p.style, PANEL_FIGURE_KEYS.figure, DEFAULT_STYLE);
     expect(p.style.pointPx).toBe(DEFAULT_STYLE.pointPx);
-    expect(p.style.figure?.fontSize).toBe(DEFAULT_FIGURE.fontSize);
-    expect(p.style.figure?.gateText.italic).toBe(true);
+    expect(p.style.figure?.fontSize).toBe(20);
     expect(styleKeysAtDefaults(p.style, PANEL_FIGURE_KEYS.figure, DEFAULT_STYLE)).toBe(true);
+    resetStyleKeys(p.style, PANEL_FIGURE_KEYS.text, null);
+    expect(p.style.figure?.fontSize).toBe(DEFAULT_FIGURE.fontSize);
+    expect(p.style.figure?.gateText.italic).toBe(false);
   });
 });

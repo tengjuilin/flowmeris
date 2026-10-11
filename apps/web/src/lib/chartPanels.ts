@@ -1,28 +1,12 @@
 import { type ChartStyle, type StatPlot, newId } from '@flowmeris/model';
 import { DEFAULT_CHART_STYLE } from './chartStyle.ts';
 import { jsonClone, sameJson } from './json.ts';
+import { CHART_PANEL, type ChartCard, type ChartPanelTab } from './panelSpecs.ts';
+import { cardsOfTab } from './settingsPanel.ts';
 
 /** The Charts view's settings panel: its tabs and cards, their resets, and applying settings across charts. */
 
-export type ChartPanelTab = 'figure' | 'axis' | 'text' | 'settings';
-
-/** The collapsible cards of the panel. */
-export type ChartCard =
-  | 'chart'
-  | 'data'
-  | 'marks'
-  | 'size'
-  | 'xAxis'
-  | 'yAxis'
-  | 'color'
-  | 'grid'
-  | 'font'
-  | 'tickText'
-  | 'axisTitleText'
-  | 'legend'
-  | 'manage'
-  | 'apply'
-  | 'resetAll';
+export type { ChartCard, ChartPanelTab } from './panelSpecs.ts';
 
 /** Chart fields (outside `style`) a card resets. The columns, colour-by variable, type and name are never reset. */
 type PlotKey = 'xScale' | 'yScale' | 'xLabel' | 'yLabel' | 'error' | 'showPoints';
@@ -62,18 +46,13 @@ export const CHART_CARD_KEYS: Partial<Record<ChartCard, CardKeys>> = {
   yAxis: { style: ['yMin', 'yMax', 'yTicks'], plot: ['yScale', 'yLabel'] },
   color: { style: ['colorMode', 'color', 'seriesColors', 'seriesLabels', 'seriesOrder'], plot: [] },
   grid: { style: ['showGrid'], plot: [] },
-  font: { style: ['fontFamily'], plot: [] },
-  tickText: { style: ['showTickLabels', 'tickFontSize'], plot: [] },
-  axisTitleText: { style: ['titleFontSize'], plot: [] },
-  legend: { style: ['legend', 'legendFontSize'], plot: [] },
-};
-
-/** The cards of each tab, top to bottom. */
-export const CHART_TAB_CARDS: Record<ChartPanelTab, ChartCard[]> = {
-  figure: ['chart', 'data', 'marks', 'size'],
-  axis: ['xAxis', 'yAxis', 'color', 'grid'],
-  text: ['font', 'tickText', 'axisTitleText', 'legend'],
-  settings: ['manage', 'apply', 'resetAll'],
+  baseFont: {
+    style: ['fontFamily', 'fontColor', 'fontSize', 'tickFontSize', 'titleFontSize', 'legendFontSize'],
+    plot: [],
+  },
+  tickText: { style: ['showTickLabels', 'tickFontSize', 'tickText'], plot: [] },
+  axisTitleText: { style: ['titleFontSize', 'titleText'], plot: [] },
+  legend: { style: ['legend', 'legendFontSize', 'legendText'], plot: [] },
 };
 
 /** Whether the settings of `card` are at their defaults for chart `p`. */
@@ -106,11 +85,11 @@ export function resetChartCard(p: StatPlot, card: ChartCard): void {
 
 /** Whether every setting on tab `tab` is at its default for chart `p` (the Settings tab has none). */
 export const chartPanelAtDefaults = (tab: ChartPanelTab, p: StatPlot) =>
-  CHART_TAB_CARDS[tab].every((c) => chartCardAtDefaults(p, c));
+  cardsOfTab(CHART_PANEL, tab).every((c) => chartCardAtDefaults(p, c));
 
 /** Reset every setting on tab `tab` for chart `p` (call inside `mutate`). */
 export function resetChartPanel(tab: ChartPanelTab, p: StatPlot): void {
-  for (const c of CHART_TAB_CARDS[tab]) resetChartCard(p, c);
+  for (const c of cardsOfTab(CHART_PANEL, tab)) resetChartCard(p, c);
 }
 
 const ALL_CARDS = Object.keys(CHART_CARD_KEYS) as ChartCard[];

@@ -18,3 +18,10 @@
 Keyboard: `V` select, `R` rectangle, `E` ellipse, `P` polygon, `Q` quadrant, `S` spider, `H` range
 (histograms); arrow keys nudge the selected gate (Shift = 10 px); `Esc` cancels; `⌘Z` / `⇧⌘Z` undo/redo. In the Plot
 grid, `⌘X` / `⌘C` / `⌘V` cut, copy and paste the selected plot.
+
+Settings panels: most views have a settings panel at the right, in tabs of collapsible cards. Each panel
+remembers its last tab and the cards you collapsed, in this browser; every card starts open.
+**Reset this panel** resets the settings of the open tab; tabs with no settings of their own (such as
+**Settings**) do not have it. With nothing to edit yet, a panel says what to do first.
+In the plot, ridge and chart panels, the **Text** tab starts with the **Base font** card (the font, colour and size
+every text starts from; changing the size scales the others), followed by one card per kind of text.

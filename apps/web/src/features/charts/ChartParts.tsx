@@ -3,6 +3,7 @@ import type { Cell, ColumnDef, PlotPoint, PlotSeries } from '@flowmeris/table';
 import { SupLabel } from '../../components/ui/SupLabel.tsx';
 import { type Axis, barPath } from '../../lib/chartAxis.ts';
 import { CHART_ERRORS, cellText, fmtChart, seriesKey } from '../../lib/chartStyle.ts';
+import { textCss } from '../../lib/figure.ts';
 
 /** Rough width of text in px (no layout pass needed). */
 export const textW = (s: string, size: number) => s.length * size * 0.6;
@@ -63,7 +64,8 @@ export function ChartAxes({
   const { st, m, pw, ph, H, y } = f;
   const fs = st.tickFontSize;
   const ts = st.titleFontSize;
-  const tickText = { fontSize: fs };
+  const tickText = { fontSize: fs, ...textCss(st.tickText, st.fontFamily, st.fontColor) };
+  const titleText = { fontSize: ts, ...textCss(st.titleText, st.fontFamily, st.fontColor) };
   return (
     <g className="chart-axis">
       {y.ticks.map((t, i) => (
@@ -112,13 +114,7 @@ export function ChartAxes({
             </g>
           ))}
       {xTitle && (
-        <text
-          {...axisTitle('x', xTitle)}
-          x={m.l + pw / 2}
-          y={H - 8}
-          textAnchor="middle"
-          style={{ fontSize: ts }}
-        >
+        <text {...axisTitle('x', xTitle)} x={m.l + pw / 2} y={H - 8} textAnchor="middle" style={titleText}>
           {xTitle}
         </text>
       )}
@@ -129,7 +125,7 @@ export function ChartAxes({
           y={m.t + ph / 2}
           textAnchor="middle"
           transform={`rotate(-90 ${6 + ts * 0.8} ${m.t + ph / 2})`}
-          style={{ fontSize: ts }}
+          style={titleText}
         >
           {yTitle}
         </text>
@@ -256,6 +252,7 @@ export function ChartLegend({ f, legend }: { f: ChartFrame; legend: 'top' | 'rig
   const { m, st } = f;
   const ls = st.legendFontSize;
   const sw = Math.round(ls * 0.85);
+  const legendText = { fontSize: ls, ...textCss(st.legendText, st.fontFamily, st.fontColor) };
   let off = 0;
   return (
     <g
@@ -282,7 +279,7 @@ export function ChartLegend({ f, legend }: { f: ChartFrame; legend: 'top' | 'rig
               fill={f.color(i)}
               fillOpacity={st.fillOpacity}
             />
-            <text x={sw + 5} y={0} dominantBaseline="middle" style={{ fontSize: ls }}>
+            <text x={sw + 5} y={0} dominantBaseline="middle" style={legendText}>
               {label}
             </text>
           </g>

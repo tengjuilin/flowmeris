@@ -1,14 +1,14 @@
 import { TicksEditor } from '../../../components/controls/TicksEditor.tsx';
 import { ColorField } from '../../../components/ui/ColorField.tsx';
 import { NumInput } from '../../../components/ui/NumInput.tsx';
-import { Section } from '../../../components/ui/Section.tsx';
+import { Card } from '../../../components/ui/settings/index.ts';
 import { withAxesChange } from '../../../lib/figure.ts';
 import { clamp } from '../../../lib/math.ts';
 import { AxisEditor } from '../AxisEditor.tsx';
-import { type TabProps, cardProps } from '../figureEdits.ts';
+import type { TabProps } from '../figureEdits.ts';
 
 /** The Axis tab: swap X and Y, each axis (channel, scale, range, title), and ticks and spine. */
-export function AxisTab({ plot, target, panel, fx }: TabProps) {
+export function AxisTab({ plot, target, card, fx }: TabProps) {
   const { fig, edit, set, resetOf } = fx;
   const is2d = plot.kind !== 'histogram' && !!plot.y;
   const titleReset = (k: 'xTitle' | 'yTitle') => ({
@@ -60,31 +60,31 @@ export function AxisTab({ plot, target, panel, fx }: TabProps) {
           </button>
         </div>
       )}
-      <AxisEditor target={target} which="x" plot={plot} panel={panel} extra={titleReset('xTitle')}>
+      <AxisEditor target={target} which="x" plot={plot} card={card} extra={titleReset('xTitle')}>
         {titleField('xTitle', 'X axis title')}
       </AxisEditor>
       {is2d && (
-        <AxisEditor target={target} which="y" plot={plot} panel={panel} extra={titleReset('yTitle')}>
+        <AxisEditor target={target} which="y" plot={plot} card={card} extra={titleReset('yTitle')}>
           {titleField('yTitle', 'Y axis title')}
         </AxisEditor>
       )}
-      <Section
-        id="ticks"
-        title="Ticks and spine"
-        {...resetOf(
-          [
-            'axisColor',
-            'tickWidth',
-            'spineColor',
-            'spineWidth',
-            'boxAspect',
-            'showTickLabels',
-            'xTicks',
-            'yTicks',
-          ],
-          'ticks and spine',
+      <Card
+        {...card(
+          'ticks',
+          resetOf(
+            [
+              'axisColor',
+              'tickWidth',
+              'spineColor',
+              'spineWidth',
+              'boxAspect',
+              'showTickLabels',
+              'xTicks',
+              'yTicks',
+            ],
+            'ticks and spine',
+          ),
         )}
-        {...cardProps(panel, 'ticks')}
       >
         <ColorField
           inline
@@ -161,7 +161,7 @@ export function AxisTab({ plot, target, panel, fx }: TabProps) {
             <TicksEditor ticks={fig.yTicks} onCommit={(t) => set('yTicks', t, 'Y ticks')} />
           </>
         )}
-      </Section>
+      </Card>
     </>
   );
 }

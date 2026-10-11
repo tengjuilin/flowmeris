@@ -118,6 +118,22 @@ module.exports = {
       to: {},
     },
     {
+      name: 'web-settings-kit-api',
+      comment:
+        'The settings panel kit (components/ui/settings) and the text cards (components/controls/text) are used through their index.ts, so every panel uses the same parts.',
+      severity: 'error',
+      from: { pathNot: '^apps/web/src/components/(ui/settings|controls/text)/' },
+      to: { path: '^apps/web/src/components/(ui/settings|controls/text)/(?!index\\.ts$)' },
+    },
+    {
+      name: 'web-text-through-cards',
+      comment:
+        'A settings panel styles text with BaseFontCard and TextCards (components/controls/text), not with their parts.',
+      severity: 'error',
+      from: { path: '^apps/web/src/features/' },
+      to: { path: '^apps/web/src/components/controls/(TextStyleEditor|FontSelect)\\.tsx$' },
+    },
+    {
       name: 'web-feature-public-api',
       comment: 'A feature folder is used through its index.ts; only its own files import its other files.',
       severity: 'error',

@@ -12,7 +12,7 @@ several features. Update this file when the layout changes.
 |---|---|
 | `src/app/` | the shell: `views.tsx` (VIEW_DEFS: every view's label, content, settings panel, tool keys, tab action; VIEW_ORDER), `App.tsx`, `Header.tsx`, `TabBar.tsx`, `Overlays.tsx`, `useHotkeys.ts`, `useDropIngest.ts` |
 | `src/state/store.ts` | the store: `ws` (workspace), `ui` (where the user is and what is selected), `views` (layout preferences), `status` (missing data, loading, toast), undo history, Back/Forward |
-| `src/state/prefs.ts` | preferences in browser storage: session view and layout, inspector tabs and sections (`usePanelState`, `useRememberedTab`) |
+| `src/state/prefs.ts` | preferences in browser storage: session view and layout, settings panels' tabs and collapsed cards (`usePanelState`; the stored format is in `lib/settingsPanel.ts`) |
 | `src/state/persist.ts` | IndexedDB autosave of `ws` (ring of 20 snapshots) |
 | `src/engine-client/` | `pool.ts`: the worker pool (ADR-0003, ADR-0010), `getPool()`; `scheduler.ts`: its request queue and result cache |
 | `src/workers/compute.worker.ts` | worker side: wraps `@flowmeris/engine` behind Comlink (`ComputeApi`) |
@@ -20,8 +20,8 @@ several features. Update this file when the layout changes.
 | `src/state/hooks/` | data hooks that fetch from the worker pool: `stats.ts` (`useSampleStats`, `useAnalysisTable`) |
 | `src/state/export.ts` | figure export wired to the store, pool and toasts (`exportPlot`, `exportSvgFigure`) |
 | `src/lib/` | pure logic, tested in Node: no store, pool, workers or components (`pnpm lint:deps` checks this). Functions documented "call inside `mutate`" work on a workspace draft |
-| `src/components/ui/` | generic controls that take data and callbacks as props: `icons.tsx`, `Section` (collapsible settings card), `InspectorTabs` and `PanelReset`, `TabStrip` (closable tabs with +), `NumInput`/`OptNumInput`, `Slider`/`PercentSlider`, `SettingsToggle`, `ActionRow`, `PickerMenu`, `GroupPicker`, `PlotSizeSlider`, `SupLabel`, `ColorField` (swatch with reset), `ReorderList` (drag-to-reorder rows, with `useRowSelection`). No store or pool imports (`lint:deps`) |
-| `src/components/controls/` | settings controls shared by several views, which may use the store: `AxisFields` (scale and range), `TicksEditor`, `FontSelect`, `TextStyleEditor`, `ExportMenu` |
+| `src/components/ui/` | generic controls that take data and callbacks as props: `icons.tsx`, `settings/` (every settings panel's parts: `SettingsPanel`, `EmptyPanel`, `Card`, `InspectorTabs`, `PanelReset`, and the Settings tab's `ApplyCard`, `ResetCard`, `ActionsCard`; see Settings panels below), `TabStrip` (closable tabs with +), `NumInput`/`OptNumInput`, `Slider`/`PercentSlider`, `SettingsToggle`, `ActionRow`, `PickerMenu`, `GroupPicker`, `PlotSizeSlider`, `SupLabel`, `ColorField` (swatch with reset), `ReorderList` (drag-to-reorder rows, with `useRowSelection`). No store or pool imports (`lint:deps`) |
+| `src/components/controls/` | settings controls shared by several views, which may use the store: `AxisFields` (scale and range), `TicksEditor`, `ExportMenu`; `text/` (`BaseFontCard`, `TextCards`: the settings panels' text appearance, built on `FontSelect` and `TextStyleEditor`) |
 | `src/components/hooks/` | DOM and timing hooks: `useSize`, `useWidth`, `useVisible`, `useSettled`/`useDebounced` |
 | `src/features/plot/` | one plot: `PlotCanvas` (composes `usePlotData`, `useGateEditing`/`useGatePreview`, `GateShapes`, `DraftShapes`, `PlotAxes`, `PlotPaths`), `PlotControls` (plot type, channels and scales, drawing tools, edit scope), `usePlot` (`usePlotForPopulation`, `useTilePlot`) |
 | `src/features/gate/` | the Gate view: `PlotPanel` (with its title, whose buttons open the plot in the Plot or Tiles view, its toolbar and export card), `RefPlots`, and the plot settings panel `Inspector` (`GateInspector.tsx`, tabs in `tabs/`, cards `AxisEditor`, `StyleEditor`, `GateEditor`), also used by the Plot grid and Tiles views |
@@ -74,14 +74,50 @@ What is in `src/lib/`:
 | `ingest.ts`, `files.ts`, `names.ts` | grouping loaded files; data-file extensions; short sample names |
 | `export/` | figure export: `svg.ts`, `pdf.ts`, `figure.ts`, `plot.ts` (takes its data as a `PlotExportSource`) |
 | `geometry.ts`, `fitSize.ts`, `order.ts`, `text.ts`, `format.ts`, `json.ts`, `download.ts`, `sheets.ts` | gate drawing geometry; sizing (`nearestColumns`, and `RowFit` for rows of plots in Tiles and the Plot grid); moving ids in a list (`moveIds`); label wrapping, number formats, JSON copy/compare, downloads, spreadsheets |
-| `ticks.ts`, `math.ts` | custom ticks (`parseTicks`, `formatTicks`, `customTicks`), histogram y ticks; `clamp` |
+| `ticks.ts`, `math.ts`, `textScale.ts` | custom ticks (`parseTicks`, `formatTicks`, `customTicks`), histogram y ticks; `clamp`; font sizes (`clampFontSize`, `scaleFontSizes`: the base font size scaling the others) |
 | `plotFrame.ts`, `plotLayout.ts`, `plotPaths.ts` | a plot's pixel mapping and gate hit testing (`hitGate`, `popAt`); margins and titles (`plotBox`, `axisLabel`); histogram and contour SVG paths |
 | `gateEdit.ts` | gate shapes from drags and handles (`applyHandle`, `translate`, `shapeFromDrag`, `newGateBase`) |
 | `plotPanels.ts` | the plot settings panel's per-tab defaults and reset (`panelAtDefaults`, `resetPanel`) |
+| `panelSpecs.ts`, `settingsPanel.ts` | every settings panel's tabs and cards with their titles (`PLOT_PANELS`, `RIDGE_PANEL`, `CHART_PANEL`, `STATS_PANEL`, `META_PANEL`); the spec types, card props and the remembered tab and collapsed cards |
 | `gatingPath.ts` | the Gating path: the plot showing each gate (`plotForGate`, built from the gate's axes when no saved plot matches), the tree (`treeLayout`), the path's steps |
 
 `figure.ts` has the SVG text styling (`textCss`, `figureText`) and fonts (`FONT_STACKS`, `fontStack`);
 `ridgeStyle.ts` the ridge defaults and colours (`ridgeColor`). Search for a symbol before assuming where it lives.
+
+## Settings panels
+
+Every view's settings panel is built from the same parts, so a change to how panels look or behave is
+made once, and each feature keeps only its own logic:
+
+| To change | Edit | Reaches |
+|---|---|---|
+| a panel's tabs, cards or titles | `lib/panelSpecs.ts` | that panel |
+| the frame, tabs, "Reset this panel", empty panel, card | `components/ui/settings/` and `styles/inspector.css` | every panel |
+| the Settings tab's Apply / Reset cards | `components/ui/settings/ActionsCard.tsx` | Gate, Ridge, Charts |
+| the Base font card, the per-text cards | `components/controls/text/` | Gate, Ridge, Charts |
+| remembered tab and collapsed cards | `useSettingsPanel` (`state/prefs.ts`), `lib/settingsPanel.ts` | every panel |
+| what a card edits or resets | the feature's `tabs/*.tsx` and `lib/*Panels.ts` | that panel |
+
+- **Add a card**: add it to the tab in `lib/panelSpecs.ts`, then render `<Card {...card('id')}>` in the
+  tab; pass `card('id', { changed, onReset })` for its ↺ button. A card not in the spec (one per gate or
+  variable) passes its title: `` card(`gate-${id}`, undefined, name) ``.
+- **Add a tab**: add it to the spec (`resettable: false` if it has nothing of its own to reset), render
+  its component in the inspector, and give "Reset this panel" its reset in the feature's `lib/*Panels.ts`.
+- **Text settings**: a Text tab is a `BaseFontCard` and a `TextCards` list of entries (card, label, style,
+  size, edits, and `extra` fields); the base size scales the others with `scaleFontSizes`.
+- **Settings tab**: `ApplyCard` and `ResetCard` take lists of actions (`label`, `title`, `disabled`,
+  `run`) and checkboxes; `ActionsCard` takes actions with their own icons.
+- **Guardrails**: `lint:deps` (`web-settings-kit-api`, `web-text-through-cards`) keeps features on the
+  kits' `index.ts`; `features/settingsPanels.test.ts` fails when a feature draws `insp-*` frame markup or
+  a tab list itself; `lib/panelSpecs.test.ts` checks every spec's ids.
+
+| Panel | Spec | Inspector |
+|---|---|---|
+| Gate, Tiles, Plot grid | `PLOT_PANELS[target]` | `features/gate/GateInspector.tsx` (tabs in `gate/tabs/`) |
+| Ridge | `RIDGE_PANEL` | `features/ridge/RidgeInspector.tsx` (tabs in `ridge/tabs/`) |
+| Charts | `CHART_PANEL` | `features/charts/ChartInspector.tsx` (tabs in `charts/tabs/`) |
+| Statistics | `STATS_PANEL` | `features/stats/StatsInspector.tsx` |
+| Metadata | `META_PANEL` | `features/metadata/MetadataInspector.tsx` (its tab follows the table or plate map) |
 
 ## Store rules
 
@@ -145,7 +181,7 @@ and dark, are at the top of `base.css`; the breakpoints at 1100 px and 700 px ar
 
 Classes shared across views:
 - `insp-panel`, `insp-head`, `insp-tabs`, `insp-global`, `insp-section*` and `insp-pane-title`: every
-  settings panel (rendered by `ui/InspectorTabs`, `ui/PanelReset` and `ui/Section`);
+  settings panel (rendered by `ui/settings`);
 - `reorder-list`, `reorder-grip` and `list-actions` (`styles/lists.css`): the drag-to-reorder lists of ridge rows
   and chart series (`ui/ReorderList`), and the buttons above them;
 - `view-controls` and `view-settings`: the controls at the end of the Tiles, Plot grid, Path and Metadata

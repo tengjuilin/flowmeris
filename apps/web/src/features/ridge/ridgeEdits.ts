@@ -1,18 +1,19 @@
 import type { Group, RidgeLayout, RidgeStyle } from '@flowmeris/model';
+import type { RidgeCard } from '../../lib/panelSpecs.ts';
 import { RIDGE_CARD_KEYS, resetRidgeKeys, ridgeKeysAtDefaults } from '../../lib/ridgePanels.ts';
+import type { CardOf } from '../../lib/settingsPanel.ts';
 import { useStore } from '../../state/store.ts';
 import type { Ridge } from './useRidge.ts';
 
-/** The collapsible cards of the ridge settings panel: the style cards and the Settings tab's. */
-export type RidgeCard = keyof typeof RIDGE_CARD_KEYS | 'apply' | 'resetAll' | 'scale';
+export type { RidgeCard } from '../../lib/panelSpecs.ts';
 
 /** What every tab of the ridge settings panel gets: the ridge plot, its edits and the panel's open cards. */
 export interface RidgeTabProps {
   r: Ridge;
   group: Group;
   fx: RidgeEdits;
-  /** Card `id`'s open state and toggle, as `Section` props. */
-  card: (id: RidgeCard) => { open: boolean; onToggle: () => void };
+  /** Card `id`'s props. */
+  card: CardOf<RidgeCard>;
 }
 
 export type RidgeEdits = ReturnType<typeof ridgeEdits>;

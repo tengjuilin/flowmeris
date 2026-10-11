@@ -1,8 +1,10 @@
 import type { AxisSpec, PlotSpec } from '@flowmeris/model';
 import type { ReactNode } from 'react';
 import { type ApplyAxis, AxisFields } from '../../components/controls/AxisFields.tsx';
-import { type Panel, Section } from '../../components/ui/Section.tsx';
+import { Card } from '../../components/ui/settings/index.ts';
 import { axisAtFactory, groupSample, resetAxisToFactory } from '../../lib/axisDefaults.ts';
+import type { PlotCard } from '../../lib/panelSpecs.ts';
+import type { CardOf } from '../../lib/settingsPanel.ts';
 import { type PlotTarget, axisChannelSetter, plotsOf, targetEdit } from '../../state/commands/plots.ts';
 import { useGroup, useStore } from '../../state/store.ts';
 
@@ -10,14 +12,14 @@ import { useGroup, useStore } from '../../state/store.ts';
 export function AxisEditor({
   which,
   plot,
-  panel,
+  card,
   children,
   extra,
   target = 'gate',
 }: {
   which: 'x' | 'y';
   plot: PlotSpec;
-  panel: Panel;
+  card: CardOf<PlotCard>;
   /** Which plots to edit; only a Gate-view plot's scales become the channel's defaults. */
   target?: PlotTarget;
   /** More settings for this axis, after the channel picker. */
@@ -37,19 +39,16 @@ export function AxisEditor({
     });
   const axis = plot[which] as AxisSpec;
   const sample = groupSample(ws, group);
-  const id = `${which}axis`;
   const title = `${which.toUpperCase()} axis`;
   return (
-    <Section
-      id={id}
-      title={title}
-      open={panel.isOpen(id)}
-      onToggle={() => panel.toggle(id)}
-      changed={!!extra?.changed || !axisAtFactory(ws, group, axis)}
-      onReset={() => {
-        extra?.reset();
-        apply(`Reset ${title}`, (a, w, g) => resetAxisToFactory(w, g, a), true);
-      }}
+    <Card
+      {...card(which === 'x' ? 'xaxis' : 'yaxis', {
+        changed: !!extra?.changed || !axisAtFactory(ws, group, axis),
+        onReset: () => {
+          extra?.reset();
+          apply(`Reset ${title}`, (a, w, g) => resetAxisToFactory(w, g, a), true);
+        },
+      })}
     >
       <label className="field">
         Channel
@@ -76,6 +75,6 @@ export function AxisEditor({
       </label>
       <AxisFields hideReset axis={axis} population={plot.population} apply={apply} />
       {children}
-    </Section>
+    </Card>
   );
 }

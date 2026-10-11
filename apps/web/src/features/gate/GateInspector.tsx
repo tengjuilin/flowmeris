@@ -1,13 +1,13 @@
 import type { Group, PlotSpec } from '@flowmeris/model';
-import { useEffect, useRef, useState } from 'react';
-import { InspectorTabs, PanelReset } from '../../components/ui/InspectorTabs.tsx';
-import type { Panel } from '../../components/ui/Section.tsx';
+import { useEffect, useRef } from 'react';
+import { EmptyPanel, SettingsPanel } from '../../components/ui/settings/index.ts';
 import { carryToPopulation } from '../../lib/figure.ts';
 import { gateMatchesAxes } from '../../lib/geometry.ts';
-import { type PlotPanelTab, panelAtDefaults, resetPanel } from '../../lib/plotPanels.ts';
+import { PLOT_PANELS } from '../../lib/panelSpecs.ts';
+import { panelAtDefaults, resetPanel } from '../../lib/plotPanels.ts';
 import { UNSAVED_PLOT_ID } from '../../lib/unsavedPlot.ts';
 import { type PlotTarget, plotsOf as targetPlots } from '../../state/commands/plots.ts';
-import { useRememberedTab } from '../../state/prefs.ts';
+import { useSettingsPanel } from '../../state/prefs.ts';
 import { useGroup, useStore } from '../../state/store.ts';
 import { usePlotForPopulation, useTilePlot } from '../plot/index.ts';
 import { GateEditor } from './GateEditor.tsx';
@@ -16,20 +16,6 @@ import { AxisTab } from './tabs/AxisTab.tsx';
 import { FigureTab } from './tabs/FigureTab.tsx';
 import { SettingsTab } from './tabs/SettingsTab.tsx';
 import { TextTab } from './tabs/TextTab.tsx';
-
-const GATE_TABS: { id: PlotPanelTab; label: string }[] = [
-  { id: 'figure', label: 'Figure' },
-  { id: 'axis', label: 'Axis' },
-  { id: 'text', label: 'Text' },
-  { id: 'gate', label: 'Gate' },
-  { id: 'settings', label: 'Settings' },
-];
-const TAB_KEYS: Record<PlotTarget, string> = {
-  gate: 'flowmeris.gatePanelTab',
-  tiles: 'flowmeris.tilesPanelTab',
-  grid: 'flowmeris.gridPanelTab',
-};
-const NAMES: Record<PlotTarget, string> = { gate: 'Gate', tiles: 'Tiles', grid: 'Plot' };
 
 /**
  * The Gate view's settings: Figure / Axis / Text / Gate / Settings tabs of collapsible cards. With `target`
@@ -49,17 +35,9 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
   const plotsOf = (g: Group) => targetPlots(g, target);
   const follow = (g: Group) => (tiles ? g.tilePlotStyleFollow : g.plotStyleFollow);
   const mutate = useStore((s) => s.mutate);
-  const [tab, setTab] = useRememberedTab<PlotPanelTab>(
-    TAB_KEYS[target],
-    GATE_TABS.map((t) => t.id),
-    'figure',
-  );
-  // Every card starts open; collapsing one lasts for the session.
-  const [closed, setClosed] = useState<Record<string, boolean>>({});
-  const panel: Panel = {
-    isOpen: (id) => !closed[id],
-    toggle: (id) => setClosed((c) => ({ ...c, [id]: !c[id] })),
-  };
+  const spec = PLOT_PANELS[target];
+  // The last tab and collapsed cards, remembered in this browser.
+  const { tab, setTab, card } = useSettingsPanel(spec);
   // While settings are carried across populations, the population opened next takes the settings of
   // the one left (keeping its own title, ticks and axis titles). An unsaved plot takes them unsaved.
   const last = useRef<{ groupId: string; key: string; unsaved: PlotSpec | null } | null>(null);
@@ -91,9 +69,12 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
   }, [group?.id, key]);
   if (!group || !plot)
     return (
-      <aside className="inspector insp-panel" aria-label={`${NAMES[target]} settings`}>
-        {grid && group && <p className="muted small">Select a plot in the grid to change its settings.</p>}
-      </aside>
+      <EmptyPanel spec={spec}>
+        {group &&
+          (grid
+            ? 'Select a plot in the grid to change its settings.'
+            : 'Open a population to change its plot settings.')}
+      </EmptyPanel>
     );
   const fx = figureEdits(group, plot, target);
   const is2d = plot.kind !== 'histogram' && !!plot.y;
@@ -101,45 +82,36 @@ export function Inspector({ target = 'gate' }: { target?: PlotTarget }) {
   const gates = Object.values(group.template.gates).filter(
     (g) => g.parentPop === plot.population && gateMatchesAxes(g, plot.x, is2d ? plot.y : undefined),
   );
-  const tabProps = { group, plot, target, panel, fx };
+  const tabProps = { group, plot, target, card, fx };
 
   return (
-    <aside className="inspector insp-panel" aria-label={`${NAMES[target]} settings`}>
-      <div className="insp-head">
-        <InspectorTabs
-          idPrefix="gate"
-          label={`${NAMES[target]} settings`}
-          tabs={GATE_TABS}
-          current={tab}
-          onSelect={setTab}
-        />
-        <PanelReset
-          title="Reset the settings in this panel for this plot"
-          disabled={panelAtDefaults(tab, plot, group, useStore.getState().ws, target === 'gate')}
-          onClick={() =>
-            mutate(`Reset ${tab} settings`, (w) => {
-              const g = w.groups.find((x) => x.id === group.id);
-              const p = g && plotsOf(g).find((x) => x.id === plot.id);
-              if (g && p) resetPanel(tab, p, g, w, target === 'gate');
-            })
-          }
-        />
-      </div>
-      <div id="gate-tabpanel" role="tabpanel" aria-labelledby={`gate-tab-${tab}`}>
-        {tab === 'settings' && <SettingsTab {...tabProps} />}
-        {tab === 'gate' &&
-          (gates.length ? (
-            gates.map((g) => <GateEditor key={g.id} gateId={g.id} panel={panel} />)
-          ) : (
-            <p className="muted small">
-              No gates on this plot yet. Draw one with the tools above the{' '}
-              {tiles ? 'tiles' : grid ? 'grid' : 'plot'}.
-            </p>
-          ))}
-        {tab === 'figure' && <FigureTab {...tabProps} gridPlot={gridPlot ?? undefined} />}
-        {tab === 'axis' && <AxisTab {...tabProps} />}
-        {tab === 'text' && <TextTab {...tabProps} />}
-      </div>
-    </aside>
+    <SettingsPanel
+      spec={spec}
+      tab={tab}
+      onTab={setTab}
+      reset={{
+        disabled: panelAtDefaults(tab, plot, group, useStore.getState().ws, target === 'gate'),
+        onReset: (label) =>
+          mutate(label, (w) => {
+            const g = w.groups.find((x) => x.id === group.id);
+            const p = g && plotsOf(g).find((x) => x.id === plot.id);
+            if (g && p) resetPanel(tab, p, g, w, target === 'gate');
+          }),
+      }}
+    >
+      {tab === 'settings' && <SettingsTab {...tabProps} />}
+      {tab === 'gate' &&
+        (gates.length ? (
+          gates.map((g) => <GateEditor key={g.id} gateId={g.id} card={card} />)
+        ) : (
+          <p className="muted small">
+            No gates on this plot yet. Draw one with the tools above the{' '}
+            {tiles ? 'tiles' : grid ? 'grid' : 'plot'}.
+          </p>
+        ))}
+      {tab === 'figure' && <FigureTab {...tabProps} gridPlot={gridPlot ?? undefined} />}
+      {tab === 'axis' && <AxisTab {...tabProps} />}
+      {tab === 'text' && <TextTab {...tabProps} />}
+    </SettingsPanel>
   );
 }

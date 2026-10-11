@@ -30,9 +30,10 @@ describe('plot settings panel reset', () => {
   it('resets one tab and leaves the others', () => {
     const { ws, g, p } = setup();
     p.style.figure = { ...structuredClone(DEFAULT_FIGURE), fontSize: 20, tickWidth: 3 };
-    expect(panelAtDefaults('figure', p, g, ws, true)).toBe(false);
-    resetPanel('figure', p, g, ws, true);
     expect(panelAtDefaults('figure', p, g, ws, true)).toBe(true);
+    expect(panelAtDefaults('text', p, g, ws, true)).toBe(false);
+    resetPanel('text', p, g, ws, true);
+    expect(panelAtDefaults('text', p, g, ws, true)).toBe(true);
     expect(p.style.figure?.tickWidth).toBe(3);
   });
 
@@ -56,7 +57,7 @@ describe('plot settings panel reset', () => {
     const { ws, g } = setup();
     const tile = newTilePlot(ws, g, 'root');
     expect(tile.style.figure?.fontSize).toBe(TILE_FIGURE.fontSize);
-    expect(panelAtDefaults('figure', tile, g, ws, false)).toBe(true);
-    expect(panelAtDefaults('figure', tile, g, ws, true)).toBe(false);
+    expect(panelAtDefaults('text', tile, g, ws, false)).toBe(true);
+    expect(panelAtDefaults('text', tile, g, ws, true)).toBe(false);
   });
 });

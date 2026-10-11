@@ -1,6 +1,7 @@
 import type { Group, PlotFigure, PlotSpec } from '@flowmeris/model';
-import type { Panel } from '../../components/ui/Section.tsx';
 import { DEFAULT_FIGURE, TILE_FIGURE } from '../../lib/figure.ts';
+import type { PlotCard } from '../../lib/panelSpecs.ts';
+import type { CardOf } from '../../lib/settingsPanel.ts';
 import { type PlotTarget, plotsOf } from '../../state/commands/plots.ts';
 import { useStore } from '../../state/store.ts';
 
@@ -12,15 +13,10 @@ export interface TabProps {
   plot: PlotSpec;
   /** Which plots the panel edits: the Gate view's, the Tiles' or a Plot grid cell. */
   target: PlotTarget;
-  panel: Panel;
+  /** Card `id`'s props. */
+  card: CardOf<PlotCard>;
   fx: FigureEdits;
 }
-
-/** A card's open state and toggle, as `Section` props. */
-export const cardProps = (panel: Panel, id: string) => ({
-  open: panel.isOpen(id),
-  onToggle: () => panel.toggle(id),
-});
 
 export type FigureEdits = ReturnType<typeof figureEdits>;
 
@@ -55,7 +51,7 @@ export function figureEdits(group: Group, plot: PlotSpec, target: PlotTarget) {
       merge,
     );
   /** Reset props for a card whose settings are the figure `keys`. */
-  const resetOf = (keys: (keyof PlotFigure)[], title: string) => ({
+  const resetOf = (keys: readonly (keyof PlotFigure)[], title: string) => ({
     changed: keys.some((k) => !same(fig[k], defFig[k])),
     onReset: () =>
       edit(`Reset ${title}`, (f) => {

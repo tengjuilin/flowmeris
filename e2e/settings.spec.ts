@@ -87,6 +87,8 @@ test('apply and reset buttons in the Settings tab', async ({ page }) => {
   await visit(page, 'All events');
   await expect(pointSize(page)).toHaveValue('2');
   await tab(page, 'Settings');
+  // The Settings tab has no settings of its own, so no "Reset this panel".
+  await expect(page.getByRole('button', { name: 'Reset the settings in this panel' })).toHaveCount(0);
   await resetThis.click();
   await tab(page, 'Figure');
   await expect(pointSize(page)).toHaveValue('3');
@@ -107,4 +109,21 @@ test('opening a population saves its plot only with the first edit, in one undo 
   await undo.click();
   await expect(undo).toHaveAttribute('title', /^Undo: Add gate/);
   await expect(pointSize(page)).toHaveValue('3');
+});
+
+test('a collapsed card stays collapsed after leaving the view', async ({ page }) => {
+  await open(page);
+  await tab(page, 'Text');
+  // The Text tab starts with the base font.
+  await expect(page.locator('.insp-section-head').first()).toHaveText('Base font');
+  const card = page.getByRole('button', { name: 'Tick labels', exact: true });
+  await expect(card).toHaveAttribute('aria-expanded', 'true');
+  await card.click();
+  await expect(card).toHaveAttribute('aria-expanded', 'false');
+  const view = (name: string) =>
+    page.locator('[role="tablist"]:not([aria-label])').getByRole('tab', { name, exact: true }).click();
+  await view('Statistics');
+  await view('Gate');
+  await expect(page.getByRole('tab', { name: 'Text', selected: true })).toBeVisible();
+  await expect(card).toHaveAttribute('aria-expanded', 'false');
 });

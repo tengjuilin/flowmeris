@@ -2,7 +2,6 @@ import type { StatPlot } from '@flowmeris/model';
 import { describe, expect, it } from 'vitest';
 import {
   CHART_CARD_KEYS,
-  CHART_TAB_CARDS,
   applyChartToAll,
   chartAtDefaults,
   chartCardAtDefaults,
@@ -14,6 +13,8 @@ import {
   resetChartPanel,
 } from './chartPanels.ts';
 import { DEFAULT_CHART_STYLE } from './chartStyle.ts';
+import { CHART_PANEL } from './panelSpecs.ts';
+import { cardsOfTab } from './settingsPanel.ts';
 
 function chart(id: string, over: Partial<StatPlot> = {}): StatPlot {
   return {
@@ -43,7 +44,7 @@ describe('chart settings panel', () => {
   });
 
   it('every card with settings is on exactly one tab', () => {
-    const onTabs = Object.values(CHART_TAB_CARDS).flat();
+    const onTabs = CHART_PANEL.tabs.flatMap((t) => cardsOfTab(CHART_PANEL, t.id));
     for (const card of Object.keys(CHART_CARD_KEYS)) expect(onTabs.filter((c) => c === card)).toHaveLength(1);
   });
 
@@ -63,6 +64,26 @@ describe('chart settings panel', () => {
     expect(chartCardAtDefaults(p, 'xAxis')).toBe(true);
     resetChartCard(p, 'data');
     expect(p.error).toBe('sem');
+  });
+
+  it('the text cards reset their text styles and the base font resets its colour and sizes', () => {
+    const p = chart('a');
+    p.style.tickText = { bold: true, italic: false, underline: false };
+    p.style.legendText = { bold: false, italic: true, underline: false, color: '#ff0000' };
+    p.style.fontColor = '#333333';
+    p.style.fontSize = 18;
+    expect(chartCardAtDefaults(p, 'tickText')).toBe(false);
+    expect(chartCardAtDefaults(p, 'legend')).toBe(false);
+    expect(chartCardAtDefaults(p, 'baseFont')).toBe(false);
+    resetChartCard(p, 'tickText');
+    expect(p.style.tickText.bold).toBe(false);
+    expect(p.style.legendText.italic).toBe(true);
+    resetChartCard(p, 'baseFont');
+    expect('fontColor' in p.style).toBe(false);
+    expect(p.style.fontSize).toBe(DEFAULT_CHART_STYLE.fontSize);
+    expect(chartPanelAtDefaults('text', p)).toBe(false);
+    resetChartPanel('text', p);
+    expect(chartPanelAtDefaults('text', p)).toBe(true);
   });
 
   it('a tab reset covers the cards on that tab and leaves the columns', () => {

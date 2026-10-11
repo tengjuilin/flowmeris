@@ -1,12 +1,12 @@
 import type { Group, RidgeLayout, RidgeStyle, Workspace } from '@flowmeris/model';
 import { axisAtFactory, resetAxisToFactory } from './axisDefaults.ts';
 import { sameJson } from './json.ts';
-import { clamp } from './math.ts';
 import { moveIds } from './order.ts';
 import { DEFAULT_OVERLAP, DEFAULT_RIDGE_STYLE } from './ridgeStyle.ts';
+import { scaleFontSizes } from './textScale.ts';
 
-/** The tabs of the ridge plot settings panel. */
-export type RidgePanelTab = 'sample' | 'axis' | 'text' | 'figure' | 'settings';
+import type { RidgePanelTab } from './panelSpecs.ts';
+export type { RidgePanelTab };
 
 type Keys = (keyof RidgeStyle)[];
 
@@ -27,9 +27,9 @@ export const RIDGE_CARD_KEYS = {
 const K = RIDGE_CARD_KEYS;
 /** The style keys each tab's "Reset this panel" resets (the Axis tab also resets the scale, the Sample tab its rows). */
 export const RIDGE_PANEL_KEYS: Record<'figure' | 'axis' | 'text', Keys> = {
-  figure: [...K.ridgeStyle, ...K.labels, ...K.layout, ...K.histogram, ...K.baseFont],
+  figure: [...K.ridgeStyle, ...K.labels, ...K.layout, ...K.histogram],
   axis: [...K.ticks, ...K.title],
-  text: [...K.labelText, ...K.tickText, ...K.titleText],
+  text: [...K.baseFont, ...K.labelText, ...K.tickText, ...K.titleText],
 };
 
 /** Whether the style `keys` (and the overlap, if `withOverlap`) are at the defaults. */
@@ -128,14 +128,5 @@ export function moveRidges(
  * Set the base font size of `style` to `px` (clamped to 4–48), scaling the label, tick and title sizes
  * by the same factor, to the nearest half pixel (call inside `mutate`). False if the size is unchanged.
  */
-export function scaleRidgeFonts(style: RidgeStyle, px: number): boolean {
-  const next = clamp(px, 4, 48);
-  if (next === style.fontSize) return false;
-  const k = next / style.fontSize;
-  const scaled = (x: number) => clamp(Math.round(x * k * 2) / 2, 4, 48);
-  style.fontSize = next;
-  style.labelFontSize = scaled(style.labelFontSize);
-  style.tickFontSize = scaled(style.tickFontSize);
-  style.titleFontSize = scaled(style.titleFontSize);
-  return true;
-}
+export const scaleRidgeFonts = (style: RidgeStyle, px: number): boolean =>
+  scaleFontSizes(style, ['labelFontSize', 'tickFontSize', 'titleFontSize'], px);
