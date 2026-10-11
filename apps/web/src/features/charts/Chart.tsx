@@ -15,7 +15,7 @@ import {
   legendOrigin,
 } from '../../lib/chartLegend.ts';
 import { cellText, seriesColor, seriesKey } from '../../lib/chartStyle.ts';
-import { fontStack } from '../../lib/figure.ts';
+import { fontStack } from '../../lib/fonts/index.ts';
 import { ChartAxes, type ChartFrame, ChartLegend, ChartTip, type Hover, SeriesMarks } from './ChartParts.tsx';
 
 /** A statistics chart: the means of `series` against x, with error bars, replicates and a legend. */

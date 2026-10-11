@@ -22,6 +22,7 @@ Use `corepack pnpm …` (pnpm 9 through corepack, Node ≥ 20).
 | `corepack pnpm build && corepack pnpm e2e` | Playwright on Chromium, Firefox and WebKit against `vite preview` on :4173 |
 | `corepack pnpm dev` | the app with HMR (`.claude/launch.json` has `web` on :5173) |
 | `corepack pnpm fixtures:fetch` | download large fixtures (SHA-256 checked). Tests that need them are skipped without them. |
+| `corepack pnpm fonts:fetch` | download the figure fonts (`tools/fonts.lock.json`, SHA-256 checked) into `apps/web/src/assets/fonts`, not in git ([ADR-0011](docs/adr/0011-bundled-figure-fonts.md)). Runs on install, `dev` and `build`. |
 
 ## Layout
 
@@ -31,7 +32,7 @@ apps/web/      React app, zustand store, compute worker pool (see apps/web/CLAUD
 e2e/           Playwright specs; helpers.ts writes small synthetic FCS files
 docs/          VitePress site: guide/ (users), methods/ (definitions), validation/, adr/ (decisions)
 fixtures/      reference data: flowio/, flowkit/ (ISAC Gating-ML suite), golden/ (generated), remote/ (fetched)
-tools/         fetch-fixtures.mjs, check-size.mjs, golden/ (Python generator + compare.mjs)
+tools/         fetch-fixtures.mjs, fetch-fonts.mjs (+ fonts.lock.json), check-size.mjs, golden/ (Python generator + compare.mjs)
 ```
 
 Imports only point down: `apps/web` → `packages/*`, and packages never import from `apps/`. Within the

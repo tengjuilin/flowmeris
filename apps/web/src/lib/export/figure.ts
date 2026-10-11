@@ -1,5 +1,7 @@
 import { download, safeName } from '../download.ts';
-import { FORMATS, type ImageFormat } from './formats.ts';
+import { installedFonts } from '../fonts/index.ts';
+import { embedFontFaces } from './fontFaces.ts';
+import { FORMATS, type ImageFormat, type Warn } from './formats.ts';
 import { withMounted } from './mount.ts';
 import { svgToPdf } from './pdf.ts';
 import { svgToJpeg, svgToPng } from './raster.ts';
@@ -7,12 +9,9 @@ import { standaloneSvg } from './standalone.ts';
 
 /**
  * Figure export (method M-EXPORT-PLOT): every figure, whatever view draws it, is exported here. A view
- * describes its figure as a `FigureSource`, which builds standalone SVG markup; each format writes that
- * markup (svg as is; png, jpeg and pdf after laying it out off-screen).
+ * describes its figure as a `FigureSource`, which builds standalone SVG markup; the markup is laid out
+ * off-screen and each format's writer turns it into a file, with the fonts embedded (ADR-0011).
  */
-
-/** Messages for the user (e.g. fonts the PDF had to substitute). */
-export type Warn = (message: string) => void;
 
 /** A figure to export. */
 export interface FigureSource {
@@ -25,13 +24,26 @@ export function svgFigure(svg: SVGSVGElement): FigureSource {
   return { build: async () => standaloneSvg(svg) };
 }
 
-type Writer = (el: SVGSVGElement, dpi: number, warn?: Warn) => Promise<Blob | Uint8Array>;
+type Writer = (el: SVGSVGElement, dpi: number, warn?: Warn) => Promise<Blob | Uint8Array | string>;
 
-/** How each format writes the laid-out standalone SVG (svg is written without laying it out). */
-const WRITERS: Record<Exclude<ImageFormat, 'svg'>, Writer> = {
+/**
+ * How each format writes the laid-out standalone SVG. The PDF embeds its fonts itself; the others carry
+ * them as @font-face rules.
+ */
+const WRITERS: Record<ImageFormat, Writer> = {
   pdf: (el, _dpi, warn) => svgToPdf(el, warn),
-  png: (el, dpi) => svgToPng(el, dpi),
-  jpeg: (el, dpi) => svgToJpeg(el, dpi),
+  png: async (el, dpi, warn) => {
+    await embedFontFaces(el, warn);
+    return svgToPng(el, dpi);
+  },
+  jpeg: async (el, dpi, warn) => {
+    await embedFontFaces(el, warn);
+    return svgToJpeg(el, dpi);
+  },
+  svg: async (el, _dpi, warn) => {
+    await embedFontFaces(el, warn);
+    return new XMLSerializer().serializeToString(el);
+  },
 };
 
 /** The file contents of `figure` as `format`; `dpi` sizes PNG and JPEG and any embedded event raster. */
@@ -41,8 +53,10 @@ export async function writeFigure(
   dpi: number,
   warn?: Warn,
 ): Promise<Blob | Uint8Array | string> {
+  // A PDF may embed installed fonts: ask for them while the click that started the export still counts as
+  // a user gesture (the browser's permission prompt needs one), before building the figure takes time.
+  if (format === 'pdf') void installedFonts();
   const markup = await figure.build(dpi);
-  if (format === 'svg') return markup;
   const write = WRITERS[format];
   return withMounted(markup, (el) => write(el, dpi, warn));
 }

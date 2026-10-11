@@ -3,12 +3,14 @@
 import { axisTicks } from '@flowmeris/transforms';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ExportMenu } from '../../components/controls/ExportMenu.tsx';
+import { useFontsLoaded } from '../../components/hooks/useFontsLoaded.ts';
 import { useSize } from '../../components/hooks/useSize.ts';
 import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from '../../components/ui/PickerMenu.tsx';
 import { SupLabel } from '../../components/ui/SupLabel.tsx';
 import { factoryAxis } from '../../lib/axisDefaults.ts';
 import { svgFigure } from '../../lib/export/index.ts';
-import { fontStack, textCss } from '../../lib/figure.ts';
+import { textCss } from '../../lib/figure.ts';
+import { fontStack } from '../../lib/fonts/index.ts';
 import { scaleFor } from '../../lib/geometry.ts';
 import { ridgeFrame, ridgeLabels, ridgePaths } from '../../lib/ridgeLayout.ts';
 import { ridgeColor, withRidgeChannel } from '../../lib/ridgeStyle.ts';
@@ -48,6 +50,8 @@ export function RidgeView() {
   const sampleIds = useMemo(() => rows.flatMap((x) => x.sampleIds), [rows]);
   const box = useRef<HTMLDivElement>(null);
   const { width } = useSize(box);
+  // Labels are wrapped by measuring them: measure again once their font has loaded.
+  useFontsLoaded();
   const [chMenu, setChMenu] = useState<Anchor | null>(null);
   const closeChMenu = useCallback(() => setChMenu(null), []);
 

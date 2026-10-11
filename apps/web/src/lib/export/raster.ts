@@ -1,14 +1,18 @@
 import { encodePngCompressed } from '@flowmeris/render';
-import { standaloneSvg } from './standalone.ts';
 
-/** PNG and JPEG export of a laid-out standalone SVG (method M-EXPORT-PLOT). The SVG's px are 96 dpi. */
+/**
+ * PNG and JPEG export of a laid-out standalone SVG (method M-EXPORT-PLOT), drawn as an image: its fonts
+ * must be embedded in it (fontFaces.ts). The SVG's px are 96 dpi.
+ */
 
 /** Draw an SVG onto a canvas at `dpi`; `background` fills first. */
 async function svgToCanvas(svg: SVGSVGElement, dpi: number, background?: string) {
   const w = Number(svg.getAttribute('width'));
   const h = Number(svg.getAttribute('height'));
   const scale = dpi / 96;
-  const url = URL.createObjectURL(new Blob([standaloneSvg(svg)], { type: 'image/svg+xml' }));
+  const url = URL.createObjectURL(
+    new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' }),
+  );
   try {
     const img = new Image();
     img.src = url;

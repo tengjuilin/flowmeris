@@ -136,3 +136,28 @@ export async function waitForAutosave(page: Page, samples: number) {
     )
     .toBe(samples);
 }
+
+/**
+ * The fonts a PDF's text is set in (jsPDF output, uncompressed): for each `Tf` operator, the font's size,
+ * BaseFont, and whether the font program is embedded (a font with a descriptor) or a standard PDF font.
+ */
+export function pdfTextFonts(pdf: Buffer): { size: number; font: string; embedded: boolean }[] {
+  const text = pdf.toString('latin1');
+  const ref: Record<string, string> = {};
+  for (const m of text.matchAll(/\/(F\d+) (\d+) 0 R/g)) ref[m[1]!] = m[2]!;
+  const obj = (n: string | undefined) => {
+    const i = text.indexOf(`\n${n} 0 obj`);
+    return i < 0 ? '' : text.slice(i, text.indexOf('endobj', i));
+  };
+  const used = new Map<string, { size: number; font: string; embedded: boolean }>();
+  for (const [, name, size] of text.matchAll(/\/(F\d+) ([\d.]+) Tf/g)) {
+    const o = obj(ref[name!]);
+    const font = (o.match(/\/BaseFont \/(\S+)/)?.[1] ?? '?').replace(/#20/g, ' ');
+    used.set(`${name} ${size}`, {
+      size: Number(size),
+      font,
+      embedded: /DescendantFonts|FontDescriptor/.test(o),
+    });
+  }
+  return [...used.values()];
+}

@@ -19,6 +19,8 @@ const STYLE_PROPS = [
   'font-style',
   'text-decoration',
   'paint-order',
+  'font-kerning',
+  'font-variant-ligatures',
 ];
 
 /** Write `src`'s computed styles (STYLE_PROPS) inline on its clone `dst`, recursively, dropping classes. */

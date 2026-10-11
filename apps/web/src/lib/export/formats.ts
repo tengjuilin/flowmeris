@@ -28,3 +28,6 @@ export const FORMAT_IDS = Object.keys(FORMATS) as ImageFormat[];
 export function clampDpi(dpi: number): number {
   return Math.min(1200, Math.max(72, dpi || 300));
 }
+
+/** Messages for the user (e.g. fonts an export had to substitute). */
+export type Warn = (message: string) => void;

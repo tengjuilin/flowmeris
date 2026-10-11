@@ -69,6 +69,7 @@ export default defineConfig({
             { text: '0008 Web app layering', link: '/adr/0008-web-layout-and-layering' },
             { text: '0009 Store commands', link: '/adr/0009-store-commands' },
             { text: '0010 Worker API', link: '/adr/0010-worker-api' },
+            { text: '0011 Bundled figure fonts', link: '/adr/0011-bundled-figure-fonts' },
           ],
         },
       ],
