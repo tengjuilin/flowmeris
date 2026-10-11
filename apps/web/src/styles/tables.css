@@ -165,6 +165,16 @@ table.matrix input {
 .toast {
   bottom: 18px;
 }
+.toast.warning {
+  flex-wrap: nowrap;
+  background: var(--danger-bg);
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  color: var(--text);
+}
+.toast.warning .warning-icon {
+  flex: none;
+  color: var(--danger);
+}
 .storage-warning {
   top: 60px;
   color: var(--warn);

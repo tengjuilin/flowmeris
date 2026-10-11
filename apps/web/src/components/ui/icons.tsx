@@ -123,6 +123,17 @@ export function ExportIcon() {
   );
 }
 
+/** Warning: an exclamation mark in a triangle. */
+export function WarningIcon() {
+  return (
+    <svg className="warning-icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M8 1.8 15 14H1z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M8 6v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="8" cy="12" r="0.9" fill="currentColor" />
+    </svg>
+  );
+}
+
 /** Reverse: two arrows pointing opposite ways, up and down. */
 export function ReverseIcon() {
   return (

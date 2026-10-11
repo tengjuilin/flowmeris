@@ -96,7 +96,8 @@ interface StatusState {
   /** Samples whose decoded data is not in browser storage. */
   missing: Record<string, true>;
   ingest: IngestProgress | null;
-  toast: { text: string; action?: { label: string; run: () => void } } | null;
+  /** A message over the app; a `warning` is drawn in red with an icon and stays until dismissed or replaced. */
+  toast: { text: string; tone?: 'warning'; action?: { label: string; run: () => void } } | null;
 }
 
 /** Where the user is: the tab and what it shows. Back and Forward return to one. */
@@ -405,6 +406,11 @@ export function mutateGroup(
 
 export function contextFor(ws: Workspace, g: Group): AnalysisContext {
   return { group: g, transforms: ws.transforms, compMatrices: ws.compMatrices };
+}
+
+/** Show a warning: something did not come out as the user asked (e.g. a font replaced in an export). */
+export function warning(text: string) {
+  useStore.getState().setStatus({ toast: { text, tone: 'warning' } });
 }
 
 export function toast(text: string, action?: { label: string; run: () => void }) {
