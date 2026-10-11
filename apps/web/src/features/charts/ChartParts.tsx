@@ -3,7 +3,7 @@ import type { Cell, ColumnDef, PlotPoint, PlotSeries } from '@flowmeris/table';
 import { SupLabel } from '../../components/ui/SupLabel.tsx';
 import { type Axis, barPath } from '../../lib/chartAxis.ts';
 import { legendSwatch, textW } from '../../lib/chartLayout.ts';
-import { markerPath, meanLineLength } from '../../lib/chartMarks.ts';
+import { type MarkerShape, dashArray, markerPath, meanLineLength } from '../../lib/chartMarks.ts';
 import { CHART_ERRORS, cellText, fmtChart, seriesKey } from '../../lib/chartStyle.ts';
 import { textCss } from '../../lib/figure.ts';
 
@@ -70,12 +70,13 @@ export function ChartAxes({
   // Unset colors keep the theme's, from the CSS.
   const tick = { stroke: st.tickColor, strokeWidth: st.tickWidth };
   const spine = { stroke: st.spineColor, strokeWidth: st.spineWidth };
+  const grid = { stroke: st.gridColor, strokeWidth: st.gridWidth };
   return (
     <g className="chart-axis">
       {y.ticks.map((t, i) => (
         <g key={i}>
           {st.showGrid && t.major && (
-            <line className="chart-grid" x1={m.l} x2={m.l + pw} y1={t.pos} y2={t.pos} />
+            <line className="chart-grid" x1={m.l} x2={m.l + pw} y1={t.pos} y2={t.pos} style={grid} />
           )}
           {st.tickWidth > 0 && (
             <line x1={m.l - (t.major ? 5 : 3)} x2={m.l} y1={t.pos} y2={t.pos} style={tick} />
@@ -196,14 +197,17 @@ export function SeriesMarks({
             d={barPath(px(p.x, i) - slot / 2, slot, base, yClamp(p.mean), 4)}
             fill={c}
             fillOpacity={st.fillOpacity}
+            stroke={st.barEdgeWidth > 0 ? (st.barEdgeColor ?? c) : undefined}
+            strokeWidth={st.barEdgeWidth > 0 ? st.barEdgeWidth : undefined}
           />
         ))}
       {plot.kind === 'line' && pts.length > 1 && st.lineWidth > 0 && (
         <polyline
           points={pts.map((p) => `${px(p.x, i)},${f.y.map(p.mean)}`).join(' ')}
           fill="none"
-          stroke={c}
+          stroke={st.lineColor ?? c}
           strokeWidth={st.lineWidth}
+          strokeDasharray={dashArray(st.lineDash, st.lineWidth)}
           strokeLinejoin="round"
           strokeLinecap="round"
         />
@@ -216,15 +220,16 @@ export function SeriesMarks({
             const spread = f.band ? Math.max(0, slot * 0.7) : 0;
             const dx = p.values.length > 1 ? (j / (p.values.length - 1) - 0.5) * spread : 0;
             return (
-              <circle
+              <Marker
                 key={`r${JSON.stringify(p.x)}${j}`}
                 className="chart-rep"
+                shape={st.pointShape}
                 cx={px(p.x, i) + dx}
                 cy={f.y.map(v)}
                 r={st.pointSize}
-                fill={bar ? 'var(--surface)' : c}
-                stroke={st.markerEdgeColor ?? (bar ? 'var(--text)' : 'var(--surface)')}
-                strokeWidth={bar ? 1 : 1.5}
+                fill={st.pointColor ?? (bar ? 'var(--surface)' : c)}
+                stroke={st.pointEdgeColor ?? (bar ? 'var(--text)' : 'var(--surface)')}
+                strokeWidth={st.pointEdgeWidth ?? (bar ? 1 : 1.5)}
                 opacity={pointOpacity}
               />
             );
@@ -250,6 +255,32 @@ export function SeriesMarks({
   );
 }
 
+/** A point marker of radius `r` centered on (cx, cy): a circle, or a path of the same area. */
+function Marker({
+  shape,
+  cx,
+  cy,
+  r,
+  ...paint
+}: {
+  shape: Exclude<MarkerShape, 'hline'>;
+  cx: number;
+  cy: number;
+  r: number;
+  className?: string;
+  fill: string;
+  fillOpacity?: number;
+  stroke: string;
+  strokeWidth: number;
+  opacity?: number;
+}) {
+  return shape === 'circle' ? (
+    <circle cx={cx} cy={cy} r={r} {...paint} />
+  ) : (
+    <path d={markerPath(shape, cx, cy, r)} strokeLinejoin="round" {...paint} />
+  );
+}
+
 /** The mean marker of a point at (cx, cy) in series color `color`: a shape, or a horizontal line. */
 function MeanMarker({ f, cx, cy, color }: { f: ChartFrame; cx: number; cy: number; color: string }) {
   const { st } = f;
@@ -270,16 +301,17 @@ function MeanMarker({ f, cx, cy, color }: { f: ChartFrame; cx: number; cy: numbe
     );
   }
   if (st.markerSize <= 0) return null;
-  const paint = {
-    fill: color,
-    fillOpacity: st.fillOpacity,
-    stroke: st.markerEdgeColor ?? 'var(--surface)',
-    strokeWidth: Math.min(2, st.markerSize / 2),
-  };
-  return st.markerShape === 'circle' ? (
-    <circle cx={cx} cy={cy} r={st.markerSize} {...paint} />
-  ) : (
-    <path d={markerPath(st.markerShape, cx, cy, st.markerSize)} strokeLinejoin="round" {...paint} />
+  return (
+    <Marker
+      shape={st.markerShape}
+      cx={cx}
+      cy={cy}
+      r={st.markerSize}
+      fill={st.markerColor ?? color}
+      fillOpacity={st.fillOpacity}
+      stroke={st.markerEdgeColor ?? 'var(--surface)'}
+      strokeWidth={st.markerEdgeWidth ?? Math.min(2, st.markerSize / 2)}
+    />
   );
 }
 

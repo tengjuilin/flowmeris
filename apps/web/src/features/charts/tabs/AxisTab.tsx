@@ -1,6 +1,7 @@
 import { Card } from '../../../components/ui/settings/index.ts';
 import { ChartAxisFields } from '../ChartAxisFields.tsx';
 import { ChartColorFields } from '../ChartColorFields.tsx';
+import { PxField, StyleColorField } from '../ChartStyleFields.tsx';
 import { ChartTicksFields } from '../ChartTicksFields.tsx';
 import type { ChartTabProps } from '../chartTabs.ts';
 
@@ -32,6 +33,10 @@ export function AxisTab({ c, plot, card }: ChartTabProps) {
           />
           Show gridlines
         </label>
+        <StyleColorField c={c} k="gridColor" label="Gridline color" shown="#e4e4e4" unset="the theme's" />
+        <div className="grid2">
+          <PxField c={c} k="gridWidth" label="Gridline width (px)" max={10} />
+        </div>
       </Card>
     </>
   );

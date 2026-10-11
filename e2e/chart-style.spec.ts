@@ -47,7 +47,6 @@ test('marker shape, the horizontal-line marker, edge and error bar colors', asyn
   await expect(chart(page).locator('path[stroke-linejoin="round"]')).toHaveCount(n);
   await panel.getByLabel('Marker edge color', { exact: true }).fill('#123456');
   await expect(chart(page).locator('path[stroke="#123456"]')).toHaveCount(n);
-  await expect(chart(page).locator('circle.chart-rep').first()).toHaveAttribute('stroke', '#123456');
 
   await panel.getByRole('combobox', { name: 'Marker shape' }).selectOption('hline');
   const lines = chart(page).locator('.chart-mean-line');
@@ -96,4 +95,38 @@ test('ticks and spines, the box aspect ratio, and the series list buttons', asyn
   await color.getByRole('button', { name: 'Reverse' }).click();
   await expect(color.getByRole('button', { name: 'Reset the order' })).toBeEnabled();
   await page.screenshot({ path: 'test-results/chart-axis.png' });
+});
+
+test('every chart type styles its lines and points', async ({ page }) => {
+  const panel = await openChart(page);
+  // Replicate points: shape, color and edge width.
+  await panel.getByRole('combobox', { name: 'Replicate shape' }).selectOption('square');
+  await panel.getByLabel('Replicate color', { exact: true }).fill('#aa00aa');
+  await panel.getByRole('spinbutton', { name: 'Edge width (px)' }).last().fill('2');
+  const rep = chart(page).locator('.chart-rep').first();
+  await expect(rep).toHaveAttribute('fill', '#aa00aa');
+  await expect(rep).toHaveAttribute('stroke-width', '2');
+  expect(await rep.evaluate((e) => e.tagName)).toBe('path');
+
+  // Line chart: the Line card styles the line joining the means.
+  await panel.getByRole('combobox', { name: 'Chart type' }).selectOption('line');
+  await panel.getByRole('combobox', { name: 'Line style' }).selectOption('dotted');
+  await panel.getByLabel('Line color', { exact: true }).fill('#101010');
+  const line = chart(page).locator('polyline');
+  await expect(line).toHaveAttribute('stroke', '#101010');
+  await expect(line).toHaveAttribute('stroke-dasharray', /^0 /);
+
+  // Bar chart: the Bars card replaces the mean markers' and outlines the bars.
+  await panel.getByRole('combobox', { name: 'Chart type' }).selectOption('bar');
+  await expect(panel.getByRole('button', { name: 'Mean markers' })).toHaveCount(0);
+  await panel.getByRole('spinbutton', { name: 'Outline width (px)' }).fill('2');
+  await panel.getByLabel('Outline color', { exact: true }).fill('#202020');
+  await expect(chart(page).locator('path[stroke="#202020"]').first()).toHaveAttribute('stroke-width', '2');
+
+  // Gridlines: color and width.
+  await panel.getByRole('tab', { name: 'Axis' }).click();
+  await panel.getByLabel('Gridline color', { exact: true }).fill('#303030');
+  await panel.getByRole('spinbutton', { name: 'Gridline width (px)' }).fill('2');
+  await expect(chart(page).locator('.chart-grid').first()).toHaveCSS('stroke-width', '2px');
+  await expect(chart(page).locator('.chart-grid').first()).toHaveCSS('stroke', 'rgb(48, 48, 48)');
 });

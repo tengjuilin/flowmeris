@@ -36,3 +36,22 @@ export function markerPath(shape: 'square' | 'triangle' | 'diamond', cx: number,
 /** Length in px of the 'hline' marker: as set, else the series' slot in a band (at least 12 px), else 16 px. */
 export const meanLineLength = (st: ChartStyle, band: boolean, slot: number) =>
   st.meanLineLength ?? (band ? Math.max(12, slot) : 16);
+
+export const POINT_SHAPES = MARKER_SHAPES.filter((s) => s.id !== 'hline') as {
+  id: ChartStyle['pointShape'];
+  label: string;
+}[];
+
+export const LINE_DASHES: { id: ChartStyle['lineDash']; label: string }[] = [
+  { id: 'solid', label: 'Solid' },
+  { id: 'dashed', label: 'Dashed' },
+  { id: 'dotted', label: 'Dotted' },
+];
+
+/** SVG `stroke-dasharray` of a line `width` px wide (dots need round caps); undefined for solid. */
+export function dashArray(dash: ChartStyle['lineDash'], width: number): string | undefined {
+  const w = Math.max(width, 0.5);
+  if (dash === 'dashed') return `${f(4 * w)} ${f(2.5 * w)}`;
+  if (dash === 'dotted') return `0 ${f(2.5 * w)}`;
+  return undefined;
+}

@@ -74,6 +74,27 @@ describe('chart settings panel', () => {
     expect(chartAtDefaults(p)).toBe(true);
   });
 
+  it('line, point, bar and gridline styles reset with their cards', () => {
+    const p = chart('a');
+    Object.assign(p.style, {
+      lineColor: '#000000',
+      lineDash: 'dotted',
+      pointShape: 'square',
+      pointColor: '#111111',
+      pointEdgeWidth: 0,
+      barEdgeWidth: 2,
+      gridColor: '#222222',
+      gridWidth: 3,
+      markerColor: '#333333',
+    });
+    for (const card of ['line', 'replicates', 'bars', 'grid', 'marks'] as const) {
+      expect(chartCardAtDefaults(p, card)).toBe(false);
+      resetChartCard(p, card);
+      expect(chartCardAtDefaults(p, card)).toBe(true);
+    }
+    expect(chartAtDefaults(p)).toBe(true);
+  });
+
   it('a card reset clears only its own settings', () => {
     const p = chart('a', { xLabel: 'Dose', error: 'sd' });
     p.style.markerSize = 9;

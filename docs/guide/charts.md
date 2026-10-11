@@ -74,12 +74,17 @@ resets that card, and **Reset this panel** resets the open tab; neither changes 
 or hidden groups.
 
 - **Figure:** the chart's **Name** (its tab's label) and **Chart type**; **Error bars** and **Show replicate
-  points**; **Marks** (bar or marker opacity; the **Marker shape** of scatter, line and dot charts:
-  circle, square, triangle, diamond or **Horizontal line**, which has its own width, length (empty = as
-  wide as the series' replicates) and color (each series' color until you pick one); marker size, line
-  width, bar width as a share of each category, and the **Marker edge color** of the markers and replicate
-  points); **Error bars** (width, cap width and color); **Replicate points** (size and opacity); **Size**
-  (width: fit the view, or fixed in px; and height). Exports use this size.
+  points**; then one card per kind of mark, each with its line and point settings. A color left unset
+  follows each series' color (or the theme's) until you pick one; ↺ next to it sets it back.
+  - **Mean markers** (scatter, line and dot charts): opacity; **Marker shape** (circle, square, triangle,
+    diamond, or **Horizontal line**, with its own width, length (empty = as wide as the series'
+    replicates) and color); size, color, edge color and edge width; and the group width of dot charts.
+  - **Bars** (bar charts, in place of Mean markers): opacity, bar width as a share of each category, and
+    an outline color and width (0 = no outline).
+  - **Line** (line charts): the line joining the means: width, color, and solid, dashed or dotted.
+  - **Error bars**: width, cap width and color.
+  - **Replicate points**: shape, size, color, edge color and width, and opacity.
+  - **Size**: width (fit the view, or fixed in px) and height. Exports use this size.
 - **Axis:** **X axis** and **Y axis**, each with its **Column**, **Scale**, **Title** (type a space for
   none), **Min** / **Max** in data units (empty = fit the data; marks outside a fixed range are clipped)
   and custom ticks, one per line, `1000` or `1000 = 1k`. Categorical x axes keep the variable's level
@@ -88,7 +93,7 @@ or hidden groups.
   reorder series; the buttons above the list **Reverse** them and reset their order, colors or labels.
   Changing **Color by** clears these. **Ticks and spines** sets the color and width of the tick marks and
   of the axis lines, and a **Box aspect ratio** (plot area width ÷ height, fitted inside the chart's size;
-  the chart shrinks to it), as in the Gate view. **Gridlines** turns them on or off.
+  the chart shrinks to it), as in the Gate view. **Gridlines** turns them on or off and sets their color and width.
 - **Text:** the **Base font** (any font from the list or installed on this computer, a color, which is
   the theme's text color until you pick one, and a size that scales the other sizes with it); then
   **Tick labels** (on or off), **Axis titles** and the **Legend** (its position: top, right or hidden),

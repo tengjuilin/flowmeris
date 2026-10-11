@@ -1,15 +1,21 @@
 import type { StatPlot } from '@flowmeris/model';
-import { ColorField } from '../../../components/ui/ColorField.tsx';
-import { NumInput, OptNumInput } from '../../../components/ui/NumInput.tsx';
-import { Slider } from '../../../components/ui/Slider.tsx';
+import { NumInput } from '../../../components/ui/NumInput.tsx';
 import { Card } from '../../../components/ui/settings/index.ts';
-import { MARKER_SHAPES, type MarkerShape } from '../../../lib/chartMarks.ts';
 import { CHART_ERRORS, CHART_KINDS } from '../../../lib/chartStyle.ts';
 import { clamp } from '../../../lib/math.ts';
-import { MarkerFields } from '../ChartMarkerFields.tsx';
+import {
+  BarFields,
+  ErrorBarFields,
+  LineFields,
+  MeanMarkerFields,
+  ReplicateFields,
+} from '../ChartMarkFields.tsx';
 import type { ChartTabProps } from '../chartTabs.ts';
 
-/** The Figure tab: the chart's name and type, what it shows, its marks, error bars, replicates and size. */
+/**
+ * The Figure tab: the chart's name and type, what it shows, its marks (mean markers or bars, and the line),
+ * error bars, replicate points and size.
+ */
 export function FigureTab({ c, plot, card }: ChartTabProps) {
   const { edit, set } = c;
   const st = plot.style;
@@ -68,141 +74,25 @@ export function FigureTab({ c, plot, card }: ChartTabProps) {
           Show replicate points
         </label>
       </Card>
-      <Card {...card('marks')}>
-        <Slider
-          label={bar ? 'Bar opacity' : 'Marker opacity'}
-          value={st.fillOpacity}
-          onChange={(v) => set('fillOpacity', v, 'Chart opacity', 'opacity')}
-        />
-        {!bar && (
-          <label className="field">
-            Marker shape
-            <select
-              value={st.markerShape}
-              onChange={(e) => set('markerShape', e.target.value as MarkerShape, 'Chart marker shape')}
-            >
-              {MARKER_SHAPES.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {!bar && <MarkerFields c={c} />}
-        {plot.kind === 'line' && (
-          <div className="grid2">
-            <NumInput
-              label="Line width (px)"
-              step={0.25}
-              value={st.lineWidth}
-              onCommit={(v) => set('lineWidth', clamp(v, 0, 20), 'Chart line width')}
-            />
-          </div>
-        )}
-        {c.band && (
-          <div className="grid2">
-            <label className="field check">
-              <input
-                type="checkbox"
-                checked={st.barWidth === undefined}
-                onChange={(e) => set('barWidth', e.target.checked ? undefined : 0.8, 'Chart bar width')}
-              />
-              Auto {bar ? 'bar' : 'group'} width
-            </label>
-            {st.barWidth !== undefined && (
-              <NumInput
-                label="Width (% of category)"
-                step={5}
-                value={Math.round(st.barWidth * 100)}
-                onCommit={(v) => set('barWidth', clamp(v / 100, 0.05, 1), 'Chart bar width')}
-              />
-            )}
-          </div>
-        )}
-        <ColorField
-          inline
-          label="Marker edge color"
-          inputLabel="Marker edge color"
-          inputTitle={
-            st.markerEdgeColor === undefined
-              ? 'The background (bar replicates: the text color); pick to override'
-              : 'Edge of the mean markers and replicate points'
-          }
-          value={st.markerEdgeColor ?? '#ffffff'}
-          onChange={(v) => set('markerEdgeColor', v, 'Chart marker edge color')}
-          reset={{
-            disabled: st.markerEdgeColor === undefined,
-            label: 'Reset marker edge color to the default',
-            title:
-              st.markerEdgeColor === undefined
-                ? 'Marker edge color is the default'
-                : 'Reset marker edge color to the default',
-            onReset: () => set('markerEdgeColor', undefined, 'Chart marker edge color'),
-          }}
-        />
-      </Card>
+      {bar ? (
+        <Card {...card('bars')}>
+          <BarFields c={c} />
+        </Card>
+      ) : (
+        <Card {...card('marks')}>
+          <MeanMarkerFields c={c} />
+        </Card>
+      )}
+      {plot.kind === 'line' && (
+        <Card {...card('line')}>
+          <LineFields c={c} />
+        </Card>
+      )}
       <Card {...card('errorBars')}>
-        <div className="grid2">
-          <NumInput
-            label="Error bar width (px)"
-            step={0.25}
-            value={st.errorWidth}
-            onCommit={(v) => set('errorWidth', clamp(v, 0, 10), 'Chart error bar width')}
-          />
-          <OptNumInput
-            label="Cap width (px)"
-            value={st.capWidth}
-            onCommit={(v) => set('capWidth', v === undefined ? v : clamp(v, 0, 60), 'Chart cap width')}
-          />
-        </div>
-        <ColorField
-          inline
-          label="Error bar color"
-          inputLabel="Error bar color"
-          value={st.errorColor ?? '#6b6b6b'}
-          onChange={(v) => set('errorColor', v, 'Chart error bar color')}
-          reset={{
-            disabled: st.errorColor === undefined,
-            label: "Reset error bar color to the theme's",
-            title:
-              st.errorColor === undefined
-                ? 'Error bar color is the default'
-                : "Reset error bar color to the theme's",
-            onReset: () => set('errorColor', undefined, 'Chart error bar color'),
-          }}
-        />
+        <ErrorBarFields c={c} />
       </Card>
       <Card {...card('replicates')}>
-        <div className="grid2">
-          <NumInput
-            label="Replicate size (px)"
-            step={0.5}
-            value={st.pointSize}
-            onCommit={(v) => set('pointSize', clamp(v, 0, 20), 'Chart replicate size')}
-          />
-          <label className="field check">
-            <input
-              type="checkbox"
-              checked={st.pointOpacity === undefined}
-              onChange={(e) =>
-                set(
-                  'pointOpacity',
-                  e.target.checked ? undefined : bar ? 0.85 : 0.55,
-                  'Chart replicate opacity',
-                )
-              }
-            />
-            Auto replicate opacity
-          </label>
-        </div>
-        {st.pointOpacity !== undefined && (
-          <Slider
-            label="Replicate opacity"
-            value={st.pointOpacity}
-            onChange={(v) => set('pointOpacity', v, 'Chart replicate opacity', 'point-opacity')}
-          />
-        )}
+        <ReplicateFields c={c} />
       </Card>
       <Card {...card('size')}>
         <div className="grid2">

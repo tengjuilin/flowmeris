@@ -112,6 +112,14 @@ describe('chart style', () => {
     expect([st.tickColor, st.spineColor, st.boxAspect]).toEqual([undefined, undefined, undefined]);
     expect([st.tickWidth, st.spineWidth, st.meanLineWidth]).toEqual([1, 1, 2]);
     expect(() => ChartStyleSchema.parse({ markerShape: 'star' })).toThrow();
+    expect([st.pointShape, st.lineDash, st.barEdgeWidth, st.gridWidth]).toEqual(['circle', 'solid', 0, 1]);
+    expect([st.markerColor, st.lineColor, st.pointColor, st.pointEdgeColor, st.gridColor]).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]);
   });
 
   it('loads charts saved without a style', () => {

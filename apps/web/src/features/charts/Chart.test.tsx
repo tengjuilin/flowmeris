@@ -148,4 +148,55 @@ describe('Chart', () => {
       expect(gy! + ey! + 6).toBeLessThanOrEqual(H);
     }
   });
+
+  it('draws replicate points in their own shape, size, color and edge', () => {
+    const pts = [{ ...pt(1, 2), values: [1, 3] }];
+    const style = {
+      ...plot.style,
+      pointShape: 'diamond' as const,
+      pointSize: 4,
+      pointColor: '#aa00aa',
+      pointEdgeColor: '#00aaaa',
+      pointEdgeWidth: 2.5,
+    };
+    const { container } = render(chart([{ key: 'a', points: pts }], { ...plot, kind: 'scatter', style }));
+    const reps = [...container.querySelectorAll('.chart-rep')];
+    expect(reps).toHaveLength(2);
+    for (const r of reps) {
+      expect(r.tagName).toBe('path');
+      expect([r.getAttribute('fill'), r.getAttribute('stroke'), r.getAttribute('stroke-width')]).toEqual([
+        '#aa00aa',
+        '#00aaaa',
+        '2.5',
+      ]);
+    }
+  });
+
+  it('draws the line, bar outlines, mean markers and gridlines in their own styles', () => {
+    const style = {
+      ...plot.style,
+      lineColor: '#101010',
+      lineDash: 'dashed' as const,
+      lineWidth: 2,
+      markerColor: '#202020',
+      markerEdgeWidth: 0.5,
+      gridColor: '#303030',
+      gridWidth: 2,
+    };
+    const { container, rerender } = render(chart(series('a'), { ...plot, style }));
+    const line = container.querySelector('polyline')!;
+    expect([line.getAttribute('stroke'), line.getAttribute('stroke-dasharray')]).toEqual(['#101010', '8 5']);
+    const marker = container.querySelector('svg.stat-chart circle:not(.chart-rep)')!;
+    expect([marker.getAttribute('fill'), marker.getAttribute('stroke-width')]).toEqual(['#202020', '0.5']);
+    const grid = container.querySelector<SVGLineElement>('.chart-grid')!;
+    expect([grid.style.stroke, grid.style.strokeWidth]).toEqual(['#303030', '2']);
+
+    const bars = { ...plot.style, barEdgeWidth: 1.5 };
+    rerender(chart(series('a'), { ...plot, kind: 'bar', style: bars }));
+    const bar = container.querySelector('svg.stat-chart path[fill]')!;
+    expect(bar.getAttribute('stroke')).toBe(bar.getAttribute('fill'));
+    expect(bar.getAttribute('stroke-width')).toBe('1.5');
+    rerender(chart(series('a'), { ...plot, kind: 'bar', style: { ...bars, barEdgeColor: '#404040' } }));
+    expect(container.querySelector('svg.stat-chart path[fill]')!.getAttribute('stroke')).toBe('#404040');
+  });
 });

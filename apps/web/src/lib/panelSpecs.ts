@@ -130,6 +130,8 @@ export type ChartCard =
   | 'chart'
   | 'data'
   | 'marks'
+  | 'bars'
+  | 'line'
   | 'errorBars'
   | 'replicates'
   | 'size'
@@ -159,7 +161,9 @@ export const CHART_PANEL: PanelSpec<ChartPanelTab, ChartCard> = {
       cards: {
         chart: 'Chart',
         data: 'Error and replicates',
-        marks: 'Marks',
+        marks: 'Mean markers',
+        bars: 'Bars',
+        line: 'Line',
         errorBars: 'Error bars',
         replicates: 'Replicate points',
         size: 'Size',

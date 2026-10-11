@@ -23,15 +23,24 @@ export const ChartStyleSchema = z.object({
   markerShape: z.enum(['circle', 'square', 'triangle', 'diamond', 'hline']).default('circle'),
   /** Mean marker radius in px (scatter, line, dot); other shapes have the same area as that circle. */
   markerSize: Num.min(0).max(30).default(5),
-  /** Edge color of the mean markers and replicate points; omitted = the background (bar replicates: the text color). */
+  /** Mean marker fill; omitted = the series color. */
+  markerColor: HexColor.optional(),
+  /** Mean marker edge: color (omitted = the background) and width in px (omitted = half the size, at most 2). */
   markerEdgeColor: HexColor.optional(),
+  markerEdgeWidth: Num.min(0).max(10).optional(),
   /** The 'hline' marker: its width and length in px (length omitted = the series' slot, 16 px off a band axis) and color (omitted = the series color). */
   meanLineWidth: Num.min(0).max(20).default(2),
   meanLineLength: Num.min(0).max(200).optional(),
   meanLineColor: HexColor.optional(),
+  /** The line joining a line chart's means: width in px, color (omitted = the series color) and dash. */
   lineWidth: Num.min(0).max(20).default(2),
+  lineColor: HexColor.optional(),
+  lineDash: z.enum(['solid', 'dashed', 'dotted']).default('solid'),
   /** Bar width as a fraction of the category width; omitted = automatic (at most 24 px per series). */
   barWidth: Num.min(0.05).max(1).optional(),
+  /** Bar outline: color (omitted = the series color) and width in px (0 = none). */
+  barEdgeColor: HexColor.optional(),
+  barEdgeWidth: Num.min(0).max(10).default(0),
   /** Opacity of bars and mean markers. */
   fillOpacity: Num.min(0).max(1).default(1),
   errorWidth: Num.min(0).max(10).default(1.5),
@@ -39,8 +48,13 @@ export const ChartStyleSchema = z.object({
   errorColor: HexColor.optional(),
   /** Error-bar cap width in px; omitted = automatic. */
   capWidth: Num.min(0).max(60).optional(),
-  /** Replicate point radius in px. */
+  /** Replicate point shape, and radius in px (other shapes have the same area as that circle). */
+  pointShape: z.enum(['circle', 'square', 'triangle', 'diamond']).default('circle'),
   pointSize: Num.min(0).max(20).default(3),
+  /** Replicate point fill (omitted = the series color; bar charts: the background) and edge color (omitted = the background; bar charts: the text color) and width in px (omitted = 1.5; bar charts: 1). */
+  pointColor: HexColor.optional(),
+  pointEdgeColor: HexColor.optional(),
+  pointEdgeWidth: Num.min(0).max(10).optional(),
   /** Replicate point opacity; omitted = automatic (by chart type). */
   pointOpacity: Num.min(0).max(1).optional(),
   /** Axis ranges in data units; omitted = fit the data. */
@@ -52,6 +66,9 @@ export const ChartStyleSchema = z.object({
   xTicks: TickListSchema.optional(),
   yTicks: TickListSchema.optional(),
   showGrid: z.boolean().default(true),
+  /** Gridline color (omitted = the theme's) and width in px. */
+  gridColor: HexColor.optional(),
+  gridWidth: Num.min(0).max(10).default(1),
   /** Tick marks and the axis lines (spines): colors (omitted = the theme's) and widths in px. */
   tickColor: HexColor.optional(),
   tickWidth: Num.min(0).max(10).default(1),
