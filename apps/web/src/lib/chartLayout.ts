@@ -2,6 +2,25 @@ import type { ChartStyle } from '@flowmeris/model';
 
 /** Layout of the statistics charts (Charts view): margins and the slots of series within a category. */
 
+/** Rough width of text in px (no layout pass needed). */
+export const textW = (s: string, size: number) => s.length * size * 0.6;
+
+/** Side of a legend swatch for legend text `size` px. */
+export const legendSwatch = (size: number) => Math.round(size * 0.85);
+
+/**
+ * Space the legend needs from where it starts (px): a row of entries above the plot area, or a column right
+ * of it. `step` is each entry's advance along the row or column.
+ */
+export function legendExtent(names: string[], size: number, legend: 'top' | 'right') {
+  const sw = legendSwatch(size);
+  if (legend === 'top') {
+    const w = names.reduce((a, n) => a + sw + 18 + textW(n, size), 0) - 13;
+    return { w: Math.max(0, w), h: size };
+  }
+  return { w: sw + 5 + Math.max(0, ...names.map((n) => textW(n, size))), h: names.length * (size + 8) };
+}
+
 /** Margins around the plot area, from the text they hold (px). */
 export function chartMargins(
   st: ChartStyle,
@@ -33,13 +52,15 @@ export function bandSlots(bandW: number, n: number, barWidth: number | undefined
 /**
  * The plot area inside a chart `width` × `height` px with margins `m`: what the margins leave, at least
  * 80 × 40 px; with `aspect` (width ÷ height) the largest such box that fits. `W` and `H` are the chart's
- * size around it, smaller than asked when the aspect leaves space over.
+ * size around it, smaller than asked when the aspect leaves space over, and at least `min` (what the
+ * legend needs) so nothing is cut off.
  */
 export function plotArea(
   width: number,
   height: number,
   m: { l: number; r: number; t: number; b: number },
   aspect: number | undefined,
+  min: { W: number; H: number } = { W: 0, H: 0 },
 ) {
   let pw = Math.max(80, width - m.l - m.r);
   let ph = Math.max(40, height - m.t - m.b);
@@ -50,7 +71,7 @@ export function plotArea(
   return {
     pw,
     ph,
-    W: aspect ? pw + m.l + m.r : width,
-    H: aspect ? ph + m.t + m.b : height,
+    W: Math.max(min.W, aspect ? pw + m.l + m.r : width),
+    H: Math.max(min.H, aspect ? ph + m.t + m.b : height),
   };
 }

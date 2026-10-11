@@ -2,12 +2,10 @@ import type { ChartStyle, StatPlot } from '@flowmeris/model';
 import type { Cell, ColumnDef, PlotPoint, PlotSeries } from '@flowmeris/table';
 import { SupLabel } from '../../components/ui/SupLabel.tsx';
 import { type Axis, barPath } from '../../lib/chartAxis.ts';
+import { legendSwatch, textW } from '../../lib/chartLayout.ts';
 import { markerPath, meanLineLength } from '../../lib/chartMarks.ts';
 import { CHART_ERRORS, cellText, fmtChart, seriesKey } from '../../lib/chartStyle.ts';
 import { textCss } from '../../lib/figure.ts';
-
-/** Rough width of text in px (no layout pass needed). */
-export const textW = (s: string, size: number) => s.length * size * 0.6;
 
 /** A point under the pointer, for the tooltip. */
 export interface Hover {
@@ -289,7 +287,7 @@ function MeanMarker({ f, cx, cy, color }: { f: ChartFrame; cx: number; cy: numbe
 export function ChartLegend({ f, legend }: { f: ChartFrame; legend: 'top' | 'right' }) {
   const { m, st } = f;
   const ls = st.legendFontSize;
-  const sw = Math.round(ls * 0.85);
+  const sw = legendSwatch(ls);
   const legendText = { fontSize: ls, ...textCss(st.legendText, st.fontFamily, st.fontColor) };
   let off = 0;
   return (

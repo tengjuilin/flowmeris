@@ -121,4 +121,31 @@ describe('Chart', () => {
     const w = Number(x.getAttribute('x2')) - Number(x.getAttribute('x1'));
     expect(w).toBeCloseTo(h, 6);
   });
+
+  it.each([
+    ['top', 0.2],
+    ['right', 0.2],
+    ['right', 8],
+  ] as const)('a %s legend stays inside the chart with aspect ratio %s', (legend, boxAspect) => {
+    const names = ['a long condition name', 'another long condition', 'third', 'fourth', 'fifth', 'sixth'];
+    const style = { ...plot.style, boxAspect, legend };
+    const { container } = render(chart(series(...names), { ...plot, style }));
+    const svg = container.querySelector('svg.stat-chart')!;
+    const [W, H] = [Number(svg.getAttribute('width')), Number(svg.getAttribute('height'))];
+    const g = container.querySelector('.chart-legend')!;
+    const [, gx, gy] = g
+      .getAttribute('transform')!
+      .match(/translate\(([-\d.]+), ([-\d.]+)\)/)!
+      .map(Number);
+    for (const e of g.querySelectorAll(':scope > g')) {
+      const [, ex, ey] = e
+        .getAttribute('transform')!
+        .match(/translate\(([-\d.]+), ([-\d.]+)\)/)!
+        .map(Number);
+      const text = e.querySelector('text')!;
+      const right = gx! + ex! + Number(text.getAttribute('x')) + text.textContent!.length * 12 * 0.6;
+      expect(right).toBeLessThanOrEqual(W);
+      expect(gy! + ey! + 6).toBeLessThanOrEqual(H);
+    }
+  });
 });

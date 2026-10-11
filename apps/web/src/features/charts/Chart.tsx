@@ -3,18 +3,10 @@ import { type Cell, type ColumnDef, type LevelOrder, type PlotSeries, compareCel
 import { useId, useMemo, useState } from 'react';
 import { type Anchor, pickerTrigger } from '../../components/ui/PickerMenu.tsx';
 import { type Axis, dataExtents, makeAxis, validFix } from '../../lib/chartAxis.ts';
-import { bandSlots, chartMargins, plotArea } from '../../lib/chartLayout.ts';
+import { bandSlots, chartMargins, legendExtent, plotArea, textW } from '../../lib/chartLayout.ts';
 import { cellText, seriesColor, seriesKey } from '../../lib/chartStyle.ts';
 import { fontStack } from '../../lib/figure.ts';
-import {
-  ChartAxes,
-  type ChartFrame,
-  ChartLegend,
-  ChartTip,
-  type Hover,
-  SeriesMarks,
-  textW,
-} from './ChartParts.tsx';
+import { ChartAxes, type ChartFrame, ChartLegend, ChartTip, type Hover, SeriesMarks } from './ChartParts.tsx';
 
 /** A statistics chart: the means of `series` against x, with error bars, replicates and a legend. */
 export function Chart(props: {
@@ -164,7 +156,10 @@ function frameChart(
   const fs = st.tickFontSize;
   const ts = st.titleFontSize;
   const ls = st.legendFontSize;
-  const legendW = legend === 'right' ? 24 + Math.max(...series.map((s) => textW(nameOf(s), ls))) : 0;
+  const lg = legend === 'none' ? undefined : legendExtent(series.map(nameOf), ls, legend);
+  // Right of the plot area, from 16 px past it; the margin is 20 px plus this.
+  const legendW =
+    legend === 'right' ? Math.max(24 + Math.max(...series.map((s) => textW(nameOf(s), ls))), lg!.w) : 0;
   const yLabelW = st.showTickLabels ? Math.max(0, ...yAxisAt(0, 1).ticks.map((t) => textW(t.label, fs))) : 0;
   const m = chartMargins(st, { xTitle: !!xTitle, yTitle: !!yTitle, legend, legendW, yLabelW });
   const longest = Math.max(0, ...cats.map((c) => cellText(c).length));
@@ -172,7 +167,12 @@ function frameChart(
   const rotate =
     band && st.showTickLabels && longest * fs * 0.6 > bandOf(plotArea(width, H, m, st.boxAspect).pw) - 6;
   if (rotate) m.b = Math.min(H * 0.45, 18 + longest * fs * 0.47 + (xTitle ? ts + 6 : 0));
-  const { pw, ph, W, H: chartH } = plotArea(width, H, m, st.boxAspect);
+  // The legend, from the plot area's left (top) or below its top (right), must fit in the chart.
+  const min = {
+    W: lg && legend === 'top' ? m.l + lg.w + 8 : 0,
+    H: lg && legend === 'right' ? m.t + lg.h : 0,
+  };
+  const { pw, ph, W, H: chartH } = plotArea(width, H, m, st.boxAspect, min);
   const bandW = bandOf(pw);
 
   const y = yAxisAt(m.t + ph, m.t);

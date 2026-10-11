@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { plotArea } from './chartLayout.ts';
+import { legendExtent, plotArea } from './chartLayout.ts';
 import { markerPath, meanLineLength } from './chartMarks.ts';
 import { DEFAULT_CHART_STYLE } from './chartStyle.ts';
 
@@ -55,5 +55,21 @@ describe('plot area', () => {
   it('with an aspect ratio, is the largest box of that shape that fits, and the chart shrinks to it', () => {
     expect(plotArea(460, 340, m, 1)).toEqual({ pw: 300, ph: 300, W: 360, H: 340 });
     expect(plotArea(460, 340, m, 2)).toEqual({ pw: 400, ph: 200, W: 460, H: 240 });
+  });
+});
+
+describe('legend room', () => {
+  it('a row legend needs the width of its entries; a column legend the height of its rows', () => {
+    const top = legendExtent(['ctrl', 'drug'], 10, 'top');
+    expect(top.w).toBeCloseTo(2 * (9 + 18 + 24) - 13, 6);
+    expect(legendExtent(['a', 'b', 'c'], 12, 'right').h).toBe(60);
+  });
+
+  it('the chart is never smaller than the legend needs, whatever the aspect ratio', () => {
+    const m = { l: 40, r: 20, t: 30, b: 30 };
+    const tall = plotArea(460, 340, m, 0.2, { W: 300, H: 0 });
+    expect(tall.W).toBe(300);
+    expect(tall.pw).toBeCloseTo(56, 6);
+    expect(plotArea(460, 340, m, 5, { W: 0, H: 400 }).H).toBe(400);
   });
 });
