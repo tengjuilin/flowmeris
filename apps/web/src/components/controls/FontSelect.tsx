@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { FONT_GROUPS, fontChoice, fontLabel } from '../../lib/fonts/index.ts';
+import { FONT_MENU, fontChoice, fontLabel } from '../../lib/fonts/index.ts';
 
 const CUSTOM_FONT = '__custom';
 
 /**
- * A font picker: the app's bundled fonts (lib/fonts), or the name of any font installed on this computer.
- * A font id of an earlier version shows as the font it is drawn in.
+ * A font picker: the font menu (lib/fonts FONT_MENU), or the name of any font installed on this computer.
+ * A saved font that is not in the menu is listed while it is chosen.
  */
 export function FontSelect({
   label,
@@ -24,6 +24,7 @@ export function FontSelect({
 }) {
   const choice = value === undefined ? undefined : fontChoice(value);
   const custom = value !== undefined && !choice;
+  const ids = choice && !FONT_MENU.includes(choice.id) ? [...FONT_MENU, choice.id] : FONT_MENU;
   const [text, setText] = useState<string | null>(null);
   const commit = () => {
     if (text !== null) {
@@ -47,23 +48,16 @@ export function FontSelect({
           {inherit !== undefined && (
             <option value="">{bare ? inherit : `Same as figure (${inherit})`}</option>
           )}
-          {FONT_GROUPS.map((g) => (
-            <optgroup key={g.label} label={g.label}>
-              {g.fonts.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {fontLabel(f.id)}
-                </option>
-              ))}
-            </optgroup>
+          {ids.map((id) => (
+            <option key={id} value={id}>
+              {fontLabel(id)}
+            </option>
           ))}
           <option value={CUSTOM_FONT}>Other installed font…</option>
         </select>
       </label>
       {custom && (
-        <label
-          className={bare ? 'field tt-wide' : 'field'}
-          title="Used if the font is installed on the computer that views the figure; a PDF embeds it only in Chromium-based browsers, otherwise Liberation Sans"
-        >
+        <label className={bare ? 'field tt-wide' : 'field'}>
           Font name
           <input
             type="text"

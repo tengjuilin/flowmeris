@@ -3,8 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   BUNDLED,
   FACES,
+  FONTS,
   FONT_ALIASES,
-  FONT_GROUPS,
+  FONT_MENU,
   GENERIC_FAMILY,
   bundledFamily,
   fontChoice,
@@ -33,10 +34,19 @@ describe('font catalog', () => {
     expect([...licenses].toSorted()).toEqual(locked.filter((f) => f.endsWith('.LICENSE.txt')).toSorted());
   });
 
-  it('draws every menu font, old font id and generic family in a bundled family', () => {
-    const ids = FONT_GROUPS.flatMap((g) => g.fonts.map((f) => f.id));
+  it('lists the system fonts by name, each with a bundled font in its place where it is missing', () => {
+    expect(FONT_MENU.map((id) => fontLabel(id))).toEqual([
+      'Arial',
+      'Helvetica',
+      'Times New Roman',
+      'Trebuchet MS',
+      'Verdana',
+      'Consolas',
+    ]);
+    const ids = FONTS.map((f) => f.id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (const g of FONT_GROUPS) for (const f of g.fonts) expect(bundledFamily(f.family)).toBeDefined();
+    for (const id of FONT_MENU) expect(ids).toContain(id);
+    for (const f of FONTS) expect(bundledFamily(f.fallback), f.id).toBeDefined();
     for (const [old, id] of Object.entries(FONT_ALIASES)) {
       expect(ids).not.toContain(old);
       expect(fontChoice(old)?.id).toBe(id);
@@ -44,23 +54,30 @@ describe('font catalog', () => {
     for (const fam of Object.values(GENERIC_FAMILY)) expect(bundledFamily(fam)).toBeDefined();
   });
 
-  it('keeps the font ids saved by earlier versions', () => {
+  it('bundles only fonts that some font falls back to', () => {
+    const used = new Set([...FONTS.map((f) => f.fallback), ...Object.values(GENERIC_FAMILY)]);
+    expect(BUNDLED.map((f) => f.family).filter((f) => !used.has(f))).toEqual([]);
+  });
+
+  it('keeps the font ids saved by earlier versions; charts saved with "sans" draw Arial', () => {
     const old = ['sans', 'arial', 'helvetica', 'calibri', 'verdana', 'tahoma', 'trebuchet', 'serif', 'times'];
     for (const id of [...old, 'georgia', 'palatino', 'garamond', 'mono', 'courier', 'consolas'])
       expect(fontChoice(id)).toBeDefined();
+    expect(fontStack('sans')).toBe(fontStack('arial'));
   });
 
-  it('gives a CSS stack of the bundled family, or an installed font with the bundled sans-serif after it', () => {
-    expect(fontStack('arial')).toBe('"Liberation Sans", sans-serif');
-    expect(fontStack('georgia')).toBe('"Gelasio", serif');
-    expect(fontStack('courier')).toBe('"Liberation Mono", monospace');
+  it('gives a CSS stack of the system font, then its bundled stand-in', () => {
+    expect(fontStack('arial')).toBe('"Arial", "Liberation Sans", sans-serif');
+    expect(fontStack('helvetica')).toBe('"Helvetica", "Helvetica Neue", "Liberation Sans", sans-serif');
+    expect(fontStack('consolas')).toBe('"Consolas", "DejaVu Sans Mono", monospace');
+    expect(fontStack('georgia')).toBe('"Georgia", "Gelasio", serif');
     expect(fontStack('Futura')).toBe('"Futura", "Liberation Sans", sans-serif');
     expect(fontStack('a"b;c')).toBe('"abc", "Liberation Sans", sans-serif');
   });
 
-  it('labels a font by its family and what it stands in for', () => {
-    expect(fontLabel('times')).toBe('Liberation Serif (Times New Roman metrics)');
-    expect(fontLabel('garamond')).toBe('EB Garamond');
+  it('labels a font by its name', () => {
+    expect(fontLabel('times')).toBe('Times New Roman');
+    expect(fontLabel('mono')).toBe('Monospace');
     expect(fontLabel('Futura')).toBe('Futura');
   });
 });

@@ -25,6 +25,6 @@ remembers its last tab and the cards you collapsed, in this browser; every card 
 **Settings**) do not have it. With nothing to edit yet, a panel says what to do first.
 In the plot, ridge and chart panels, the **Text** tab starts with the **Base font** card (the font, color and size
 every text starts from; changing the size scales the others), followed by one card per kind of text.
-The fonts in the list ship with Flowmeris, so a figure looks the same on every computer and in every
-export (see [Exports](./exports#figures)). Each is named with the font it stands in for: Liberation Sans
-has the widths of Arial and Helvetica, Liberation Serif those of Times New Roman, Carlito those of Calibri.
+The fonts are Arial (the default), Helvetica, Times New Roman, Trebuchet MS, Verdana and Consolas, or any
+font installed on the computer. Where one is not installed, the figure is drawn in an open font with the
+same proportions, so its layout does not change (see [Exports](./exports#figures)).

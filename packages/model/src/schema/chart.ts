@@ -77,7 +77,7 @@ export const ChartStyleSchema = z.object({
   /** Plot area width ÷ height, fitted inside the chart's size; omitted = the plot area fills it. */
   boxAspect: Num.min(0.2).max(10).optional(),
   showTickLabels: z.boolean().default(true),
-  /** A key of the app's font list (earlier charts used only 'sans', 'serif' and 'mono'), or any installed font. */
+  /** A key of the app's font list ('sans', the default, is drawn as Arial), or any installed font. */
   fontFamily: z.string().min(1).max(80).default('sans'),
   /** Omitted = the app theme's text colors. */
   fontColor: HexColor.optional(),

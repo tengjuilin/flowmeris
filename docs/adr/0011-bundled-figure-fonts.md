@@ -1,6 +1,6 @@
 # ADR-0011 Bundled figure fonts
 
-**Status.** Accepted.
+**Status.** Accepted; amended by [ADR-0012](./0012-system-font-menu): the menu lists system fonts, and the bundled fonts are their fallbacks.
 
 **Decision.** Figures are set only in fonts the app bundles: open-licensed TrueType families, each with
 regular, bold, italic and bold italic faces (`apps/web/src/lib/fonts/catalog.ts`). The page draws them as
