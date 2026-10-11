@@ -87,7 +87,12 @@ re-rendered at the export DPI (default 300) and embedded as PNG. Point size and 
 with the DPI so the export matches the screen. A plot's SVG embeds a `<metadata>` block with the app
 version, sample SHA-256, plot specification and transforms. PNG and JPEG render the same SVG at the chosen
 DPI (the SVG's px are 1/96 in); PNG records the DPI in its `pHYs` chunk. PDF converts the SVG to vector
-PDF (jsPDF and svg2pdf) on a page of the figure's size, 1 px = 0.75 pt, so text keeps its size.
+PDF (jsPDF and svg2pdf) on a page of the figure's size, 1 px = 0.75 pt, so text keeps its size. Text
+features svg2pdf does not draw are rewritten first, measured from the browser's layout: a text on a
+middle (or other non-alphabetic) baseline is moved by the shift the baseline gave it; an underline is drawn
+as a rectangle in the text's color, as thick as the font's underline, its top at the font's underline
+position but at least half its thickness (rounded up, ≥ 1 px) below the baseline, as Chromium draws it; a
+text halo is drawn as a stroked copy behind the text.
 
 Fonts (ADR-0011): figure text is set in bundled TrueType fonts, drawn without kerning or ligatures. The
 PDF embeds each face used as a TrueType font; SVG, PNG and JPEG carry them as `@font-face` data URLs. Text

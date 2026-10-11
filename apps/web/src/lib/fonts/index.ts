@@ -5,6 +5,7 @@
 export * from './catalog.ts';
 export { bundledBytes, fontUrl, fontsMissing, registerBundledFonts } from './files.ts';
 export { installedFonts, installedTrueType } from './local.ts';
+export { underlineMetrics } from './sfnt.ts';
 export {
   type FontStep,
   type TextFont,

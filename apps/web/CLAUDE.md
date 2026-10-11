@@ -138,6 +138,7 @@ shared `ExportMenu` (`components/controls`):
 | which styles are copied, which on-screen parts are dropped | `lib/export/standalone.ts` |
 | PNG and JPEG | `lib/export/raster.ts` |
 | PDF (jsPDF and svg2pdf, loaded on demand) | `lib/export/pdf.ts` |
+| text svg2pdf cannot draw (baselines, underline, halos), rewritten before the PDF | `lib/export/pdfText.ts`; add a step there for a new text feature |
 | fonts embedded in SVG, PNG and JPEG | `lib/export/fontFaces.ts` |
 | the fonts themselves, the font menu | `lib/fonts/catalog.ts` and `tools/fonts.lock.json` (see its comment) |
 

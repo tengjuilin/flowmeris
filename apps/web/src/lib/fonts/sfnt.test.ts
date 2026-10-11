@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
 import { BUNDLED, FACES } from './catalog.ts';
-import { fontFromCollection, postscriptName, sfntKind } from './sfnt.ts';
+import { fontFromCollection, postscriptName, sfntKind, underlineMetrics } from './sfnt.ts';
 
 /** A minimal sfnt: a 'name' table with PostScript name `ps`, and a 'data' table of `body`. */
 function sfnt(ps: string, body: number[]): Uint8Array {
@@ -90,5 +90,11 @@ describe.skipIf(!fetched)('bundled font files', () => {
       });
       if (f.generic !== 'monospace') expect(new Set(widths).size, f.family).toBeGreaterThan(1);
     }
+  });
+
+  it('give their underline position and thickness (post table, in em)', () => {
+    const m = underlineMetrics(readFileSync(`${dir}LiberationSans-Regular.ttf`))!;
+    expect(m.offset).toBeCloseTo(67 / 2048, 9);
+    expect(m.thickness).toBeCloseTo(150 / 2048, 9);
   });
 });

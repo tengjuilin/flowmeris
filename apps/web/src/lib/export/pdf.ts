@@ -7,9 +7,11 @@ import {
   installedTrueType,
   isGeneric,
   textFont,
+  underlineMetrics,
 } from '../fonts/index.ts';
 import { MISSING_FONTS } from './fontFaces.ts';
 import type { Warn } from './formats.ts';
+import { type Underline, bakeBaselines, drawUnderlines, splitHalos } from './pdfText.ts';
 import { bytesToBase64 } from './standalone.ts';
 
 /**
@@ -31,6 +33,8 @@ const JSPDF_STYLE: Record<FaceName, string> = {
 /** Registers each face once per PDF, under the family and style names svg2pdf will look up. */
 class PdfFonts {
   private done = new Map<string, boolean>();
+  /** Underline metrics of each registered face. */
+  readonly underline = new Map<string, Underline | undefined>();
   constructor(private pdf: Pdf) {}
 
   /** Embed `bytes` (when given) as `family` in `face`; false when they could not be had. */
@@ -42,6 +46,7 @@ class PdfFonts {
         const file = `${family}-${face}.ttf`;
         this.pdf.addFileToVFS(file, bytesToBase64(b));
         this.pdf.addFont(file, family, JSPDF_STYLE[face]);
+        this.underline.set(key, underlineMetrics(b));
       }
       this.done.set(key, !!b);
     }
@@ -58,6 +63,7 @@ const STANDARD_PDF_FONT = { 'sans-serif': 'helvetica', serif: 'times', monospace
  */
 async function embedFonts(root: SVGSVGElement, pdf: Pdf) {
   const fonts = new PdfFonts(pdf);
+  const underlines = new Map<SVGElement, Underline | undefined>();
   const substituted = new Set<string>();
   let missing = false;
   for (const t of Array.from(root.querySelectorAll<SVGElement>('text, tspan'))) {
@@ -72,6 +78,7 @@ async function embedFonts(root: SVGSVGElement, pdf: Pdf) {
           : await fonts.add(step.installed, face, () => installedTrueType(step.installed, bold, italic));
       if (ok) {
         chosen = 'bundled' in step ? step.bundled.family : step.installed;
+        underlines.set(t, fonts.underline.get(`${chosen}|${face}`));
         break;
       }
       if ('installed' in step) substituted.add(step.installed);
@@ -83,21 +90,7 @@ async function embedFonts(root: SVGSVGElement, pdf: Pdf) {
     t.style.fontWeight = bold ? '700' : '400';
     t.style.fontStyle = italic ? 'italic' : 'normal';
   }
-  return { substituted: [...substituted], missing };
-}
-
-/**
- * svg2pdf ignores `paint-order`, so a text's halo stroke would be painted over its glyphs. Draw the halo
- * as a separate copy behind the text instead, and the text itself without a stroke.
- */
-function splitHalos(root: SVGSVGElement) {
-  for (const t of Array.from(root.querySelectorAll<SVGTextElement>('text'))) {
-    if (!t.style.paintOrder.startsWith('stroke') || !t.style.stroke || t.style.stroke === 'none') continue;
-    const halo = t.cloneNode(true) as SVGTextElement;
-    halo.style.fill = 'none';
-    t.parentNode!.insertBefore(halo, t);
-    t.style.stroke = 'none';
-  }
+  return { substituted: [...substituted], missing, underlines };
 }
 
 /**
@@ -114,8 +107,10 @@ export async function svgToPdf(el: SVGSVGElement, warn?: Warn): Promise<Blob> {
     orientation: w >= h ? 'landscape' : 'portrait',
     hotfixes: ['px_scaling'],
   });
+  bakeBaselines(el);
   splitHalos(el);
-  const { substituted, missing } = await embedFonts(el, pdf);
+  const { substituted, missing, underlines } = await embedFonts(el, pdf);
+  drawUnderlines(el, (t) => underlines.get(t));
   await svg2pdf(el, pdf, { x: 0, y: 0, width: w, height: h });
   if (substituted.length)
     warn?.(

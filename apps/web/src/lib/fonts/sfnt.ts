@@ -88,3 +88,20 @@ export function fontFromCollection(b: Uint8Array, psName: string): Uint8Array | 
   }
   return undefined;
 }
+
+/**
+ * Where a font draws its underline, in em: the top of the line's distance below the baseline, and its
+ * thickness ('post' table, scaled by 'head' units per em). Undefined without those tables.
+ */
+export function underlineMetrics(b: Uint8Array): { offset: number; thickness: number } | undefined {
+  const t = tables(b, 0);
+  const post = t.find((x) => x.tag === 'post');
+  const head = t.find((x) => x.tag === 'head');
+  if (!post || !head) return undefined;
+  const v = view(b);
+  const upem = v.getUint16(head.offset + 18);
+  const position = v.getInt16(post.offset + 8);
+  const thickness = v.getInt16(post.offset + 10);
+  if (!upem || thickness <= 0) return undefined;
+  return { offset: -position / upem, thickness: thickness / upem };
+}
