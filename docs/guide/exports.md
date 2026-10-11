@@ -21,11 +21,11 @@ Every figure (Gate, Plot and Ridge plots, charts) has the same **Export** menu:
 | PNG, JPG | an image at the chosen resolution (72–1200 DPI; PNG records it in the file) |
 | SVG (vector) | for editing; the fonts are embedded, and plots record the app version, sample hash and plot settings |
 
-The text of an exported figure is in the same font, size, weight, slant and color as on screen. The fonts
-in the font list ship with Flowmeris and are embedded in every export, in every browser. A font chosen
-with *Other installed font…* is embedded in a PDF only in Chromium-based browsers (Chrome, Edge), which ask
-once for permission to read installed fonts, and only for TrueType fonts; otherwise the PDF uses Liberation
-Sans in its place and says so.
+The text of an exported figure is in the same font, size, weight, slant and color as on screen, and the
+font is embedded. Where a font cannot be embedded (in a PDF made in Firefox or Safari, or a font that is
+not installed), the export uses an open font with the same proportions in its place, such as Liberation
+Sans for Arial, and a red warning names the fonts it replaced. Chrome and Edge ask once for permission to
+read the computer's fonts; allow it to embed the fonts themselves.
 
 ## Reporting checklist (MIFlowCyt)
 

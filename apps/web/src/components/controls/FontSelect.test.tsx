@@ -24,12 +24,22 @@ describe('FontSelect', () => {
     expect(onChange).toHaveBeenLastCalledWith('Futura');
   });
 
-  it('lists the bundled fonts with what they stand in for, and shows an old font id as its font', () => {
-    render(<FontSelect label="Font" value="helvetica" onChange={vi.fn()} />);
-    const select = screen.getByLabelText('Font') as HTMLSelectElement;
-    expect(select.value).toBe('arial');
-    expect(select.selectedOptions[0]?.textContent).toBe('Liberation Sans (Arial, Helvetica metrics)');
-    expect(screen.getByRole('option', { name: 'Carlito (Calibri metrics)' })).toBeTruthy();
+  it('lists the system fonts by name, and a saved font outside the list while it is chosen', () => {
+    const names = () => [...(screen.getByLabelText('Font') as HTMLSelectElement).options].map((o) => o.text);
+    const { rerender } = render(<FontSelect label="Font" value="sans" onChange={vi.fn()} />);
+    expect((screen.getByLabelText('Font') as HTMLSelectElement).value).toBe('arial');
+    expect(names()).toEqual([
+      'Arial',
+      'Helvetica',
+      'Times New Roman',
+      'Trebuchet MS',
+      'Verdana',
+      'Consolas',
+      'Other installed font…',
+    ]);
+    rerender(<FontSelect label="Font" value="georgia" onChange={vi.fn()} />);
+    expect(names()).toContain('Georgia');
+    expect((screen.getByLabelText('Font') as HTMLSelectElement).value).toBe('georgia');
     expect(screen.queryByLabelText('Font name')).toBeNull();
   });
 });

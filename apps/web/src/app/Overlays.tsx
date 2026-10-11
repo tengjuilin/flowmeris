@@ -1,3 +1,4 @@
+import { WarningIcon } from '../components/ui/icons.tsx';
 import { useStore } from '../state/store.ts';
 
 /** File loading progress (and errors), and the toast message, over the app. */
@@ -31,7 +32,16 @@ export function Overlays() {
           )}
         </output>
       )}
-      {status.toast && (
+      {status.toast?.tone === 'warning' && (
+        <div className="toast warning" role="alert">
+          <WarningIcon />
+          <span>{status.toast.text}</span>
+          <button type="button" onClick={() => setStatus({ toast: null })}>
+            Dismiss
+          </button>
+        </div>
+      )}
+      {status.toast && status.toast.tone !== 'warning' && (
         <output className="toast">
           {status.toast.text}
           {status.toast.action && (

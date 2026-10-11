@@ -8,13 +8,13 @@ import {
   exportFigure as exportFigureFile,
   plotFigure,
 } from '../lib/export/index.ts';
-import { APP_INFO, contextFor, toast, useStore } from './store.ts';
+import { APP_INFO, contextFor, useStore, warning } from './store.ts';
 
 /** Figure export wired to the app: warnings go to the toast, plot data comes from the store and the worker pool. */
 
-/** Download `figure` (see lib/export); messages for the user, such as substituted fonts, are toasted. */
+/** Download `figure` (see lib/export); what did not come out as asked, such as a replaced font, is shown as a warning. */
 export function exportFigure(figure: FigureSource, format: ImageFormat, baseName: string, dpi: number) {
-  return exportFigureFile(figure, format, baseName, dpi, toast);
+  return exportFigureFile(figure, format, baseName, dpi, warning);
 }
 
 /**

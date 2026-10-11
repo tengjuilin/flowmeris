@@ -73,7 +73,7 @@ What is in `src/lib/`:
 | `metadata.ts`, `metaTable.ts`, `plate.ts`, `metaImport.ts`, `palette.ts` | sample variables (values, types, paste, the shown variable, wells detected); the Metadata table's cells (linked Well, Row and Column, `writeMetaCell`); the plate map (samples by well, series fills); importing a table or plate layout; colors of populations and values |
 | `ingest.ts`, `files.ts`, `names.ts` | grouping loaded files; data-file extensions; short sample names |
 | `export/` | figure export, used through its `index.ts`; see Figure export below |
-| `fonts/` | figure fonts (ADR-0011), used through its `index.ts`: the bundled families and the font menu (`catalog.ts`: `BUNDLED`, `FONT_GROUPS`, `FONT_ALIASES`, `fontStack`), their files (`files.ts`, `registerBundledFonts`), installed fonts (`local.ts`, `sfnt.ts`), which font a text is drawn in (`resolve.ts`) |
+| `fonts/` | figure fonts (ADR-0011, ADR-0012), used through its `index.ts`: the font ids and menu (`catalog.ts`: `FONTS`, each system font with its bundled fallback; `FONT_MENU`; `FONT_ALIASES`; `fontStack`), the bundled fallback families (`BUNDLED`), their files (`files.ts`, `registerBundledFonts`), installed fonts (`local.ts`, `sfnt.ts`), which font a text is drawn in (`resolve.ts`) |
 | `geometry.ts`, `fitSize.ts`, `order.ts`, `text.ts`, `format.ts`, `json.ts`, `download.ts`, `sheets.ts` | gate drawing geometry; sizing (`nearestColumns`, and `RowFit` for rows of plots in Tiles and the Plot grid); moving ids in a list (`moveIds`); label wrapping, number formats, JSON copy/compare, downloads, spreadsheets |
 | `ticks.ts`, `math.ts`, `textScale.ts` | custom ticks (`parseTicks`, `formatTicks`, `customTicks`), histogram y ticks; `clamp`; font sizes (`clampFontSize`, `scaleFontSizes`: the base font size scaling the others) |
 | `plotFrame.ts`, `plotLayout.ts`, `plotPaths.ts` | a plot's pixel mapping and gate hit testing (`hitGate`, `popAt`); margins and titles (`plotBox`, `axisLabel`); histogram and contour SVG paths |
@@ -140,12 +140,13 @@ shared `ExportMenu` (`components/controls`):
 | PDF (jsPDF and svg2pdf, loaded on demand) | `lib/export/pdf.ts` |
 | text svg2pdf cannot draw (baselines, underline, halos), rewritten before the PDF | `lib/export/pdfText.ts`; add a step there for a new text feature |
 | fonts embedded in SVG, PNG and JPEG | `lib/export/fontFaces.ts` |
-| the fonts themselves, the font menu | `lib/fonts/catalog.ts` and `tools/fonts.lock.json` (see its comment) |
+| the font menu, a font's fallback, the bundled fallbacks | `lib/fonts/catalog.ts` and `tools/fonts.lock.json` (see their comments) |
 
 The pipeline (`writeFigure`): the source builds standalone SVG markup, which is laid out off-screen
-(`mount.ts`) and handed to the format's writer. Fonts (ADR-0011): figures are drawn only in the bundled
-fonts (or an installed font the user names), and every format embeds the faces its text uses, so text has
-the same font, size and width on screen and in every file. Figure text has no kerning or ligatures
+(`mount.ts`) and handed to the format's writer. Fonts (ADR-0011, ADR-0012): a figure's font is a system
+font followed by a bundled fallback of the same proportions (`fontStack`). The PDF embeds the system font
+where the browser can read it, else the fallback, and warns (`warning()` in `state/store.ts`, a red toast);
+SVG, PNG and JPEG carry the fallbacks as `@font-face`. Figure text has no kerning or ligatures
 (`styles/base.css`), as jsPDF draws none; keep it that way, or PDF text widths will differ from the screen.
 In the PDF, svg2pdf finds a face only by weight 400 or 700 and style `normal`/`italic`, registered under
 jsPDF's style names (`normal`, `bold`, `italic`, `bolditalic`). Guardrails: `lint:deps`

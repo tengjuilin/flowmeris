@@ -1,5 +1,5 @@
 {
-  "comment": "Figure fonts (ADR-0011), fetched unmodified by tools/fetch-fonts.mjs into dest (not in git). Each file is checked against its SHA-256; to add or update one, edit this file and run `node tools/fetch-fonts.mjs --hash`. The app lists them in apps/web/src/lib/fonts/catalog.ts.",
+  "comment": "Figure fonts (ADR-0011, ADR-0012: fallbacks for the system fonts of the font menu), fetched unmodified by tools/fetch-fonts.mjs into dest (not in git). Each file is checked against its SHA-256; to add or update one, edit this file and run `node tools/fetch-fonts.mjs --hash`. The app lists them in apps/web/src/lib/fonts/catalog.ts.",
   "dest": "apps/web/src/assets/fonts",
   "sources": {
     "liberation": {
@@ -9,10 +9,6 @@
     "dejavu": {
       "url": "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.zip",
       "sha256": "7576310b219e04159d35ff61dd4a4ec4cdba4f35c00e002a136f00e96a908b0a"
-    },
-    "inter": {
-      "url": "https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip",
-      "sha256": "9883fdd4a49d4fb66bd8177ba6625ef9a64aa45899767dde3d36aa425756b11e"
     }
   },
   "files": [
@@ -147,36 +143,6 @@
       "source": "dejavu",
       "member": "dejavu-fonts-ttf-2.37/LICENSE",
       "sha256": "7a083b136e64d064794c3419751e5c7dd10d2f64c108fe5ba161eae5e5958a93"
-    },
-    {
-      "file": "Inter-Regular.ttf",
-      "source": "inter",
-      "member": "extras/ttf/Inter-Regular.ttf",
-      "sha256": "40d692fce188e4471e2b3cba937be967878f631ad3ebbbdcd587687c7ebe0c82"
-    },
-    {
-      "file": "Inter-Bold.ttf",
-      "source": "inter",
-      "member": "extras/ttf/Inter-Bold.ttf",
-      "sha256": "288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f"
-    },
-    {
-      "file": "Inter-Italic.ttf",
-      "source": "inter",
-      "member": "extras/ttf/Inter-Italic.ttf",
-      "sha256": "bbc051dd204b5019a1aa0bc0ae2aa8a05ab13e7a3f979fa357631dc7feb6833a"
-    },
-    {
-      "file": "Inter-BoldItalic.ttf",
-      "source": "inter",
-      "member": "extras/ttf/Inter-BoldItalic.ttf",
-      "sha256": "948405a16cdc62701da5f4005ed068ca5f4d27061d98f7974ccfc37831d9581d"
-    },
-    {
-      "file": "Inter.LICENSE.txt",
-      "source": "inter",
-      "member": "LICENSE.txt",
-      "sha256": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a"
     },
     {
       "file": "Carlito-Regular.ttf",
