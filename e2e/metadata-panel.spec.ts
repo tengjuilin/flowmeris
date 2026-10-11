@@ -260,7 +260,7 @@ test('plate map: selecting wells, setting values and filling series', async ({ p
   await page.screenshot({ path: 'test-results/plate-map.png' });
 });
 
-test('plate map: categorical values from the chips and their colours', async ({ page }) => {
+test('plate map: categorical values from the chips and their colors', async ({ page }) => {
   await openMetadata(page);
   await importDesign(page, 'Well,Group\nA1,ctrl\nA2,drug\n', 1);
   await page.getByRole('button', { name: 'Plate map' }).click();

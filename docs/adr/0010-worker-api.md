@@ -11,7 +11,7 @@ The pool has two kinds of request:
 
 - **Plot requests** (`raster`, `histogram`, `counts`) go through the `Scheduler`
   (`apps/web/src/engine-client/scheduler.ts`): at most two in flight per worker, the rest queued and
-  dropped when cancelled, identical requests shared and results cached by the caller's key.
+  dropped when canceled, identical requests shared and results cached by the caller's key.
 - **Direct requests** (`table`, `preview`, `channelValues`, `exportEvents`, `ingest`, `hasSample`) go
   to the worker at once. They are interactive (a gate preview while dragging) or few, and must not wait
   behind a queue of tile rasters.

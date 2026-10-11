@@ -5,8 +5,8 @@
 | Rectangle (R) | drag a box | drag corners/edges; drag inside to move |
 | Ellipse (E) | drag a bounding box | drag the *a* handle to resize and rotate, the *b* handle for the minor axis |
 | Polygon (P) | click vertices; close by clicking the first vertex, double-clicking or pressing Enter; Backspace removes the last vertex | drag vertices; click an edge midpoint to insert a vertex |
-| Quadrant (Q) | click the centre | drag the centre |
-| Spider (S) | click the centre | drag the centre or any arm end; arms keep their order around the centre |
+| Quadrant (Q) | click the center | drag the center |
+| Spider (S) | click the center | drag the center or any arm end; arms keep their order around the center |
 | Range (H, histograms) | drag horizontally | drag either edge |
 | Bisector (B, histograms) | click where to split; the percentages on each side are shown before you click | drag the vertical line |
 
@@ -29,14 +29,14 @@
   view. Arrow keys and Enter pick from the list; long lists can be filtered by typing.
 - Quadrant and spider gates create four populations, Q1 (top-left) to Q4 (bottom-left) clockwise, named
   by marker sign (e.g. `CD4+ CD8−`). Rename any population by double-clicking it in the population tree.
-- A new population takes the first of the eight palette colours no other population in the group uses,
-  so a deleted population's colour comes back first. Past eight populations the colours repeat in order.
+- A new population takes the first of the eight palette colors no other population in the group uses,
+  so a deleted population's color comes back first. Past eight populations the colors repeat in order.
 - A bisector (FlowJo's binary histogram gate) splits the histogram's events into two populations that
   never overlap and together hold every event: `CD4−` left of the line and `CD4+` at or right of it. Their
-  percentages, labelled in the plot's top corners, add up to 100% of the parent
+  percentages, labeled in the plot's top corners, add up to 100% of the parent
   ([M-GATE-SPLIT](../methods/gating#m-gate-split-bisector)).
 - **Click a histogram's y-axis title** to choose what it shows: **Count** (events per bin), **% of max**
-  (FlowJo's "normalised to mode") or **Fraction** (unit area, bins sum to 1).
+  (FlowJo's "normalized to mode") or **Fraction** (unit area, bins sum to 1).
 - Deleting a gate removes its populations and everything below them. Undo restores them.
 
 Gates are defined in the scale of the axes they were drawn on. If you later change an axis scale, the
@@ -53,7 +53,7 @@ e.g. a fluorescence pair while gating on scatter. Add one with **+**; each opens
 - **Population** and **Sample** follow the Gate view by default. Pick one to pin it, e.g. the parent
   population or an unstained control. A pinned population that is deleted goes back to following.
 - Gates drawn on matching axes are shown read-only. Edit gates in the main plot.
-- **Backgate** overlays the population being gated, in its colour, when the reference plot shows a
+- **Backgate** overlays the population being gated, in its color, when the reference plot shows a
   different population.
 
 ## Plot grid
@@ -69,7 +69,7 @@ of empty cells, and is saved with the group in the workspace.
 - The settings panel (the button right of **Plot size**) edits the selected plot. Its **Figure › Plot** card
   sets the plot type, title, **Population** and **Sample** (◀ ▶ step through the group's samples; *Follow
   selected* tracks the sample selected in the sidebar); the **Axis** tab sets the X/Y channels and scales.
-- The **Sample overlay** card below it draws other samples on the same plot, each in its own colour with a
+- The **Sample overlay** card below it draws other samples on the same plot, each in its own color with a
   legend: dots on 2D plots, outlines on histograms. Gates and their percentages are those of the plotted
   sample.
 - The **Populations** card at the top right shows the selected plot's population tree and counts; click a
@@ -88,7 +88,7 @@ of empty cells, and is saved with the group in the workspace.
   Dropped on an empty slot, it moves there and leaves its old slot empty. Each move is one undo step.
 - **⌘C** / **⌘X** (Ctrl+C / Ctrl+X on Windows and Linux) copy or cut the selected plot, and **⌘V** pastes it
   into the selected slot. Click an empty slot to select it (the gating tools, edit scope and Export are
-  greyed out while it is); pasting onto a selected plot replaces that plot. A copy is pasted as the plot was when copied, and can be pasted again. A cut plot is dashed until
+  grayed out while it is); pasting onto a selected plot replaces that plot. A copy is pasted as the plot was when copied, and can be pasted again. A cut plot is dashed until
   you paste it, then it moves, leaving its slot empty; **Esc** cancels the cut. Plots paste within their
   group.
 - Deleting a gate moves plots of its populations back to the gate's parent population.
@@ -104,12 +104,12 @@ sample and a population in its toolbar (they follow the current sample and popul
   count and percentage of its parent. The last card shows the chosen population's own plot if it has
   one, otherwise its count and percentage of all events.
 - **Tree** shows every plot in the gating tree, branching where a population has several child gates;
-  populations without gates of their own appear as labelled chips. Gates on the way to the chosen
+  populations without gates of their own appear as labeled chips. Gates on the way to the chosen
   population are highlighted.
 - **Plot size** sets the size of the plots in each layout (kept separately); the path wraps as many
   steps per row as fit.
-- **Backgating** overlays the chosen population's events, in its colour, on every plot above it, with
-  the plotted population greyed out. On histograms the overlay is drawn in the same units as the
+- **Backgating** overlays the chosen population's events, in its color, on every plot above it, with
+  the plotted population grayed out. On histograms the overlay is drawn in the same units as the
   histogram (so its area is the fraction of the plotted population it represents).
 
 If a step's gate was drawn on axes other than the population's saved plot, the step is drawn on the

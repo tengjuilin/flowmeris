@@ -3,7 +3,7 @@ import { NumInput } from '../../components/ui/NumInput.tsx';
 import { clamp } from '../../lib/math.ts';
 import type { ChartData } from './useChart.ts';
 
-/** Shown in a swatch when the tick or spine colour is unset (the theme's). */
+/** Shown in a swatch when the tick or spine color is unset (the theme's). */
 const THEME_LINE = '#c8c8c8';
 
 /** The chart's tick marks and axis lines (spines), and the plot area's aspect ratio, as in the Gate view. */
@@ -14,15 +14,15 @@ export function ChartTicksFields({ c }: { c: ChartData }) {
     <>
       <ColorField
         inline
-        label="Tick colour"
-        inputLabel="Tick colour"
+        label="Tick color"
+        inputLabel="Tick color"
         value={st.tickColor ?? THEME_LINE}
-        onChange={(v) => set('tickColor', v, 'Chart tick colour')}
+        onChange={(v) => set('tickColor', v, 'Chart tick color')}
         reset={{
           disabled: !st.tickColor,
-          label: "Reset tick colour to the theme's",
-          title: st.tickColor ? "Reset tick colour to the theme's" : 'Tick colour is the default',
-          onReset: () => set('tickColor', undefined, 'Chart tick colour'),
+          label: "Reset tick color to the theme's",
+          title: st.tickColor ? "Reset tick color to the theme's" : 'Tick color is the default',
+          onReset: () => set('tickColor', undefined, 'Chart tick color'),
         }}
       />
       <NumInput
@@ -33,15 +33,15 @@ export function ChartTicksFields({ c }: { c: ChartData }) {
       />
       <ColorField
         inline
-        label="Spine colour"
-        inputLabel="Spine colour"
+        label="Spine color"
+        inputLabel="Spine color"
         value={st.spineColor ?? THEME_LINE}
-        onChange={(v) => set('spineColor', v, 'Chart spine colour')}
+        onChange={(v) => set('spineColor', v, 'Chart spine color')}
         reset={{
           disabled: !st.spineColor,
-          label: "Reset spine colour to the theme's",
-          title: st.spineColor ? "Reset spine colour to the theme's" : 'Spine colour is the default',
-          onReset: () => set('spineColor', undefined, 'Chart spine colour'),
+          label: "Reset spine color to the theme's",
+          title: st.spineColor ? "Reset spine color to the theme's" : 'Spine color is the default',
+          onReset: () => set('spineColor', undefined, 'Chart spine color'),
         }}
       />
       <NumInput

@@ -115,7 +115,7 @@ describe('M-FCS-DATA: integer decoding', () => {
   });
 });
 
-describe('M-FCS-LIN: linearisation', () => {
+describe('M-FCS-LIN: linearization', () => {
   it('applies log decoding then gain (FlowKit order)', () => {
     const y = linearize([0, 512, 1024], { logDecades: 4, logOffset: 1, range: 1024, gain: 2, timestep: 1 });
     expect(Array.from(y)).toEqual([0.5, 50, 5000]);
@@ -148,7 +148,7 @@ interface FcsGolden {
 const index =
   readGolden<{ file: string; golden?: string; events?: number; flowkit_error?: string }[]>('fcs/index.json');
 
-describe('golden parity: FCS parsing + linearisation vs FlowKit', () => {
+describe('golden parity: FCS parsing + linearization vs FlowKit', () => {
   for (const entry of index) {
     if (!entry.golden) continue;
     const run = hasFixture(entry.file) ? it : it.skip;

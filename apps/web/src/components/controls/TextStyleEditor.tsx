@@ -11,7 +11,7 @@ const ALIGNS: { id: RidgeStyle['labelAlign']; name: string; lines: number[] }[] 
   { id: 'end', name: 'Align right', lines: [4, 0, 4, 0] },
 ];
 
-/** Four text lines, long and short alternating, aligned left, centred or right. */
+/** Four text lines, long and short alternating, aligned left, centered or right. */
 function AlignIcon({ lines }: { lines: number[] }) {
   return (
     <svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true">

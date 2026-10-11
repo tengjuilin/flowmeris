@@ -3,7 +3,7 @@ import { CATEGORICAL } from '@flowmeris/render';
 import { describe, expect, it } from 'vitest';
 import { nextColor } from './palette.ts';
 
-/** Add a population of the next colour to `g` (as adding a gate does), returning its colour. */
+/** Add a population of the next color to `g` (as adding a gate does), returning its color. */
 function add(g: Group, id: string): string {
   const color = nextColor(g);
   g.template.populations[id] = { id, parent: 'root', gate: 'gate', region: 'in', name: id, color } as never;
@@ -17,7 +17,7 @@ describe('nextColor', () => {
     expect(colors).toEqual([...CATEGORICAL, CATEGORICAL[0], CATEGORICAL[1]]);
   });
 
-  it("reuses a deleted population's colour before any other", () => {
+  it("reuses a deleted population's color before any other", () => {
     const g = newGroup('One', ['a'], ['FSC-A']);
     for (let i = 0; i < 4; i++) add(g, `p${i}`);
     Reflect.deleteProperty(g.template.populations, 'p1');
@@ -25,7 +25,7 @@ describe('nextColor', () => {
     expect(add(g, 'p5')).toBe(CATEGORICAL[4]);
   });
 
-  it('skips colours set by hand, in any case', () => {
+  it('skips colors set by hand, in any case', () => {
     const g = newGroup('One', ['a'], ['FSC-A']);
     add(g, 'p0');
     g.template.populations.p0!.color = CATEGORICAL[0]!.toUpperCase();

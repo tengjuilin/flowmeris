@@ -26,7 +26,7 @@ describe('the metadata table', () => {
     expect(wellParts(undefined, undefined)).toEqual({});
   });
 
-  it('writes a well, normalised, and refuses one off the plate', () => {
+  it('writes a well, normalized, and refuses one off the plate', () => {
     const w = ws();
     const partial = new Map<string, PartialWell>();
     expect(writeMetaCell(w, 's1', vars, 0, 'a3', partial)).toBe(true);

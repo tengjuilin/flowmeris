@@ -87,9 +87,9 @@ Taylor-series/Halley structure of FlowUtils.
 
 ## M-TR-TICKS — axis ticks
 
-Linear axes: "nice" 1–2–5 steps, labelled with K/M/G suffixes. Other scales: major ticks at $0$ and
+Linear axes: "nice" 1–2–5 steps, labeled with K/M/G suffixes. Other scales: major ticks at $0$ and
 $\pm 10^k$, minor ticks at $\pm m \cdot 10^k$, $m = 2…9$; major labels closer than 4.5% of the axis to an
-already labelled tick are suppressed, keeping 0 and the largest magnitudes.
+already labeled tick are suppressed, keeping 0 and the largest magnitudes.
 
 ## References
 

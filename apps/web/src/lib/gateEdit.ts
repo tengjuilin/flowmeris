@@ -51,7 +51,7 @@ export function edgeArms(xr: readonly number[], yr: readonly number[]): [XY, XY,
 
 /**
  * `base` with one handle dragged to `p` (gate units). Handles: rect `n`/`s`/`e`/`w` and corners (y ignored
- * on a histogram), polygon `v<i>`, ellipse axes `a` and `b`, quadrant and spider centre `c`, spider
+ * on a histogram), polygon `v<i>`, ellipse axes `a` and `b`, quadrant and spider center `c`, spider
  * `arm<i>`, split `c`. `clamp` keeps spider points in the plot. Returns null for a spider arm that
  * would make the gate invalid.
  */
@@ -75,7 +75,7 @@ export function applyHandle(
     case 'quadrant':
       return { ...base, center: p };
     case 'spider': {
-      // arms stay where they are (inside the plot) while the centre moves
+      // arms stay where they are (inside the plot) while the center moves
       if (handle === 'c') return { ...base, center: clamp(p) };
       const i = Number(handle.slice(3));
       const arms = base.arms.map((q, k) => (k === i ? clamp(p) : q)) as typeof base.arms;

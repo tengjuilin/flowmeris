@@ -98,7 +98,7 @@ export function GatingPathView() {
     };
   }, [key, sampleId, missing]);
 
-  // A wide tree overflows sideways with its plots centred over the leaves; starting at scrollLeft 0
+  // A wide tree overflows sideways with its plots centered over the leaves; starting at scrollLeft 0
   // would show only connectors and leaf chips. It first opens on All events, then where it was left
   // (noted as it scrolls: by the time it closes it is no longer in the page to read from).
   const groupId = group?.id;
@@ -287,7 +287,7 @@ export function GatingPathView() {
         </div>
         <label
           className="field check"
-          title="Overlay the selected population's events, in its colour, on every plot above it"
+          title="Overlay the selected population's events, in its color, on every plot above it"
         >
           <input
             type="checkbox"

@@ -2,11 +2,11 @@ import type { Group, Variable } from '@flowmeris/model';
 import { CATEGORICAL, colormapCss } from '@flowmeris/render';
 import type { Cell } from '@flowmeris/table';
 
-/** Colours: of populations, of sample-variable values, and text readable on them. */
+/** Colors: of populations, of sample-variable values, and text readable on them. */
 
 /**
- * Next population colour: the first categorical palette colour no population of the group uses, so a
- * deleted population's colour is reused first; once all are used, the palette cycles by count.
+ * Next population color: the first categorical palette color no population of the group uses, so a
+ * deleted population's color is reused first; once all are used, the palette cycles by count.
  */
 export function nextColor(g: Group): string {
   const pops = Object.values(g.template.populations);
@@ -15,7 +15,7 @@ export function nextColor(g: Group): string {
   return free ?? CATEGORICAL[(pops.length - 1) % CATEGORICAL.length]!;
 }
 
-/** Colour of each value of a variable: palette slots for categories, a viridis ramp (log when wide and positive) for numbers. */
+/** Color of each value of a variable: palette slots for categories, a viridis ramp (log when wide and positive) for numbers. */
 export function valueColors(
   v: Variable,
   values: Cell[],
@@ -44,7 +44,7 @@ export function valueColors(
   return { color, legend: [], scale: { min, max, log } };
 }
 
-/** Text colour readable on a background colour (#rrggbb or rgb()). */
+/** Text color readable on a background color (#rrggbb or rgb()). */
 export function inkOn(bg: string): string {
   const m = bg.startsWith('#')
     ? [1, 3, 5].map((i) => Number.parseInt(bg.slice(i, i + 2), 16))

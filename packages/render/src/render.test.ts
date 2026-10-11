@@ -67,7 +67,7 @@ describe('raster2d', () => {
 });
 
 describe('histogram & colormaps & PNG', () => {
-  it('mode-normalised histogram peaks at 1', () => {
+  it('mode-normalized histogram peaks at 1', () => {
     const { x } = data(5000);
     const h = histogram(x, null, [0, 1], style);
     expect(Math.max(...h.heights)).toBe(1);

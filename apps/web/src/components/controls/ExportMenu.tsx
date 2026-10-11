@@ -15,10 +15,10 @@ export function ExportMenu({
 }: {
   /** Write the figure as `format`; `dpi` applies to PNG and JPEG. Returns nothing when there is no figure yet. */
   onExport: (format: ImageFormat, dpi: number) => Promise<void> | undefined;
-  /** Adds a CSV format to the list, labelled `label`, which `write` downloads. */
+  /** Adds a CSV format to the list, labeled `label`, which `write` downloads. */
   csv?: { label: string; write: () => void };
   className?: string;
-  /** Grey out the button (nothing to export). */
+  /** Gray out the button (nothing to export). */
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);

@@ -50,7 +50,7 @@ evaluation): numbers, `+ − * / ^` (`^` binds tighter than unary minus and asso
 `[header]`. `ln(x)` is the natural logarithm; `log(x, b)` is the logarithm to base
 $b$, computed as $\ln x / \ln b$. A missing or non-numeric input gives NaN; division by zero follows IEEE 754 (±Inf, NaN).
 
-**M-STAT-NORM — normalisation.** For a row $i$ and source column $x$, the reference is
+**M-STAT-NORM — normalization.** For a row $i$ and source column $x$, the reference is
 
 $$r_i = \frac{1}{|R_i|}\sum_{j \in R_i} x_j,$$
 
@@ -85,7 +85,7 @@ x value and series.
 On every channel of the Gating-ML reference file `data1.fcs` the mean, SD, median, min, max, geometric
 mean and nine percentiles agree with NumPy 1.26 to a relative 10⁻¹². Percentiles agree **exactly** on
 linear channels; log-amplified channels can differ in the last bit because of `pow`
-([M-FCS-LIN](./fcs#m-fcs-lin-linearisation)).
+([M-FCS-LIN](./fcs#m-fcs-lin-linearization)).
 
 ## References
 

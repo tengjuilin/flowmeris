@@ -138,7 +138,7 @@ describe('adding and retyping variables', () => {
   });
 });
 
-describe('distinct values and their colours', () => {
+describe('distinct values and their colors', () => {
   it('lists each value once among the given samples, numbers ascending, categories in level order', () => {
     const ws = workspace({ a: { n: 10, c: 'lo' }, b: { n: 2, c: 'hi' }, c: { n: 10, c: '' }, d: { n: 99 } });
     expect(distinctValues(ws, variable('n', 'numeric'), ['a', 'b', 'c', 'missing'])).toEqual([2, 10]);
@@ -179,7 +179,7 @@ describe('distinct values and their colours', () => {
     expect(valueColors(variable('n', 'numeric'), [-1, 1000]).scale!.log).toBe(false);
   });
 
-  it('a single number sits mid-ramp; no numbers give no colours', () => {
+  it('a single number sits mid-ramp; no numbers give no colors', () => {
     const one = valueColors(variable('n', 'numeric'), [7]);
     expect(one.color(7)).toBe(colormapCss('viridis', 0.55));
     const none = valueColors(variable('n', 'numeric'), ['a', Number.NaN]);
@@ -199,7 +199,7 @@ describe('distinct values and their colours', () => {
 });
 
 describe('cell selections', () => {
-  it('normalises a rectangle dragged from any corner', () => {
+  it('normalizes a rectangle dragged from any corner', () => {
     const want = { r0: 1, c0: 2, r1: 4, c1: 5 };
     expect(normRect({ r0: 4, c0: 5, r1: 1, c1: 2 })).toEqual(want);
     expect(normRect({ r0: 1, c0: 5, r1: 4, c1: 2 })).toEqual(want);

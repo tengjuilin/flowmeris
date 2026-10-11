@@ -28,7 +28,7 @@ export function linearize(stored: ArrayLike<number>, s: ChannelScaling, out?: Fl
   return res;
 }
 
-/** True when linearisation is the identity, so stored values can be used directly. */
+/** True when linearization is the identity, so stored values can be used directly. */
 export function isIdentityScaling(s: ChannelScaling): boolean {
   return s.logDecades <= 0 && s.gain === 1 && s.timestep === 1;
 }

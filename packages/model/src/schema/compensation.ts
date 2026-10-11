@@ -22,7 +22,7 @@ export type CompMatrix = z.infer<typeof CompMatrixSchema>;
 
 /**
  * Compensation reference for a gate/axis dimension.
- * - `uncompensated`: raw linearised values.
+ * - `uncompensated`: raw linearized values.
  * - `group`: whatever the owning group's compensation setting resolves to.
  */
 export const CompRefSchema = z.enum(['uncompensated', 'group']);

@@ -151,7 +151,7 @@ export function AxisFields({
               label="Width W"
               value={def.W}
               onCommit={(W) => setDef({ ...def, W })}
-              title="Linearisation width in decades"
+              title="Linearization width in decades"
             />
             <NumInput label="Decades M" value={def.M} onCommit={(M) => setDef({ ...def, M })} />
             <NumInput label="Extra neg. A" value={def.A} onCommit={(A) => setDef({ ...def, A })} />

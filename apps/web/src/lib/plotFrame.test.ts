@@ -23,7 +23,7 @@ describe('hitGate', () => {
   const box = shown('box', { kind: 'rect', min: [0.1, 0.1], max: [0.5, 0.5] });
   const quad = shown('quad', { kind: 'quadrant', center: [0.8, 0.8] });
 
-  it('finds a closed shape by its inside and a quadrant by its centre', () => {
+  it('finds a closed shape by its inside and a quadrant by its center', () => {
     expect(shapePx(f, box.maps, box.geom)).toHaveLength(4);
     expect(hitGate(f, [box, quad], 30, 70, false)?.id).toBe('box');
     expect(hitGate(f, [box, quad], 85, 25, false)?.id).toBe('quad');

@@ -39,12 +39,12 @@ export interface PlotCanvasProps {
   hideOffScaleNote?: boolean;
   /** Called when a population is double-clicked (drill-down). */
   onDrill?: (popId: string) => void;
-  /** Emphasise the gate producing this population and dim the plot's other gates. */
+  /** Emphasize the gate producing this population and dim the plot's other gates. */
   focusPopId?: string;
-  /** Overlay a descendant population's events in its colour (backgating). */
+  /** Overlay a descendant population's events in its color (backgating). */
   backgate?: { popId: string; color: string };
   /**
-   * Overlay other samples' events, each in its colour; `sampleId` is then drawn as dots (2D) or an
+   * Overlay other samples' events, each in its color; `sampleId` is then drawn as dots (2D) or an
    * outline (histogram) in `color`. Gates and their percentages stay those of `sampleId`.
    */
   overlay?: { color: string; samples: { sampleId: string; color: string }[] };

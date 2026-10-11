@@ -2,7 +2,7 @@
 
 Sample variables describe the experimental design: **numeric** variables (dose, time, concentration) and
 **categorical** ones (replicate, condition, cell line). They are defined once per workspace and every
-sample has its own value. The statistics table, its exports and the Charts tab use them to group, normalise
+sample has its own value. The statistics table, its exports and the Charts tab use them to group, normalize
 and plot. Open the **Metadata** tab to edit them.
 
 ## Adding variables
@@ -43,7 +43,7 @@ type the well in the table.
   (+ 10), along columns or rows. Each selected column (or row) gets the next value; **Reverse** runs the
   series from the right (or bottom).
 
-Wells are coloured by the selected variable: categorical values use the categorical palette (see the
+Wells are colored by the selected variable: categorical values use the categorical palette (see the
 legend), numbers a viridis ramp, logarithmic when the values are positive and span 100-fold or more.
 
 ## Importing from CSV or Excel

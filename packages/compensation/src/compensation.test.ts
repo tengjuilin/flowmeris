@@ -14,7 +14,7 @@ import {
 } from './index.ts';
 
 describe('M-COMP-PARSE', () => {
-  it('parses and re-serialises a $SPILLOVER keyword', () => {
+  it('parses and re-serializes a $SPILLOVER keyword', () => {
     const v = '2,FL1-A,FL2-A,1,0.1,0.02,1';
     const m = parseSpilloverKeyword(v)!;
     expect(m).toEqual({

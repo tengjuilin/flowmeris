@@ -41,7 +41,7 @@ export function linearAxis(lo: number, hi: number, p0: number, p1: number, zero:
   return { map, lo: a, hi: b, ticks: t.map((v) => ({ pos: map(v), label: formatLinear(v), major: true })) };
 }
 
-/** Ticks at 1–9 × 10^k between 10^a and 10^b: decades labelled, and 2 and 5 on a short axis. */
+/** Ticks at 1–9 × 10^k between 10^a and 10^b: decades labeled, and 2 and 5 on a short axis. */
 function logTicks(a: number, b: number, map: (v: number) => number): Axis['ticks'] {
   const ticks: Axis['ticks'] = [];
   const decades = b - a;

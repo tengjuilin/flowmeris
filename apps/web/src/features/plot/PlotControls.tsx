@@ -30,12 +30,12 @@ const TOOLS: { id: Tool; label: string; key: string; title: string; oneD?: boole
     title: 'Polygon gate: click vertices; close by clicking the first vertex, double-click or Enter (P)',
     twoD: true,
   },
-  { id: 'quadrant', label: 'Quadrant', key: 'Q', title: 'Quadrant gate: click the centre (Q)', twoD: true },
+  { id: 'quadrant', label: 'Quadrant', key: 'Q', title: 'Quadrant gate: click the center (Q)', twoD: true },
   {
     id: 'spider',
     label: 'Spider',
     key: 'S',
-    title: 'Spider gate: click the centre, then drag arm handles (S)',
+    title: 'Spider gate: click the center, then drag arm handles (S)',
     twoD: true,
   },
   {
@@ -54,7 +54,7 @@ const TOOLS: { id: Tool; label: string; key: string; title: string; oneD?: boole
   },
 ];
 
-/** Line icons for the gate drawing tools, drawn on a 20×20 grid in the button's text colour. */
+/** Line icons for the gate drawing tools, drawn on a 20×20 grid in the button's text color. */
 const TOOL_ICONS: Record<Tool, ReactNode> = {
   select: (
     <path d="M5.5 3.5v12.2l3.3-3.1 2.3 4.9 2.2-1-2.3-4.8 4.5-.3z" fill="currentColor" fillOpacity="0" />
@@ -225,7 +225,7 @@ export function AxisSelects({ group, plot, edit }: { group: Group; plot: PlotSpe
 
 /**
  * Gate drawing tools for a 1D or 2D plot; they act on the Gate view's plot or the Plot view's active cell.
- * `disabled` greys them out (no plot to act on); the current tool is then not highlighted.
+ * `disabled` grays them out (no plot to act on); the current tool is then not highlighted.
  */
 export function ToolButtons({ is1d, disabled = false }: { is1d: boolean; disabled?: boolean }) {
   const tool = useStore((s) => s.ui.tool);

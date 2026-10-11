@@ -74,7 +74,7 @@ describe('table sections', () => {
     expect(cols.map((x) => sectionOf(x, byKey))).toEqual(['sample', 'variables', 'pop:p1', 'derived']);
   });
 
-  it('a summary column belongs to the section of the column it summarises; n has its own', () => {
+  it('a summary column belongs to the section of the column it summarizes; n has its own', () => {
     expect(sectionOf(c('dc_1:mean', 'aggregate', { source: 'dc_1' }), byKey)).toBe('derived');
     expect(sectionOf(c('var:dose:mean', 'aggregate', { source: 'var:dose' }), byKey)).toBe('variables');
     expect(sectionOf(c('p1|count:sd', 'aggregate', { source: 'p1|count', pop: 'p1' }), byKey)).toBe('pop:p1');

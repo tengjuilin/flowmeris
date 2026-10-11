@@ -238,7 +238,7 @@ export function evaluateGate(
   }
 }
 
-/** Quadrant gate centre → spider arms that reproduce it exactly (axis-aligned). */
+/** Quadrant gate center → spider arms that reproduce it exactly (axis-aligned). */
 export function spiderFromQuadrant(
   center: readonly [number, number],
   armLength: number,

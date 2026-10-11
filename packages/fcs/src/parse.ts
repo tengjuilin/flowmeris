@@ -5,7 +5,7 @@
  *  - Spidlen J. et al. (2010) Data File Standard for Flow Cytometry, Version FCS 3.1. Cytometry A 77:97–100.
  *  - Spidlen J. et al. (2021) Data File Standard for Flow Cytometry, Version FCS 3.2. Cytometry A 99:100–102.
  *
- * Linearisation conventions follow FlowKit/FlowIO so that numerical results can
+ * Linearization conventions follow FlowKit/FlowIO so that numerical results can
  * be validated against them (see docs/validation/).
  */
 

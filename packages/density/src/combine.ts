@@ -22,7 +22,7 @@ export interface RidgeCurve {
  * Combine replicate histograms sharing the same bins (M-PLOT-RIDGE-COMBINE). 'pool' adds the counts;
  * 'mean' averages each replicate's unit-area histogram, so every replicate weighs the same, with an
  * optional ±SD or ±SEM (n − 1 denominator) band per bin. The result is scaled to a mode of 1. A single
- * histogram gives the usual mode-normalised curve.
+ * histogram gives the usual mode-normalized curve.
  */
 export function combineCounts(
   hs: BinCounts[],

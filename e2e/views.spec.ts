@@ -179,7 +179,7 @@ test('plot grid: drag plots to rearrange them; cut, copy and paste them', async 
   const empty = page.locator('.plot-grid .empty-cell').first();
   await empty.locator('.muted').click();
   await expect(page.locator('.plot-grid .empty-cell.on')).toHaveCount(1);
-  // With an empty slot selected, the tools that act on a plot are greyed out.
+  // With an empty slot selected, the tools that act on a plot are grayed out.
   const toolbar = page.locator('.grid-view').getByRole('toolbar', { name: 'Gating tools' });
   for (const name of ['Rectangle', 'Edit template', 'Export'])
     await expect(toolbar.getByRole('button', { name, exact: true })).toBeDisabled();
@@ -322,7 +322,7 @@ test('gating path: steps, plot size, Path and Tree each with their own size, pan
   await expect(cards).toHaveCount(2);
   await expect(page.locator('.path-arrow')).toHaveCount(1);
 
-  // The populations panel: arrow keys on its edge resize it; Enter fits it, then minimises it.
+  // The populations panel: arrow keys on its edge resize it; Enter fits it, then minimizes it.
   const edge = page.getByRole('separator', { name: 'Resize the populations panel' });
   const h0 = Number(await edge.getAttribute('aria-valuenow'));
   await edge.focus();

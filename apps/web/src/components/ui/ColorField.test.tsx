@@ -11,7 +11,7 @@ const reset = (over: Partial<Parameters<typeof ColorField>[0]['reset']> = {}) =>
 });
 
 describe('ColorField', () => {
-  it('reports a picked colour', () => {
+  it('reports a picked color', () => {
     const onChange = vi.fn();
     render(
       <ColorField label="Axis color" inputLabel="Axis" value="#000000" onChange={onChange} reset={reset()} />,

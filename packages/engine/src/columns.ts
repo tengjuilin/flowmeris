@@ -22,7 +22,7 @@ const NO_COMP: ResolvedComp = { m: null, key: 'none' };
 
 /**
  * Sample data and its columns: loading samples and the stored columns a computation reads, then
- * linearising, compensating and transforming them (all cached by content, ADR-0004).
+ * linearizing, compensating and transforming them (all cached by content, ADR-0004).
  */
 export class Columns {
   private samples: LruCache<SampleData>;

@@ -62,7 +62,7 @@ export function StatsInspector() {
       FLOWMERIS_SRC_SHA256: s.sha256,
       FLOWMERIS_SRC_FILE: s.fileName,
       FLOWMERIS_POPULATION: path,
-      FLOWMERIS_VALUES: mode === 'raw' ? 'linearised, uncompensated' : 'linearised, compensated',
+      FLOWMERIS_VALUES: mode === 'raw' ? 'linearized, uncompensated' : 'linearized, compensated',
     });
     download(eventsFileName(s.fileName, group.template.populations[popId]?.name, format), bytes);
   };
@@ -151,14 +151,14 @@ export function StatsInspector() {
           <Card {...card('events')}>
             <ActionRow
               label="FCS (raw)"
-              title="Download FCS 3.1 with linearised, uncompensated values; original keywords and $SPILLOVER kept"
+              title="Download FCS 3.1 with linearized, uncompensated values; original keywords and $SPILLOVER kept"
               icon={<ExportIcon />}
               disabled={!eventSample}
               onClick={() => void exportEvents('fcs', 'raw')}
             />
             <ActionRow
               label="CSV (compensated)"
-              title="Download the events as CSV, linearised and compensated"
+              title="Download the events as CSV, linearized and compensated"
               icon={<ExportIcon />}
               disabled={!eventSample}
               onClick={() => void exportEvents('csv', 'compensated')}

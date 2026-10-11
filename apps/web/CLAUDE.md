@@ -69,8 +69,8 @@ What is in `src/lib/`:
 | `gridCarry.ts` | grid-plot settings copied to the other grid plots |
 | `ridgeRows.ts`, `ridgeLayout.ts`, `ridgePanels.ts` | which ridges a ridge plot draws (samples or combined replicates); its labels, pixel layout and paths (`ridgeLabels`, `ridgeFrame`, `ridgePaths`); its settings panel's card and tab resets, reordering (`moveRidges`) and base font scaling |
 | `statsTable.ts`, `statsFormat.ts`, `statsHeader.ts`, `statsExport.ts`, `derived.ts`, `formula.ts` | statistics table rows and columns, number formatting, header sections, dividers and pinned columns; export file names, Gating-ML files and the export column checklist; derived column defaults and descriptions; formula editing |
-| `chartAxis.ts`, `chartLayout.ts`, `chartMarks.ts`, `chartStyle.ts`, `chartSelection.ts`, `chartPanels.ts` | chart axes (`makeAxis`, `validFix`, `dataExtents`, `barPath`); margins, band slots and the plot area (`plotArea`, with the box aspect ratio); marker shapes (`markerPath`) and the horizontal-line marker's length; default style, series colour and order, the first chart (`defaultPlot`), the chart CSV; hidden points and excluded rows; the settings panel's cards, card and tab resets, applying settings to all charts, duplicating |
-| `metadata.ts`, `metaTable.ts`, `plate.ts`, `metaImport.ts`, `palette.ts` | sample variables (values, types, paste, the shown variable, wells detected); the Metadata table's cells (linked Well, Row and Column, `writeMetaCell`); the plate map (samples by well, series fills); importing a table or plate layout; colours of populations and values |
+| `chartAxis.ts`, `chartLayout.ts`, `chartMarks.ts`, `chartStyle.ts`, `chartSelection.ts`, `chartPanels.ts` | chart axes (`makeAxis`, `validFix`, `dataExtents`, `barPath`); margins, band slots and the plot area (`plotArea`, with the box aspect ratio); marker shapes (`markerPath`) and the horizontal-line marker's length; default style, series color and order, the first chart (`defaultPlot`), the chart CSV; hidden points and excluded rows; the settings panel's cards, card and tab resets, applying settings to all charts, duplicating |
+| `metadata.ts`, `metaTable.ts`, `plate.ts`, `metaImport.ts`, `palette.ts` | sample variables (values, types, paste, the shown variable, wells detected); the Metadata table's cells (linked Well, Row and Column, `writeMetaCell`); the plate map (samples by well, series fills); importing a table or plate layout; colors of populations and values |
 | `ingest.ts`, `files.ts`, `names.ts` | grouping loaded files; data-file extensions; short sample names |
 | `export/` | figure export: `svg.ts`, `pdf.ts`, `figure.ts`, `plot.ts` (takes its data as a `PlotExportSource`) |
 | `geometry.ts`, `fitSize.ts`, `order.ts`, `text.ts`, `format.ts`, `json.ts`, `download.ts`, `sheets.ts` | gate drawing geometry; sizing (`nearestColumns`, and `RowFit` for rows of plots in Tiles and the Plot grid); moving ids in a list (`moveIds`); label wrapping, number formats, JSON copy/compare, downloads, spreadsheets |
@@ -82,7 +82,7 @@ What is in `src/lib/`:
 | `gatingPath.ts` | the Gating path: the plot showing each gate (`plotForGate`, built from the gate's axes when no saved plot matches), the tree (`treeLayout`), the path's steps |
 
 `figure.ts` has the SVG text styling (`textCss`, `figureText`) and fonts (`FONT_STACKS`, `fontStack`);
-`ridgeStyle.ts` the ridge defaults and colours (`ridgeColor`). Search for a symbol before assuming where it lives.
+`ridgeStyle.ts` the ridge defaults and colors (`ridgeColor`). Search for a symbol before assuming where it lives.
 
 ## Settings panels
 
@@ -129,7 +129,7 @@ made once, and each feature keeps only its own logic:
   gesture. `mutateQuiet` changes the workspace without an undo step (for derived data only).
 - Opening a population never changes the workspace: the Gate view shows its plot unsaved (`ui.unsavedPlot`,
   or built by `gateViewPlot`) until an edit in the Gate view changes the plot or a gate on it. `mutate`
-  then saves it in that edit's undo step, labelled `Add plot and …`, and selects it under its new id.
+  then saves it in that edit's undo step, labeled `Add plot and …`, and selects it under its new id.
   Edits find the unsaved plot in the draft by its id, `UNSAVED_PLOT_ID`, as they find a saved one. The
   one exception: when its axes need a transform or axis default the workspace lacks (rare: a channel no
   plot used), `usePlotForPopulation` registers them with `mutateQuiet` so the plot can be drawn.
@@ -149,7 +149,7 @@ made once, and each feature keeps only its own logic:
 - Get the pool with `getPool()` (`engine-client/pool.ts`); tests can replace it with `setPool()`.
 - Plot requests (`raster`, `histogram`, `counts`) take `{ key, signal }` and go through the
   `Scheduler` (`engine-client/scheduler.ts`). `key` must identify the result completely, typically
-  `plotKey` from `lib/keys.ts` plus size and colours. Results with the same key are shared and cached, so
+  `plotKey` from `lib/keys.ts` plus size and colors. Results with the same key are shared and cached, so
   never mutate a result.
 - Other requests (`table`, `preview`, `channelValues`, `exportEvents`) go to the worker at once, so a
   gate preview never waits behind queued plots (ADR-0010).
@@ -164,7 +164,7 @@ made once, and each feature keeps only its own logic:
 - Components: `src/**/*.test.tsx` (vitest project `dom`: jsdom and `@testing-library/react`, setup in
   `vitest.dom-setup.ts`). Use it for controls in `components/ui` and `components/controls`; select by
   role and label, and drive them with `fireEvent`.
-- UI behaviour across views is covered by Playwright in `/e2e` (`corepack pnpm build && corepack pnpm e2e`).
+- UI behavior across views is covered by Playwright in `/e2e` (`corepack pnpm build && corepack pnpm e2e`).
   To check a change by eye, start the `web` server from `.claude/launch.json`.
 
 ## CSS

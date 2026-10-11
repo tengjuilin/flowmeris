@@ -19,18 +19,18 @@ the plot. They are never silently dropped.
 
 Smoothing is a separable Gaussian convolution of the binned counts (a binned kernel density estimate;
 Wand 1994), with kernel standard deviation σ in pixels (Display → Smoothing σ; default 2 px), truncated
-at ±4σ and normalised. Zero padding is used at the plot edges, so mass is lost beyond the displayed
+at ±4σ and normalized. Zero padding is used at the plot edges, so mass is lost beyond the displayed
 range. That mass is already counted as off-scale.
 
 ## Plot types
 
 | Type | Definition |
 |---|---|
-| **Dot** | every pixel containing ≥ 1 event is drawn in the dot colour, as a point of Display → Point size (default 3 px; 0.25–10 px) |
-| **Pseudocolor** (M-PLOT-PSEUDO) | every pixel containing ≥ 1 event is coloured by $\log(1+\hat f)/\log(1+\hat f_\max)$ of the smoothed density $\hat f$. Isolated events stay visible while dense regions show structure. Points are 3 px by default, as for dot plots. |
-| **Density** (M-PLOT-DENSITY) | the smoothed density image, linear colour scale, cells below 0.5% of the maximum transparent |
+| **Dot** | every pixel containing ≥ 1 event is drawn in the dot color, as a point of Display → Point size (default 3 px; 0.25–10 px) |
+| **Pseudocolor** (M-PLOT-PSEUDO) | every pixel containing ≥ 1 event is colored by $\log(1+\hat f)/\log(1+\hat f_\max)$ of the smoothed density $\hat f$. Isolated events stay visible while dense regions show structure. Points are 3 px by default, as for dot plots. |
+| **Density** (M-PLOT-DENSITY) | the smoothed density image, linear color scale, cells below 0.5% of the maximum transparent |
 | **Contour** | iso-density lines of the smoothed density (marching squares) on a grid of 3-px cells |
-| **Histogram** | 1-D counts in 256 bins (64–1024), optionally smoothed (σ = 1.5 bins). The y axis (picked on its title or in Display) shows **Count** (events per bin), **% of max** (heights over the highest bin; FlowJo's "normalised to mode") or **Fraction** (heights over their sum, i.e. unit area) |
+| **Histogram** | 1-D counts in 256 bins (64–1024), optionally smoothed (σ = 1.5 bins). The y axis (picked on its title or in Display) shows **Count** (events per bin), **% of max** (heights over the highest bin; FlowJo's "normalized to mode") or **Fraction** (heights over their sum, i.e. unit area) |
 
 ### M-PLOT-CONTOUR-EQP — equal-probability contours
 
@@ -44,27 +44,27 @@ semantics for 2%, 5% and 10% contour plots.
 
 The outermost line encloses 98% of events and each line inward encloses half as many as the previous one.
 
-## Colour
+## Color
 
-The default colour map for density-coded plots is **viridis**: perceptually uniform, readable with
-common colour-vision deficiencies, and monotone in lightness. *magma* and *gray* are alternatives.
-*classic* (blue→red) reproduces the familiar FlowJo pseudocolour for comparison. It is not perceptually
-uniform and can create false boundaries. Population colours use a fixed-order eight-colour palette
-validated for colour-vision-deficiency separation, and populations are always also labelled by name.
+The default color map for density-coded plots is **viridis**: perceptually uniform, readable with
+common color-vision deficiencies, and monotone in lightness. *magma* and *gray* are alternatives.
+*classic* (blue→red) reproduces the familiar FlowJo pseudocolor for comparison. It is not perceptually
+uniform and can create false boundaries. Population colors use a fixed-order eight-color palette
+validated for color-vision-deficiency separation, and populations are always also labeled by name.
 
 ## Group plots
 
 - **Tiles:** the current plot repeated for every sample in the group, same axes and scales, with each
   sample's effective gates (overrides drawn dashed in orange).
-- **Ridge:** one histogram per sample on a shared x axis, each normalised to its own mode, smoothed
-  (σ = 1.5 bins) and labelled with its event count. The settings panel on the right sets the fill
-  colour (one colour, or the categorical palette, with per-sample overrides), opacity, outline, overlap,
+- **Ridge:** one histogram per sample on a shared x axis, each normalized to its own mode, smoothed
+  (σ = 1.5 bins) and labeled with its event count. The settings panel on the right sets the fill
+  color (one color, or the categorical palette, with per-sample overrides), opacity, outline, overlap,
   row height, sample order and labels, tick positions and labels, axis title, font and width. These are
   saved per group and population in the workspace (`layouts`, kind `ridge`); the SVG export inlines
   them.
 - **Ridge, combined replicates (M-PLOT-RIDGE-COMBINE):** the *Replicates* card below the population
   tree combines the checked samples sharing the values of the chosen sample variables (e.g. condition
-  and dose) into one ridge, sorted by those values. *Average of replicate curves* normalises each
+  and dose) into one ridge, sorted by those values. *Average of replicate curves* normalizes each
   replicate's smoothed histogram to unit area over the displayed range and averages them, so every
   replicate weighs the same; an optional band shows ±SD or ±SEM (n − 1 denominator) per bin.
   *Pooled events* adds the replicates' counts, so replicates with more events weigh more. Either way
@@ -72,7 +72,7 @@ validated for colour-vision-deficiency separation, and populations are always al
   Replicates without events in range are left out of the average. By default the settings are shared by
   all populations of the group (`ridgeCombine`), so switching the gate keeps the same grouping, hidden
   ridges and excluded replicates; untick *Same settings for all populations* (`ridgeFollow`) to give each
-  population its own copy, saved with its ridge layout (`combine`). Combined ridges keep their own order, colours and labels. The card lists the
+  population its own copy, saved with its ridge layout (`combine`). Combined ridges keep their own order, colors and labels. The card lists the
   combined ridges: untick one to hide it (`combine.hidden`), or open it with ▸ and untick single
   replicates to leave them out of that ridge's curve, band and n (`combine.exclude`). Shift-click sets a range of rows.
 
@@ -88,4 +88,4 @@ records the DPI in the PNG `pHYs` chunk.
 
 - Wand MP. Fast computation of multivariate kernel estimators. *J Comput Graph Stat* 1994;3:433–445.
 - FlowJo documentation, "Contour Plots", "Pseudocolor Plots".
-- Crameri F, Shephard GE, Heron PJ. The misuse of colour in science communication. *Nat Commun* 2020;11:5444.
+- Crameri F, Shephard GE, Heron PJ. The misuse of color in science communication. *Nat Commun* 2020;11:5444.

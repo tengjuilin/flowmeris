@@ -114,7 +114,7 @@ export function withBaseFont(plot: PlotSpec, px: number): PlotSpec {
 
 /**
  * SVG text styling for `t`, falling back to the figure's font family `base` and color `baseColor`. With
- * neither colour, the text keeps the colour its CSS gives it.
+ * neither color, the text keeps the color its CSS gives it.
  */
 export function textCss(t: TextStyle, base: string, baseColor: string | undefined): CSSProperties {
   const fill = t.color ?? baseColor;

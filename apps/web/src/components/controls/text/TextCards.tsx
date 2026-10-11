@@ -20,8 +20,8 @@ export interface TextEntry {
 }
 
 /**
- * The cards of a Text tab, one per kind of text, each a `TextStyleEditor` whose font and colour default
- * to the base font `base` and colour `baseColor`.
+ * The cards of a Text tab, one per kind of text, each a `TextStyleEditor` whose font and color default
+ * to the base font `base` and color `baseColor`.
  */
 export function TextCards({
   base,

@@ -35,7 +35,7 @@ function paint(c: HTMLCanvasElement | null, r: RasterResponse | null) {
 
 /**
  * The plot's own events: a histogram, or a raster drawn into the returned canvas. With `ovColor` (other
- * samples overlaid) the raster is flat dots of that colour.
+ * samples overlaid) the raster is flat dots of that color.
  */
 export function usePlotEvents(a: PlotDataArgs, ovColor: string | undefined) {
   const { ctx, sampleId, plot, plotKey: key, is1d, pw, ph, dpr, missing } = a;
@@ -101,9 +101,9 @@ export function usePlotEvents(a: PlotDataArgs, ovColor: string | undefined) {
 }
 
 /**
- * Backgating: a descendant population's events over the plot, in its colour. 2D: a raster drawn into the
+ * Backgating: a descendant population's events over the plot, in its color. 2D: a raster drawn into the
  * returned canvas. Histogram: the population's and the plot population's counts per bin, so the overlay
- * can be scaled to the plot's normalisation.
+ * can be scaled to the plot's normalization.
  */
 export function useBackgate(a: PlotDataArgs, bgPop: { popId: string; color: string } | null) {
   const { ws, group, ctx, sampleId, plot, plotKey: key, is1d, pw, ph, dpr, missing } = a;
@@ -121,8 +121,8 @@ export function useBackgate(a: PlotDataArgs, bgPop: { popId: string; color: stri
     let live = true;
     const run = async () => {
       if (is1d) {
-        // Both in counts so the overlay can be put on the base histogram's normalisation:
-        // smoothing and every normalisation are linear, so one factor maps counts to heights.
+        // Both in counts so the overlay can be put on the base histogram's normalization:
+        // smoothing and every normalization are linear, so one factor maps counts to heights.
         const style = { ...plot.style, histNorm: 'count' as const };
         const [base, sub] = await Promise.all([
           getPool().histogram(ctx, sampleId, plot.population, plot.x, style, { key: `${bgKey}|base` }),
@@ -160,7 +160,7 @@ export function useBackgate(a: PlotDataArgs, bgPop: { popId: string; color: stri
 }
 
 /**
- * Other samples overlaid on the plot, each in its colour: their histograms, or their rasters composited
+ * Other samples overlaid on the plot, each in its color: their histograms, or their rasters composited
  * into the returned canvas.
  */
 export function useOverlaySamples(a: PlotDataArgs, ovSamples: { sampleId: string; color: string }[]) {
@@ -274,7 +274,7 @@ export function useGateCounts(a: PlotDataArgs) {
   return { gates, counts };
 }
 
-/** A plot drawn as dots of at least 2 px, for overlays where every sample needs its own flat colour. */
+/** A plot drawn as dots of at least 2 px, for overlays where every sample needs its own flat color. */
 function overlayDots(plot: PlotSpec): PlotSpec {
   return {
     ...plot,

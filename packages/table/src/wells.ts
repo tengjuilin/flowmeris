@@ -7,7 +7,7 @@ export function wellName(row: number, col: number): string {
   return `${PLATE_ROWS[row]}${String(col + 1).padStart(2, '0')}`;
 }
 
-/** [row, col] (0-based) of a normalised well name. */
+/** [row, col] (0-based) of a normalized well name. */
 export function wellIndex(well: string): [number, number] {
   return [PLATE_ROWS.indexOf(well[0]!), Number(well.slice(1)) - 1];
 }

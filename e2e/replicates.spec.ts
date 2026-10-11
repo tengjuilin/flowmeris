@@ -61,7 +61,7 @@ test('choosing which grouped replicates the ridge plot and charts show', async (
   await page.getByRole('button', { name: '+ New chart' }).click();
   const panel = page.getByRole('complementary', { name: 'Chart settings' });
   await panel.getByRole('tab', { name: 'Axis' }).click();
-  await panel.getByRole('combobox', { name: 'Colour by' }).selectOption('');
+  await panel.getByRole('combobox', { name: 'Color by' }).selectOption('');
   await expect(page.locator('svg.stat-chart .chart-hit')).toHaveCount(2);
   const data = page.locator('details.chart-data');
   await data.locator('summary').click();

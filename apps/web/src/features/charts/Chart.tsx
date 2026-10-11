@@ -13,7 +13,7 @@ export function Chart(props: {
   plot: StatPlot;
   /** Series in display order. */
   series: PlotSeries[];
-  /** Palette index of each series key among all series, so hiding one keeps the others' colours. */
+  /** Palette index of each series key among all series, so hiding one keeps the others' colors. */
   colorIndex: Map<string, number>;
   xCol: ColumnDef;
   yCol: ColumnDef;
@@ -118,7 +118,7 @@ export function Chart(props: {
         </g>
         {legend !== 'none' && <ChartLegend f={f} legend={legend} />}
       </svg>
-      {/* Not when the hovered point's series is gone (e.g. "Colour by" undone under the pointer). */}
+      {/* Not when the hovered point's series is gone (e.g. "Color by" undone under the pointer). */}
       {hover && series.some((s) => s.key === hover.series) && (
         <ChartTip f={f} hover={hover} width={f.W} xCol={xCol} seriesLabel={props.seriesLabel} />
       )}

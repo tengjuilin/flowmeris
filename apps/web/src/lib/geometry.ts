@@ -98,7 +98,7 @@ export function outlineGateSpace(
   }
 }
 
-/** Ray from a centre through a point, extended to (far beyond) the display bounds, in gate space. */
+/** Ray from a center through a point, extended to (far beyond) the display bounds, in gate space. */
 export function rayEnd(c: [number, number], through: [number, number], span: number): [number, number] {
   const dx = through[0] - c[0];
   const dy = through[1] - c[1];

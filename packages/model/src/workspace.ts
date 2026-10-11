@@ -176,7 +176,7 @@ export function removeGateCascade(group: Group, gateId: string): void {
 }
 
 /**
- * Remove references to deleted statistics-table columns: normalisations and
+ * Remove references to deleted statistics-table columns: normalizations and
  * charts built on them go, export lists forget them. Formulas keep their text
  * (they refer to columns by label) and evaluate to NaN until fixed.
  */
@@ -184,7 +184,7 @@ export function dropColumns(group: Group, keys: Set<string>): void {
   if (keys.size === 0) return;
   const a = group.analysis;
   const gone = new Set(keys);
-  // A normalisation of a removed column is removed too, and so on down the chain.
+  // A normalization of a removed column is removed too, and so on down the chain.
   for (const d of a.derived) if (d.kind === 'normalize' && gone.has(d.source)) gone.add(`derived:${d.id}`);
   a.derived = a.derived.filter((d) => !gone.has(`derived:${d.id}`));
   if (a.exportColumns) a.exportColumns = a.exportColumns.filter((k) => !gone.has(k));

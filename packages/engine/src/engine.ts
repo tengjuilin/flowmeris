@@ -117,7 +117,7 @@ export class Engine {
 
   /**
    * Indices of a population's events, or null when it holds every event (kernels then scan all
-   * events without materialising an index array). Cached alongside the bitset.
+   * events without materializing an index array). Cached alongside the bitset.
    */
   popIndices(
     ctx: AnalysisContext,

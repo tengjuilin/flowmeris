@@ -28,7 +28,7 @@ export function readGolden<T = unknown>(rel: string): T {
  * |a − b| ≤ abs + rel·max(|a|, |b|).
  */
 export const TOL = {
-  /** Parsing and linearisation: exact, up to a few ULP for pow(). */
+  /** Parsing and linearization: exact, up to a few ULP for pow(). */
   linearize: { rel: 1e-14, abs: 0 },
   /** Compensation (LU inverse vs NumPy's inverse). */
   compensation: { rel: 1e-9, abs: 1e-9 },

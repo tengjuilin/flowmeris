@@ -5,8 +5,8 @@ import { clamp } from '../../lib/math.ts';
 import type { ChartData } from './useChart.ts';
 
 /**
- * The size of the mean markers; for the horizontal-line marker, its width, length and colour (the series
- * colour unless one is picked).
+ * The size of the mean markers; for the horizontal-line marker, its width, length and color (the series
+ * color unless one is picked).
  */
 export function MarkerFields({ c }: { c: ChartData }) {
   const { set } = c;
@@ -43,21 +43,21 @@ export function MarkerFields({ c }: { c: ChartData }) {
       </div>
       <ColorField
         inline
-        label="Mean line colour"
-        inputLabel="Mean line colour"
+        label="Mean line color"
+        inputLabel="Mean line color"
         inputTitle={
-          st.meanLineColor === undefined ? "Each series' colour; pick one colour for every line" : undefined
+          st.meanLineColor === undefined ? "Each series' color; pick one color for every line" : undefined
         }
         value={st.meanLineColor ?? first}
-        onChange={(v) => set('meanLineColor', v, 'Chart mean line colour')}
+        onChange={(v) => set('meanLineColor', v, 'Chart mean line color')}
         reset={{
           disabled: st.meanLineColor === undefined,
-          label: "Reset mean line colour to the series' colours",
+          label: "Reset mean line color to the series' colors",
           title:
             st.meanLineColor === undefined
-              ? "Mean lines have their series' colours"
-              : "Reset mean line colour to the series' colours",
-          onReset: () => set('meanLineColor', undefined, 'Chart mean line colour'),
+              ? "Mean lines have their series' colors"
+              : "Reset mean line color to the series' colors",
+          onReset: () => set('meanLineColor', undefined, 'Chart mean line color'),
         }}
       />
     </>

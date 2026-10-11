@@ -8,10 +8,10 @@ export const RidgeStyleSchema = z.object({
   /** 'single': every ridge uses `color`; 'palette': ridges cycle the categorical palette. */
   colorMode: z.enum(['single', 'palette']).default('single'),
   color: HexColor.default('#2a78d6'),
-  /** Per-ridge fill colours, overriding `colorMode`. Keyed by ridge id (see `order`). */
+  /** Per-ridge fill colors, overriding `colorMode`. Keyed by ridge id (see `order`). */
   sampleColors: z.record(HexColor).default({}),
   fillOpacity: Num.min(0).max(1).default(0.55),
-  /** Outline colour; omitted = the plot background. */
+  /** Outline color; omitted = the plot background. */
   strokeColor: HexColor.optional(),
   strokeWidth: Num.min(0).max(10).default(1.25),
   /** Row pitch in px; omitted = fit (18–60 px, about 600 px in total). */
@@ -81,7 +81,7 @@ export const RidgeCombineSchema = z.object({
   /** Variable ids; samples sharing all their values form one ridge. Empty = every sample in one ridge. */
   by: z.array(Id).default([]),
   /**
-   * 'mean': each replicate's histogram is normalised to unit area and the curves are averaged, so every
+   * 'mean': each replicate's histogram is normalized to unit area and the curves are averaged, so every
    * replicate weighs the same. 'pool': the replicates' events are counted together.
    */
   method: z.enum(['mean', 'pool']).default('mean'),

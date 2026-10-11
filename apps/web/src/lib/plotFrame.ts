@@ -58,7 +58,7 @@ export function shapePx(f: PlotFrame, maps: DimMap[], geom: Geometry): Pt[] {
 }
 
 /**
- * The topmost gate under pixel (px, py): near a quadrant or spider centre, near a split divider,
+ * The topmost gate under pixel (px, py): near a quadrant or spider center, near a split divider,
  * between a histogram range's edges, or inside a closed shape.
  */
 export function hitGate(f: PlotFrame, shown: ShownGate[], px: number, py: number, is1d: boolean) {

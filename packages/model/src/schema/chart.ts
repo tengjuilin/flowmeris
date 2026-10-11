@@ -13,7 +13,7 @@ export const ChartStyleSchema = z.object({
   /** 'palette': series cycle the categorical palette; 'single': every series uses `color`. */
   colorMode: z.enum(['palette', 'single']).default('palette'),
   color: HexColor.default('#2a78d6'),
-  /** Per-series colours, overriding `colorMode`. */
+  /** Per-series colors, overriding `colorMode`. */
   seriesColors: z.record(HexColor).default({}),
   /** Per-series legend text, overriding the value. */
   seriesLabels: z.record(z.string()).default({}),
@@ -23,9 +23,9 @@ export const ChartStyleSchema = z.object({
   markerShape: z.enum(['circle', 'square', 'triangle', 'diamond', 'hline']).default('circle'),
   /** Mean marker radius in px (scatter, line, dot); other shapes have the same area as that circle. */
   markerSize: Num.min(0).max(30).default(5),
-  /** Edge colour of the mean markers and replicate points; omitted = the background (bar replicates: the text colour). */
+  /** Edge color of the mean markers and replicate points; omitted = the background (bar replicates: the text color). */
   markerEdgeColor: HexColor.optional(),
-  /** The 'hline' marker: its width and length in px (length omitted = the series' slot, 16 px off a band axis) and colour (omitted = the series colour). */
+  /** The 'hline' marker: its width and length in px (length omitted = the series' slot, 16 px off a band axis) and color (omitted = the series color). */
   meanLineWidth: Num.min(0).max(20).default(2),
   meanLineLength: Num.min(0).max(200).optional(),
   meanLineColor: HexColor.optional(),
@@ -35,7 +35,7 @@ export const ChartStyleSchema = z.object({
   /** Opacity of bars and mean markers. */
   fillOpacity: Num.min(0).max(1).default(1),
   errorWidth: Num.min(0).max(10).default(1.5),
-  /** Error bar colour; omitted = the theme's. */
+  /** Error bar color; omitted = the theme's. */
   errorColor: HexColor.optional(),
   /** Error-bar cap width in px; omitted = automatic. */
   capWidth: Num.min(0).max(60).optional(),
@@ -52,7 +52,7 @@ export const ChartStyleSchema = z.object({
   xTicks: TickListSchema.optional(),
   yTicks: TickListSchema.optional(),
   showGrid: z.boolean().default(true),
-  /** Tick marks and the axis lines (spines): colours (omitted = the theme's) and widths in px. */
+  /** Tick marks and the axis lines (spines): colors (omitted = the theme's) and widths in px. */
   tickColor: HexColor.optional(),
   tickWidth: Num.min(0).max(10).default(1),
   spineColor: HexColor.optional(),
@@ -62,7 +62,7 @@ export const ChartStyleSchema = z.object({
   showTickLabels: z.boolean().default(true),
   /** A key of the app's font list (earlier charts used only 'sans', 'serif' and 'mono'), or any installed font. */
   fontFamily: z.string().min(1).max(80).default('sans'),
-  /** Omitted = the app theme's text colours. */
+  /** Omitted = the app theme's text colors. */
   fontColor: HexColor.optional(),
   /** Base font size (px); editing it rescales the tick, axis title and legend sizes by the same ratio. */
   fontSize: Num.min(4).max(48).default(12),
@@ -85,7 +85,7 @@ export const StatPlotSchema = z.object({
   kind: z.enum(['scatter', 'line', 'bar', 'dot']),
   x: z.string(),
   y: z.string(),
-  /** Categorical variable id: one colour per value. */
+  /** Categorical variable id: one color per value. */
   series: Id.optional(),
   xScale: z.enum(['linear', 'log10']).default('linear'),
   yScale: z.enum(['linear', 'log10']).default('linear'),

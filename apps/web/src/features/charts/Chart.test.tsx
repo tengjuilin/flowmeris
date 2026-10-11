@@ -41,13 +41,13 @@ describe('Chart', () => {
   it('drops the tooltip when its series is no longer plotted', () => {
     const { container, rerender } = render(chart(series('a', 'b')));
     fireEvent.pointerOver(container.querySelectorAll('.chart-hit')[3]!);
-    // E.g. undo of "Colour by" while the pointer rests on a point.
+    // E.g. undo of "Color by" while the pointer rests on a point.
     rerender(chart(series('c', 'd')));
     expect(container.querySelector('.chart-tip')).toBeNull();
     expect(container.querySelector('svg.stat-chart')).not.toBeNull();
   });
 
-  it('draws each kind of text in its own style, in the theme colour until one is chosen', () => {
+  it('draws each kind of text in its own style, in the theme color until one is chosen', () => {
     const style = {
       ...plot.style,
       fontFamily: 'times',
@@ -65,7 +65,7 @@ describe('Chart', () => {
     expect(legend.style.fill).toBe('#ff0000');
   });
 
-  it('draws the mean markers in the chosen shape, with their edge colour', () => {
+  it('draws the mean markers in the chosen shape, with their edge color', () => {
     const style = { ...plot.style, markerShape: 'triangle' as const, markerEdgeColor: '#123456' };
     const { container } = render(chart(series('a'), { ...plot, kind: 'scatter', style }));
     const marks = container.querySelectorAll('svg.stat-chart path[stroke="#123456"]');
@@ -73,7 +73,7 @@ describe('Chart', () => {
     expect(marks[0]!.getAttribute('d')).toMatch(/^M.*Z$/);
   });
 
-  it('draws a horizontal-line marker in the series colour, or in one colour once picked', () => {
+  it('draws a horizontal-line marker in the series color, or in one color once picked', () => {
     const style = { ...plot.style, markerShape: 'hline' as const, meanLineWidth: 3, meanLineLength: 20 };
     const p = { ...plot, kind: 'dot' as const, style };
     const { container, rerender } = render(chart(series('a', 'b'), p));
@@ -88,7 +88,7 @@ describe('Chart', () => {
     expect(container.querySelector('svg.stat-chart circle')).toBeNull();
   });
 
-  it('draws error bars, ticks and spines in their colours and widths', () => {
+  it('draws error bars, ticks and spines in their colors and widths', () => {
     const style = {
       ...plot.style,
       errorColor: '#aa0000',

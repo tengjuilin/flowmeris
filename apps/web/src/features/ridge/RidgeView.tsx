@@ -1,4 +1,4 @@
-// Ridge plot: one mode-normalised histogram per sample, or per set of combined replicates, on a shared
+// Ridge plot: one mode-normalized histogram per sample, or per set of combined replicates, on a shared
 // x axis (M-PLOT-RIDGE-COMBINE for combined replicates).
 import { axisTicks } from '@flowmeris/transforms';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -188,7 +188,7 @@ export function RidgeView() {
         />
       )}
       <p className="muted small">
-        Each curve is a histogram normalised to its own mode (smoothed, σ = {style.smoothing} bins); n is the
+        Each curve is a histogram normalized to its own mode (smoothed, σ = {style.smoothing} bins); n is the
         number of events in the population.{' '}
         {combine.enabled &&
           `Combined ridges ${
@@ -200,8 +200,8 @@ export function RidgeView() {
               ? `; the band is ±${combine.band.toUpperCase()} per bin`
               : ''
           }. `}
-        Combine replicates in the panel below the populations; customise colours, labels, order and axes in
-        the panel on the right.
+        Combine replicates in the panel below the populations; customize colors, labels, order and axes in the
+        panel on the right.
       </p>
     </div>
   );

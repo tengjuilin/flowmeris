@@ -44,7 +44,7 @@ export function FigureTab({ c, plot, card }: ChartTabProps) {
         </label>
       </Card>
       <Card {...card('data')}>
-        <label className="field" title="Error bars over the replicates (rows) sharing an x value and colour">
+        <label className="field" title="Error bars over the replicates (rows) sharing an x value and color">
           Error bars
           <select
             value={plot.error}
@@ -122,23 +122,23 @@ export function FigureTab({ c, plot, card }: ChartTabProps) {
         )}
         <ColorField
           inline
-          label="Marker edge colour"
-          inputLabel="Marker edge colour"
+          label="Marker edge color"
+          inputLabel="Marker edge color"
           inputTitle={
             st.markerEdgeColor === undefined
-              ? 'The background (bar replicates: the text colour); pick to override'
+              ? 'The background (bar replicates: the text color); pick to override'
               : 'Edge of the mean markers and replicate points'
           }
           value={st.markerEdgeColor ?? '#ffffff'}
-          onChange={(v) => set('markerEdgeColor', v, 'Chart marker edge colour')}
+          onChange={(v) => set('markerEdgeColor', v, 'Chart marker edge color')}
           reset={{
             disabled: st.markerEdgeColor === undefined,
-            label: 'Reset marker edge colour to the default',
+            label: 'Reset marker edge color to the default',
             title:
               st.markerEdgeColor === undefined
-                ? 'Marker edge colour is the default'
-                : 'Reset marker edge colour to the default',
-            onReset: () => set('markerEdgeColor', undefined, 'Chart marker edge colour'),
+                ? 'Marker edge color is the default'
+                : 'Reset marker edge color to the default',
+            onReset: () => set('markerEdgeColor', undefined, 'Chart marker edge color'),
           }}
         />
       </Card>
@@ -158,18 +158,18 @@ export function FigureTab({ c, plot, card }: ChartTabProps) {
         </div>
         <ColorField
           inline
-          label="Error bar colour"
-          inputLabel="Error bar colour"
+          label="Error bar color"
+          inputLabel="Error bar color"
           value={st.errorColor ?? '#6b6b6b'}
-          onChange={(v) => set('errorColor', v, 'Chart error bar colour')}
+          onChange={(v) => set('errorColor', v, 'Chart error bar color')}
           reset={{
             disabled: st.errorColor === undefined,
-            label: "Reset error bar colour to the theme's",
+            label: "Reset error bar color to the theme's",
             title:
               st.errorColor === undefined
-                ? 'Error bar colour is the default'
-                : "Reset error bar colour to the theme's",
-            onReset: () => set('errorColor', undefined, 'Chart error bar colour'),
+                ? 'Error bar color is the default'
+                : "Reset error bar color to the theme's",
+            onReset: () => set('errorColor', undefined, 'Chart error bar color'),
           }}
         />
       </Card>

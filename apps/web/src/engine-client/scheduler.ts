@@ -10,7 +10,7 @@ import type { HistogramResponse, RasterResponse } from '@flowmeris/engine';
  * Options for plot requests (raster, histogram, counts).
  *
  * `key` must identify the result completely (everything it depends on, e.g. lib/keys plotKey
- * plus the raster size and colours): results are then kept in a client-side cache and identical
+ * plus the raster size and colors): results are then kept in a client-side cache and identical
  * concurrent requests share one computation. Cached results are shared, so callers must not mutate them.
  *
  * `signal` drops the request if it is aborted while still queued (e.g. a tile scrolled out of view).
@@ -30,7 +30,7 @@ interface Job {
 }
 
 function abortError(): Error {
-  return new DOMException('Request cancelled', 'AbortError');
+  return new DOMException('Request canceled', 'AbortError');
 }
 
 function resultBytes(v: unknown): number {
@@ -168,7 +168,7 @@ export class Scheduler {
     const q = this.queues[wi]!;
     while (this.active[wi]! < this.inFlight && q.length > 0) {
       const job = q.shift()!;
-      if (job.waiters === 0) continue; // cancelled while queued (already rejected)
+      if (job.waiters === 0) continue; // canceled while queued (already rejected)
       job.started = true;
       this.active[wi]!++;
       job

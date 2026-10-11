@@ -16,7 +16,7 @@ export const ChannelSpecSchema = z.object({
   pnr: Num,
   dataType: z.enum(['I', 'F', 'D', 'A']),
   kind: z.enum(['scatter', 'fluor', 'time', 'other']),
-  /** Largest linearised value of a time channel (seconds); sets the default time axis. */
+  /** Largest linearized value of a time channel (seconds); sets the default time axis. */
   dataMax: Num.optional(),
 });
 export type ChannelSpec = z.infer<typeof ChannelSpecSchema>;
@@ -38,7 +38,7 @@ export const SampleSchema = z.object({
   keywords: z.record(z.string()),
   channels: z.array(ChannelSpecSchema),
   parseWarnings: z.array(ParseWarningSchema),
-  /** Plate well, normalised "A01"–"H12"; from $WELLID or the file name, or assigned on the plate map. */
+  /** Plate well, normalized "A01"–"H12"; from $WELLID or the file name, or assigned on the plate map. */
   well: z.string().optional(),
   /** Values of the workspace's sample variables, by variable id. */
   meta: z.record(z.union([Num, z.string()])).default({}),

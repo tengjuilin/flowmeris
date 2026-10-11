@@ -18,7 +18,7 @@ import { type RequestOptions, Scheduler } from './scheduler.ts';
 
 export type { RequestOptions };
 
-/** Plot requests in flight per worker; the rest wait in a queue where they can still be cancelled. */
+/** Plot requests in flight per worker; the rest wait in a queue where they can still be canceled. */
 const IN_FLIGHT_PER_WORKER = 2;
 /** Byte budget of the client-side plot result cache. */
 const RESULT_CACHE_BYTES = 96 * 2 ** 20;

@@ -12,7 +12,7 @@ export interface ColumnDef {
   kind: 'sample' | 'variable' | 'stat' | 'derived' | 'aggregate';
   /** Population of a statistic column. */
   pop?: string;
-  /** Aggregate columns: the summarised column and the function. */
+  /** Aggregate columns: the summarized column and the function. */
   source?: string;
   func?: AggFunc | 'n';
 }
@@ -20,7 +20,7 @@ export interface ColumnDef {
 export interface Row {
   id: string;
   values: Record<string, Cell>;
-  /** Aggregated rows: the ids of the rows summarised. */
+  /** Aggregated rows: the ids of the rows summarized. */
   members?: string[];
 }
 
@@ -125,7 +125,7 @@ const FUNC_LABEL: Record<AggFunc, string> = {
 };
 
 /** Summary of finite values (M-STAT-AGG). SD uses n − 1; the 95% CI half-width is t₀.₉₇₅,ₙ₋₁ · SEM. */
-export function summarise(values: number[], f: AggFunc): number {
+export function summarize(values: number[], f: AggFunc): number {
   const xs = values.filter(Number.isFinite);
   switch (f) {
     case 'n':
@@ -150,7 +150,7 @@ export function summarise(values: number[], f: AggFunc): number {
 }
 
 /**
- * Group rows by the values of `by` and summarise every other numeric column
+ * Group rows by the values of `by` and summarize every other numeric column
  * with each of `funcs`. Rows with an empty `by` value form their own group.
  * The result has the `by` columns, `n` (rows per group), then `<key>#<func>`.
  */
@@ -191,7 +191,7 @@ export function aggregate(table: Table, by: string[], funcs: AggFunc[], levels?:
     for (const c of byCols) values[c.key] = members[0]!.values[c.key];
     for (const c of numeric) {
       const xs = members.map((m) => num(m.values[c.key]));
-      for (const f of fs) values[`${c.key}#${f}`] = summarise(xs, f);
+      for (const f of fs) values[`${c.key}#${f}`] = summarize(xs, f);
     }
     return { id: members.map((m) => m.id).join('+'), values, members: members.map((m) => m.id) };
   });
@@ -257,7 +257,7 @@ export function summaryForPlot(
         return {
           x: g.x,
           mean: mean(values),
-          err: error === 'none' ? Number.NaN : summarise(values, error),
+          err: error === 'none' ? Number.NaN : summarize(values, error),
           n: values.length,
           values,
           rowIds: g.rows.map((r) => r.id),

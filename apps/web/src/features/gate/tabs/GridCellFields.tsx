@@ -63,7 +63,7 @@ export function CellSourceFields({ group, cell }: { group: Group; cell: PlotCell
   );
 }
 
-/** Checklist of the samples drawn over a grid plot, each in its own colour: its Sample overlay card. */
+/** Checklist of the samples drawn over a grid plot, each in its own color: its Sample overlay card. */
 export function CellOverlayFields({ group, cell }: { group: Group; cell: PlotCell }) {
   const ws = useStore((s) => s.ws);
   const selected = useStore((s) => s.ui.sampleId);
@@ -73,7 +73,7 @@ export function CellOverlayFields({ group, cell }: { group: Group; cell: PlotCel
   const edit = (label: string, fn: (c: PlotCell) => void) => editCell(group.id, cell.id, label, fn);
   const colors = sampleId ? overlayColors(cell, sampleId, group) : null;
   return (
-    <div className="overlay-list" title="Overlay other samples on this plot, each in its own colour">
+    <div className="overlay-list" title="Overlay other samples on this plot, each in its own color">
       {group.sampleIds.map((id) => {
         const isMain = id === sampleId;
         const on = isMain || cell.overlay.includes(id);

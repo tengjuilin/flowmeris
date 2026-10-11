@@ -16,7 +16,7 @@ import { axisPickers } from '../../state/commands/plots.ts';
 import { useStore } from '../../state/store.ts';
 import { PlotCanvas } from '../plot/index.ts';
 
-/** The group's populations, depth first and indented, with their colours. */
+/** The group's populations, depth first and indented, with their colors. */
 function populationOptions(group: Group): PickOption[] {
   return populationsDepthFirst(group.template).map((p) => ({
     value: p.id,

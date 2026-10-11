@@ -15,7 +15,7 @@ onto the new axis (edges are densely resampled so curved images of straight edge
 Such a gate can be edited after switching the axis back to the gate's scale. Population membership never
 changes silently because of a display change.
 
-Evaluation order for an event: linearise → compensate → transform → test membership.
+Evaluation order for an event: linearize → compensate → transform → test membership.
 
 ## M-GATE-RECT — rectangle and range
 
@@ -31,13 +31,13 @@ half-open crossing rule, preceded by a bounding-box test, identical to FlowUtils
 ## M-GATE-ELLIPSE — ellipse
 
 Inside iff $(\mathbf{x}-\boldsymbol{\mu})^\top \Sigma^{-1} (\mathbf{x}-\boldsymbol{\mu}) \le d^2$
-(boundary inclusive), the Gating-ML ellipsoid definition. The UI edits centre, semi-axes $a \ge b$ and
+(boundary inclusive), the Gating-ML ellipsoid definition. The UI edits center, semi-axes $a \ge b$ and
 rotation $\theta$; these map to $\Sigma = R(\theta)\,\mathrm{diag}(a^2, b^2)\,R(\theta)^\top$ with
 $d^2 = 1$.
 
 ## M-GATE-QUAD — quadrant
 
-A quadrant gate with centre $(c_x, c_y)$ produces four populations, named as in FlowJo:
+A quadrant gate with center $(c_x, c_y)$ produces four populations, named as in FlowJo:
 
 | Region | x | y |
 |---|---|---|
@@ -72,7 +72,7 @@ populations are disjoint and together hold all 13,367 events.
 
 ## M-GATE-SPIDER — spider
 
-A spider gate is a quadrant gate whose four dividers are rays from the centre through four arm points
+A spider gate is a quadrant gate whose four dividers are rays from the center through four arm points
 (up, right, down, left) that can be rotated independently (FlowJo "spider" gate). Arms are stored as points rather
 than angles because angles are not invariant under axis rescaling.
 
@@ -81,7 +81,7 @@ Membership: the left and right rays form a "horizontal" divider $y = h(x)$, the 
 quadrant gate ($y \ge h(x)$, $x \ge v(y)$), and regions are assigned as in the quadrant table. Sides are
 determined with cross products (no slopes, no division).
 
-Arms are constrained so that the up arm is above the centre, the right arm to its right, and so on, and
+Arms are constrained so that the up arm is above the center, the right arm to its right, and so on, and
 so that they stay in clockwise order. Under these constraints the regions are the four angular sectors.
 Property tests verify that every event falls in exactly one region and that axis-aligned arms
 reproduce the quadrant gate exactly, including on the dividers.

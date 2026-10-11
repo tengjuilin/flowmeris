@@ -6,7 +6,7 @@ import type { SampleData, StorageAdapter } from '@flowmeris/model';
  * Layout: /flowmeris/samples/<sampleId>/meta.json + col_<i>.bin, one file per
  * channel so a plot reads only the channels it needs: loadSample reads the
  * metadata and each column is read on first use. Column files hold the
- * stored (pre-linearisation) values as little-endian Float32 or Float64.
+ * stored (pre-linearization) values as little-endian Float32 or Float64.
  */
 
 interface Meta {

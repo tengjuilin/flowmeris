@@ -31,7 +31,7 @@ describe('binning', () => {
 });
 
 describe('smoothing', () => {
-  it('kernel is normalised and conserves interior mass', () => {
+  it('kernel is normalized and conserves interior mass', () => {
     const k = gaussianKernel(2.5);
     expect(k.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 14);
     const g = {

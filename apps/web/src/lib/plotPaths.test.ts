@@ -19,8 +19,8 @@ describe('histogram paths', () => {
     expect(histAreaPath([1, 3], [5, 10], 10, X, 100)).toBe('M0,100L10,50L30,0L40,100Z');
   });
 
-  it('scale backgate counts to the shown normalisation', () => {
-    // the shown histogram is the base counts normalised to unit area
+  it('scale backgate counts to the shown normalization', () => {
+    // the shown histogram is the base counts normalized to unit area
     expect(backgateHeights([0.25, 0.75], [10, 30], [2, 4])).toEqual([0.05, 0.1]);
     expect(backgateHeights([1], [0], [3])).toEqual([0]);
   });

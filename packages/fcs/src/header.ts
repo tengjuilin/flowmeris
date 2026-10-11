@@ -22,7 +22,7 @@ export function parseHeader(bytes: Uint8Array, offset = 0): FcsHeader {
     throw new FcsParseError('E-HEADER-SHORT', 'File too short to contain an FCS HEADER');
   const version = ascii(bytes, offset, offset + 6);
   if (!SUPPORTED_VERSIONS.has(version)) {
-    throw new FcsParseError('E-VERSION', `Unsupported or unrecognised FCS version "${version}"`);
+    throw new FcsParseError('E-VERSION', `Unsupported or unrecognized FCS version "${version}"`);
   }
   const f = (i: number) => parseOffsetField(ascii(bytes, offset + 10 + i * 8, offset + 18 + i * 8));
   return {

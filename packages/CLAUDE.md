@@ -9,7 +9,7 @@ and is imported by name (`@flowmeris/stats`), never by path. Unit tests sit next
 | Package | Job | Production deps | Methods |
 |---|---|---|---|
 | `model` | workspace schema (zod), canonical JSON, content ids and fingerprints; the types of decoded sample data (`SampleData`, `StorageAdapter`, `ChannelScaling`) | – | M-MODEL-CANON |
-| `fcs` | FCS 2.0–3.2 parser, linearisation, FCS 3.1 writer | model (types) | M-FCS-* |
+| `fcs` | FCS 2.0–3.2 parser, linearization, FCS 3.1 writer | model (types) | M-FCS-* |
 | `compensation` | spillover parsing, matrix inverse, condition number, compensator | – | M-COMP-* |
 | `transforms` | Gating-ML 2.0 scales (linear, log, logicle, arcsinh, hyperlog), ticks | model | M-TR-* |
 | `stats` | summary statistics, percentiles, frequencies, Student t | – | M-STAT-* |

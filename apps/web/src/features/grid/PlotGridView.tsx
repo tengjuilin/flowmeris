@@ -62,7 +62,7 @@ export function PlotGridView() {
         : Math.max(MIN_COLUMNS, Math.min(maxColumns, group.grid.columns));
   const active = cells.find((c) => c?.id === ui.gridCellId) ?? null;
   const clip = ui.gridClip?.groupId === group.id ? ui.gridClip : null;
-  // The tools act on the selected plot: greyed out while an empty slot is selected instead.
+  // The tools act on the selected plot: grayed out while an empty slot is selected instead.
   const emptySelected = !active && ui.gridSlot !== null && !cells[ui.gridSlot];
   const activeSample = active ? cellSample(group, active, ui.sampleId) : undefined;
   const { gap } = GRID_ROW;

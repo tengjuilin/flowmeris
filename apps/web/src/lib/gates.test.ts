@@ -60,7 +60,7 @@ describe('adding a gate', () => {
     ]);
   });
 
-  it('gives populations the gate as parent and distinct colours', () => {
+  it('gives populations the gate as parent and distinct colors', () => {
     const ws = workspace();
     addGate(ws, 'g', gate({ kind: 'quadrant', center: [0, 0] }));
     const pops = Object.values(ws.groups[0]!.template.populations).filter((p) => p.id !== 'root');

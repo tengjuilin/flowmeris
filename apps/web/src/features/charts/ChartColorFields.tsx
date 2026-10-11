@@ -7,8 +7,8 @@ import { moveIds } from '../../lib/order.ts';
 import type { ChartData } from './useChart.ts';
 
 /**
- * The chart's colour axis: the variable it is coloured by, the palette or single colour, and each series'
- * colour, legend label and order.
+ * The chart's color axis: the variable it is colored by, the palette or single color, and each series'
+ * color, legend label and order.
  */
 export function ChartColorFields({ c, plot }: { c: ChartData; plot: StatPlot }) {
   const { edit, set } = c;
@@ -22,13 +22,13 @@ export function ChartColorFields({ c, plot }: { c: ChartData; plot: StatPlot }) 
   return (
     <>
       <label className="field">
-        Colour by
+        Color by
         <select
           value={plot.series ?? ''}
           onChange={(e) =>
             edit('Change chart series', (p) => {
               p.series = e.target.value || undefined;
-              // Colours, labels and order are per value of the previous variable.
+              // Colors, labels and order are per value of the previous variable.
               p.style.seriesColors = {};
               p.style.seriesLabels = {};
               p.style.seriesOrder = [];
@@ -46,22 +46,22 @@ export function ChartColorFields({ c, plot }: { c: ChartData; plot: StatPlot }) 
         </select>
       </label>
       <label className="field">
-        Colour
+        Color
         <select
           value={st.colorMode}
-          onChange={(e) => set('colorMode', e.target.value as ChartStyle['colorMode'], 'Chart colour mode')}
+          onChange={(e) => set('colorMode', e.target.value as ChartStyle['colorMode'], 'Chart color mode')}
         >
           <option value="palette">Categorical palette</option>
-          <option value="single">Single colour</option>
+          <option value="single">Single color</option>
         </select>
       </label>
       {st.colorMode === 'single' && (
         <label className="field">
-          Fill colour
+          Fill color
           <input
             type="color"
             value={st.color}
-            onChange={(e) => set('color', e.target.value, 'Chart colour', 'color')}
+            onChange={(e) => set('color', e.target.value, 'Chart color', 'color')}
           />
         </label>
       )}
@@ -77,10 +77,10 @@ export function ChartColorFields({ c, plot }: { c: ChartData; plot: StatPlot }) 
                 run: () => set('seriesOrder', [], 'Reset chart series order'),
               },
               {
-                label: 'Colours',
-                title: 'Reset the colours',
+                label: 'Colors',
+                title: 'Reset the colors',
                 disabled: !Object.keys(st.seriesColors).length,
-                run: () => set('seriesColors', {}, 'Reset chart series colours'),
+                run: () => set('seriesColors', {}, 'Reset chart series colors'),
               },
               {
                 label: 'Labels',
@@ -105,12 +105,12 @@ export function ChartColorFields({ c, plot }: { c: ChartData; plot: StatPlot }) 
                     type="color"
                     className={custom ? 'custom' : ''}
                     value={seriesColor(st, k, i)}
-                    title={custom ? 'Custom colour' : 'Colour from the setting above; pick to override'}
-                    aria-label={`Colour of ${name}`}
+                    title={custom ? 'Custom color' : 'Color from the setting above; pick to override'}
+                    aria-label={`Color of ${name}`}
                     onChange={(e) => {
                       const v = e.target.value;
                       edit(
-                        'Chart series colour',
+                        'Chart series color',
                         (p) => {
                           p.style.seriesColors[k] = v;
                         },
@@ -138,10 +138,10 @@ export function ChartColorFields({ c, plot }: { c: ChartData; plot: StatPlot }) 
                     type="button"
                     className="reset-btn"
                     disabled={!custom}
-                    title="Reset colour to the setting above"
-                    aria-label={`Reset colour of ${name}`}
+                    title="Reset color to the setting above"
+                    aria-label={`Reset color of ${name}`}
                     onClick={() =>
-                      edit('Reset chart series colour', (p) => {
+                      edit('Reset chart series color', (p) => {
                         delete p.style.seriesColors[k];
                       })
                     }
@@ -154,7 +154,7 @@ export function ChartColorFields({ c, plot }: { c: ChartData; plot: StatPlot }) 
           </ReorderList>
         </>
       ) : (
-        <p className="small muted">Choose “Colour by” to colour by a variable.</p>
+        <p className="small muted">Choose “Color by” to color by a variable.</p>
       )}
     </>
   );

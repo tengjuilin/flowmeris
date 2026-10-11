@@ -50,7 +50,7 @@ describe('customTicks', () => {
 });
 
 describe('histYTicks', () => {
-  it('uses quarters up to the top for a mode-normalised histogram', () => {
+  it('uses quarters up to the top for a mode-normalized histogram', () => {
     expect(histYTicks(1.05, 'mode')).toEqual([0, 0.25, 0.5, 0.75, 1]);
     expect(histYTicks(0.6, 'mode')).toEqual([0, 0.25, 0.5]);
   });

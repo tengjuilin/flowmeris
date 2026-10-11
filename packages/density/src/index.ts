@@ -123,7 +123,7 @@ export function bin1d(
   return { counts, range, stats: { binned: m, offScale, nan } };
 }
 
-/** Normalised Gaussian kernel truncated at ±4σ. */
+/** Normalized Gaussian kernel truncated at ±4σ. */
 export function gaussianKernel(sigma: number): Float64Array {
   const r = Math.max(1, Math.ceil(4 * sigma));
   const k = new Float64Array(2 * r + 1);

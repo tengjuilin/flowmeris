@@ -35,7 +35,7 @@ export function customTicks(ticks: TickMark[], apply: (v: number) => number, [lo
 }
 
 /**
- * Histogram y ticks from 0 to `top`: quarters for `mode` (normalised to 1), else steps of 1, 2 or 5
+ * Histogram y ticks from 0 to `top`: quarters for `mode` (normalized to 1), else steps of 1, 2 or 5
  * times a power of ten giving about five ticks.
  */
 export function histYTicks(top: number, norm: string): number[] {

@@ -69,7 +69,7 @@ test('chart tabs, the tabbed settings panel, and the Groups and Export cards', a
   await expect(panel.getByRole('combobox', { name: 'Position', exact: true })).toHaveValue('right');
   await page.screenshot({ path: 'test-results/charts-tabs.png' });
 
-  // × on a tab deletes that chart; deleting the open one shows its neighbour. Undo brings it back.
+  // × on a tab deletes that chart; deleting the open one shows its neighbor. Undo brings it back.
   await tabs.getByRole('button', { name: 'Delete chart' }).nth(1).click();
   await expect(tabs.getByRole('tab')).toHaveText(['Dose response', 'Dose response copy']);
   await expect(tabs.getByRole('tab', { selected: true })).toHaveText('Dose response copy');

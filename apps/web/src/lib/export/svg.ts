@@ -32,7 +32,7 @@ export function inlineStyles(src: Element, dst: Element) {
   for (let i = 0; i < src.children.length; i++) inlineStyles(src.children[i]!, dst.children[i]!);
 }
 
-/** Serialise an on-screen SVG as a standalone file, with its CSS-derived styles inlined. */
+/** Serialize an on-screen SVG as a standalone file, with its CSS-derived styles inlined. */
 export function standaloneSvg(svg: SVGSVGElement): string {
   const clone = svg.cloneNode(true) as SVGSVGElement;
   inlineStyles(svg, clone);

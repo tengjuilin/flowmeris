@@ -3,7 +3,7 @@ import type { Cell, PlotSeries, Row } from '@flowmeris/table';
 /** Key of a chart point (the rows sharing a series and x value) in `StatPlot.hiddenPoints`. */
 export const pointKey = (series: Cell, x: Cell) => JSON.stringify([series ?? null, x ?? null]);
 
-/** The rows a chart summarises: those not excluded. */
+/** The rows a chart summarizes: those not excluded. */
 export function includedRows(rows: Row[], exclude: string[]): Row[] {
   if (!exclude.length) return rows;
   const out = new Set(exclude);

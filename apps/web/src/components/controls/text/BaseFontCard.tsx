@@ -6,7 +6,7 @@ import { Card } from '../../ui/settings/index.ts';
 import { FontSelect } from '../FontSelect.tsx';
 
 /**
- * The Base font card: the font, colour and size every kind of text starts from. Changing the size
+ * The Base font card: the font, color and size every kind of text starts from. Changing the size
  * scales the other text sizes with it (`onSize`, usually through `scaleFontSizes`).
  */
 export function BaseFontCard({
@@ -27,12 +27,12 @@ export function BaseFontCard({
   font: string;
   defaultFont: string;
   onFont: (font: string) => void;
-  /** The colour shown: the base font colour, or the default it falls back to. */
+  /** The color shown: the base font color, or the default it falls back to. */
   color: string;
   colorAtDefault: boolean;
-  /** Names the default colour in the reset button's tooltip. */
+  /** Names the default color in the reset button's tooltip. */
   defaultColorName?: string;
-  /** `merge` groups the changes of one colour pick into one undo step. */
+  /** `merge` groups the changes of one color pick into one undo step. */
   onColor: (color: string, merge: string) => void;
   onResetColor: () => void;
   size: number;

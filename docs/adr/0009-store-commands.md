@@ -13,6 +13,6 @@ UI preferences (open tabs, sections, panel sizes) are read and written through `
 Settings panels still edit some plot and ridge settings with inline `mutate` calls; these move to
 commands as the components are split into feature folders.
 
-**Why.** Hidden effects make a small edit change behaviour elsewhere, which neither a reviewer nor an
+**Why.** Hidden effects make a small edit change behavior elsewhere, which neither a reviewer nor an
 agent can see from the diff. Named commands give one place to find, test and undo every operation on a
 workspace.

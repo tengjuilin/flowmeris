@@ -71,7 +71,7 @@ export function fillSeries(
   }
 }
 
-/** CSS gradient of a numeric colour scale, from `min` to `max` (geometric steps on a log scale). */
+/** CSS gradient of a numeric color scale, from `min` to `max` (geometric steps on a log scale). */
 export function rampGradient(
   scale: { min: number; max: number; log: boolean },
   color: (x: number) => string | undefined,

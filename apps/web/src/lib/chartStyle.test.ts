@@ -33,7 +33,7 @@ describe('chart series', () => {
     ]);
   });
 
-  it('take a custom colour, else the palette by index, else the single colour', () => {
+  it('take a custom color, else the palette by index, else the single color', () => {
     const st = { ...DEFAULT_CHART_STYLE, seriesColors: { '"a"': '#123456' } };
     expect(seriesColor(st, '"a"', 0)).toBe('#123456');
     expect(seriesColor(st, '"b"', 1)).not.toBe(seriesColor(st, '"c"', 2));
@@ -54,7 +54,7 @@ describe('chart text', () => {
 });
 
 describe('a new chart', () => {
-  it('plots a statistic against a numeric variable, coloured by a categorical one', () => {
+  it('plots a statistic against a numeric variable, colored by a categorical one', () => {
     const cols = [
       col('sample:name', 'sample', 'categorical'),
       col('var:cond', 'variable', 'categorical'),

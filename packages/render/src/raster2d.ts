@@ -26,7 +26,7 @@ export interface Raster2DInput {
   xRange: [number, number];
   yRange: [number, number];
   style: PlotStyle;
-  /** Dot / outlier colour (#rrggbb). */
+  /** Dot / outlier color (#rrggbb). */
   dotColor: string;
 }
 
@@ -41,7 +41,7 @@ export interface Raster2DOutput {
 }
 
 /**
- * Paint a square point `size` px wide centred on pixel (px, py). A fractional size covers its edge
+ * Paint a square point `size` px wide centered on pixel (px, py). A fractional size covers its edge
  * pixels partly; their alpha is that coverage (kept at the highest of overlapping points).
  */
 function putPixel(
@@ -108,7 +108,7 @@ export function raster2d(inp: Raster2DInput): Raster2DOutput {
       }
       break;
     case 'pseudocolor': {
-      // M-PLOT-PSEUDO: each occupied pixel coloured by log(1 + local density) / log(1 + max).
+      // M-PLOT-PSEUDO: each occupied pixel colored by log(1 + local density) / log(1 + max).
       const dens = sigma > 0 ? smooth2d(grid, sigma).values : counts;
       let max = 0;
       for (let i = 0; i < dens.length; i++) if ((dens[i] as number) > max) max = dens[i] as number;
@@ -132,7 +132,7 @@ export function raster2d(inp: Raster2DInput): Raster2DOutput {
       break;
     }
     case 'density': {
-      // M-PLOT-DENSITY: smoothed density image, linear colour scale; cells below
+      // M-PLOT-DENSITY: smoothed density image, linear color scale; cells below
       // 0.5% of the maximum are left transparent.
       const dens = smooth2d(grid, Math.max(sigma, 1));
       let max = 0;

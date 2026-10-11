@@ -67,7 +67,7 @@ export function ChartAxes({
   const ts = st.titleFontSize;
   const tickText = { fontSize: fs, ...textCss(st.tickText, st.fontFamily, st.fontColor) };
   const titleText = { fontSize: ts, ...textCss(st.titleText, st.fontFamily, st.fontColor) };
-  // Unset colours keep the theme's, from the CSS.
+  // Unset colors keep the theme's, from the CSS.
   const tick = { stroke: st.tickColor, strokeWidth: st.tickWidth };
   const spine = { stroke: st.spineColor, strokeWidth: st.spineWidth };
   return (
@@ -148,7 +148,7 @@ export function ChartAxes({
 
 /** Error bars of `pts`: a line over ± err with caps `capW` wide. */
 function ErrorBars({ f, pts, i, capW }: { f: ChartFrame; pts: PlotPoint[]; i: number; capW: number }) {
-  // An unset colour keeps the theme's, from the CSS.
+  // An unset color keeps the theme's, from the CSS.
   const lw = { strokeWidth: f.st.errorWidth, stroke: f.st.errorColor };
   return pts.map((p) => {
     if (!Number.isFinite(p.err)) return null;
@@ -250,7 +250,7 @@ export function SeriesMarks({
   );
 }
 
-/** The mean marker of a point at (cx, cy) in series colour `color`: a shape, or a horizontal line. */
+/** The mean marker of a point at (cx, cy) in series color `color`: a shape, or a horizontal line. */
 function MeanMarker({ f, cx, cy, color }: { f: ChartFrame; cx: number; cy: number; color: string }) {
   const { st } = f;
   if (st.markerShape === 'hline') {

@@ -8,7 +8,7 @@ import { cardsOfTab } from './settingsPanel.ts';
 
 export type { ChartCard, ChartPanelTab } from './panelSpecs.ts';
 
-/** Chart fields (outside `style`) a card resets. The columns, colour-by variable, type and name are never reset. */
+/** Chart fields (outside `style`) a card resets. The columns, color-by variable, type and name are never reset. */
 type PlotKey = 'xScale' | 'yScale' | 'xLabel' | 'yLabel' | 'error' | 'showPoints';
 
 const PLOT_DEFAULTS: Pick<StatPlot, PlotKey> = {
@@ -106,7 +106,7 @@ export function resetChart(p: StatPlot): void {
   for (const c of ALL_CARDS) resetChartCard(p, c);
 }
 
-/** Settings that depend on the x column, the y column, or the colour-by variable. */
+/** Settings that depend on the x column, the y column, or the color-by variable. */
 const X_KEYS: CardKeys = { style: ['xMin', 'xMax', 'xTicks'], plot: ['xScale'] };
 const Y_KEYS: CardKeys = { style: ['yMin', 'yMax', 'yTicks'], plot: ['yScale'] };
 const SERIES_KEYS: CardKeys = { style: ['seriesColors', 'seriesLabels', 'seriesOrder'], plot: [] };
@@ -128,8 +128,8 @@ function copyKeys(from: StatPlot, to: StatPlot, keys: CardKeys) {
 
 /**
  * Give `to` the settings of `from`. Each chart keeps its axis titles; an axis's scale, range and ticks go
- * only to charts plotting the same column on that axis, and series colours, labels and order only to
- * charts coloured by the same variable.
+ * only to charts plotting the same column on that axis, and series colors, labels and order only to
+ * charts colored by the same variable.
  */
 export function copyChartSettings(from: StatPlot, to: StatPlot): void {
   const skip = new Set<keyof ChartStyle | PlotKey>([

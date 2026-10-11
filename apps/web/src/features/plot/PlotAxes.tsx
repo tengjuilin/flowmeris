@@ -13,7 +13,7 @@ export type HistNorm = PlotSpec['style']['histNorm'];
 /** What a histogram's y axis can show: FlowJo's Count, Normalized to Mode and Unit Area. */
 const HIST_NORMS: { value: HistNorm; label: string; detail: string }[] = [
   { value: 'count', label: 'Count', detail: 'events per bin' },
-  { value: 'mode', label: '% of max', detail: 'normalised to mode' },
+  { value: 'mode', label: '% of max', detail: 'normalized to mode' },
   { value: 'area', label: 'Fraction', detail: 'unit area' },
 ];
 
@@ -36,7 +36,7 @@ export interface PlotAxesProps {
   tickY: number;
   xTitleY: number;
   yTitleX: number;
-  /** A histogram's y-axis top, in its normalisation's units. */
+  /** A histogram's y-axis top, in its normalization's units. */
   histTop: number;
   /** Axis titles open a picker when the caller can change the channel (or what a histogram's y shows). */
   canPickChannel: boolean;

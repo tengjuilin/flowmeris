@@ -19,7 +19,7 @@ export function sampleDataFromDataset(ds: FcsDataset, sha256: string): SampleDat
   };
 }
 
-/** Largest linearised value of column `ci` (time channels are monotone in the stored counts). */
+/** Largest linearized value of column `ci` (time channels are monotone in the stored counts). */
 function columnMax(ds: FcsDataset, ci: number): number | undefined {
   const col = ds.columns[ci];
   if (!col || col.length === 0) return undefined;

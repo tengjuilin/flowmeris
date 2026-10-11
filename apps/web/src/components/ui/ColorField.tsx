@@ -1,7 +1,7 @@
 import { ResetIcon } from './icons.tsx';
 
 /**
- * A labelled colour swatch with a reset button (`swatch-auto`). `inline` lays it out as a
+ * A labeled color swatch with a reset button (`swatch-auto`). `inline` lays it out as a
  * `<label class="field inline">`, otherwise as a `<div class="field">`.
  */
 export function ColorField({
@@ -56,7 +56,7 @@ export function ColorField({
     </>
   );
   return inline ? (
-    // biome-ignore lint/a11y/noLabelWithoutControl: the colour input is inside `body`
+    // biome-ignore lint/a11y/noLabelWithoutControl: the color input is inside `body`
     <label className="field inline">{body}</label>
   ) : (
     <div className="field">{body}</div>

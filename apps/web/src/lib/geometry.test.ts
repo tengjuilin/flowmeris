@@ -119,9 +119,9 @@ describe('gate outlines', () => {
 });
 
 describe('pointer geometry in pixels', () => {
-  it('a ray from the centre through a point, extended to a length', () => {
+  it('a ray from the center through a point, extended to a length', () => {
     expect(rayEnd([1, 1], [4, 5], 10)).toEqual([7, 9]);
-    // A point on the centre gives a ray of zero length rather than NaN.
+    // A point on the center gives a ray of zero length rather than NaN.
     expect(rayEnd([1, 1], [1, 1], 10)).toEqual([1, 1]);
   });
 

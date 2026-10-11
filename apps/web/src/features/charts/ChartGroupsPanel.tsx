@@ -4,7 +4,7 @@ import { seriesKey } from '../../lib/chartStyle.ts';
 import type { ChartData } from './useChart.ts';
 
 /**
- * Card beside the chart: the plotted points (the samples sharing an x value and colour), to hide a point or
+ * Card beside the chart: the plotted points (the samples sharing an x value and color), to hide a point or
  * leave single replicates out of its mean and error bar.
  */
 export function ChartGroupsPanel({ chart }: { chart: ChartData }) {

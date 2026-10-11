@@ -63,7 +63,7 @@ test('sample variables from a CSV, replicate means, and a chart', async ({ page 
   await page.getByRole('button', { name: '+ New chart' }).click();
   // The first chart plots the added statistic (the median) against the numeric variable (dose).
   await expect(page.locator('svg.stat-chart')).toContainText('Median GFP');
-  // Coloured by replicate, each point is one sample (no error bar); uncoloured, replicates are pooled.
+  // Colored by replicate, each point is one sample (no error bar); uncolored, replicates are pooled.
   await expect(page.locator('svg.stat-chart .chart-hit')).toHaveCount(4);
 
   // The settings panel restyles the chart: series labels and order, legend, axis range and size.
@@ -87,7 +87,7 @@ test('sample variables from a CSV, replicate means, and a chart', async ({ page 
   await page.screenshot({ path: 'test-results/charts-panel.png' });
 
   await panel.getByRole('tab', { name: 'Axis' }).click();
-  await panel.getByRole('combobox', { name: 'Colour by' }).selectOption('');
+  await panel.getByRole('combobox', { name: 'Color by' }).selectOption('');
   await expect(page.locator('svg.stat-chart .chart-err')).toHaveCount(2);
   await expect(page.locator('svg.stat-chart .chart-hit')).toHaveCount(2);
 

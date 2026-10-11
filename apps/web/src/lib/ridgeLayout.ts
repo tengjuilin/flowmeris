@@ -47,7 +47,7 @@ export interface RidgeFrame {
   W: number;
   H: number;
   pw: number;
-  /** Row pitch, a ridge's full height (a mode-normalised curve reaches 1), and the baseline of the first. */
+  /** Row pitch, a ridge's full height (a mode-normalized curve reaches 1), and the baseline of the first. */
   rowH: number;
   amp: number;
   top: number;
@@ -118,7 +118,7 @@ export function ridgeFrame(
 
 /**
  * SVG paths of one ridge on baseline `base`: its filled curve, and its spread band (empty without one).
- * `X` maps a bin centre to pixels; heights are scaled by `amp`.
+ * `X` maps a bin center to pixels; heights are scaled by `amp`.
  */
 export function ridgePaths(
   h: RidgeCurve,

@@ -96,6 +96,6 @@ plots, spider gates, Gating-ML/FCS/SVG/PNG export). Not yet implemented:
 - Gating-ML import in the UI;
 - WebAssembly kernels.
 
-## Licence
+## License
 
-Not yet chosen. Test fixtures keep their upstream licences (see `fixtures/PROVENANCE.md`).
+Not yet chosen. Test fixtures keep their upstream licenses (see `fixtures/PROVENANCE.md`).

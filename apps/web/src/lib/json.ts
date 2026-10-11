@@ -9,7 +9,7 @@ export function jsonClone<T>(v: T): T {
   return v === undefined ? v : (JSON.parse(JSON.stringify(v)) as T);
 }
 
-/** JSON with object keys sorted, so equal settings serialise equally whatever order they were set in. */
+/** JSON with object keys sorted, so equal settings serialize equally whatever order they were set in. */
 export function sortedJson(v: unknown): string {
   return JSON.stringify(v, (_, x) =>
     x && typeof x === 'object' && !Array.isArray(x)

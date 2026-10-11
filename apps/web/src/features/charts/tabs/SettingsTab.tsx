@@ -40,7 +40,7 @@ export function SettingsTab({ c, plot, card }: ChartTabProps) {
           {
             label: 'Apply same settings for all charts',
             title:
-              "Give every chart of this group this chart's settings now (each keeps its axis titles; axis scales, ranges and ticks go to charts of the same column, series colours to charts coloured by the same variable)",
+              "Give every chart of this group this chart's settings now (each keeps its axis titles; axis scales, ranges and ticks go to charts of the same column, series colors to charts colored by the same variable)",
             disabled: chartsMatch(plots, plot.id),
             run: () =>
               mutateGroup(group.id, 'Apply chart settings to all charts', (g) =>

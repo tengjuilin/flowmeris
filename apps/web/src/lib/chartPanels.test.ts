@@ -48,7 +48,7 @@ describe('chart settings panel', () => {
     for (const card of Object.keys(CHART_CARD_KEYS)) expect(onTabs.filter((c) => c === card)).toHaveLength(1);
   });
 
-  it('marker shape and edge, error bar colour, ticks and spines reset with their cards', () => {
+  it('marker shape and edge, error bar color, ticks and spines reset with their cards', () => {
     const p = chart('a');
     Object.assign(p.style, {
       markerShape: 'hline',
@@ -92,7 +92,7 @@ describe('chart settings panel', () => {
     expect(p.error).toBe('sem');
   });
 
-  it('the text cards reset their text styles and the base font resets its colour and sizes', () => {
+  it('the text cards reset their text styles and the base font resets its color and sizes', () => {
     const p = chart('a');
     p.style.tickText = { bold: true, italic: false, underline: false };
     p.style.legendText = { bold: false, italic: true, underline: false, color: '#ff0000' };

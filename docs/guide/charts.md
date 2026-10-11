@@ -26,7 +26,7 @@ Definitions: [M-STAT-EXPR, M-STAT-NORM](/methods/statistics#derived-columns).
 
 ## Combining replicates
 
-In the **Replicates** tab, **Combine replicates** groups the rows by the chosen variables (e.g. condition and dose) and summarises
+In the **Replicates** tab, **Combine replicates** groups the rows by the chosen variables (e.g. condition and dose) and summarizes
 every numeric column with the functions ticked under **Summaries**: mean, SD, SEM, 95% CI, median, CV, min, max and *n*.
 Variables not grouped by (e.g. the replicate id) are dropped from the grouped table.
 
@@ -48,10 +48,10 @@ the **Export** button and the **Groups** card; the settings panel on the right h
   charts use a numeric axis when x is numeric.
 - **X / Y:** any variable or statistic column (Y: numeric columns), including derived columns. Clicking
   an axis title on the chart also picks its column.
-- **Colour by:** a categorical variable; one series per value, in the category order of the variable.
+- **Color by:** a categorical variable; one series per value, in the category order of the variable.
 - **Scales:** linear or log for x (numeric) and y. Values ≤ 0 cannot be shown on a log axis and are
   counted in a note under the chart.
-- **Error bars:** SD, SEM or 95% CI of the samples sharing an x value and colour. The marker or bar shows
+- **Error bars:** SD, SEM or 95% CI of the samples sharing an x value and color. The marker or bar shows
   their mean. **Show replicate points** overlays each sample's value.
 
 Hover a point or bar for its mean, error and *n*; **Data** lists the plotted values. **Export** writes the
@@ -61,10 +61,10 @@ error and *n*.
 ### Groups
 
 The **Groups** card beside the chart has one row per plotted point (the samples sharing an x value and
-colour). Untick a group to hide it; open it with ▸ to untick single replicates, which are then left out of
+color). Untick a group to hide it; open it with ▸ to untick single replicates, which are then left out of
 its mean, error bar, replicate points, the Data table and the CSV export. Click anywhere on a row to toggle
 it; Shift-click toggles the range from the last clicked row, as in a file list. **Show all** brings
-everything back. Hiding a whole series keeps the other series' colours.
+everything back. Hiding a whole series keeps the other series' colors.
 
 ### Chart settings
 
@@ -76,24 +76,24 @@ or hidden groups.
 - **Figure:** the chart's **Name** (its tab's label) and **Chart type**; **Error bars** and **Show replicate
   points**; **Marks** (bar or marker opacity; the **Marker shape** of scatter, line and dot charts:
   circle, square, triangle, diamond or **Horizontal line**, which has its own width, length (empty = as
-  wide as the series' replicates) and colour (each series' colour until you pick one); marker size, line
-  width, bar width as a share of each category, and the **Marker edge colour** of the markers and replicate
-  points); **Error bars** (width, cap width and colour); **Replicate points** (size and opacity); **Size**
+  wide as the series' replicates) and color (each series' color until you pick one); marker size, line
+  width, bar width as a share of each category, and the **Marker edge color** of the markers and replicate
+  points); **Error bars** (width, cap width and color); **Replicate points** (size and opacity); **Size**
   (width: fit the view, or fixed in px; and height). Exports use this size.
 - **Axis:** **X axis** and **Y axis**, each with its **Column**, **Scale**, **Title** (type a space for
   none), **Min** / **Max** in data units (empty = fit the data; marks outside a fixed range are clipped)
   and custom ticks, one per line, `1000` or `1000 = 1k`. Categorical x axes keep the variable's level
-  order. **Colour** is the colour axis: **Colour by**, a categorical palette or a single colour, and each
-  series' colour and legend label (also used in the tooltip, the Data table and the CSV export). Drag ⠿ to
-  reorder series; the buttons above the list **Reverse** them and reset their order, colours or labels.
-  Changing **Colour by** clears these. **Ticks and spines** sets the colour and width of the tick marks and
+  order. **Color** is the color axis: **Color by**, a categorical palette or a single color, and each
+  series' color and legend label (also used in the tooltip, the Data table and the CSV export). Drag ⠿ to
+  reorder series; the buttons above the list **Reverse** them and reset their order, colors or labels.
+  Changing **Color by** clears these. **Ticks and spines** sets the color and width of the tick marks and
   of the axis lines, and a **Box aspect ratio** (plot area width ÷ height, fitted inside the chart's size;
   the chart shrinks to it), as in the Gate view. **Gridlines** turns them on or off.
-- **Text:** the **Base font** (any font from the list or installed on this computer, a colour, which is
-  the theme's text colour until you pick one, and a size that scales the other sizes with it); then
+- **Text:** the **Base font** (any font from the list or installed on this computer, a color, which is
+  the theme's text color until you pick one, and a size that scales the other sizes with it); then
   **Tick labels** (on or off), **Axis titles** and the **Legend** (its position: top, right or hidden),
-  each with its own font, size, bold, italic, underline and colour, as in the plot panels.
+  each with its own font, size, bold, italic, underline and color, as in the plot panels.
 - **Settings:** **Duplicate this chart** (as a new tab, with its settings) or delete it; **Apply same
   settings for all charts** of the group (each keeps its axis titles; an axis's scale, range and ticks go
-  only to charts plotting the same column, and series colours, labels and order only to charts coloured by
+  only to charts plotting the same column, and series colors, labels and order only to charts colored by
   the same variable); and reset the settings of this chart or of every chart.

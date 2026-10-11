@@ -41,7 +41,7 @@ describe('per-sample dependency keys', () => {
     expect(after.get('s2')).not.toBe(before.get('s2'));
   });
 
-  it('ignore population names and colours', () => {
+  it('ignore population names and colors', () => {
     const g = group();
     const key = () => sampleKeys(g, Object.values(g.template.populations), {}, {}, ['s1']).get('s1');
     const k0 = key();

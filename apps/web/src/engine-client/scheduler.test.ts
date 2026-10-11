@@ -78,10 +78,10 @@ describe('worker request scheduling', () => {
     void s.schedule(0, blocker.run);
     const job = deferred<number>();
     const ac = new AbortController();
-    const cancelled = s.schedule(0, job.run, { key: 'j', signal: ac.signal });
+    const canceled = s.schedule(0, job.run, { key: 'j', signal: ac.signal });
     const kept = s.schedule(0, job.run, { key: 'j' });
     ac.abort();
-    await expect(cancelled).rejects.toMatchObject({ name: 'AbortError' });
+    await expect(canceled).rejects.toMatchObject({ name: 'AbortError' });
     blocker.resolve(0);
     await tick();
     job.resolve(7);

@@ -56,7 +56,7 @@ package name, never by a path into another package's `src/`. `pnpm lint:deps` en
 
   Never edit files in `fixtures/golden` by hand. If a golden test fails, the code is wrong until shown
   otherwise.
-- **E2E**: `e2e/*.spec.ts`. Use them for UI behaviour; select elements by role and label where possible.
+- **E2E**: `e2e/*.spec.ts`. Use them for UI behavior; select elements by role and label where possible.
   Locally, run only Chromium and WebKit (`--project=chromium --project=webkit`); you do not need to run
   Firefox locally, because CI runs it.
 - Tolerances are in `@flowmeris/testkit` (`TOL`); do not loosen them to make a test pass.
@@ -68,7 +68,7 @@ package name, never by a path into another package's `src/`. `pnpm lint:deps` en
   change what a method computes, update its page in the same commit.
 - **ADRs.** `docs/adr/NNNN-*.md`, cited in comments as `ADR-0004`. A change that goes against an ADR
   needs a new ADR.
-- **Refactors do not change behaviour.** A behaviour change, even a fix found while refactoring, goes
+- **Refactors do not change behavior.** A behavior change, even a fix found while refactoring, goes
   in its own commit with a test that shows it.
 - **File size.** Keep `.ts`/`.tsx` files under 500 lines and split them by responsibility.
   `tools/size-allowlist.json` would list files over the limit (empty now). Do not add to it: split the
@@ -78,4 +78,7 @@ package name, never by a path into another package's `src/`. `pnpm lint:deps` en
 - **Style.** Biome (`biome.json`): 2 spaces, single quotes, line width 110. Imports carry their `.ts`
   extension. TypeScript is strict with `noUncheckedIndexedAccess` and `noUnusedLocals`. Biome warns on functions whose
   cognitive complexity is over 25; do not add new ones.
-- **Docs.** The user guide (`docs/guide`) describes behaviour users see. Update it when that changes.
+- **American English** everywhere: UI text, undo labels, identifiers, comments and docs ("color",
+  "center", "normalize", "behavior", "gray", "labeled"). The HTML attribute `aria-labelledby` keeps its
+  spelling.
+- **Docs.** The user guide (`docs/guide`) describes behavior users see. Update it when that changes.

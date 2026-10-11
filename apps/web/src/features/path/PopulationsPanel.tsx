@@ -8,7 +8,7 @@ const MIN_BODY = 120;
 /**
  * The populations tree in a panel over the bottom right of the view, the plots showing beside it.
  * Dragging (or arrow keys on) its top edge sets its height, kept while other views are shown;
- * double-clicking it (or Enter) fits the panel to its rows, or, when it fits already, minimises it to its title.
+ * double-clicking it (or Enter) fits the panel to its rows, or, when it fits already, minimizes it to its title.
  */
 export function PopulationsPanel({
   popId,
@@ -33,7 +33,7 @@ export function PopulationsPanel({
   };
   const set = (h: number, max: number) =>
     setViews({ pathPanelHeight: Math.round(Math.max(minHeight(), Math.min(max, h))) });
-  /** Fit the panel to its rows (as far as the view allows), or minimise it when it fits already. */
+  /** Fit the panel to its rows (as far as the view allows), or minimize it when it fits already. */
   const toggle = () => {
     const t = tree();
     if (!t) return;
@@ -60,7 +60,7 @@ export function PopulationsPanel({
         aria-label="Resize the populations panel"
         aria-valuenow={height}
         tabIndex={0}
-        title="Drag to resize the populations panel; double-click to fit it to its rows or minimise it"
+        title="Drag to resize the populations panel; double-click to fit it to its rows or minimize it"
         onDoubleClick={toggle}
         onPointerDown={(e) => {
           if (e.button !== 0) return;

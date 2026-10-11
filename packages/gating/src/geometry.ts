@@ -99,7 +99,7 @@ export function inEllipsoid(
   return s <= d2;
 }
 
-/** Ellipse (2D) from centre, semi-axes and rotation (radians) → Gating-ML covariance with d² = 1. */
+/** Ellipse (2D) from center, semi-axes and rotation (radians) → Gating-ML covariance with d² = 1. */
 export function ellipseFromAxes(
   cx: number,
   cy: number,
@@ -121,7 +121,7 @@ export function ellipseFromAxes(
   };
 }
 
-/** Inverse of ellipseFromAxes: centre, semi-axes (a ≥ b) and rotation of a 2D Gating-ML ellipse. */
+/** Inverse of ellipseFromAxes: center, semi-axes (a ≥ b) and rotation of a 2D Gating-ML ellipse. */
 export function ellipseAxes(
   mean: readonly [number, number],
   cov: readonly [readonly [number, number], readonly [number, number]],
@@ -138,7 +138,7 @@ export function ellipseAxes(
 }
 
 /**
- * M-GATE-SPIDER: four regions bounded by rays from the centre through the
+ * M-GATE-SPIDER: four regions bounded by rays from the center through the
  * arm points [up, right, down, left].
  *
  * The left and right rays form a "horizontal" divider polyline y = h(x); the
@@ -192,7 +192,7 @@ export function spiderRegion(
 }
 
 /**
- * Validate spider arms: up arm above the centre, right arm to its right, down
+ * Validate spider arms: up arm above the center, right arm to its right, down
  * arm below, left arm to its left. Under these constraints the four regions
  * are connected angular sectors and partition the plane.
  */
@@ -203,10 +203,10 @@ export function validateSpider(
   const [cx, cy] = center;
   const [up, right, down, left] = arms as readonly (readonly [number, number])[];
   if (!up || !right || !down || !left) return 'Spider gate needs four arms';
-  if (!(up[1] > cy)) return 'Up arm must be above the centre';
-  if (!(right[0] > cx)) return 'Right arm must be right of the centre';
-  if (!(down[1] < cy)) return 'Down arm must be below the centre';
-  if (!(left[0] < cx)) return 'Left arm must be left of the centre';
+  if (!(up[1] > cy)) return 'Up arm must be above the center';
+  if (!(right[0] > cx)) return 'Right arm must be right of the center';
+  if (!(down[1] < cy)) return 'Down arm must be below the center';
+  if (!(left[0] < cx)) return 'Left arm must be left of the center';
   // Arms must be in counter-clockwise order right → up → left → down.
   const cross = (a: readonly [number, number], b: readonly [number, number]) =>
     (a[0] - cx) * (b[1] - cy) - (a[1] - cy) * (b[0] - cx);

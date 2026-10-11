@@ -8,7 +8,7 @@ export function histTop(series: ArrayLike<number>[]): number {
 }
 
 /**
- * The area under a histogram series: bin centres joined from the left edge of the first bin to the
+ * The area under a histogram series: bin centers joined from the left edge of the first bin to the
  * right edge of the last, closed along the x axis. Heights are scaled so `top` is the plot's top.
  */
 export function histAreaPath(
@@ -27,8 +27,8 @@ export function histAreaPath(
 }
 
 /**
- * Backgated population's counts per bin (`sub`) put on the shown histogram's normalisation: smoothing
- * and every normalisation are linear, so the factor shown total / plot-population count total (`base`)
+ * Backgated population's counts per bin (`sub`) put on the shown histogram's normalization: smoothing
+ * and every normalization are linear, so the factor shown total / plot-population count total (`base`)
  * maps counts to heights.
  */
 export function backgateHeights(

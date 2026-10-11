@@ -61,7 +61,7 @@ interface DrawArgs {
 }
 
 /**
- * FlowJo's bisector: one vertical divider and a bar across the plot; the two populations are labelled
+ * FlowJo's bisector: one vertical divider and a bar across the plot; the two populations are labeled
  * in the top corners, − on the left and + on the right.
  */
 function drawSplit(geom: Extract<Geometry, { kind: 'split' }>, d: DrawArgs): Drawn {
@@ -129,7 +129,7 @@ function drawRange(geom: Extract<Geometry, { kind: 'rect' }>, d: DrawArgs): Draw
   };
 }
 
-/** A quadrant or spider gate: rays from its centre, region percentages in the plot corners. */
+/** A quadrant or spider gate: rays from its center, region percentages in the plot corners. */
 function drawCross(geom: Extract<Geometry, { kind: 'quadrant' | 'spider' }>, d: DrawArgs): Drawn {
   const { f, m, cls, color } = d;
   const identity = m.every((q) => q.identity);
@@ -234,7 +234,7 @@ function closedHandles(geom: Geometry, f: PlotFrame, m: DimMap[]): Handle[] {
   return handles;
 }
 
-/** A rectangle, polygon or ellipse gate, labelled above its top-left corner. */
+/** A rectangle, polygon or ellipse gate, labeled above its top-left corner. */
 function drawClosed(geom: Geometry, d: DrawArgs): Drawn {
   const { f, m, cls, color } = d;
   const pts = shapePx(f, m, geom);

@@ -84,7 +84,7 @@ describe('ridge layout style', () => {
     expect('ridgeStyle' in loaded).toBe(false);
   });
 
-  it('rejects malformed colours', () => {
+  it('rejects malformed colors', () => {
     expect(() => RidgeStyleSchema.parse({ color: 'blue' })).toThrow();
   });
 });
@@ -220,7 +220,7 @@ describe('sample variables and statistics table', () => {
     expect(loaded.groups[0]!.statPlots).toEqual([]);
   });
 
-  it('removing a variable cleans up values, grouping, normalisations and charts', () => {
+  it('removing a variable cleans up values, grouping, normalizations and charts', () => {
     const ws = newWorkspace('t', app);
     ws.variables.push({ id: 'v1', name: 'Dose', type: 'numeric', levels: [] });
     ws.variables.push({ id: 'v2', name: 'Group', type: 'categorical', levels: [] });

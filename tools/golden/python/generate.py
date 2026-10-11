@@ -8,7 +8,7 @@ Usage (from repo root):
 Inputs the app itself writes (Gating-ML, gated-event FCS files and a manifest per scenario) are read
 from fixtures/golden/inputs/; `corepack pnpm golden` writes them first (packages/export/test).
 
-Outputs are written to fixtures/golden/. Every value is serialised with Python's repr (shortest
+Outputs are written to fixtures/golden/. Every value is serialized with Python's repr (shortest
 round-trip float formatting), so the TypeScript tests compare against exact IEEE-754 doubles.
 """
 
@@ -158,7 +158,7 @@ def golden_comp_csv():
 
 
 def golden_comp_spill_8color():
-    """$SPILLOVER keyword compensation on the 8-colour sample."""
+    """$SPILLOVER keyword compensation on the 8-color sample."""
     path = FIX / "remote/101_DEN084Y5_15_E01_008_clean.fcs"
     if not path.exists():
         return
@@ -478,7 +478,7 @@ def golden_aggregate():
 
 
 # ---------------------------------------------------------------------------
-# Statistics table: formula columns, normalisation, grouping (pandas)
+# Statistics table: formula columns, normalization, grouping (pandas)
 # ---------------------------------------------------------------------------
 
 # (Flowmeris formula, the same with NumPy on the row's columns a and b)
@@ -522,7 +522,7 @@ def golden_table():
     with np.errstate(all="ignore"):
         formulas = [{"id": f"f{i}", "expr": e, "y": finite_list(f(a, b))} for i, (e, f) in enumerate(FORMULAS)]
 
-    # Normalisation (M-STAT-NORM): A relative to the mean of A over rows with cond = ctrl, within dose.
+    # Normalization (M-STAT-NORM): A relative to the mean of A over rows with cond = ctrl, within dose.
     norms = []
     for mode in ["ratio", "percent", "difference"]:
         for within in [[], ["dose"]]:
@@ -638,7 +638,7 @@ def golden_density():
         r = max(1, math.ceil(4 * sigma))
         smooth1.append({"sigma": sigma, "y": list(map(float, ndimage.gaussian_filter1d(h, sigma, mode="constant", cval=0.0, radius=r)))})
         smooth2.append({"sigma": sigma, "values": list(map(float, ndimage.gaussian_filter(h2, sigma, mode="constant", cval=0.0, radius=r).ravel()))})
-    # Histogram heights: smoothed (σ = 1.5 bins) then normalised.
+    # Histogram heights: smoothed (σ = 1.5 bins) then normalized.
     hs = ndimage.gaussian_filter1d(h, 1.5, mode="constant", cval=0.0, radius=6)
     norm = {"count": list(map(float, hs)), "mode": list(map(float, hs / hs.max())), "area": list(map(float, hs / math.fsum(hs)))}
     # Contour levels on the smoothed 2D grid (σ = 2), by the documented definitions.

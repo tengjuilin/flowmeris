@@ -86,7 +86,7 @@ export function RidgeCombinePanel() {
       </label>
       <p className="muted small sub-option">
         {combine.method === 'mean'
-          ? 'Each replicate is normalised to unit area and the curves averaged: every replicate weighs the same.'
+          ? 'Each replicate is normalized to unit area and the curves averaged: every replicate weighs the same.'
           : 'All replicates’ events are counted together: replicates with more events weigh more.'}
       </p>
       {combine.method === 'mean' && (

@@ -96,7 +96,7 @@ describe('derived columns', () => {
     expect(errors.a).toBeUndefined();
   });
 
-  it('normalises to the mean of reference rows within matching variables', () => {
+  it('normalizes to the mean of reference rows within matching variables', () => {
     const { table } = applyDerived(design(), [
       {
         id: 'n',
@@ -132,7 +132,7 @@ describe('derived columns', () => {
 });
 
 describe('aggregation', () => {
-  it('groups by variables and summarises numeric columns', () => {
+  it('groups by variables and summarizes numeric columns', () => {
     const t = aggregate(design(), ['var:g', 'var:dose'], ['mean', 'sd', 'sem', 'n', 'ci95'], (k) =>
       k === 'var:g' ? ['drug', 'ctl'] : undefined,
     );
@@ -162,7 +162,7 @@ describe('aggregation', () => {
     expect(t.rows[3]!.members).toEqual(['s2', 's3']);
   });
 
-  it('summarises for charts by series and x', () => {
+  it('summarizes for charts by series and x', () => {
     const s = summaryForPlot(design().rows, 'var:dose', 'st1', 'var:g', 'sd');
     expect(s.map((x) => x.key)).toEqual(['ctl', 'drug']);
     expect(s[0]!.points.map((p) => [p.x, p.mean, p.n])).toEqual([
@@ -175,7 +175,7 @@ describe('aggregation', () => {
 });
 
 describe('wells', () => {
-  it('normalises well names', () => {
+  it('normalizes well names', () => {
     expect(normalizeWell('b7')).toBe('B07');
     expect(normalizeWell(' H12 ')).toBe('H12');
     expect(normalizeWell('A13')).toBeUndefined();
@@ -336,7 +336,7 @@ describe('golden parity: statistics table vs NumPy, SciPy and pandas', () => {
     expect(errs).toEqual([]);
   });
 
-  it('normalisation to reference rows (ratio, percent, difference; overall and within dose)', () => {
+  it('normalization to reference rows (ratio, percent, difference; overall and within dose)', () => {
     const derived: DerivedColumn[] = g.normalize.map((n) => ({
       id: n.id,
       name: n.id,

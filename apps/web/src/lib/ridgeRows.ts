@@ -3,7 +3,7 @@ import { type Cell, compareCells } from '@flowmeris/table';
 
 /** The ridges of a ridge plot: one per sample, or one per combination of replicate variables. */
 
-/** One ridge: a single sample, or replicates combined. `id` keys the ridge's order, colour and label. */
+/** One ridge: a single sample, or replicates combined. `id` keys the ridge's order, color and label. */
 export interface RidgeRow {
   id: string;
   /** Default label (short sample name or the combined values). */

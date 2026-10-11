@@ -7,7 +7,7 @@ Flowmeris is tested against independent reference implementations. All tests run
 
 | Reference | Version | Used for |
 |---|---|---|
-| FlowKit (Python; Gating-ML 2.0 compliant) | 1.2.3, with FlowIO 1.3.0 and FlowUtils | FCS parsing and linearisation, compensation, transforms |
+| FlowKit (Python; Gating-ML 2.0 compliant) | 1.2.3, with FlowIO 1.3.0 and FlowUtils | FCS parsing and linearization, compensation, transforms |
 | NumPy | 1.26.4 | statistics, binning |
 | SciPy | 1.17.1 | t distribution (95% CI), Gaussian smoothing |
 | pandas | 3.0.6 | grouped replicate summaries |
@@ -17,16 +17,16 @@ Golden values are produced by `tools/golden/python/generate.py` in an environmen
 Files that the app writes (Gating-ML and gated-event FCS from fixed workspaces) are committed under
 `fixtures/golden/inputs/` and evaluated by FlowKit. A test checks that the app still writes them byte for
 byte, so the reference results always describe the current exporter.
-`fixtures/golden/golden-manifest.json` records the exact versions. Test files and their licences are
+`fixtures/golden/golden-manifest.json` records the exact versions. Test files and their licenses are
 listed in `fixtures/PROVENANCE.md`.
 
 ## Results
 
 | Area | Test | Agreement |
 |---|---|---|
-| FCS parsing + linearisation | 10 files (FCS 2.0, 3.0, 3.1; integer, float, log-amplified, gain, 290k-event 8-colour) | event count and channel names exact; sampled rows, column sums, minima and maxima within 10⁻¹⁴ relative |
+| FCS parsing + linearization | 10 files (FCS 2.0, 3.0, 3.1; integer, float, log-amplified, gain, 290k-event 8-color) | event count and channel names exact; sampled rows, column sums, minima and maxima within 10⁻¹⁴ relative |
 | Files FlowKit cannot read | multi-dataset `$NEXTDATA` file; files with malformed keywords | all datasets parsed, issues reported as warnings |
-| Compensation | `$SPILLOVER` (8 colours) and external CSV matrix | within 10⁻⁹ relative |
+| Compensation | `$SPILLOVER` (8 colors) and external CSV matrix | within 10⁻⁹ relative |
 | Transforms | logicle (6 parameter sets), hyperlog (3), arcsinh (3), linear (2), log (2) over 108 points each, including negatives and values above T | within 10⁻¹⁰ relative |
 | Gating | **Gating-ML 2.0 compliance suite**: 51 reference gates on `data1.fcs` (rectangles, ranges, polygons incl. non-simple, ellipses, 3-D ellipsoid, quadrants, ratio transforms, all transforms, spectrum matrices, Boolean and/or/not, parent references) | **exact**: 0 mismatching events of 13,367 for every gate |
 | Engine | gates defined through the app's data model, evaluated via the engine | exact against the ISAC truth files |
@@ -36,11 +36,11 @@ listed in `fixtures/PROVENANCE.md`.
 | Population statistics | every population above × every channel × linear and each transform's units (incl. log of compensated values, with non-positive values excluded): n, excluded, mean, SD, CV, median, robust SD/CV, geometric mean, min, max, 5 percentiles; about 28,000 values | within the tolerance of the values' own space (below) |
 | Statistics edge cases | n = 0, 1, 2; ties; NaN; zeros and negatives (geometric mean); 10⁹ offset; 10⁻²⁰⁰ and 10³⁰⁰ magnitudes | within 10⁻¹²; percentiles exact |
 | Replicate summaries | mean, SD, SEM, 95% CI half-width, median, CV, min, max, grouped by two variables (pandas); t quantiles and CDF for df 1 – 10⁵ (SciPy) | within 10⁻¹² (t distribution 10⁻¹⁰) |
-| Formula and normalisation columns | log to bases 2, e, 3, 10 and ½; ln, log2, log10, exp, sqrt, abs, min, max, powers, precedence; ratio, percent and difference to reference rows, overall and within a variable | within 10⁻¹⁴ (formulas), 10⁻¹² (normalisation) |
+| Formula and normalization columns | log to bases 2, e, 3, 10 and ½; ln, log2, log10, exp, sqrt, abs, min, max, powers, precedence; ratio, percent and difference to reference rows, overall and within a variable | within 10⁻¹⁴ (formulas), 10⁻¹² (normalization) |
 | Inverse transforms | logicle (4 parameter sets), hyperlog (2), arcsinh (2), linear (2), log (2) over 60 points of [−0.2, 1.2] | within 10⁻¹⁰ |
 | Binning and smoothing | 1-D and 2-D histograms (NumPy) with values on every bin edge, off-scale and NaN; Gaussian smoothing (SciPy, σ = 0.5 – 3.7 bins); histogram count / % of max / fraction; equal-probability and logarithmic contour levels; Scott bandwidth | counts exact; others within 10⁻¹² |
 | Gated events as FCS | raw and compensated events of three files written by the app, read by FlowKit | every value exact (float32) |
-| End-to-end | gates drawn in the browser on three 8-colour samples, exported, re-evaluated by FlowKit | every population count identical |
+| End-to-end | gates drawn in the browser on three 8-color samples, exported, re-evaluated by FlowKit | every population count identical |
 
 Property-based tests (fast-check) cover FCS write→read round trips, bitset algebra, logicle
 invertibility and monotonicity, spider-gate partitioning, and spider/quadrant equivalence.
@@ -52,7 +52,7 @@ $|a-b| \le \text{abs} + \text{rel}\cdot\max(|a|,|b|)$.
 
 | Quantity | rel | abs |
 |---|---|---|
-| Linearised values | 10⁻¹⁴ | 0 |
+| Linearized values | 10⁻¹⁴ | 0 |
 | Compensated values | 10⁻⁹ | 10⁻⁹ |
 | Transformed values | 10⁻¹⁰ | 10⁻¹² |
 | Statistics | 10⁻¹² | 10⁻¹² |

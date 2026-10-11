@@ -63,7 +63,7 @@ export function PickerMenu({
     if (cur >= shown.length) setCur(Math.max(0, shown.length - 1));
   }, [shown, cur]);
 
-  // Below the anchor and centred on it (above it when there is no room below); beside a vertical
+  // Below the anchor and centered on it (above it when there is no room below); beside a vertical
   // anchor such as a y-axis title. Always inside the window.
   useLayoutEffect(() => {
     const el = box.current;

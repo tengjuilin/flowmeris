@@ -31,7 +31,7 @@ describe('chart marks', () => {
     },
   );
 
-  it('a triangle is centred on its centroid, pointing up', () => {
+  it('a triangle is centered on its centroid, pointing up', () => {
     const d = markerPath('triangle', 0, 0, 6);
     const ys = [...d.matchAll(/,([-\d.]+)/g)].map((m) => Number(m[1]));
     expect(ys[0]).toBeLessThan(0);

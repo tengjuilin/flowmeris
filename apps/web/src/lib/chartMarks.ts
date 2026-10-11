@@ -15,7 +15,7 @@ export const MARKER_SHAPES: { id: MarkerShape; label: string }[] = [
 const f = (v: number) => Number(v.toFixed(2));
 
 /**
- * SVG path of a square, triangle or diamond marker centred on (cx, cy), with the area of a circle of
+ * SVG path of a square, triangle or diamond marker centered on (cx, cy), with the area of a circle of
  * radius `r` so the shapes look the same size. Circles are drawn as `<circle>` and 'hline' as a line.
  */
 export function markerPath(shape: 'square' | 'triangle' | 'diamond', cx: number, cy: number, r: number) {
@@ -27,7 +27,7 @@ export function markerPath(shape: 'square' | 'triangle' | 'diamond', cx: number,
     const h = r * Math.sqrt(Math.PI / 2);
     return `M${f(cx)},${f(cy - h)}L${f(cx + h)},${f(cy)}L${f(cx)},${f(cy + h)}L${f(cx - h)},${f(cy)}Z`;
   }
-  // Equilateral, pointing up, centred on its centroid.
+  // Equilateral, pointing up, centered on its centroid.
   const side = r * Math.sqrt((4 * Math.PI) / Math.sqrt(3));
   const height = (side * Math.sqrt(3)) / 2;
   return `M${f(cx)},${f(cy - (2 * height) / 3)}L${f(cx + side / 2)},${f(cy + height / 3)}L${f(cx - side / 2)},${f(cy + height / 3)}Z`;

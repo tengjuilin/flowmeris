@@ -171,7 +171,7 @@ export const CHART_PANEL: PanelSpec<ChartPanelTab, ChartCard> = {
       cards: {
         xAxis: 'X axis',
         yAxis: 'Y axis',
-        color: 'Colour',
+        color: 'Color',
         ticks: 'Ticks and spines',
         grid: 'Gridlines',
       },

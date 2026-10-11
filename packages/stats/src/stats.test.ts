@@ -58,7 +58,7 @@ describe('golden parity: statistics vs NumPy on data1.fcs', () => {
       if (g.geom_mean_pos !== null) cmp('geomMean', r[5]!.value, g.geom_mean_pos);
       expect(r[5]!.nExcluded).toBe(g.n_nonpos);
       // Percentiles match NumPy exactly on linear channels (same order statistics and
-      // lerp). Log-amplified channels are linearised with pow(), where V8 and the C
+      // lerp). Log-amplified channels are linearized with pow(), where V8 and the C
       // libm used by NumPy can differ by 1 ULP, so those get the stats tolerance.
       const logChannel = ds.channels[i]!.scaling.logDecades > 0;
       ps.forEach((p, k) => {

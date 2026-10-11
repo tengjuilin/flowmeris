@@ -6,10 +6,10 @@ import type { PlotStyle } from '@flowmeris/model';
 // ---------------------------------------------------------------------------
 
 export interface HistogramOutput {
-  /** Bin centres (display units) and normalised heights. */
+  /** Bin centers (display units) and normalized heights. */
   centers: Float64Array;
   heights: Float64Array;
-  /** Normalisation applied: 'count' (events/bin), 'mode' (max = 1), 'area' (sum = 1). */
+  /** Normalization applied: 'count' (events/bin), 'mode' (max = 1), 'area' (sum = 1). */
   norm: PlotStyle['histNorm'];
   stats: BinStats;
 }

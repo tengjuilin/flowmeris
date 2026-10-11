@@ -26,7 +26,7 @@ export interface SampleData {
   eventCount: number;
   channels: { pnn: string; scaling: ChannelScaling }[];
   /**
-   * Stored (pre-linearisation) columns. A column may be null until it is first
+   * Stored (pre-linearization) columns. A column may be null until it is first
    * needed when the sample was opened lazily (see `loadColumn`).
    */
   columns: (Float32Array | Float64Array | null)[];

@@ -185,7 +185,7 @@ function dataOffsets(
   return { dataStart, dataEnd };
 }
 
-/** Channel `n`'s $Pn* parameters and how its values are linearised. */
+/** Channel `n`'s $Pn* parameters and how its values are linearized. */
 function parseChannel(
   keywords: Keywords,
   n: number,

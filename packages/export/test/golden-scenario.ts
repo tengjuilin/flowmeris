@@ -64,7 +64,7 @@ export function provenance(sc: Scenario, e: FcsExport): Record<string, string> {
     FLOWMERIS_SRC_SHA256: sc.data.sha256,
     FLOWMERIS_SRC_FILE: sc.file.split('/').pop()!,
     FLOWMERIS_POPULATION: populationPath(sc.group.template, e.pop),
-    FLOWMERIS_VALUES: e.mode === 'raw' ? 'linearised, uncompensated' : 'linearised, compensated',
+    FLOWMERIS_VALUES: e.mode === 'raw' ? 'linearized, uncompensated' : 'linearized, compensated',
   };
 }
 
@@ -296,7 +296,7 @@ function data1(): Scenario {
   };
 }
 
-/** 100715.fcs: 13-colour $SPILLOVER compensation from the file's keyword. */
+/** 100715.fcs: 13-color $SPILLOVER compensation from the file's keyword. */
 function compKw(): Scenario {
   const file = 'flowio/100715.fcs';
   const b = base('comp_kw', file, 'keyword compensation');

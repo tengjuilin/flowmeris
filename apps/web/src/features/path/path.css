@@ -61,7 +61,7 @@
   cursor: grabbing;
   user-select: none;
 }
-/* The populations panel's top edge: drag to resize it, double-click to fit or minimise it. */
+/* The populations panel's top edge: drag to resize it, double-click to fit or minimize it. */
 .path-resize {
   flex: none;
   height: 10px;

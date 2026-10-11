@@ -11,14 +11,14 @@ definition used.
 | Axis scales | [Transforms](./transforms) | M-TR-FLIN, -FLOG, -LOGNP, -FASINH, -LOGICLE, -HYPERLOG, -TICKS |
 | Gates and populations | [Gating](./gating) | M-GATE-SPACE, -RECT, -POLY, -ELLIPSE, -QUAD, -SPIDER, -TREE |
 | Population statistics | [Statistics](./statistics) | M-STAT-* |
-| Visualisation | [Plots](./plots) | M-PLOT-BIN, -SMOOTH, -PSEUDO, -DENSITY, -CONTOUR-EQP, -CONTOUR-LOG, M-EXPORT-PLOT |
+| Visualization | [Plots](./plots) | M-PLOT-BIN, -SMOOTH, -PSEUDO, -DENSITY, -CONTOUR-EQP, -CONTOUR-LOG, M-EXPORT-PLOT |
 | Output files | [Exports](./exports) | M-EXPORT-STATS, -GML, M-FCS-WRITE |
 | Saved analyses | [Workspace format](./workspace) | M-MODEL-CANON |
 
 The processing order for every event is fixed:
 
 1. decode stored values (M-FCS-DATA);
-2. linearise (M-FCS-LIN);
+2. linearize (M-FCS-LIN);
 3. compensate (M-COMP-MODEL);
 4. transform per gate or axis dimension (M-TR-*);
 5. test gate membership within the parent population (M-GATE-*);

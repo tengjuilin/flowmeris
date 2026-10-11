@@ -21,7 +21,7 @@ import { GatingMLError, type GmlDimension, type GmlDocument, type GmlGate } from
 export interface GmlSample {
   /** $PnN names. */
   channels: string[];
-  /** Linearised (scaled) channel values. */
+  /** Linearized (scaled) channel values. */
   columns: Float64Array[];
   /** FCS keywords (for compensation-ref="FCS"). */
   keywords: Record<string, string>;

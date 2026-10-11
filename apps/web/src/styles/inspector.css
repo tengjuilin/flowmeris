@@ -11,7 +11,7 @@
   width: auto;
   flex: none;
 }
-/* Word-processor style text toolbar: font + size, then style, colour and alignment. */
+/* Word-processor style text toolbar: font + size, then style, color and alignment. */
 .text-toolbar {
   display: flex;
   flex-direction: column;
@@ -430,7 +430,7 @@ button.icon-text {
   width: 76px;
 }
 
-/* Reset buttons: borderless; grey and inert at the default, black and clickable once changed. */
+/* Reset buttons: borderless; gray and inert at the default, black and clickable once changed. */
 button.reset-btn,
 button.reset-all,
 .insp-panel .list-actions button {

@@ -67,9 +67,9 @@ export function formatLinear(v: number): string {
  * Axis ticks for a transform over a display range [lo, hi] in scale units.
  *
  * - flin: nice linear ticks in data units.
- * - flog, fasinh, logicle, hyperlog: decade ticks ±10^k (major, labelled) plus
+ * - flog, fasinh, logicle, hyperlog: decade ticks ±10^k (major, labeled) plus
  *   2–9 × 10^k minor ticks, and 0 when it is on scale. Major labels that would
- *   fall closer than `minLabelGap` (scale units) to an already-labelled tick
+ *   fall closer than `minLabelGap` (scale units) to an already-labeled tick
  *   are suppressed, which handles crowding around zero.
  */
 export function axisTicks(

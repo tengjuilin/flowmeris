@@ -79,7 +79,7 @@ export function GateEditor({ gateId, card }: { gateId: string; card: CardOf<Plot
       {(geom.kind === 'quadrant' || geom.kind === 'spider') && (
         <div className="grid2">
           <NumInput
-            label="Centre x"
+            label="Center x"
             value={geom.center[0]}
             onCommit={(v) =>
               commit(
@@ -94,7 +94,7 @@ export function GateEditor({ gateId, card }: { gateId: string; card: CardOf<Plot
             }
           />
           <NumInput
-            label="Centre y"
+            label="Center y"
             value={geom.center[1]}
             onCommit={(v) =>
               commit(
@@ -119,8 +119,8 @@ export function GateEditor({ gateId, card }: { gateId: string; card: CardOf<Plot
           };
           return (
             <div className="grid2">
-              <NumInput label="Centre x" value={e.cx} onCommit={(cx) => set({ cx })} />
-              <NumInput label="Centre y" value={e.cy} onCommit={(cy) => set({ cy })} />
+              <NumInput label="Center x" value={e.cx} onCommit={(cx) => set({ cx })} />
+              <NumInput label="Center y" value={e.cy} onCommit={(cy) => set({ cy })} />
               <NumInput label="Semi-axis a" value={e.a} onCommit={(a) => a > 0 && set({ a })} />
               <NumInput label="Semi-axis b" value={e.b} onCommit={(b) => b > 0 && set({ b })} />
               <NumInput

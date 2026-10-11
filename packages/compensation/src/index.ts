@@ -4,7 +4,7 @@
  * Model (Bagwell & Adams 1993; Roederer 2001; Gating-ML 2.0 "spectrumMatrix"):
  * observed detector signals o (1×n) arise from true fluorochrome signals t via
  * o = t · S, where row i of the spillover matrix S is the fraction of
- * fluorochrome i's signal seen in each detector (S_ii = 1 for a normalised
+ * fluorochrome i's signal seen in each detector (S_ii = 1 for a normalized
  * matrix). Compensated values are therefore t = o · S⁻¹.
  *
  * Channels that are not part of the matrix pass through unchanged.
@@ -65,7 +65,7 @@ export function findSpillover(
   return null;
 }
 
-/** Serialise to $SPILLOVER keyword format. */
+/** Serialize to $SPILLOVER keyword format. */
 export function formatSpilloverKeyword(m: SpilloverMatrix): string {
   return [String(m.detectors.length), ...m.detectors, ...m.spill.flat().map((v) => String(v))].join(',');
 }
@@ -194,7 +194,7 @@ export function makeCompensator(matrix: SpilloverMatrix, channelNames: string[])
 /**
  * Compensated value of one detector column for all events:
  * t_j = Σ_i o_i · (S⁻¹)_{i j}, where o_i are the matrix detectors' linear values.
- * `columns` are the sample's linearised channel columns (full channel list).
+ * `columns` are the sample's linearized channel columns (full channel list).
  * Returns null if `channel` is not a matrix detector (pass-through).
  */
 export function compensateChannel(

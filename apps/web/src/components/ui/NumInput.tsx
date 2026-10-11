@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 /**
- * A labelled number field. Each finite number typed is committed at once, so what the field drives
+ * A labeled number field. Each finite number typed is committed at once, so what the field drives
  * updates while typing (with `live={false}`, only on blur or Enter). An empty field, or text that is not a
  * finite number (the browser empties a number field holding text), commits nothing and shows the value
  * from before the edit again on blur; that value is committed again if typing changed it.

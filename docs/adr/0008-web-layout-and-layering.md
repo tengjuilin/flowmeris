@@ -2,7 +2,7 @@
 
 **Status.** Accepted. Adopted in phases P2 to P4 of the 2026 refactor; `pnpm lint:deps` and `pnpm lint:size` enforce it, and neither has known violations or allowlisted files. [`apps/web/CLAUDE.md`](https://github.com/tengjuilin/flowmeris/blob/main/apps/web/CLAUDE.md) shows the current layout.
 
-**Decision.** `apps/web/src` is organised in layers, and imports only point down:
+**Decision.** `apps/web/src` is organized in layers, and imports only point down:
 
 | Layer | Contents | May import |
 |---|---|---|

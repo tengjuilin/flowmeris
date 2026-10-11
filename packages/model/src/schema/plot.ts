@@ -71,7 +71,7 @@ export const RefPlotSchema = z.object({
   x: AxisSpecSchema,
   y: AxisSpecSchema.optional(),
   style: PlotStyleSchema,
-  /** Overlay the population being gated, in its colour. */
+  /** Overlay the population being gated, in its color. */
   backgate: z.boolean().default(false),
 });
 export type RefPlot = z.infer<typeof RefPlotSchema>;
@@ -82,7 +82,7 @@ export const PlotCellSchema = z.object({
   population: Id,
   /** Sample gated and shown; omitted = follow the selected sample. */
   sampleId: Id.optional(),
-  /** Further samples overlaid on the plot, each in its own colour. */
+  /** Further samples overlaid on the plot, each in its own color. */
   overlay: z.array(Id).default([]),
   kind: PlotKindSchema,
   x: AxisSpecSchema,

@@ -61,7 +61,7 @@ interface UiState {
   gridSlot: number | null;
   /** Grid plot cut or copied (⌘X / ⌘C) in group `groupId`; `cell` is the plot as it was copied. */
   gridClip: { groupId: string; cell: PlotCell; cut: boolean } | null;
-  /** Variable selected in the Metadata view (open in its panel, coloured on the plate map). */
+  /** Variable selected in the Metadata view (open in its panel, colored on the plate map). */
   metaVarId: string | null;
   /** Wells selected on the plate map. */
   plateSel: string[];
@@ -131,7 +131,7 @@ interface Store {
   navigate: (dir: -1 | 1) => void;
   /**
    * Apply an undoable change to the workspace document. Changes sharing a
-   * `merge` key less than a second apart (slider drags, colour picking,
+   * `merge` key less than a second apart (slider drags, color picking,
    * typing) collapse into one undo step. The rules in AFTER_EDIT then run on the result.
    * In the Gate view, an edit that changes its unsaved plot, or a gate drawn on it, saves the plot in the
    * same step (lib/unsavedPlot.ts).

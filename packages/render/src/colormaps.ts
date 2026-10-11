@@ -69,7 +69,7 @@ export function colormapCss(name: string, t: number): string {
 }
 
 /**
- * Population/gate colours: the validated 8-slot categorical palette, assigned
+ * Population/gate colors: the validated 8-slot categorical palette, assigned
  * in fixed order (never cycled past 8 — additional populations reuse slot 8's
  * neutral fallback and rely on labels).
  */

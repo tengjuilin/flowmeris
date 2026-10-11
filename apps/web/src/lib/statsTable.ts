@@ -46,8 +46,8 @@ export interface SampleRow {
 /**
  * Dependency key of each sample's row: the gating structure and geometry
  * (with the sample's own overrides), compensation, transforms and requested
- * statistics. Population names and colours are left out — they do not change
- * any value. The shared part is serialised once, not once per sample.
+ * statistics. Population names and colors are left out — they do not change
+ * any value. The shared part is serialized once, not once per sample.
  */
 export function sampleKeys(
   g: Group,
@@ -173,7 +173,7 @@ export function levelOrder(variables: Variable[]): LevelOrder {
 
 /**
  * The table before derived columns: sample name and well, the sample variables, then the statistic
- * columns (labelled `population | statistic`; a population whose name is not unique is shown by its
+ * columns (labeled `population | statistic`; a population whose name is not unique is shown by its
  * path). One row per entry of `rows`.
  */
 export function baseTable(

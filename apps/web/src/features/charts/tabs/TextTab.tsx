@@ -7,7 +7,7 @@ import type { ChartTabProps } from '../chartTabs.ts';
 /** The text sizes the base font size scales. */
 const BASE_FONT_SIZES = ['tickFontSize', 'titleFontSize', 'legendFontSize'] as const;
 
-/** The theme's text colour, which chart text has until a colour is chosen. */
+/** The theme's text color, which chart text has until a color is chosen. */
 function themeInk(): string {
   try {
     return getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#000000';

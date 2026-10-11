@@ -35,7 +35,7 @@ export function plotBox(plot: PlotSpec, availWidth: number, availHeight: number,
 
 /**
  * An axis title: the figure's custom title, else the channel's `$PnS :: $PnN` (or `$PnN`). On a
- * histogram only the x title is customisable.
+ * histogram only the x title is customizable.
  */
 export function axisLabel(ws: Workspace, sampleId: string, plot: PlotSpec, axis: 'x' | 'y'): string {
   const a = plot[axis]!;

@@ -18,7 +18,7 @@ try {
 
 /**
  * Content-Security-Policy for production builds (ADR-0007): the page may only
- * talk to its own origin, so analysed data cannot leave the browser. Not
+ * talk to its own origin, so analyzed data cannot leave the browser. Not
  * applied in dev because Vite's HMR client relies on inline scripts.
  */
 function csp(): Plugin {

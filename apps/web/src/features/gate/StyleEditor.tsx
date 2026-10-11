@@ -8,7 +8,7 @@ import type { CardOf } from '../../lib/settingsPanel.ts';
 import { type PlotTarget, plotsOf } from '../../state/commands/plots.ts';
 import { useGroup, useStore } from '../../state/store.ts';
 
-/** The Display card: how events are drawn (colour map, point size, smoothing and so on) and the off-scale note. */
+/** The Display card: how events are drawn (color map, point size, smoothing and so on) and the off-scale note. */
 export function StyleEditor({
   plot,
   card,
@@ -48,7 +48,7 @@ export function StyleEditor({
         <div className="grid2">
           {plot.kind !== 'dot' && (
             <label className="field">
-              Colour map
+              Color map
               <select value={st.colormap} onChange={(e) => set((s) => void (s.colormap = e.target.value))}>
                 {COLORMAPS.map((c) => (
                   <option key={c} value={c}>

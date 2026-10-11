@@ -49,7 +49,7 @@ Only list mode (`$MODE L`) is supported (`E-MODE` otherwise).
 Stored values are kept as Float32 where that is exact (single-precision data; integers up to 24 bits)
 and Float64 otherwise.
 
-## M-FCS-LIN — linearisation
+## M-FCS-LIN — linearization
 
 Stored channel values $c$ become linear data values $x$:
 

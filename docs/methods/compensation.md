@@ -14,8 +14,8 @@ so the compensated values are
 $$\mathbf{t} = \mathbf{o}\,S^{-1}.$$
 
 This is the Gating-ML 2.0 `spectrumMatrix` convention and the FCS `$SPILLOVER` layout (rows =
-fluorochromes, columns = detectors). Compensation acts on **linearised** values (after
-[M-FCS-LIN](./fcs#m-fcs-lin-linearisation)) and before any display transform. Channels that are not part
+fluorochromes, columns = detectors). Compensation acts on **linearized** values (after
+[M-FCS-LIN](./fcs#m-fcs-lin-linearization)) and before any display transform. Channels that are not part
 of the matrix (scatter, time, unlisted detectors) pass through unchanged.
 
 ## M-COMP-PARSE — sources of a matrix

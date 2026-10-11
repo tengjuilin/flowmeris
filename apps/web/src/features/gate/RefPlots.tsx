@@ -128,7 +128,7 @@ export function RefPlots() {
           className="field check"
           title={
             canBackgate
-              ? `Overlay ${gated?.name}, the population being gated, in its colour`
+              ? `Overlay ${gated?.name}, the population being gated, in its color`
               : 'Backgating needs a gated population other than the one this plot shows'
           }
         >
