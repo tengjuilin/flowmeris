@@ -29,3 +29,28 @@ export function bandSlots(bandW: number, n: number, barWidth: number | undefined
       : Math.max(1, (bandW * barWidth - (n - 1) * gap) / n);
   return { slot, gap, groupW: n * slot + (n - 1) * gap };
 }
+
+/**
+ * The plot area inside a chart `width` × `height` px with margins `m`: what the margins leave, at least
+ * 80 × 40 px; with `aspect` (width ÷ height) the largest such box that fits. `W` and `H` are the chart's
+ * size around it, smaller than asked when the aspect leaves space over.
+ */
+export function plotArea(
+  width: number,
+  height: number,
+  m: { l: number; r: number; t: number; b: number },
+  aspect: number | undefined,
+) {
+  let pw = Math.max(80, width - m.l - m.r);
+  let ph = Math.max(40, height - m.t - m.b);
+  if (aspect) {
+    if (pw / ph > aspect) pw = ph * aspect;
+    else ph = pw / aspect;
+  }
+  return {
+    pw,
+    ph,
+    W: aspect ? pw + m.l + m.r : width,
+    H: aspect ? ph + m.t + m.b : height,
+  };
+}

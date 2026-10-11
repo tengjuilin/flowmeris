@@ -1,9 +1,13 @@
 import { Card } from '../../../components/ui/settings/index.ts';
 import { ChartAxisFields } from '../ChartAxisFields.tsx';
 import { ChartColorFields } from '../ChartColorFields.tsx';
+import { ChartTicksFields } from '../ChartTicksFields.tsx';
 import type { ChartTabProps } from '../chartTabs.ts';
 
-/** The Axis tab: the x and y axes, the colour axis (colour by and series colours), and gridlines. */
+/**
+ * The Axis tab: the x and y axes, the colour axis (colour by and series colours), ticks and spines with the
+ * box aspect ratio, and gridlines.
+ */
 export function AxisTab({ c, plot, card }: ChartTabProps) {
   return (
     <>
@@ -15,6 +19,9 @@ export function AxisTab({ c, plot, card }: ChartTabProps) {
       </Card>
       <Card {...card('color')}>
         <ChartColorFields c={c} plot={plot} />
+      </Card>
+      <Card {...card('ticks')}>
+        <ChartTicksFields c={c} />
       </Card>
       <Card {...card('grid')}>
         <label className="field check">

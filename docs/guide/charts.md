@@ -68,20 +68,27 @@ everything back. Hiding a whole series keeps the other series' colours.
 
 ### Chart settings
 
-The settings panel has four tabs of collapsible cards. Settings are saved with each chart. Each card's ↺
+The settings panel has four tabs of collapsible cards. Settings are saved with each chart, and number
+fields apply while you type (typing one number is one Undo step). Each card's ↺
 resets that card, and **Reset this panel** resets the open tab; neither changes the chart's columns, type
 or hidden groups.
 
 - **Figure:** the chart's **Name** (its tab's label) and **Chart type**; **Error bars** and **Show replicate
-  points**; **Marks** (bar or marker opacity, marker size, line width, bar width as a share of each
-  category, error-bar width and cap width, replicate point size and opacity); **Size** (width: fit the
-  view, or fixed in px; and height). Exports use this size.
+  points**; **Marks** (bar or marker opacity; the **Marker shape** of scatter, line and dot charts:
+  circle, square, triangle, diamond or **Horizontal line**, which has its own width, length (empty = as
+  wide as the series' replicates) and colour (each series' colour until you pick one); marker size, line
+  width, bar width as a share of each category, and the **Marker edge colour** of the markers and replicate
+  points); **Error bars** (width, cap width and colour); **Replicate points** (size and opacity); **Size**
+  (width: fit the view, or fixed in px; and height). Exports use this size.
 - **Axis:** **X axis** and **Y axis**, each with its **Column**, **Scale**, **Title** (type a space for
   none), **Min** / **Max** in data units (empty = fit the data; marks outside a fixed range are clipped)
   and custom ticks, one per line, `1000` or `1000 = 1k`. Categorical x axes keep the variable's level
   order. **Colour** is the colour axis: **Colour by**, a categorical palette or a single colour, and each
   series' colour and legend label (also used in the tooltip, the Data table and the CSV export). Drag ⠿ to
-  reorder series, or **Reverse**. Changing **Colour by** clears these. **Gridlines** turns them on or off.
+  reorder series; the buttons above the list **Reverse** them and reset their order, colours or labels.
+  Changing **Colour by** clears these. **Ticks and spines** sets the colour and width of the tick marks and
+  of the axis lines, and a **Box aspect ratio** (plot area width ÷ height, fitted inside the chart's size;
+  the chart shrinks to it), as in the Gate view. **Gridlines** turns them on or off.
 - **Text:** the **Base font** (any font from the list or installed on this computer, a colour, which is
   the theme's text colour until you pick one, and a size that scales the other sizes with it); then
   **Tick labels** (on or off), **Axis titles** and the **Legend** (its position: top, right or hidden),

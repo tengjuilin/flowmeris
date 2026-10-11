@@ -1,12 +1,15 @@
 import type { StatPlot } from '@flowmeris/model';
+import { ColorField } from '../../../components/ui/ColorField.tsx';
 import { NumInput, OptNumInput } from '../../../components/ui/NumInput.tsx';
 import { Slider } from '../../../components/ui/Slider.tsx';
 import { Card } from '../../../components/ui/settings/index.ts';
+import { MARKER_SHAPES, type MarkerShape } from '../../../lib/chartMarks.ts';
 import { CHART_ERRORS, CHART_KINDS } from '../../../lib/chartStyle.ts';
 import { clamp } from '../../../lib/math.ts';
+import { MarkerFields } from '../ChartMarkerFields.tsx';
 import type { ChartTabProps } from '../chartTabs.ts';
 
-/** The Figure tab: the chart's name and type, error bars and replicate points, marks and size. */
+/** The Figure tab: the chart's name and type, what it shows, its marks, error bars, replicates and size. */
 export function FigureTab({ c, plot, card }: ChartTabProps) {
   const { edit, set } = c;
   const st = plot.style;
@@ -71,24 +74,32 @@ export function FigureTab({ c, plot, card }: ChartTabProps) {
           value={st.fillOpacity}
           onChange={(v) => set('fillOpacity', v, 'Chart opacity', 'opacity')}
         />
-        <div className="grid2">
-          {!bar && (
-            <NumInput
-              label="Marker size (px)"
-              step={0.5}
-              value={st.markerSize}
-              onCommit={(v) => set('markerSize', clamp(v, 0, 30), 'Chart marker size')}
-            />
-          )}
-          {plot.kind === 'line' && (
+        {!bar && (
+          <label className="field">
+            Marker shape
+            <select
+              value={st.markerShape}
+              onChange={(e) => set('markerShape', e.target.value as MarkerShape, 'Chart marker shape')}
+            >
+              {MARKER_SHAPES.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {!bar && <MarkerFields c={c} />}
+        {plot.kind === 'line' && (
+          <div className="grid2">
             <NumInput
               label="Line width (px)"
               step={0.25}
               value={st.lineWidth}
               onCommit={(v) => set('lineWidth', clamp(v, 0, 20), 'Chart line width')}
             />
-          )}
-        </div>
+          </div>
+        )}
         {c.band && (
           <div className="grid2">
             <label className="field check">
@@ -109,6 +120,29 @@ export function FigureTab({ c, plot, card }: ChartTabProps) {
             )}
           </div>
         )}
+        <ColorField
+          inline
+          label="Marker edge colour"
+          inputLabel="Marker edge colour"
+          inputTitle={
+            st.markerEdgeColor === undefined
+              ? 'The background (bar replicates: the text colour); pick to override'
+              : 'Edge of the mean markers and replicate points'
+          }
+          value={st.markerEdgeColor ?? '#ffffff'}
+          onChange={(v) => set('markerEdgeColor', v, 'Chart marker edge colour')}
+          reset={{
+            disabled: st.markerEdgeColor === undefined,
+            label: 'Reset marker edge colour to the default',
+            title:
+              st.markerEdgeColor === undefined
+                ? 'Marker edge colour is the default'
+                : 'Reset marker edge colour to the default',
+            onReset: () => set('markerEdgeColor', undefined, 'Chart marker edge colour'),
+          }}
+        />
+      </Card>
+      <Card {...card('errorBars')}>
         <div className="grid2">
           <NumInput
             label="Error bar width (px)"
@@ -122,6 +156,24 @@ export function FigureTab({ c, plot, card }: ChartTabProps) {
             onCommit={(v) => set('capWidth', v === undefined ? v : clamp(v, 0, 60), 'Chart cap width')}
           />
         </div>
+        <ColorField
+          inline
+          label="Error bar colour"
+          inputLabel="Error bar colour"
+          value={st.errorColor ?? '#6b6b6b'}
+          onChange={(v) => set('errorColor', v, 'Chart error bar colour')}
+          reset={{
+            disabled: st.errorColor === undefined,
+            label: "Reset error bar colour to the theme's",
+            title:
+              st.errorColor === undefined
+                ? 'Error bar colour is the default'
+                : "Reset error bar colour to the theme's",
+            onReset: () => set('errorColor', undefined, 'Chart error bar colour'),
+          }}
+        />
+      </Card>
+      <Card {...card('replicates')}>
         <div className="grid2">
           <NumInput
             label="Replicate size (px)"

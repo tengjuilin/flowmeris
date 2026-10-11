@@ -19,14 +19,24 @@ export const ChartStyleSchema = z.object({
   seriesLabels: z.record(z.string()).default({}),
   /** Display order of series; series not listed follow in the variable's category order. */
   seriesOrder: z.array(z.string()).default([]),
-  /** Mean marker radius in px (scatter, line, dot). */
+  /** Mean marker shape (scatter, line, dot); 'hline' is a horizontal line across the mean. */
+  markerShape: z.enum(['circle', 'square', 'triangle', 'diamond', 'hline']).default('circle'),
+  /** Mean marker radius in px (scatter, line, dot); other shapes have the same area as that circle. */
   markerSize: Num.min(0).max(30).default(5),
+  /** Edge colour of the mean markers and replicate points; omitted = the background (bar replicates: the text colour). */
+  markerEdgeColor: HexColor.optional(),
+  /** The 'hline' marker: its width and length in px (length omitted = the series' slot, 16 px off a band axis) and colour (omitted = the series colour). */
+  meanLineWidth: Num.min(0).max(20).default(2),
+  meanLineLength: Num.min(0).max(200).optional(),
+  meanLineColor: HexColor.optional(),
   lineWidth: Num.min(0).max(20).default(2),
   /** Bar width as a fraction of the category width; omitted = automatic (at most 24 px per series). */
   barWidth: Num.min(0.05).max(1).optional(),
   /** Opacity of bars and mean markers. */
   fillOpacity: Num.min(0).max(1).default(1),
   errorWidth: Num.min(0).max(10).default(1.5),
+  /** Error bar colour; omitted = the theme's. */
+  errorColor: HexColor.optional(),
   /** Error-bar cap width in px; omitted = automatic. */
   capWidth: Num.min(0).max(60).optional(),
   /** Replicate point radius in px. */
@@ -42,6 +52,13 @@ export const ChartStyleSchema = z.object({
   xTicks: TickListSchema.optional(),
   yTicks: TickListSchema.optional(),
   showGrid: z.boolean().default(true),
+  /** Tick marks and the axis lines (spines): colours (omitted = the theme's) and widths in px. */
+  tickColor: HexColor.optional(),
+  tickWidth: Num.min(0).max(10).default(1),
+  spineColor: HexColor.optional(),
+  spineWidth: Num.min(0).max(10).default(1),
+  /** Plot area width ÷ height, fitted inside the chart's size; omitted = the plot area fills it. */
+  boxAspect: Num.min(0.2).max(10).optional(),
   showTickLabels: z.boolean().default(true),
   /** A key of the app's font list (earlier charts used only 'sans', 'serif' and 'mono'), or any installed font. */
   fontFamily: z.string().min(1).max(80).default('sans'),

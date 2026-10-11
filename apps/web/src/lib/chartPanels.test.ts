@@ -48,6 +48,32 @@ describe('chart settings panel', () => {
     for (const card of Object.keys(CHART_CARD_KEYS)) expect(onTabs.filter((c) => c === card)).toHaveLength(1);
   });
 
+  it('marker shape and edge, error bar colour, ticks and spines reset with their cards', () => {
+    const p = chart('a');
+    Object.assign(p.style, {
+      markerShape: 'hline',
+      meanLineColor: '#000000',
+      markerEdgeColor: '#111111',
+      errorColor: '#222222',
+      tickColor: '#333333',
+      spineWidth: 2,
+      boxAspect: 1.5,
+    });
+    expect(chartPanelAtDefaults('axis', p)).toBe(false);
+    resetChartPanel('axis', p);
+    expect([p.style.tickColor, p.style.spineWidth, p.style.boxAspect]).toEqual([undefined, 1, undefined]);
+    expect(chartCardAtDefaults(p, 'errorBars')).toBe(false);
+    resetChartCard(p, 'errorBars');
+    expect(p.style.errorColor).toBeUndefined();
+    resetChartCard(p, 'marks');
+    expect([p.style.markerShape, p.style.meanLineColor, p.style.markerEdgeColor]).toEqual([
+      'circle',
+      undefined,
+      undefined,
+    ]);
+    expect(chartAtDefaults(p)).toBe(true);
+  });
+
   it('a card reset clears only its own settings', () => {
     const p = chart('a', { xLabel: 'Dose', error: 'sd' });
     p.style.markerSize = 9;

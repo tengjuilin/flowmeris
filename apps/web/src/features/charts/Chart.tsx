@@ -3,7 +3,7 @@ import { type Cell, type ColumnDef, type LevelOrder, type PlotSeries, compareCel
 import { useId, useMemo, useState } from 'react';
 import { type Anchor, pickerTrigger } from '../../components/ui/PickerMenu.tsx';
 import { type Axis, dataExtents, makeAxis, validFix } from '../../lib/chartAxis.ts';
-import { bandSlots, chartMargins } from '../../lib/chartLayout.ts';
+import { bandSlots, chartMargins, plotArea } from '../../lib/chartLayout.ts';
 import { cellText, seriesColor, seriesKey } from '../../lib/chartStyle.ts';
 import { fontStack } from '../../lib/figure.ts';
 import {
@@ -102,8 +102,8 @@ export function Chart(props: {
       <svg
         ref={props.svgRef}
         className="stat-chart"
-        width={width}
-        height={H}
+        width={f.W}
+        height={f.H}
         role="img"
         aria-label={`${yTitle || yCol.label} by ${xTitle || xCol.label}${props.seriesLabel ? ` and ${props.seriesLabel}` : ''}`}
         style={{ fontFamily: fontStack(st.fontFamily) }}
@@ -115,7 +115,7 @@ export function Chart(props: {
             </clipPath>
           </defs>
         )}
-        <rect className="chart-bg" x={0} y={0} width={width} height={H} />
+        <rect className="chart-bg" x={0} y={0} width={f.W} height={f.H} />
         {/* Gridlines and y axis */}
         <ChartAxes f={f} xTitle={xTitle} yTitle={yTitle} axisTitle={axisTitle} />
         {/* Marks, one group per series */}
@@ -128,7 +128,7 @@ export function Chart(props: {
       </svg>
       {/* Not when the hovered point's series is gone (e.g. "Colour by" undone under the pointer). */}
       {hover && series.some((s) => s.key === hover.series) && (
-        <ChartTip f={f} hover={hover} width={width} xCol={xCol} seriesLabel={props.seriesLabel} />
+        <ChartTip f={f} hover={hover} width={f.W} xCol={xCol} seriesLabel={props.seriesLabel} />
       )}
       {dropped > 0 && (
         <p className="plot-note">
@@ -167,12 +167,13 @@ function frameChart(
   const legendW = legend === 'right' ? 24 + Math.max(...series.map((s) => textW(nameOf(s), ls))) : 0;
   const yLabelW = st.showTickLabels ? Math.max(0, ...yAxisAt(0, 1).ticks.map((t) => textW(t.label, fs))) : 0;
   const m = chartMargins(st, { xTitle: !!xTitle, yTitle: !!yTitle, legend, legendW, yLabelW });
-  const bandW = band ? (width - m.l - m.r) / Math.max(1, cats.length) : 0;
   const longest = Math.max(0, ...cats.map((c) => cellText(c).length));
-  const rotate = band && st.showTickLabels && longest * fs * 0.6 > bandW - 6;
+  const bandOf = (pw: number) => (band ? pw / Math.max(1, cats.length) : 0);
+  const rotate =
+    band && st.showTickLabels && longest * fs * 0.6 > bandOf(plotArea(width, H, m, st.boxAspect).pw) - 6;
   if (rotate) m.b = Math.min(H * 0.45, 18 + longest * fs * 0.47 + (xTitle ? ts + 6 : 0));
-  const pw = Math.max(80, width - m.l - m.r);
-  const ph = Math.max(40, H - m.t - m.b);
+  const { pw, ph, W, H: chartH } = plotArea(width, H, m, st.boxAspect);
+  const bandW = bandOf(pw);
 
   const y = yAxisAt(m.t + ph, m.t);
   const x: Axis | undefined = band
@@ -206,7 +207,8 @@ function frameChart(
     m,
     pw,
     ph,
-    H,
+    W,
+    H: chartH,
     y,
     x,
     band,

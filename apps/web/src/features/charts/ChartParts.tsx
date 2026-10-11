@@ -2,6 +2,7 @@ import type { ChartStyle, StatPlot } from '@flowmeris/model';
 import type { Cell, ColumnDef, PlotPoint, PlotSeries } from '@flowmeris/table';
 import { SupLabel } from '../../components/ui/SupLabel.tsx';
 import { type Axis, barPath } from '../../lib/chartAxis.ts';
+import { markerPath, meanLineLength } from '../../lib/chartMarks.ts';
 import { CHART_ERRORS, cellText, fmtChart, seriesKey } from '../../lib/chartStyle.ts';
 import { textCss } from '../../lib/figure.ts';
 
@@ -25,6 +26,8 @@ export interface ChartFrame {
   m: { l: number; r: number; t: number; b: number };
   pw: number;
   ph: number;
+  /** The chart's size: as asked, or smaller when a box aspect ratio leaves space over. */
+  W: number;
   H: number;
   y: Axis;
   /** The x axis; undefined when x is a band of categories. */
@@ -66,6 +69,9 @@ export function ChartAxes({
   const ts = st.titleFontSize;
   const tickText = { fontSize: fs, ...textCss(st.tickText, st.fontFamily, st.fontColor) };
   const titleText = { fontSize: ts, ...textCss(st.titleText, st.fontFamily, st.fontColor) };
+  // Unset colours keep the theme's, from the CSS.
+  const tick = { stroke: st.tickColor, strokeWidth: st.tickWidth };
+  const spine = { stroke: st.spineColor, strokeWidth: st.spineWidth };
   return (
     <g className="chart-axis">
       {y.ticks.map((t, i) => (
@@ -73,7 +79,9 @@ export function ChartAxes({
           {st.showGrid && t.major && (
             <line className="chart-grid" x1={m.l} x2={m.l + pw} y1={t.pos} y2={t.pos} />
           )}
-          <line x1={m.l - (t.major ? 5 : 3)} x2={m.l} y1={t.pos} y2={t.pos} />
+          {st.tickWidth > 0 && (
+            <line x1={m.l - (t.major ? 5 : 3)} x2={m.l} y1={t.pos} y2={t.pos} style={tick} />
+          )}
           {st.showTickLabels && t.label && (
             <text x={m.l - 8} y={t.pos} textAnchor="end" dominantBaseline="middle" style={tickText}>
               <SupLabel label={t.label} fontSize={fs} />
@@ -81,14 +89,18 @@ export function ChartAxes({
           )}
         </g>
       ))}
-      <line x1={m.l} x2={m.l} y1={m.t} y2={m.t + ph} />
-      <line x1={m.l} x2={m.l + pw} y1={m.t + ph} y2={m.t + ph} />
+      {st.spineWidth > 0 && (
+        <>
+          <line className="chart-spine" x1={m.l} x2={m.l} y1={m.t} y2={m.t + ph} style={spine} />
+          <line className="chart-spine" x1={m.l} x2={m.l + pw} y1={m.t + ph} y2={m.t + ph} style={spine} />
+        </>
+      )}
       {f.band
         ? f.cats.map((c, i) => {
             const cx = m.l + f.bandW * (i + 0.5);
             return (
               <g key={i}>
-                <line x1={cx} x2={cx} y1={m.t + ph} y2={m.t + ph + 4} />
+                {st.tickWidth > 0 && <line x1={cx} x2={cx} y1={m.t + ph} y2={m.t + ph + 4} style={tick} />}
                 {st.showTickLabels && (
                   <text
                     x={cx}
@@ -105,7 +117,9 @@ export function ChartAxes({
           })
         : f.x!.ticks.map((t, i) => (
             <g key={i}>
-              <line x1={t.pos} x2={t.pos} y1={m.t + ph} y2={m.t + ph + (t.major ? 5 : 3)} />
+              {st.tickWidth > 0 && (
+                <line x1={t.pos} x2={t.pos} y1={m.t + ph} y2={m.t + ph + (t.major ? 5 : 3)} style={tick} />
+              )}
               {st.showTickLabels && t.label && (
                 <text x={t.pos} y={m.t + ph + fs + 7} textAnchor="middle" style={tickText}>
                   <SupLabel label={t.label} fontSize={fs} />
@@ -136,7 +150,8 @@ export function ChartAxes({
 
 /** Error bars of `pts`: a line over ± err with caps `capW` wide. */
 function ErrorBars({ f, pts, i, capW }: { f: ChartFrame; pts: PlotPoint[]; i: number; capW: number }) {
-  const lw = { strokeWidth: f.st.errorWidth };
+  // An unset colour keeps the theme's, from the CSS.
+  const lw = { strokeWidth: f.st.errorWidth, stroke: f.st.errorColor };
   return pts.map((p) => {
     if (!Number.isFinite(p.err)) return null;
     const cx = f.px(p.x, i);
@@ -210,7 +225,7 @@ export function SeriesMarks({
                 cy={f.y.map(v)}
                 r={st.pointSize}
                 fill={bar ? 'var(--surface)' : c}
-                stroke={bar ? 'var(--text)' : 'var(--surface)'}
+                stroke={st.markerEdgeColor ?? (bar ? 'var(--text)' : 'var(--surface)')}
                 strokeWidth={bar ? 1 : 1.5}
                 opacity={pointOpacity}
               />
@@ -218,18 +233,8 @@ export function SeriesMarks({
           }),
         )}
       {!bar &&
-        st.markerSize > 0 &&
         pts.map((p) => (
-          <circle
-            key={`m${JSON.stringify(p.x)}`}
-            cx={px(p.x, i)}
-            cy={f.y.map(p.mean)}
-            r={st.markerSize}
-            fill={c}
-            fillOpacity={st.fillOpacity}
-            stroke="var(--surface)"
-            strokeWidth={Math.min(2, st.markerSize / 2)}
-          />
+          <MeanMarker key={`m${JSON.stringify(p.x)}`} f={f} cx={px(p.x, i)} cy={f.y.map(p.mean)} color={c} />
         ))}
       {/* Hit targets larger than the marks */}
       {pts.map((p) => (
@@ -244,6 +249,39 @@ export function SeriesMarks({
         />
       ))}
     </g>
+  );
+}
+
+/** The mean marker of a point at (cx, cy) in series colour `color`: a shape, or a horizontal line. */
+function MeanMarker({ f, cx, cy, color }: { f: ChartFrame; cx: number; cy: number; color: string }) {
+  const { st } = f;
+  if (st.markerShape === 'hline') {
+    const half = meanLineLength(st, f.band, f.slot) / 2;
+    if (st.meanLineWidth <= 0 || half <= 0) return null;
+    return (
+      <line
+        className="chart-mean-line"
+        x1={cx - half}
+        x2={cx + half}
+        y1={cy}
+        y2={cy}
+        stroke={st.meanLineColor ?? color}
+        strokeWidth={st.meanLineWidth}
+        strokeOpacity={st.fillOpacity}
+      />
+    );
+  }
+  if (st.markerSize <= 0) return null;
+  const paint = {
+    fill: color,
+    fillOpacity: st.fillOpacity,
+    stroke: st.markerEdgeColor ?? 'var(--surface)',
+    strokeWidth: Math.min(2, st.markerSize / 2),
+  };
+  return st.markerShape === 'circle' ? (
+    <circle cx={cx} cy={cy} r={st.markerSize} {...paint} />
+  ) : (
+    <path d={markerPath(st.markerShape, cx, cy, st.markerSize)} strokeLinejoin="round" {...paint} />
   );
 }
 

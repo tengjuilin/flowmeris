@@ -100,6 +100,20 @@ describe('chart style', () => {
     expect(ChartStyleSchema.parse({ fontFamily: 'Helvetica Neue' }).fontFamily).toBe('Helvetica Neue');
   });
 
+  it('loads an earlier chart style with the marks, ticks and spines drawn as before', () => {
+    const st = ChartStyleSchema.parse({ markerSize: 4, errorWidth: 2 });
+    expect(st.markerShape).toBe('circle');
+    expect([st.markerEdgeColor, st.errorColor, st.meanLineColor, st.meanLineLength]).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]);
+    expect([st.tickColor, st.spineColor, st.boxAspect]).toEqual([undefined, undefined, undefined]);
+    expect([st.tickWidth, st.spineWidth, st.meanLineWidth]).toEqual([1, 1, 2]);
+    expect(() => ChartStyleSchema.parse({ markerShape: 'star' })).toThrow();
+  });
+
   it('loads charts saved without a style', () => {
     const ws = newWorkspace('t', { version: '0', commit: 'x', kernels: 'ts-1' });
     const g = newGroup('g', [], ['FSC-A']);

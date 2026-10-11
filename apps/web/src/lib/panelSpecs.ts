@@ -130,10 +130,13 @@ export type ChartCard =
   | 'chart'
   | 'data'
   | 'marks'
+  | 'errorBars'
+  | 'replicates'
   | 'size'
   | 'xAxis'
   | 'yAxis'
   | 'color'
+  | 'ticks'
   | 'grid'
   | 'baseFont'
   | 'tickText'
@@ -153,12 +156,25 @@ export const CHART_PANEL: PanelSpec<ChartPanelTab, ChartCard> = {
     {
       id: 'figure',
       label: 'Figure',
-      cards: { chart: 'Chart', data: 'Error and replicates', marks: 'Marks', size: 'Size' },
+      cards: {
+        chart: 'Chart',
+        data: 'Error and replicates',
+        marks: 'Marks',
+        errorBars: 'Error bars',
+        replicates: 'Replicate points',
+        size: 'Size',
+      },
     },
     {
       id: 'axis',
       label: 'Axis',
-      cards: { xAxis: 'X axis', yAxis: 'Y axis', color: 'Colour', grid: 'Gridlines' },
+      cards: {
+        xAxis: 'X axis',
+        yAxis: 'Y axis',
+        color: 'Colour',
+        ticks: 'Ticks and spines',
+        grid: 'Gridlines',
+      },
     },
     {
       id: 'text',
