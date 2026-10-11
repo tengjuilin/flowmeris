@@ -199,4 +199,55 @@ describe('Chart', () => {
     rerender(chart(series('a'), { ...plot, kind: 'bar', style: { ...bars, barEdgeColor: '#404040' } }));
     expect(container.querySelector('svg.stat-chart path[fill]')!.getAttribute('stroke')).toBe('#404040');
   });
+
+  /** Each legend entry's position in the chart, from the transforms of the legend and the entry. */
+  const entries = (container: HTMLElement) => {
+    const xy = (e: Element) => e.getAttribute('transform')!.match(/translate\(([-\d.]+), ([-\d.]+)\)/)!;
+    const g = container.querySelector('.chart-legend')!;
+    const [, gx, gy] = xy(g).map(Number);
+    return [...g.querySelectorAll(':scope > g')].map((e) => {
+      const [, x, y] = xy(e).map(Number);
+      return { x: gx! + x!, y: gy! + y! };
+    });
+  };
+  const names = ['condition one', 'condition two', 'condition three', 'condition four'];
+
+  it('a top legend wraps to more rows as the plot area narrows, instead of widening the chart', () => {
+    const style = { ...plot.style, boxAspect: 0.5 };
+    const { container } = render(chart(series(...names), { ...plot, style }));
+    const ys = new Set(entries(container).map((e) => e.y));
+    expect(ys.size).toBeGreaterThan(1);
+    const svg = container.querySelector('svg.stat-chart')!;
+    expect(Number(svg.getAttribute('width'))).toBeLessThan(400);
+  });
+
+  it('a set number of columns, a bottom legend below the x title, and alignment along the plot', () => {
+    const style = { ...plot.style, legend: 'bottom' as const, legendColumns: 2, legendAlign: 'end' as const };
+    const { container } = render(chart(series(...names), { ...plot, style }));
+    const e = entries(container);
+    expect(new Set(e.map((p) => p.x)).size).toBe(2);
+    expect(new Set(e.map((p) => p.y)).size).toBe(2);
+    const title = [...container.querySelectorAll('.chart-axis text')].find((t) => t.textContent === 'Dose')!;
+    expect(Math.min(...e.map((p) => p.y))).toBeGreaterThan(Number(title.getAttribute('y')));
+    const spine = [...container.querySelectorAll('.chart-spine')].find(
+      (l) => l.getAttribute('y1') === l.getAttribute('y2'),
+    )!;
+    // Aligned to the end: the legend's right edge is near the plot area's.
+    const right = Math.max(...e.map((p) => p.x));
+    expect(right).toBeGreaterThan(Number(spine.getAttribute('x2')) / 2);
+  });
+
+  it('an inside legend is framed in its corner of the plot area', () => {
+    const style = { ...plot.style, legend: 'inside-bottom-right' as const };
+    const { container } = render(chart(series('a', 'b'), { ...plot, style }));
+    const frame = container.querySelector('.chart-legend-frame');
+    expect(frame).not.toBeNull();
+    const spines = [...container.querySelectorAll('.chart-spine')];
+    const xAxis = spines.find((l) => l.getAttribute('y1') === l.getAttribute('y2'))!;
+    const e = entries(container);
+    for (const p of e) {
+      expect(p.y).toBeLessThan(Number(xAxis.getAttribute('y1')));
+      expect(p.x).toBeLessThan(Number(xAxis.getAttribute('x2')));
+    }
+  });
 });

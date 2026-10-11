@@ -130,3 +130,42 @@ test('every chart type styles its lines and points', async ({ page }) => {
   await expect(chart(page).locator('.chart-grid').first()).toHaveCSS('stroke-width', '2px');
   await expect(chart(page).locator('.chart-grid').first()).toHaveCSS('stroke', 'rgb(48, 48, 48)');
 });
+
+test('the Legend card: location, alignment and columns; the legend wraps instead of being cut off', async ({
+  page,
+}) => {
+  const panel = await openChart(page);
+  await panel.getByRole('tab', { name: 'Axis' }).click();
+  await panel.getByRole('combobox', { name: 'Color by' }).selectOption({ label: 'Cond' });
+  await panel.getByRole('tab', { name: 'Figure' }).click();
+  const legend = chart(page).locator('.chart-legend');
+  const entries = legend.locator(':scope > g');
+  const rows = async () =>
+    new Set(await entries.evaluateAll((es) => es.map((e) => Math.round(e.getBoundingClientRect().top)))).size;
+  await expect(entries).toHaveCount(2);
+  expect(await rows()).toBe(1);
+
+  // One column: the entries stack, and stay inside the chart.
+  await panel.getByRole('checkbox', { name: 'Auto columns' }).uncheck();
+  await expect(panel.getByRole('spinbutton', { name: 'Columns' })).toHaveValue('1');
+  await expect.poll(rows).toBe(2);
+
+  await panel.getByRole('combobox', { name: 'Location' }).selectOption('inside-top-right');
+  await expect(chart(page).locator('.chart-legend-frame')).toHaveCount(1);
+  await expect(panel.getByRole('combobox', { name: 'Alignment' })).toHaveCount(0);
+  await panel.getByRole('combobox', { name: 'Location' }).selectOption('bottom');
+  await panel.getByRole('combobox', { name: 'Alignment' }).selectOption('center');
+
+  // A tall, narrow plot area: every entry stays inside the chart.
+  await panel.getByRole('checkbox', { name: 'Auto columns' }).check();
+  await panel.getByRole('tab', { name: 'Axis' }).click();
+  await panel.getByRole('checkbox', { name: 'Free box aspect ratio' }).uncheck();
+  await panel.getByRole('spinbutton', { name: 'Box width ÷ height' }).fill('0.2');
+  const svg = (await chart(page).boundingBox())!;
+  for (const b of await entries.evaluateAll((es) => es.map((e) => e.getBoundingClientRect().toJSON()))) {
+    expect(b.left).toBeGreaterThanOrEqual(svg.x - 0.5);
+    expect(b.right).toBeLessThanOrEqual(svg.x + svg.width + 0.5);
+    expect(b.bottom).toBeLessThanOrEqual(svg.y + svg.height + 0.5);
+  }
+  await page.screenshot({ path: 'test-results/chart-legend.png' });
+});

@@ -84,6 +84,12 @@ or hidden groups.
   - **Line** (line charts): the line joining the means: width, color, and solid, dashed or dotted.
   - **Error bars**: width, cap width and color.
   - **Replicate points**: shape, size, color, edge color and width, and opacity.
+  - **Legend** (shown with two or more series): **Location**: top, bottom, left or right of the plot
+    area, in a corner inside it (framed), or hidden; **Alignment** along the plot area's side (start,
+    center, end); and **Columns**: **Auto columns** fills the space and wraps (above or below the plot,
+    as many columns as fit its width; beside or inside it, one column that wraps into more when the plot
+    is too short), or set a number. The legend is never cut off: when a box aspect ratio or a small size
+    narrows the plot area it wraps, and a legend that cannot fit enlarges the chart.
   - **Size**: width (fit the view, or fixed in px) and height. Exports use this size.
 - **Axis:** **X axis** and **Y axis**, each with its **Column**, **Scale**, **Title** (type a space for
   none), **Min** / **Max** in data units (empty = fit the data; marks outside a fixed range are clipped)
@@ -96,7 +102,7 @@ or hidden groups.
   the chart shrinks to it), as in the Gate view. **Gridlines** turns them on or off and sets their color and width.
 - **Text:** the **Base font** (any font from the list or installed on this computer, a color, which is
   the theme's text color until you pick one, and a size that scales the other sizes with it); then
-  **Tick labels** (on or off), **Axis titles** and the **Legend** (its position: top, right or hidden),
+  **Tick labels** (on or off), **Axis titles** and the **Legend** (its place is in the Figure tab),
   each with its own font, size, bold, italic, underline and color, as in the plot panels.
 - **Settings:** **Duplicate this chart** (as a new tab, with its settings) or delete it; **Apply same
   settings for all charts** of the group (each keeps its axis titles; an axis's scale, range and ticks go

@@ -48,6 +48,14 @@ describe('chart settings panel', () => {
     for (const card of Object.keys(CHART_CARD_KEYS)) expect(onTabs.filter((c) => c === card)).toHaveLength(1);
   });
 
+  it('the legend location, alignment and columns are on the Figure tab; its text on the Text tab', () => {
+    const p = chart('a');
+    Object.assign(p.style, { legend: 'inside-top-right', legendAlign: 'center', legendColumns: 2 });
+    expect(chartPanelAtDefaults('text', p)).toBe(true);
+    resetChartPanel('figure', p);
+    expect([p.style.legend, p.style.legendAlign, p.style.legendColumns]).toEqual(['top', 'start', undefined]);
+  });
+
   it('marker shape and edge, error bar color, ticks and spines reset with their cards', () => {
     const p = chart('a');
     Object.assign(p.style, {
@@ -135,7 +143,7 @@ describe('chart settings panel', () => {
 
   it('a tab reset covers the cards on that tab and leaves the columns', () => {
     const p = chart('a', { yScale: 'log10', x: 'var:time' });
-    p.style.legend = 'none';
+    p.style.legendFontSize = 9;
     p.style.height = 300;
     expect(chartPanelAtDefaults('axis', p)).toBe(false);
     expect(chartPanelAtDefaults('text', p)).toBe(false);

@@ -77,10 +77,9 @@ test('sample variables from a CSV, replicate means, and a chart', async ({ page 
   await yAxis.getByRole('spinbutton', { name: 'Max' }).fill('1000');
   await yAxis.getByRole('spinbutton', { name: 'Max' }).press('Enter');
   await expect(page.locator('svg.stat-chart .chart-axis')).toContainText('1K');
-  await panel.getByRole('tab', { name: 'Text' }).click();
-  await panel.getByRole('combobox', { name: 'Position', exact: true }).selectOption('none');
-  await expect(page.locator('svg.stat-chart .chart-legend')).toHaveCount(0);
   await panel.getByRole('tab', { name: 'Figure' }).click();
+  await panel.getByRole('combobox', { name: 'Location', exact: true }).selectOption('none');
+  await expect(page.locator('svg.stat-chart .chart-legend')).toHaveCount(0);
   await panel.getByRole('spinbutton', { name: 'Height (px)' }).fill('300');
   await panel.getByRole('spinbutton', { name: 'Height (px)' }).press('Enter');
   await expect(page.locator('svg.stat-chart')).toHaveAttribute('height', '300');

@@ -2,7 +2,8 @@ import type { ChartStyle, StatPlot } from '@flowmeris/model';
 import type { Cell, ColumnDef, PlotPoint, PlotSeries } from '@flowmeris/table';
 import { SupLabel } from '../../components/ui/SupLabel.tsx';
 import { type Axis, barPath } from '../../lib/chartAxis.ts';
-import { legendSwatch, textW } from '../../lib/chartLayout.ts';
+import { legendSwatch } from '../../lib/chartLayout.ts';
+import { LEGEND_PAD, type LegendGrid, legendInside } from '../../lib/chartLegend.ts';
 import { type MarkerShape, dashArray, markerPath, meanLineLength } from '../../lib/chartMarks.ts';
 import { CHART_ERRORS, cellText, fmtChart, seriesKey } from '../../lib/chartStyle.ts';
 import { textCss } from '../../lib/figure.ts';
@@ -27,6 +28,10 @@ export interface ChartFrame {
   /** The chart's size: as asked, or smaller when a box aspect ratio leaves space over. */
   W: number;
   H: number;
+  /** Margin taken by an outside legend on each side. */
+  legendRoom: { t: number; r: number; b: number; l: number };
+  /** The legend's top-left corner and grid of entries; undefined when it is hidden. */
+  legendAt: { x: number; y: number; grid: LegendGrid } | undefined;
   y: Axis;
   /** The x axis; undefined when x is a band of categories. */
   x: Axis | undefined;
@@ -127,17 +132,23 @@ export function ChartAxes({
             </g>
           ))}
       {xTitle && (
-        <text {...axisTitle('x', xTitle)} x={m.l + pw / 2} y={H - 8} textAnchor="middle" style={titleText}>
+        <text
+          {...axisTitle('x', xTitle)}
+          x={m.l + pw / 2}
+          y={H - 8 - f.legendRoom.b}
+          textAnchor="middle"
+          style={titleText}
+        >
           {xTitle}
         </text>
       )}
       {yTitle && (
         <text
           {...axisTitle('y', yTitle)}
-          x={6 + ts * 0.8}
+          x={6 + f.legendRoom.l + ts * 0.8}
           y={m.t + ph / 2}
           textAnchor="middle"
-          transform={`rotate(-90 ${6 + ts * 0.8} ${m.t + ph / 2})`}
+          transform={`rotate(-90 ${6 + f.legendRoom.l + ts * 0.8} ${m.t + ph / 2})`}
           style={titleText}
         >
           {yTitle}
@@ -315,29 +326,29 @@ function MeanMarker({ f, cx, cy, color }: { f: ChartFrame; cx: number; cy: numbe
   );
 }
 
-/** The legend, above the plot area or right of it. */
-export function ChartLegend({ f, legend }: { f: ChartFrame; legend: 'top' | 'right' }) {
-  const { m, st } = f;
+/** The legend: a grid of entries outside the plot area or framed in a corner inside it. */
+export function ChartLegend({ f }: { f: ChartFrame }) {
+  const { st } = f;
+  const at = f.legendAt!;
   const ls = st.legendFontSize;
   const sw = legendSwatch(ls);
   const legendText = { fontSize: ls, ...textCss(st.legendText, st.fontFamily, st.fontColor) };
-  let off = 0;
   return (
-    <g
-      className="chart-legend"
-      transform={
-        legend === 'top'
-          ? `translate(${m.l}, ${8 + ls / 2})`
-          : `translate(${m.l + f.pw + 16}, ${m.t + ls / 2})`
-      }
-    >
+    <g className="chart-legend" transform={`translate(${at.x}, ${at.y})`}>
+      {legendInside(st.legend) && (
+        <rect
+          className="chart-legend-frame"
+          x={-LEGEND_PAD}
+          y={-LEGEND_PAD}
+          width={at.grid.w + 2 * LEGEND_PAD}
+          height={at.grid.h + 2 * LEGEND_PAD}
+          rx={3}
+        />
+      )}
       {f.series.map((s, i) => {
-        const label = f.nameOf(s);
-        const g = (
-          <g
-            key={seriesKey(s.key)}
-            transform={legend === 'top' ? `translate(${off}, 0)` : `translate(0, ${i * (ls + 8)})`}
-          >
+        const p = at.grid.items[i]!;
+        return (
+          <g key={seriesKey(s.key)} transform={`translate(${p.x}, ${p.y + ls / 2})`}>
             <rect
               x={0}
               y={-sw / 2}
@@ -348,12 +359,10 @@ export function ChartLegend({ f, legend }: { f: ChartFrame; legend: 'top' | 'rig
               fillOpacity={st.fillOpacity}
             />
             <text x={sw + 5} y={0} dominantBaseline="middle" style={legendText}>
-              {label}
+              {f.nameOf(s)}
             </text>
           </g>
         );
-        off += sw + 18 + textW(label, ls);
-        return g;
       })}
     </g>
   );

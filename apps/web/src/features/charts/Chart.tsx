@@ -3,7 +3,17 @@ import { type Cell, type ColumnDef, type LevelOrder, type PlotSeries, compareCel
 import { useId, useMemo, useState } from 'react';
 import { type Anchor, pickerTrigger } from '../../components/ui/PickerMenu.tsx';
 import { type Axis, dataExtents, makeAxis, validFix } from '../../lib/chartAxis.ts';
-import { bandSlots, chartMargins, legendExtent, plotArea, textW } from '../../lib/chartLayout.ts';
+import { bandSlots, chartMargins, plotArea, textW } from '../../lib/chartLayout.ts';
+import {
+  LEGEND_INSET,
+  LEGEND_PAD,
+  type LegendGrid,
+  legendAcross,
+  legendGrid,
+  legendInside,
+  legendMargins,
+  legendOrigin,
+} from '../../lib/chartLegend.ts';
 import { cellText, seriesColor, seriesKey } from '../../lib/chartStyle.ts';
 import { fontStack } from '../../lib/figure.ts';
 import { ChartAxes, type ChartFrame, ChartLegend, ChartTip, type Hover, SeriesMarks } from './ChartParts.tsx';
@@ -116,7 +126,7 @@ export function Chart(props: {
             <SeriesMarks key={seriesKey(s.key)} f={f} s={s} i={i} onHover={setHover} />
           ))}
         </g>
-        {legend !== 'none' && <ChartLegend f={f} legend={legend} />}
+        {f.legendAt && <ChartLegend f={f} />}
       </svg>
       {/* Not when the hovered point's series is gone (e.g. "Color by" undone under the pointer). */}
       {hover && series.some((s) => s.key === hover.series) && (
@@ -155,24 +165,43 @@ function frameChart(
   // Margins from the text they hold.
   const fs = st.tickFontSize;
   const ts = st.titleFontSize;
-  const ls = st.legendFontSize;
-  const lg = legend === 'none' ? undefined : legendExtent(series.map(nameOf), ls, legend);
-  // Right of the plot area, from 16 px past it; the margin is 20 px plus this.
-  const legendW =
-    legend === 'right' ? Math.max(24 + Math.max(...series.map((s) => textW(nameOf(s), ls))), lg!.w) : 0;
   const yLabelW = st.showTickLabels ? Math.max(0, ...yAxisAt(0, 1).ticks.map((t) => textW(t.label, fs))) : 0;
-  const m = chartMargins(st, { xTitle: !!xTitle, yTitle: !!yTitle, legend, legendW, yLabelW });
+  const textM = chartMargins(st, { xTitle: !!xTitle, yTitle: !!yTitle, yLabelW });
+  // The legend wraps to the plot area, whose size depends on the legend's room: two passes settle it.
+  const names = legend === 'none' ? [] : series.map(nameOf);
+  const inset = 2 * (LEGEND_INSET + LEGEND_PAD);
+  const gridIn = (a: { pw: number; ph: number }) =>
+    legendGrid(
+      names,
+      st.legendFontSize,
+      legend,
+      st.legendColumns,
+      legendAcross(legend) ? a.pw : a.ph - inset,
+    );
+  const withRoom = (g: LegendGrid) => {
+    const r = legendMargins(legend, g);
+    return { room: r, m: { l: textM.l + r.l, r: textM.r + r.r, t: textM.t + r.t, b: textM.b + r.b } };
+  };
+  let g = gridIn(plotArea(width, H, textM, st.boxAspect));
+  g = gridIn(plotArea(width, H, withRoom(g).m, st.boxAspect));
+  const { m, room } = withRoom(g);
   const longest = Math.max(0, ...cats.map((c) => cellText(c).length));
   const bandOf = (pw: number) => (band ? pw / Math.max(1, cats.length) : 0);
   const rotate =
     band && st.showTickLabels && longest * fs * 0.6 > bandOf(plotArea(width, H, m, st.boxAspect).pw) - 6;
-  if (rotate) m.b = Math.min(H * 0.45, 18 + longest * fs * 0.47 + (xTitle ? ts + 6 : 0));
-  // The legend, from the plot area's left (top) or below its top (right), must fit in the chart.
-  const min = {
-    W: lg && legend === 'top' ? m.l + lg.w + 8 : 0,
-    H: lg && legend === 'right' ? m.t + lg.h : 0,
-  };
+  if (rotate) m.b = room.b + Math.min(H * 0.45, 18 + longest * fs * 0.47 + (xTitle ? ts + 6 : 0));
+  // A legend with more columns (or rows) than fit widens (or lengthens) the chart rather than being cut off.
+  const min =
+    legend === 'none' || legendInside(legend)
+      ? { W: 0, H: 0 }
+      : legendAcross(legend)
+        ? { W: m.l + g.w + 8, H: 0 }
+        : { W: 0, H: m.t + g.h + 8 };
   const { pw, ph, W, H: chartH } = plotArea(width, H, m, st.boxAspect, min);
+  const legendAt =
+    legend === 'none'
+      ? undefined
+      : { ...legendOrigin(legend, st.legendAlign, g, { l: m.l, t: m.t, pw, ph, H: chartH }), grid: g };
   const bandW = bandOf(pw);
 
   const y = yAxisAt(m.t + ph, m.t);
@@ -209,6 +238,8 @@ function frameChart(
     ph,
     W,
     H: chartH,
+    legendRoom: room,
+    legendAt,
     y,
     x,
     band,

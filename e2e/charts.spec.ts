@@ -58,15 +58,15 @@ test('chart tabs, the tabbed settings panel, and the Groups and Export cards', a
   await expect(tabs.getByRole('tab', { selected: true })).toHaveText('Dose response copy');
 
   // Apply the open chart's settings to all charts.
-  await panel.getByRole('tab', { name: 'Text' }).click();
-  await panel.getByRole('combobox', { name: 'Position', exact: true }).selectOption('right');
+  await panel.getByRole('tab', { name: 'Figure' }).click();
+  await panel.getByRole('combobox', { name: 'Location', exact: true }).selectOption('right');
   await panel.getByRole('tab', { name: 'Settings' }).click();
   const apply = panel.getByRole('button', { name: /Give every chart of this group/ });
   await apply.click();
   await expect(apply).toBeDisabled();
   await tabs.getByRole('tab', { name: 'Chart 2' }).click();
-  await panel.getByRole('tab', { name: 'Text' }).click();
-  await expect(panel.getByRole('combobox', { name: 'Position', exact: true })).toHaveValue('right');
+  await panel.getByRole('tab', { name: 'Figure' }).click();
+  await expect(panel.getByRole('combobox', { name: 'Location', exact: true })).toHaveValue('right');
   await page.screenshot({ path: 'test-results/charts-tabs.png' });
 
   // × on a tab deletes that chart; deleting the open one shows its neighbor. Undo brings it back.

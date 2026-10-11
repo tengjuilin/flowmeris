@@ -104,3 +104,8 @@
   display: inline-block;
   text-align: left;
 }
+.stat-chart .chart-legend-frame {
+  fill: var(--surface);
+  fill-opacity: 0.85;
+  stroke: var(--border);
+}

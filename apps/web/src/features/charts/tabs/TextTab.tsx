@@ -1,4 +1,3 @@
-import type { ChartStyle } from '@flowmeris/model';
 import { BaseFontCard, TextCards } from '../../../components/controls/text/index.ts';
 import { DEFAULT_CHART_STYLE } from '../../../lib/chartStyle.ts';
 import { scaleFontSizes } from '../../../lib/textScale.ts';
@@ -75,22 +74,6 @@ export function TextTab({ c, plot, card }: ChartTabProps) {
             onChange: (t) => set('legendText', t, 'Chart legend text'),
             size: st.legendFontSize,
             onSize: (v) => set('legendFontSize', v, 'Chart legend size'),
-            extra: (
-              <label
-                className="field"
-                title={c.allSeries.length > 1 ? undefined : 'Shown when there are two or more series'}
-              >
-                Position
-                <select
-                  value={st.legend}
-                  onChange={(e) => set('legend', e.target.value as ChartStyle['legend'], 'Chart legend')}
-                >
-                  <option value="top">Top</option>
-                  <option value="right">Right</option>
-                  <option value="none">Hidden</option>
-                </select>
-              </label>
-            ),
           },
         ]}
       />

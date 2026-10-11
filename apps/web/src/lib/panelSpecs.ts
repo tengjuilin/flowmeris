@@ -134,6 +134,7 @@ export type ChartCard =
   | 'line'
   | 'errorBars'
   | 'replicates'
+  | 'legendPlace'
   | 'size'
   | 'xAxis'
   | 'yAxis'
@@ -166,6 +167,7 @@ export const CHART_PANEL: PanelSpec<ChartPanelTab, ChartCard> = {
         line: 'Line',
         errorBars: 'Error bars',
         replicates: 'Replicate points',
+        legendPlace: 'Legend',
         size: 'Size',
       },
     },

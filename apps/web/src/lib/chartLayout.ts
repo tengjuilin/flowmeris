@@ -8,29 +8,13 @@ export const textW = (s: string, size: number) => s.length * size * 0.6;
 /** Side of a legend swatch for legend text `size` px. */
 export const legendSwatch = (size: number) => Math.round(size * 0.85);
 
-/**
- * Space the legend needs from where it starts (px): a row of entries above the plot area, or a column right
- * of it. `step` is each entry's advance along the row or column.
- */
-export function legendExtent(names: string[], size: number, legend: 'top' | 'right') {
-  const sw = legendSwatch(size);
-  if (legend === 'top') {
-    const w = names.reduce((a, n) => a + sw + 18 + textW(n, size), 0) - 13;
-    return { w: Math.max(0, w), h: size };
-  }
-  return { w: sw + 5 + Math.max(0, ...names.map((n) => textW(n, size))), h: names.length * (size + 8) };
-}
-
-/** Margins around the plot area, from the text they hold (px). */
-export function chartMargins(
-  st: ChartStyle,
-  o: { xTitle: boolean; yTitle: boolean; legend: ChartStyle['legend']; legendW: number; yLabelW: number },
-) {
+/** Margins around the plot area, from the text they hold (px); the legend's room is added to them (`legendMargins`). */
+export function chartMargins(st: ChartStyle, o: { xTitle: boolean; yTitle: boolean; yLabelW: number }) {
   const ts = st.titleFontSize;
   return {
     l: 14 + (o.yTitle ? ts + 8 : 0) + o.yLabelW + 8,
-    r: 20 + o.legendW,
-    t: 14 + (o.legend === 'top' ? st.legendFontSize + 14 : 0),
+    r: 20,
+    t: 14,
     b: (st.showTickLabels ? st.tickFontSize + 10 : 6) + (o.xTitle ? ts + 18 : 6),
   };
 }

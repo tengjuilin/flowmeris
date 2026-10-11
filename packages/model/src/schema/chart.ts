@@ -87,7 +87,24 @@ export const ChartStyleSchema = z.object({
   tickText: TextStyleSchema.default({}),
   titleFontSize: Num.min(4).max(48).default(12),
   titleText: TextStyleSchema.default({ bold: true }),
-  legend: z.enum(['top', 'right', 'none']).default('top'),
+  /** Legend location: outside the plot area on a side, in a corner inside it, or hidden. */
+  legend: z
+    .enum([
+      'top',
+      'bottom',
+      'left',
+      'right',
+      'inside-top-left',
+      'inside-top-right',
+      'inside-bottom-left',
+      'inside-bottom-right',
+      'none',
+    ])
+    .default('top'),
+  /** Alignment of an outside legend along the plot area's side. */
+  legendAlign: z.enum(['start', 'center', 'end']).default('start'),
+  /** Columns of legend entries; omitted = automatic (as many as fit, wrapping to fit). */
+  legendColumns: z.number().int().min(1).max(50).optional(),
   legendFontSize: Num.min(4).max(48).default(12),
   legendText: TextStyleSchema.default({}),
   /** Chart width in px; omitted = fit the view. */

@@ -3,6 +3,7 @@ import { NumInput } from '../../../components/ui/NumInput.tsx';
 import { Card } from '../../../components/ui/settings/index.ts';
 import { CHART_ERRORS, CHART_KINDS } from '../../../lib/chartStyle.ts';
 import { clamp } from '../../../lib/math.ts';
+import { ChartLegendFields } from '../ChartLegendFields.tsx';
 import {
   BarFields,
   ErrorBarFields,
@@ -14,7 +15,7 @@ import type { ChartTabProps } from '../chartTabs.ts';
 
 /**
  * The Figure tab: the chart's name and type, what it shows, its marks (mean markers or bars, and the line),
- * error bars, replicate points and size.
+ * error bars, replicate points, legend placement and size.
  */
 export function FigureTab({ c, plot, card }: ChartTabProps) {
   const { edit, set } = c;
@@ -93,6 +94,9 @@ export function FigureTab({ c, plot, card }: ChartTabProps) {
       </Card>
       <Card {...card('replicates')}>
         <ReplicateFields c={c} />
+      </Card>
+      <Card {...card('legendPlace')}>
+        <ChartLegendFields c={c} />
       </Card>
       <Card {...card('size')}>
         <div className="grid2">

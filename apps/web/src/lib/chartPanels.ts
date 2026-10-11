@@ -63,7 +63,8 @@ export const CHART_CARD_KEYS: Partial<Record<ChartCard, CardKeys>> = {
   },
   tickText: { style: ['showTickLabels', 'tickFontSize', 'tickText'], plot: [] },
   axisTitleText: { style: ['titleFontSize', 'titleText'], plot: [] },
-  legend: { style: ['legend', 'legendFontSize', 'legendText'], plot: [] },
+  legendPlace: { style: ['legend', 'legendAlign', 'legendColumns'], plot: [] },
+  legend: { style: ['legendFontSize', 'legendText'], plot: [] },
 };
 
 /** Whether the settings of `card` are at their defaults for chart `p`. */
