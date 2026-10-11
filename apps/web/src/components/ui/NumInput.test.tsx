@@ -3,9 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { NumInput, OptNumInput } from './NumInput.tsx';
 
 describe('NumInput', () => {
-  it('commits the typed value on blur, not while typing', () => {
+  it('with live={false}, commits the typed value on blur, not while typing', () => {
     const onCommit = vi.fn();
-    render(<NumInput label="Width" value={2} onCommit={onCommit} />);
+    render(<NumInput live={false} label="Width" value={2} onCommit={onCommit} />);
     const input = screen.getByLabelText('Width') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '3.5' } });
     expect(onCommit).not.toHaveBeenCalled();
@@ -16,7 +16,7 @@ describe('NumInput', () => {
 
   it('commits on Enter', () => {
     const onCommit = vi.fn();
-    render(<NumInput label="Width" value={2} onCommit={onCommit} />);
+    render(<NumInput live={false} label="Width" value={2} onCommit={onCommit} />);
     const input = screen.getByLabelText('Width');
     input.focus();
     fireEvent.change(input, { target: { value: '7' } });
@@ -26,7 +26,7 @@ describe('NumInput', () => {
 
   it('commits nothing on a blur without an edit, and shows the value again after a commit', () => {
     const onCommit = vi.fn();
-    render(<NumInput label="Width" value={2} onCommit={onCommit} />);
+    render(<NumInput live={false} label="Width" value={2} onCommit={onCommit} />);
     const input = screen.getByLabelText('Width') as HTMLInputElement;
     fireEvent.blur(input);
     expect(onCommit).not.toHaveBeenCalled();
@@ -49,29 +49,29 @@ describe('NumInput', () => {
     expect(input.value).toBe('2');
   });
 
-  it('with live, an emptied field commits the value from before typing again', () => {
+  it('an emptied field commits the value from before typing again', () => {
     const onCommit = vi.fn();
-    const { rerender } = render(<NumInput live label="Width" value={12} onCommit={onCommit} />);
+    const { rerender } = render(<NumInput label="Width" value={12} onCommit={onCommit} />);
     const input = screen.getByLabelText('Width') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '1' } }); // deleting the 2 of 12
-    rerender(<NumInput live label="Width" value={1} onCommit={onCommit} />);
+    rerender(<NumInput label="Width" value={1} onCommit={onCommit} />);
     fireEvent.change(input, { target: { value: '' } });
     fireEvent.blur(input);
     expect(onCommit.mock.calls).toEqual([[1], [12]]);
   });
 
-  it('with live, an emptied field commits nothing when typing changed nothing', () => {
+  it('an emptied field commits nothing when typing changed nothing', () => {
     const onCommit = vi.fn();
-    render(<NumInput live label="Width" value={12} onCommit={onCommit} />);
+    render(<NumInput label="Width" value={12} onCommit={onCommit} />);
     const input = screen.getByLabelText('Width');
     fireEvent.change(input, { target: { value: '' } });
     fireEvent.blur(input);
     expect(onCommit).not.toHaveBeenCalled();
   });
 
-  it('with live, commits while typing but not an empty field', () => {
+  it('commits while typing but not an empty field', () => {
     const onCommit = vi.fn();
-    render(<NumInput live label="Width" value={2} onCommit={onCommit} />);
+    render(<NumInput label="Width" value={2} onCommit={onCommit} />);
     const input = screen.getByLabelText('Width');
     fireEvent.change(input, { target: { value: '4' } });
     expect(onCommit).toHaveBeenLastCalledWith(4);
@@ -97,5 +97,25 @@ describe('OptNumInput', () => {
     rerender(<OptNumInput label="Min" value={undefined} onCommit={onCommit} />);
     expect(input.value).toBe('');
     expect(input.placeholder).toBe('Auto');
+  });
+
+  it('commits each number typed at once, and nothing for text that is not one', () => {
+    const onCommit = vi.fn();
+    render(<OptNumInput label="Max" value={undefined} onCommit={onCommit} />);
+    const input = screen.getByLabelText('Max');
+    fireEvent.change(input, { target: { value: '4' } });
+    fireEvent.change(input, { target: { value: '45' } });
+    fireEvent.change(input, { target: { value: '' } });
+    expect(onCommit.mock.calls).toEqual([[4], [45]]);
+  });
+
+  it('commits nothing on blur when the value was committed while typing', () => {
+    const onCommit = vi.fn();
+    const { rerender } = render(<OptNumInput label="Max" value={undefined} onCommit={onCommit} />);
+    const input = screen.getByLabelText('Max');
+    fireEvent.change(input, { target: { value: '7' } });
+    rerender(<OptNumInput label="Max" value={7} onCommit={onCommit} />);
+    fireEvent.blur(input);
+    expect(onCommit.mock.calls).toEqual([[7]]);
   });
 });

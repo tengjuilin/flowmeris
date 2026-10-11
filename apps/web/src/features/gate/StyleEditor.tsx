@@ -16,11 +16,16 @@ export function StyleEditor({
 }: { plot: PlotSpec; card: CardOf<PlotCard>; target?: PlotTarget }) {
   const group = useGroup()!;
   const mutate = useStore((s) => s.mutate);
-  const set = (fn: (st: PlotSpec['style']) => void) =>
-    mutate('Change plot style', (w) => {
-      const g = w.groups.find((x) => x.id === group.id)!;
-      fn(plotsOf(g, target).find((x) => x.id === plot.id)!.style);
-    });
+  /** Edits sharing `merge` (typing one number) fold into one undo step. */
+  const set = (fn: (st: PlotSpec['style']) => void, merge?: string) =>
+    mutate(
+      'Change plot style',
+      (w) => {
+        const g = w.groups.find((x) => x.id === group.id)!;
+        fn(plotsOf(g, target).find((x) => x.id === plot.id)!.style);
+      },
+      merge && `style:${plot.id}:${merge}`,
+    );
   const st = plot.style;
   const showNote = st.figure?.showOffScaleNote ?? true;
   const changed =
@@ -54,18 +59,19 @@ export function StyleEditor({
             </label>
           )}
           <NumInput
-            live
             label="Point size (px)"
             step={0.25}
             value={st.pointPx}
-            onCommit={(v) => set((s) => void (s.pointPx = Math.max(0.25, Math.min(10, v))))}
+            onCommit={(v) => set((s) => void (s.pointPx = Math.max(0.25, Math.min(10, v))), 'pointPx')}
             title="Size of each event's point, 0.25–10 px; fractional sizes are allowed"
           />
           {plot.kind !== 'dot' && (
             <NumInput
               label="Smoothing σ (px)"
               value={st.smoothSigmaBins}
-              onCommit={(v) => set((s) => void (s.smoothSigmaBins = Math.max(0, Math.min(20, v))))}
+              onCommit={(v) =>
+                set((s) => void (s.smoothSigmaBins = Math.max(0, Math.min(20, v))), 'smoothing')
+              }
               title="Gaussian kernel σ of the binned density estimate, in display pixels (0 = none)"
             />
           )}

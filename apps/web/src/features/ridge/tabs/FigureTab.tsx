@@ -67,7 +67,6 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
         />
         <div className="grid2">
           <NumInput
-            live
             label="Outline width"
             step={0.25}
             value={style.strokeWidth}
@@ -104,7 +103,6 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
         </label>
         <div className="grid2">
           <NumInput
-            live
             label="Label width (px)"
             step={10}
             title={style.labelOverflow === 'widen' ? 'Set automatically to fit the longest label' : undefined}
@@ -152,7 +150,6 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
           {style.rowHeight !== undefined && (
             <div className="sub-option">
               <NumInput
-                live
                 label="Row height (px)"
                 step={1}
                 value={style.rowHeight}
@@ -173,7 +170,6 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
           {style.width !== undefined && (
             <div className="sub-option">
               <NumInput
-                live
                 label="Width (px)"
                 step={10}
                 value={style.width}
@@ -194,7 +190,6 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
           {style.aspect !== undefined && (
             <div className="sub-option">
               <NumInput
-                live
                 label="Width ÷ height"
                 step={0.1}
                 title="Fixes the figure's shape; row height is derived to fit"
@@ -208,7 +203,6 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
       <Card {...card('histogram', resetOf('histogram', 'histogram'))}>
         <div className="grid2">
           <NumInput
-            live
             label="Bins"
             step={16}
             title="Histogram bins across the x range"
@@ -216,7 +210,6 @@ export function FigureTab({ r, fx, card }: RidgeTabProps) {
             onCommit={(v) => set('bins', clamp(Math.round(v), 16, 1024), 'Ridge bins')}
           />
           <NumInput
-            live
             label="Smoothing σ (bins)"
             step={0.5}
             title="Gaussian smoothing of each curve; 0 for none"

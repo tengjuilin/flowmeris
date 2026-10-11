@@ -53,13 +53,11 @@ export function GateEditor({ gateId, card }: { gateId: string; card: CardOf<Plot
           {gate.dims.map((d, i) => (
             <div key={d.channel} className="grid2 span2">
               <NumInput
-                live
                 label={`${d.channel} min`}
                 value={geom.min[i] ?? Number.NEGATIVE_INFINITY}
                 onCommit={(v) => commit({ ...geom, min: geom.min.map((x, k) => (k === i ? v : x)) })}
               />
               <NumInput
-                live
                 label={`${d.channel} max`}
                 value={geom.max[i] ?? Number.POSITIVE_INFINITY}
                 onCommit={(v) => commit({ ...geom, max: geom.max.map((x, k) => (k === i ? v : x)) })}
@@ -71,7 +69,6 @@ export function GateEditor({ gateId, card }: { gateId: string; card: CardOf<Plot
       {geom.kind === 'split' && (
         <div className="grid2">
           <NumInput
-            live
             label={`${gate.dims[0]!.channel} divider`}
             value={geom.at}
             onCommit={(v) => commit({ ...geom, at: v })}
@@ -82,7 +79,6 @@ export function GateEditor({ gateId, card }: { gateId: string; card: CardOf<Plot
       {(geom.kind === 'quadrant' || geom.kind === 'spider') && (
         <div className="grid2">
           <NumInput
-            live
             label="Centre x"
             value={geom.center[0]}
             onCommit={(v) =>
@@ -98,7 +94,6 @@ export function GateEditor({ gateId, card }: { gateId: string; card: CardOf<Plot
             }
           />
           <NumInput
-            live
             label="Centre y"
             value={geom.center[1]}
             onCommit={(v) =>
@@ -124,12 +119,11 @@ export function GateEditor({ gateId, card }: { gateId: string; card: CardOf<Plot
           };
           return (
             <div className="grid2">
-              <NumInput live label="Centre x" value={e.cx} onCommit={(cx) => set({ cx })} />
-              <NumInput live label="Centre y" value={e.cy} onCommit={(cy) => set({ cy })} />
-              <NumInput live label="Semi-axis a" value={e.a} onCommit={(a) => a > 0 && set({ a })} />
-              <NumInput live label="Semi-axis b" value={e.b} onCommit={(b) => b > 0 && set({ b })} />
+              <NumInput label="Centre x" value={e.cx} onCommit={(cx) => set({ cx })} />
+              <NumInput label="Centre y" value={e.cy} onCommit={(cy) => set({ cy })} />
+              <NumInput label="Semi-axis a" value={e.a} onCommit={(a) => a > 0 && set({ a })} />
+              <NumInput label="Semi-axis b" value={e.b} onCommit={(b) => b > 0 && set({ b })} />
               <NumInput
-                live
                 label="Angle (°)"
                 value={(e.theta * 180) / Math.PI}
                 onCommit={(d) => set({ theta: (d * Math.PI) / 180 })}

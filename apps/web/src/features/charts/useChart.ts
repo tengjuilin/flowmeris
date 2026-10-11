@@ -50,7 +50,10 @@ export function useChart() {
   const edit = (label: string, fn: (p: StatPlot) => void, merge?: string) => {
     if (group && plot) editChart(group.id, plot.id, label, fn, merge);
   };
-  /** Set style `key` of the open chart (unset when `value` is undefined). */
+  /**
+   * Set style `key` of the open chart (unset when `value` is undefined). Edits of one key, such as typing a
+   * number, fold into one undo step unless `merge` says otherwise.
+   */
   const set = <K extends keyof ChartStyle>(key: K, value: ChartStyle[K], label: string, merge?: string) =>
     edit(
       label,
@@ -58,7 +61,7 @@ export function useChart() {
         if (value === undefined) delete p.style[key];
         else p.style[key] = value;
       },
-      merge && `chart:${plot?.id}:${merge}`,
+      `chart:${plot?.id}:${merge ?? `style:${key}`}`,
     );
 
   return {

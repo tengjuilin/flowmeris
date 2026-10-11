@@ -1,10 +1,10 @@
 import { useState } from 'react';
 
 /**
- * A labelled number field. Typing edits a draft; the value is committed on blur or Enter (or while
- * typing, with `live`). An empty field, or text that is not a finite number (the browser empties a number
- * field holding text), commits nothing and shows the value from before the edit again; with `live`, that
- * value is committed again if typing changed it.
+ * A labelled number field. Each finite number typed is committed at once, so what the field drives
+ * updates while typing (with `live={false}`, only on blur or Enter). An empty field, or text that is not a
+ * finite number (the browser empties a number field holding text), commits nothing and shows the value
+ * from before the edit again on blur; that value is committed again if typing changed it.
  */
 export function NumInput({
   value,
@@ -12,14 +12,14 @@ export function NumInput({
   step,
   label,
   title,
-  live,
+  live = true,
 }: {
   value: number;
   onCommit: (v: number) => void;
   step?: number;
   label: string;
   title?: string;
-  /** Also commit while typing, so what the input drives updates live. */
+  /** Commit while typing (the default), so what the input drives updates live. */
   live?: boolean;
 }) {
   // The text being typed, and the value when typing started.
@@ -50,7 +50,10 @@ export function NumInput({
   );
 }
 
-/** A number that may be left empty (= automatic). */
+/**
+ * A number that may be left empty (= automatic). Like `NumInput`, each finite number typed is committed at
+ * once; emptying the field commits `undefined` on blur or Enter.
+ */
 export function OptNumInput({
   label,
   value,
@@ -74,11 +77,15 @@ export function OptNumInput({
         placeholder="Auto"
         disabled={disabled}
         value={text ?? (value === undefined ? '' : String(Number(value.toPrecision(8))))}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          setText(e.target.value);
+          const v = Number(e.target.value);
+          if (e.target.value.trim() !== '' && Number.isFinite(v)) onCommit(v);
+        }}
         onBlur={() => {
           if (text === null) return;
           const v = text.trim() === '' ? undefined : Number(text);
-          if (v === undefined || Number.isFinite(v)) onCommit(v);
+          if (v === undefined ? value !== undefined : Number.isFinite(v) && v !== value) onCommit(v);
           setText(null);
         }}
         onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}

@@ -49,7 +49,6 @@ export function AxisTab({ r, group, fx, card }: RidgeTabProps) {
         )}
         {axis && (
           <AxisFields
-            live
             hideReset
             axis={axis}
             population={popId}

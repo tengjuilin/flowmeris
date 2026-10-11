@@ -59,7 +59,6 @@ export function BaseFontCard({
         }}
       />
       <NumInput
-        live
         label="Base font size (px)"
         step={0.5}
         title={sizeTitle}

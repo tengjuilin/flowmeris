@@ -100,7 +100,6 @@ export function AxisTab({ plot, target, card, fx }: TabProps) {
           }}
         />
         <NumInput
-          live
           label="Tick width (px)"
           step={0.25}
           value={fig.tickWidth}
@@ -120,7 +119,6 @@ export function AxisTab({ plot, target, card, fx }: TabProps) {
           }}
         />
         <NumInput
-          live
           label="Spine width (px)"
           step={0.25}
           value={fig.spineWidth}
@@ -137,7 +135,6 @@ export function AxisTab({ plot, target, card, fx }: TabProps) {
         {fig.boxAspect !== undefined && (
           <div className="sub-option">
             <NumInput
-              live
               label="Box width ÷ height"
               step={0.1}
               value={fig.boxAspect}

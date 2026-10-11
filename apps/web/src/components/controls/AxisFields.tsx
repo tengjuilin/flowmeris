@@ -29,7 +29,6 @@ export function AxisFields({
   population,
   apply,
   note,
-  live,
   hideReset,
 }: {
   axis: AxisSpec;
@@ -38,7 +37,6 @@ export function AxisFields({
   population: string;
   apply: ApplyAxis;
   note?: ReactNode;
-  live?: boolean;
   /** Leave out the legend's reset button when the host provides its own. */
   hideReset?: boolean;
 }) {
@@ -127,14 +125,12 @@ export function AxisFields({
         {def.kind === 'flin' && (
           <>
             <NumInput
-              live={live}
               label="Top T"
               value={def.T}
               onCommit={(T) => setDef({ ...def, T })}
               title="Data value at the top of scale"
             />
             <NumInput
-              live={live}
               label="Negative A"
               value={def.A}
               onCommit={(A) => setDef({ ...def, A })}
@@ -144,33 +140,26 @@ export function AxisFields({
         )}
         {def.kind === 'flog' && (
           <>
-            <NumInput live={live} label="Top T" value={def.T} onCommit={(T) => setDef({ ...def, T })} />
-            <NumInput live={live} label="Decades M" value={def.M} onCommit={(M) => setDef({ ...def, M })} />
+            <NumInput label="Top T" value={def.T} onCommit={(T) => setDef({ ...def, T })} />
+            <NumInput label="Decades M" value={def.M} onCommit={(M) => setDef({ ...def, M })} />
           </>
         )}
         {def.kind === 'logicle' && (
           <>
-            <NumInput live={live} label="Top T" value={def.T} onCommit={(T) => setDef({ ...def, T })} />
+            <NumInput label="Top T" value={def.T} onCommit={(T) => setDef({ ...def, T })} />
             <NumInput
-              live={live}
               label="Width W"
               value={def.W}
               onCommit={(W) => setDef({ ...def, W })}
               title="Linearisation width in decades"
             />
-            <NumInput live={live} label="Decades M" value={def.M} onCommit={(M) => setDef({ ...def, M })} />
-            <NumInput
-              live={live}
-              label="Extra neg. A"
-              value={def.A}
-              onCommit={(A) => setDef({ ...def, A })}
-            />
+            <NumInput label="Decades M" value={def.M} onCommit={(M) => setDef({ ...def, M })} />
+            <NumInput label="Extra neg. A" value={def.A} onCommit={(A) => setDef({ ...def, A })} />
           </>
         )}
         {def.kind === 'fasinh' && (
           <>
             <NumInput
-              live={live}
               label="Cofactor"
               value={asinhCofactor(def)}
               onCommit={(c) => {
@@ -181,7 +170,6 @@ export function AxisFields({
               title="asinh(x / cofactor); stored as Gating-ML fasinh (T, M, A)"
             />
             <NumInput
-              live={live}
               label="Top T"
               value={def.T}
               onCommit={(T) => setDef(asinhDefFromCofactor(asinhCofactor(def), T, def.A))}
@@ -209,18 +197,8 @@ export function AxisFields({
         </button>
       )}
       <div className="grid2">
-        <NumInput
-          live={live}
-          label="Min (data)"
-          value={scale.inverse(axis.range[0])}
-          onCommit={(v) => setRange(0, v)}
-        />
-        <NumInput
-          live={live}
-          label="Max (data)"
-          value={scale.inverse(axis.range[1])}
-          onCommit={(v) => setRange(1, v)}
-        />
+        <NumInput label="Min (data)" value={scale.inverse(axis.range[0])} onCommit={(v) => setRange(0, v)} />
+        <NumInput label="Max (data)" value={scale.inverse(axis.range[1])} onCommit={(v) => setRange(1, v)} />
       </div>
       {note && <p className="muted small">{note}</p>}
     </fieldset>

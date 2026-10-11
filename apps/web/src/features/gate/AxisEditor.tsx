@@ -30,13 +30,18 @@ export function AxisEditor({
   const ws = useStore((s) => s.ws);
   const group = useGroup()!;
   const mutate = useStore((s) => s.mutate);
+  // Edits of one kind on this axis (typing a number) fold into one undo step.
   const apply: ApplyAxis = (label, fn, shared) =>
-    mutate(label, (w) => {
-      const g = w.groups.find((x) => x.id === group.id)!;
-      const a = plotsOf(g, target).find((x) => x.id === plot.id)![which]!;
-      fn(a, w, g);
-      if (shared && target === 'gate') g.axisDefaults[a.channel] = { ...a };
-    });
+    mutate(
+      label,
+      (w) => {
+        const g = w.groups.find((x) => x.id === group.id)!;
+        const a = plotsOf(g, target).find((x) => x.id === plot.id)![which]!;
+        fn(a, w, g);
+        if (shared && target === 'gate') g.axisDefaults[a.channel] = { ...a };
+      },
+      `axis:${plot.id}:${which}:${label}`,
+    );
   const axis = plot[which] as AxisSpec;
   const sample = groupSample(ws, group);
   const title = `${which.toUpperCase()} axis`;
