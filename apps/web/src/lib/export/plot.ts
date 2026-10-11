@@ -1,10 +1,8 @@
 import type { RasterResponse } from '@flowmeris/engine';
 import type { PlotSpec, Transform } from '@flowmeris/model';
 import { encodePngCompressed } from '@flowmeris/render';
-import { download, safeName } from '../download.ts';
-import { stripDataExt } from '../files.ts';
-import { exportSvgFigure } from './figure.ts';
-import { type ImageFormat, bytesToBase64, inlineStyles } from './svg.ts';
+import type { FigureSource } from './figure.ts';
+import { SVG_NS, bytesToBase64, standaloneClone } from './standalone.ts';
 
 /**
  * Gate-view plot export (method M-EXPORT-PLOT). Axes, gates, labels, contours and histograms are
@@ -49,7 +47,7 @@ function hiResRaster(plot: PlotSpec, pw: number, ph: number, scale: number, sour
 }
 
 /** The plot as a standalone SVG: vector axes and gates, the event raster re-rendered at `dpi`, provenance metadata. */
-export async function buildPlotSvg(
+async function buildPlotSvg(
   h: PlotHandle,
   plot: PlotSpec,
   dpi: number,
@@ -59,13 +57,10 @@ export async function buildPlotSvg(
   const { width, height, margin } = h.size;
   const pw = width - margin.l - margin.r;
   const ph = height - margin.t - margin.b;
-  const clone = h.svg.cloneNode(true) as SVGSVGElement;
-  inlineStyles(h.svg, clone);
-  clone.querySelectorAll('[data-handle], .draft, .draft-vertex').forEach((n) => n.remove());
-  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  clone.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  // Edit handles and drafts are on-screen only.
+  const clone = standaloneClone(h.svg, '[data-handle], .draft, .draft-vertex');
   clone.removeAttribute('style');
-  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  const bg = document.createElementNS(SVG_NS, 'rect');
   bg.setAttribute('width', String(width));
   bg.setAttribute('height', String(height));
   bg.setAttribute('fill', '#ffffff');
@@ -73,7 +68,7 @@ export async function buildPlotSvg(
   if (plot.kind !== 'histogram') {
     const r = await hiResRaster(plot, pw, ph, dpi / 96, source);
     const png = await encodePngCompressed(r.rgba, r.width, r.height, dpi);
-    const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+    const img = document.createElementNS(SVG_NS, 'image');
     img.setAttribute('x', String(margin.l));
     img.setAttribute('y', String(margin.t));
     img.setAttribute('width', String(pw));
@@ -82,7 +77,7 @@ export async function buildPlotSvg(
     img.setAttribute('href', `data:image/png;base64,${bytesToBase64(png)}`);
     clone.insertBefore(img, bg.nextSibling);
   }
-  const meta = document.createElementNS('http://www.w3.org/2000/svg', 'metadata');
+  const meta = document.createElementNS(SVG_NS, 'metadata');
   meta.textContent = JSON.stringify({
     generator: source.generator,
     sample: source.sha256,
@@ -95,29 +90,9 @@ export async function buildPlotSvg(
 }
 
 /**
- * Export a Gate-view plot. SVG is written as built; PNG, JPEG and PDF render that SVG (axes and gates stay
- * vector in the PDF, the event raster is embedded at `dpi`).
+ * A Gate-view or Plot-grid plot as a figure: SVG is written as built; PNG, JPEG and PDF render it (axes and
+ * gates stay vector in the PDF, the event raster is embedded at the export DPI).
  */
-export async function exportPlotFigure(
-  h: PlotHandle,
-  plot: PlotSpec,
-  format: ImageFormat,
-  baseName: string,
-  dpi: number,
-  source: PlotExportSource,
-  warn?: (message: string) => void,
-) {
-  const svg = await buildPlotSvg(h, plot, dpi, source);
-  const name = stripDataExt(baseName);
-  if (format === 'svg') return download(`${safeName(name)}.svg`, svg, 'image/svg+xml');
-  // The rasterisers and PDF writer read computed styles, so the figure is laid out off-screen first.
-  const host = document.createElement('div');
-  host.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none';
-  host.innerHTML = svg;
-  document.body.appendChild(host);
-  try {
-    await exportSvgFigure(host.querySelector('svg')!, format, name, dpi, warn);
-  } finally {
-    host.remove();
-  }
+export function plotFigure(h: PlotHandle, plot: PlotSpec, source: PlotExportSource): FigureSource {
+  return { build: (dpi) => buildPlotSvg(h, plot, dpi, source) };
 }

@@ -3,7 +3,7 @@ import { populationLineage, populationsDepthFirst } from '@flowmeris/model';
 import { useCallback, useState } from 'react';
 import { type Anchor, type PickOption, PickerMenu } from '../../components/ui/PickerMenu.tsx';
 import { OpenInIcon } from '../../components/ui/icons.tsx';
-import type { PlotHandle } from '../../lib/export/plot.ts';
+import type { PlotHandle } from '../../lib/export/index.ts';
 import { overlayColors, plotOf } from '../../lib/gridCells.ts';
 import {
   editCell,

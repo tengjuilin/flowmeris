@@ -1,5 +1,5 @@
 import type { PlotSpec, Workspace } from '@flowmeris/model';
-import type { PlotMargin } from './export/plot.ts';
+import type { PlotMargin } from './export/index.ts';
 import { DEFAULT_FIGURE } from './figure.ts';
 
 /**

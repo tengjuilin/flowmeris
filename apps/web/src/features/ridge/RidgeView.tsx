@@ -7,16 +7,19 @@ import { useSize } from '../../components/hooks/useSize.ts';
 import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from '../../components/ui/PickerMenu.tsx';
 import { SupLabel } from '../../components/ui/SupLabel.tsx';
 import { factoryAxis } from '../../lib/axisDefaults.ts';
+import { svgFigure } from '../../lib/export/index.ts';
 import { fontStack, textCss } from '../../lib/figure.ts';
 import { scaleFor } from '../../lib/geometry.ts';
 import { ridgeFrame, ridgeLabels, ridgePaths } from '../../lib/ridgeLayout.ts';
 import { ridgeColor, withRidgeChannel } from '../../lib/ridgeStyle.ts';
 import { textMeasure } from '../../lib/text.ts';
 import { customTicks } from '../../lib/ticks.ts';
-import { exportSvgFigure } from '../../state/export.ts';
 import { useStore } from '../../state/store.ts';
 import { useRidge } from './useRidge.ts';
 import { useRidgeCurves } from './useRidgeCurves.ts';
+
+/** The Ridge view's plot, for the export card beside it. */
+const ridgeSvg: { current: SVGSVGElement | null } = { current: null };
 
 /** Card above the population tree: export the ridge plot figure. */
 export function RidgeExportCard() {
@@ -27,10 +30,11 @@ export function RidgeExportCard() {
   return (
     <ExportMenu
       className="side-export"
-      onExport={(format, dpi) => {
-        const svg = document.querySelector<SVGSVGElement>('.ridge-view svg.ridge');
-        return svg ? exportSvgFigure(svg, format, `${group.name}_${pop?.name}_${ch}_ridge`, dpi) : undefined;
-      }}
+      target={() =>
+        ridgeSvg.current
+          ? { figure: svgFigure(ridgeSvg.current), name: `${group.name}_${pop?.name}_${ch}_ridge` }
+          : undefined
+      }
     />
   );
 }
@@ -92,6 +96,9 @@ export function RidgeView() {
   return (
     <div className="ridge-view" ref={box}>
       <svg
+        ref={(el) => {
+          ridgeSvg.current = el;
+        }}
         width={W}
         height={H}
         className="ridge"

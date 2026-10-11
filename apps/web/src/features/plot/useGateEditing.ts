@@ -16,7 +16,7 @@ import {
   useEffect,
   useState,
 } from 'react';
-import type { PlotMargin } from '../../lib/export/plot.ts';
+import type { PlotMargin } from '../../lib/export/index.ts';
 import {
   applyHandle,
   clampToRange,

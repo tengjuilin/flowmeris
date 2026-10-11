@@ -1,4 +1,4 @@
-import { bytesToBase64, standaloneSvg } from './svg.ts';
+import { bytesToBase64 } from './standalone.ts';
 
 /** Vector PDF export of on-screen SVG figures (jsPDF + svg2pdf, loaded on demand), embedding installed fonts. */
 
@@ -109,37 +109,28 @@ function splitHalos(root: SVGSVGElement) {
 }
 
 /**
- * A one-page vector PDF of an on-screen SVG: paths and text stay vector, with fonts embedded where possible.
- * `warn` is told which fonts had to be replaced by a standard PDF font.
+ * A one-page vector PDF of a laid-out standalone SVG (see mount.ts), which it changes: paths and text stay
+ * vector, with fonts embedded where possible. `warn` is told which fonts had to be replaced by a standard
+ * PDF font.
  */
-export async function svgToPdf(svg: SVGSVGElement, warn?: (message: string) => void): Promise<Blob> {
+export async function svgToPdf(el: SVGSVGElement, warn?: (message: string) => void): Promise<Blob> {
   // Ask for installed fonts first, while the click that started the export still counts as a user gesture.
   const fonts = installedFonts();
   const [{ jsPDF }, { svg2pdf }] = await Promise.all([import('jspdf'), import('svg2pdf.js'), fonts]);
-  const w = Number(svg.getAttribute('width'));
-  const h = Number(svg.getAttribute('height'));
-  // svg2pdf reads layout from the DOM, so render the standalone copy off-screen.
-  const host = document.createElement('div');
-  host.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none';
-  host.innerHTML = standaloneSvg(svg);
-  document.body.appendChild(host);
-  try {
-    const el = host.firstElementChild as SVGSVGElement;
-    const pdf = new jsPDF({
-      unit: 'px',
-      format: [w, h],
-      orientation: w >= h ? 'landscape' : 'portrait',
-      hotfixes: ['px_scaling'],
-    });
-    splitHalos(el);
-    const substituted = await embedFonts(el, pdf);
-    await svg2pdf(el, pdf, { x: 0, y: 0, width: w, height: h });
-    if (substituted.length)
-      warn?.(
-        `PDF used a standard font in place of ${substituted.join(', ')} (not embeddable from this browser).`,
-      );
-    return pdf.output('blob');
-  } finally {
-    host.remove();
-  }
+  const w = Number(el.getAttribute('width'));
+  const h = Number(el.getAttribute('height'));
+  const pdf = new jsPDF({
+    unit: 'px',
+    format: [w, h],
+    orientation: w >= h ? 'landscape' : 'portrait',
+    hotfixes: ['px_scaling'],
+  });
+  splitHalos(el);
+  const substituted = await embedFonts(el, pdf);
+  await svg2pdf(el, pdf, { x: 0, y: 0, width: w, height: h });
+  if (substituted.length)
+    warn?.(
+      `PDF used a standard font in place of ${substituted.join(', ')} (not embeddable from this browser).`,
+    );
+  return pdf.output('blob');
 }

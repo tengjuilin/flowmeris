@@ -18,7 +18,7 @@ several features. Update this file when the layout changes.
 | `src/workers/compute.worker.ts` | worker side: wraps `@flowmeris/engine` behind Comlink (`ComputeApi`) |
 | `src/state/commands/` | named store commands: `gates.ts`, `plots.ts` (incl. `drill`, and `openPathPlot` for the Gating path), `grid.ts`, `refPlots.ts`, `charts.ts`, `metadata.ts` (delete a variable, detect wells), `ingest.ts`, `workspace.ts` (open, save, new) |
 | `src/state/hooks/` | data hooks that fetch from the worker pool: `stats.ts` (`useSampleStats`, `useAnalysisTable`) |
-| `src/state/export.ts` | figure export wired to the store, pool and toasts (`exportPlot`, `exportSvgFigure`) |
+| `src/state/export.ts` | figure export wired to the store, pool and toasts (`exportFigure`, `storePlotFigure`); see Figure export below |
 | `src/lib/` | pure logic, tested in Node: no store, pool, workers or components (`pnpm lint:deps` checks this). Functions documented "call inside `mutate`" work on a workspace draft |
 | `src/components/ui/` | generic controls that take data and callbacks as props: `icons.tsx`, `settings/` (every settings panel's parts: `SettingsPanel`, `EmptyPanel`, `Card`, `InspectorTabs`, `PanelReset`, and the Settings tab's `ApplyCard`, `ResetCard`, `ActionsCard`; see Settings panels below), `TabStrip` (closable tabs with +), `NumInput`/`OptNumInput` (commit while typing), `Slider`/`PercentSlider`, `SettingsToggle`, `ActionRow`, `PickerMenu`, `GroupPicker`, `PlotSizeSlider`, `SupLabel`, `ColorField` (swatch with reset), `ReorderList` (drag-to-reorder rows, with `useRowSelection`), `ListActions` (the Reverse and reset buttons above such a list). No store or pool imports (`lint:deps`) |
 | `src/components/controls/` | settings controls shared by several views, which may use the store: `AxisFields` (scale and range), `TicksEditor`, `ExportMenu`; `text/` (`BaseFontCard`, `TextCards`: the settings panels' text appearance, built on `FontSelect` and `TextStyleEditor`) |
@@ -72,7 +72,7 @@ What is in `src/lib/`:
 | `chartAxis.ts`, `chartLayout.ts`, `chartMarks.ts`, `chartLegend.ts`, `chartStyle.ts`, `chartSelection.ts`, `chartPanels.ts` | chart axes (`makeAxis`, `validFix`, `dataExtents`, `barPath`); margins, band slots and the plot area (`plotArea`, with the box aspect ratio); marker shapes (`markerPath`) and the horizontal-line marker's length; the legend's grid of entries, wrapping, room and place (`legendGrid`, `legendMargins`, `legendOrigin`); default style, series color and order, the first chart (`defaultPlot`), the chart CSV; hidden points and excluded rows; the settings panel's cards, card and tab resets, applying settings to all charts, duplicating |
 | `metadata.ts`, `metaTable.ts`, `plate.ts`, `metaImport.ts`, `palette.ts` | sample variables (values, types, paste, the shown variable, wells detected); the Metadata table's cells (linked Well, Row and Column, `writeMetaCell`); the plate map (samples by well, series fills); importing a table or plate layout; colors of populations and values |
 | `ingest.ts`, `files.ts`, `names.ts` | grouping loaded files; data-file extensions; short sample names |
-| `export/` | figure export: `svg.ts`, `pdf.ts`, `figure.ts`, `plot.ts` (takes its data as a `PlotExportSource`) |
+| `export/` | figure export, used through its `index.ts`; see Figure export below |
 | `geometry.ts`, `fitSize.ts`, `order.ts`, `text.ts`, `format.ts`, `json.ts`, `download.ts`, `sheets.ts` | gate drawing geometry; sizing (`nearestColumns`, and `RowFit` for rows of plots in Tiles and the Plot grid); moving ids in a list (`moveIds`); label wrapping, number formats, JSON copy/compare, downloads, spreadsheets |
 | `ticks.ts`, `math.ts`, `textScale.ts` | custom ticks (`parseTicks`, `formatTicks`, `customTicks`), histogram y ticks; `clamp`; font sizes (`clampFontSize`, `scaleFontSizes`: the base font size scaling the others) |
 | `plotFrame.ts`, `plotLayout.ts`, `plotPaths.ts` | a plot's pixel mapping and gate hit testing (`hitGate`, `popAt`); margins and titles (`plotBox`, `axisLabel`); histogram and contour SVG paths |
@@ -118,6 +118,31 @@ made once, and each feature keeps only its own logic:
 | Charts | `CHART_PANEL` | `features/charts/ChartInspector.tsx` (tabs in `charts/tabs/`) |
 | Statistics | `STATS_PANEL` | `features/stats/StatsInspector.tsx` |
 | Metadata | `META_PANEL` | `features/metadata/MetadataInspector.tsx` (its tab follows the table or plate map) |
+
+## Figure export
+
+Every figure (Gate and Plot grid plots, ridge plots, charts) is written to a file by `lib/export`, so a fix
+to a format, to styles or to fonts reaches every view. A view only describes its figure and shows the
+shared `ExportMenu` (`components/controls`):
+
+```tsx
+<ExportMenu target={() => (svgRef.current ? { figure: svgFigure(svgRef.current), name } : undefined)} />
+```
+
+| To change | Edit |
+|---|---|
+| a figure drawn as on screen (charts, ridges) | `svgFigure(svg)`; nothing else |
+| a figure with parts re-rendered for export (event rasters at the DPI) | a `FigureSource` like `plotFigure` (`lib/export/plot.ts`), wired to the store in `state/export.ts` |
+| the formats, their labels, extensions and DPI | `lib/export/formats.ts` (`FORMATS`) and its writer in `WRITERS` (`figure.ts`) |
+| which styles are copied, which on-screen parts are dropped | `lib/export/standalone.ts` |
+| PNG and JPEG | `lib/export/raster.ts` |
+| PDF (jsPDF and svg2pdf, loaded on demand) | `lib/export/pdf.ts` |
+
+The pipeline (`writeFigure`): the source builds standalone SVG markup; `svg` is written as is; the others
+are laid out off-screen (`mount.ts`) and handed to their writer. Guardrails: `lint:deps`
+(`web-figure-export-api`) keeps other code on `lib/export/index.ts`; `lib/export/boundaries.test.ts` fails
+when code outside `lib/export` imports jsPDF or svg2pdf, serializes SVG or encodes a canvas, or draws its
+own Export button; `lib/export/figure.test.ts` checks what each format receives.
 
 ## Store rules
 
