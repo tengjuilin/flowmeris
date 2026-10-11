@@ -18,11 +18,11 @@ several features. Update this file when the layout changes.
 | `src/workers/compute.worker.ts` | worker side: wraps `@flowmeris/engine` behind Comlink (`ComputeApi`) |
 | `src/state/commands/` | named store commands: `gates.ts`, `plots.ts` (incl. `drill`, and `openPathPlot` for the Gating path), `grid.ts`, `refPlots.ts`, `charts.ts`, `metadata.ts` (delete a variable, detect wells), `ingest.ts`, `workspace.ts` (open, save, new) |
 | `src/state/hooks/` | data hooks that fetch from the worker pool: `stats.ts` (`useSampleStats`, `useAnalysisTable`) |
-| `src/state/export.ts` | figure export wired to the store, pool and toasts (`exportPlot`, `exportSvgFigure`) |
+| `src/state/export.ts` | figure export wired to the store, pool and toasts (`exportFigure`, `storePlotFigure`); see Figure export below |
 | `src/lib/` | pure logic, tested in Node: no store, pool, workers or components (`pnpm lint:deps` checks this). Functions documented "call inside `mutate`" work on a workspace draft |
 | `src/components/ui/` | generic controls that take data and callbacks as props: `icons.tsx`, `settings/` (every settings panel's parts: `SettingsPanel`, `EmptyPanel`, `Card`, `InspectorTabs`, `PanelReset`, and the Settings tab's `ApplyCard`, `ResetCard`, `ActionsCard`; see Settings panels below), `TabStrip` (closable tabs with +), `NumInput`/`OptNumInput` (commit while typing), `Slider`/`PercentSlider`, `SettingsToggle`, `ActionRow`, `PickerMenu`, `GroupPicker`, `PlotSizeSlider`, `SupLabel`, `ColorField` (swatch with reset), `ReorderList` (drag-to-reorder rows, with `useRowSelection`), `ListActions` (the Reverse and reset buttons above such a list). No store or pool imports (`lint:deps`) |
 | `src/components/controls/` | settings controls shared by several views, which may use the store: `AxisFields` (scale and range), `TicksEditor`, `ExportMenu`; `text/` (`BaseFontCard`, `TextCards`: the settings panels' text appearance, built on `FontSelect` and `TextStyleEditor`) |
-| `src/components/hooks/` | DOM and timing hooks: `useSize`, `useWidth`, `useVisible`, `useSettled`/`useDebounced` |
+| `src/components/hooks/` | DOM and timing hooks: `useSize`, `useWidth`, `useVisible`, `useSettled`/`useDebounced`, `useFontsLoaded` (measure text again once a font arrives) |
 | `src/features/plot/` | one plot: `PlotCanvas` (composes `usePlotData`, `useGateEditing`/`useGatePreview`, `GateShapes`, `DraftShapes`, `PlotAxes`, `PlotPaths`), `PlotControls` (plot type, channels and scales, drawing tools, edit scope), `usePlot` (`usePlotForPopulation`, `useTilePlot`) |
 | `src/features/gate/` | the Gate view: `PlotPanel` (with its title, whose buttons open the plot in the Plot or Tiles view, its toolbar and export card), `RefPlots`, and the plot settings panel `Inspector` (`GateInspector.tsx`, tabs in `tabs/`, cards `AxisEditor`, `StyleEditor`, `GateEditor`), also used by the Plot grid and Tiles views |
 | `src/features/ridge/` | the Ridge view: `RidgeView` (and `RidgeExportCard`), `useRidge` (the current population's ridge layout and its rows), `useRidgeCurves`, `RidgeCombinePanel` (Replicates card), and `RidgeInspector` (tabs in `tabs/`, edits in `ridgeEdits.ts`) |
@@ -72,7 +72,8 @@ What is in `src/lib/`:
 | `chartAxis.ts`, `chartLayout.ts`, `chartMarks.ts`, `chartLegend.ts`, `chartStyle.ts`, `chartSelection.ts`, `chartPanels.ts` | chart axes (`makeAxis`, `validFix`, `dataExtents`, `barPath`); margins, band slots and the plot area (`plotArea`, with the box aspect ratio); marker shapes (`markerPath`) and the horizontal-line marker's length; the legend's grid of entries, wrapping, room and place (`legendGrid`, `legendMargins`, `legendOrigin`); default style, series color and order, the first chart (`defaultPlot`), the chart CSV; hidden points and excluded rows; the settings panel's cards, card and tab resets, applying settings to all charts, duplicating |
 | `metadata.ts`, `metaTable.ts`, `plate.ts`, `metaImport.ts`, `palette.ts` | sample variables (values, types, paste, the shown variable, wells detected); the Metadata table's cells (linked Well, Row and Column, `writeMetaCell`); the plate map (samples by well, series fills); importing a table or plate layout; colors of populations and values |
 | `ingest.ts`, `files.ts`, `names.ts` | grouping loaded files; data-file extensions; short sample names |
-| `export/` | figure export: `svg.ts`, `pdf.ts`, `figure.ts`, `plot.ts` (takes its data as a `PlotExportSource`) |
+| `export/` | figure export, used through its `index.ts`; see Figure export below |
+| `fonts/` | figure fonts (ADR-0011), used through its `index.ts`: the bundled families and the font menu (`catalog.ts`: `BUNDLED`, `FONT_GROUPS`, `FONT_ALIASES`, `fontStack`), their files (`files.ts`, `registerBundledFonts`), installed fonts (`local.ts`, `sfnt.ts`), which font a text is drawn in (`resolve.ts`) |
 | `geometry.ts`, `fitSize.ts`, `order.ts`, `text.ts`, `format.ts`, `json.ts`, `download.ts`, `sheets.ts` | gate drawing geometry; sizing (`nearestColumns`, and `RowFit` for rows of plots in Tiles and the Plot grid); moving ids in a list (`moveIds`); label wrapping, number formats, JSON copy/compare, downloads, spreadsheets |
 | `ticks.ts`, `math.ts`, `textScale.ts` | custom ticks (`parseTicks`, `formatTicks`, `customTicks`), histogram y ticks; `clamp`; font sizes (`clampFontSize`, `scaleFontSizes`: the base font size scaling the others) |
 | `plotFrame.ts`, `plotLayout.ts`, `plotPaths.ts` | a plot's pixel mapping and gate hit testing (`hitGate`, `popAt`); margins and titles (`plotBox`, `axisLabel`); histogram and contour SVG paths |
@@ -81,7 +82,7 @@ What is in `src/lib/`:
 | `panelSpecs.ts`, `settingsPanel.ts` | every settings panel's tabs and cards with their titles (`PLOT_PANELS`, `RIDGE_PANEL`, `CHART_PANEL`, `STATS_PANEL`, `META_PANEL`); the spec types, card props and the remembered tab and collapsed cards |
 | `gatingPath.ts` | the Gating path: the plot showing each gate (`plotForGate`, built from the gate's axes when no saved plot matches), the tree (`treeLayout`), the path's steps |
 
-`figure.ts` has the SVG text styling (`textCss`, `figureText`) and fonts (`FONT_STACKS`, `fontStack`);
+`figure.ts` has the SVG text styling (`textCss`, `figureText`); `fonts/catalog.ts` the fonts (`fontStack`);
 `ridgeStyle.ts` the ridge defaults and colors (`ridgeColor`). Search for a symbol before assuming where it lives.
 
 ## Settings panels
@@ -118,6 +119,42 @@ made once, and each feature keeps only its own logic:
 | Charts | `CHART_PANEL` | `features/charts/ChartInspector.tsx` (tabs in `charts/tabs/`) |
 | Statistics | `STATS_PANEL` | `features/stats/StatsInspector.tsx` |
 | Metadata | `META_PANEL` | `features/metadata/MetadataInspector.tsx` (its tab follows the table or plate map) |
+
+## Figure export
+
+Every figure (Gate and Plot grid plots, ridge plots, charts) is written to a file by `lib/export`, so a fix
+to a format, to styles or to fonts reaches every view. A view only describes its figure and shows the
+shared `ExportMenu` (`components/controls`):
+
+```tsx
+<ExportMenu target={() => (svgRef.current ? { figure: svgFigure(svgRef.current), name } : undefined)} />
+```
+
+| To change | Edit |
+|---|---|
+| a figure drawn as on screen (charts, ridges) | `svgFigure(svg)`; nothing else |
+| a figure with parts re-rendered for export (event rasters at the DPI) | a `FigureSource` like `plotFigure` (`lib/export/plot.ts`), wired to the store in `state/export.ts` |
+| the formats, their labels, extensions and DPI | `lib/export/formats.ts` (`FORMATS`) and its writer in `WRITERS` (`figure.ts`) |
+| which styles are copied, which on-screen parts are dropped | `lib/export/standalone.ts` |
+| PNG and JPEG | `lib/export/raster.ts` |
+| PDF (jsPDF and svg2pdf, loaded on demand) | `lib/export/pdf.ts` |
+| text svg2pdf cannot draw (baselines, underline, halos), rewritten before the PDF | `lib/export/pdfText.ts`; add a step there for a new text feature |
+| fonts embedded in SVG, PNG and JPEG | `lib/export/fontFaces.ts` |
+| the fonts themselves, the font menu | `lib/fonts/catalog.ts` and `tools/fonts.lock.json` (see its comment) |
+
+The pipeline (`writeFigure`): the source builds standalone SVG markup, which is laid out off-screen
+(`mount.ts`) and handed to the format's writer. Fonts (ADR-0011): figures are drawn only in the bundled
+fonts (or an installed font the user names), and every format embeds the faces its text uses, so text has
+the same font, size and width on screen and in every file. Figure text has no kerning or ligatures
+(`styles/base.css`), as jsPDF draws none; keep it that way, or PDF text widths will differ from the screen.
+In the PDF, svg2pdf finds a face only by weight 400 or 700 and style `normal`/`italic`, registered under
+jsPDF's style names (`normal`, `bold`, `italic`, `bolditalic`). Guardrails: `lint:deps`
+(`web-figure-export-api`) keeps other code on `lib/export/index.ts`; `lib/export/boundaries.test.ts` fails
+when code outside `lib/export` imports jsPDF or svg2pdf, serializes SVG or encodes a canvas, or draws its
+own Export button; `lib/export/figure.test.ts` checks what each format receives; `lib/fonts/*.test.ts`
+check the catalog against the lock file and that jsPDF embeds every bundled face; `e2e/figure-export.spec.ts`
+checks, in real browsers, that each PDF text is set in an embedded font at its on-screen size (helper
+`pdfTextFonts`).
 
 ## Store rules
 

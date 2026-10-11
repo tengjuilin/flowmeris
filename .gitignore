@@ -10,5 +10,7 @@ docs/.vitepress/dist/
 .DS_Store
 tools/golden/python/.venv/
 fixtures/remote/
+# Figure fonts, fetched by tools/fetch-fonts.mjs (ADR-0011).
+apps/web/src/assets/fonts/
 .env*
 *.tsbuildinfo

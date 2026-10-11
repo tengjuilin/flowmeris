@@ -1,145 +1,121 @@
-import { bytesToBase64, standaloneSvg } from './svg.ts';
+import {
+  type FaceName,
+  GENERIC_FAMILY,
+  bundledBytes,
+  faceName,
+  fontSteps,
+  installedTrueType,
+  isGeneric,
+  textFont,
+  underlineMetrics,
+} from '../fonts/index.ts';
+import { MISSING_FONTS } from './fontFaces.ts';
+import type { Warn } from './formats.ts';
+import { type Underline, bakeBaselines, drawUnderlines, splitHalos } from './pdfText.ts';
+import { bytesToBase64 } from './standalone.ts';
 
-/** Vector PDF export of on-screen SVG figures (jsPDF + svg2pdf, loaded on demand), embedding installed fonts. */
+/**
+ * Vector PDF export of figures (method M-EXPORT-PLOT) with jsPDF and svg2pdf, loaded on demand. Every
+ * text's font is embedded (ADR-0011): the bundled face it is drawn in on screen, or for an installed font
+ * the installed face where the browser can read it, else the bundled face that stands in for it.
+ */
 
-interface LocalFont {
-  family: string;
-  style: string;
-  blob(): Promise<Blob>;
+type Pdf = import('jspdf').jsPDF;
+
+/** jsPDF's (and svg2pdf's) name for each face: a regular face is 'normal'. */
+const JSPDF_STYLE: Record<FaceName, string> = {
+  regular: 'normal',
+  bold: 'bold',
+  italic: 'italic',
+  bolditalic: 'bolditalic',
+};
+
+/** Registers each face once per PDF, under the family and style names svg2pdf will look up. */
+class PdfFonts {
+  private done = new Map<string, boolean>();
+  /** Underline metrics of each registered face. */
+  readonly underline = new Map<string, Underline | undefined>();
+  constructor(private pdf: Pdf) {}
+
+  /** Embed `bytes` (when given) as `family` in `face`; false when they could not be had. */
+  async add(family: string, face: FaceName, bytes: () => Promise<Uint8Array | undefined>) {
+    const key = `${family}|${face}`;
+    if (!this.done.has(key)) {
+      const b = await bytes().catch(() => undefined);
+      if (b) {
+        const file = `${family}-${face}.ttf`;
+        this.pdf.addFileToVFS(file, bytesToBase64(b));
+        this.pdf.addFont(file, family, JSPDF_STYLE[face]);
+        this.underline.set(key, underlineMetrics(b));
+      }
+      this.done.set(key, !!b);
+    }
+    return this.done.get(key)!;
+  }
 }
 
-let localFonts: Promise<LocalFont[]> | undefined;
-
-/** Fonts installed on this computer (Chromium's Local Font Access API); empty when unavailable or denied. */
-function installedFonts(): Promise<LocalFont[]> {
-  const q = (window as unknown as { queryLocalFonts?: () => Promise<LocalFont[]> }).queryLocalFonts;
-  if (!q) return Promise.resolve([]);
-  localFonts ??= q.call(window).catch(() => {
-    localFonts = undefined;
-    return [];
-  });
-  return localFonts;
-}
-
+/** jsPDF's standard fonts, used only when the bundled fonts are missing from the build. */
 const STANDARD_PDF_FONT = { 'sans-serif': 'helvetica', serif: 'times', monospace: 'courier' } as const;
 
-function genericOf(families: string[]): keyof typeof STANDARD_PDF_FONT {
-  for (let i = families.length - 1; i >= 0; i--) {
-    const f = families[i]!.toLowerCase();
-    if (f in STANDARD_PDF_FONT) return f as keyof typeof STANDARD_PDF_FONT;
-  }
-  return 'sans-serif';
-}
-
-function fontStyleName(bold: boolean, italic: boolean) {
-  return bold && italic ? 'bolditalic' : bold ? 'bold' : italic ? 'italic' : 'normal';
-}
-
-/** The installed face of `family` with the requested weight and slant, as TrueType bytes jsPDF can embed. */
-async function findTrueType(all: LocalFont[], family: string, bold: boolean, italic: boolean) {
-  const want = family.toLowerCase();
-  const faces = all.filter((f) => f.family.toLowerCase() === want);
-  const isBold = (f: LocalFont) => /\bbold\b/i.test(f.style) && !/semi|demi|extra|ultra/i.test(f.style);
-  const isItalic = (f: LocalFont) => /italic|oblique/i.test(f.style);
-  const face = faces.find((f) => isBold(f) === bold && isItalic(f) === italic);
-  if (!face) return undefined;
-  const bytes = new Uint8Array(await (await face.blob()).arrayBuffer());
-  const tag = String.fromCharCode(...bytes.subarray(0, 4));
-  // jsPDF embeds TrueType outlines only (not CFF "OTTO" or collections "ttcf").
-  if (tag !== '\0\x01\0\0' && tag !== 'true') return undefined;
-  return bytes;
-}
-
 /**
- * Point each <text> at a font the PDF actually has: the installed face the figure's font stack resolves to
- * (embedded), else the standard PDF font of the same kind. Returns the families that had to be substituted.
+ * Point each text at a font embedded in the PDF (see fontSteps). Returns the installed fonts that had to
+ * be replaced, and whether the bundled fonts were missing.
  */
-async function embedFonts(root: SVGSVGElement, pdf: import('jspdf').jsPDF): Promise<string[]> {
-  const all = await installedFonts();
-  const registered = new Set<string>();
+async function embedFonts(root: SVGSVGElement, pdf: Pdf) {
+  const fonts = new PdfFonts(pdf);
+  const underlines = new Map<SVGElement, Underline | undefined>();
   const substituted = new Set<string>();
-  for (const t of Array.from(root.querySelectorAll('text, tspan'))) {
-    const st = (t as SVGElement).style;
-    const families = st.fontFamily
-      .split(',')
-      .map((f) => f.trim().replace(/^["']|["']$/g, ''))
-      .filter(Boolean);
-    if (!families.length) continue;
-    const bold = Number(st.fontWeight) >= 600 || st.fontWeight === 'bold';
-    const italic = st.fontStyle === 'italic' || st.fontStyle === 'oblique';
-    const style = fontStyleName(bold, italic);
+  let missing = false;
+  for (const t of Array.from(root.querySelectorAll<SVGElement>('text, tspan'))) {
+    if (!t.style.fontFamily) continue;
+    const { families, bold, italic } = textFont(t.style);
+    const face = faceName(bold, italic);
     let chosen: string | undefined;
-    for (const fam of families) {
-      if (fam.toLowerCase() in STANDARD_PDF_FONT) break;
-      const key = `${fam}|${style}`;
-      if (registered.has(key)) {
-        chosen = fam;
+    for (const step of fontSteps(families)) {
+      const ok =
+        'bundled' in step
+          ? await fonts.add(step.bundled.family, face, () => bundledBytes(step.bundled, face))
+          : await fonts.add(step.installed, face, () => installedTrueType(step.installed, bold, italic));
+      if (ok) {
+        chosen = 'bundled' in step ? step.bundled.family : step.installed;
+        underlines.set(t, fonts.underline.get(`${chosen}|${face}`));
         break;
       }
-      const bytes = await findTrueType(all, fam, bold, italic);
-      if (!bytes) continue;
-      const file = `${fam}-${style}.ttf`;
-      pdf.addFileToVFS(file, bytesToBase64(bytes));
-      pdf.addFont(file, fam, style);
-      registered.add(key);
-      chosen = fam;
-      break;
+      if ('installed' in step) substituted.add(step.installed);
+      else missing = true;
     }
-    if (chosen) st.fontFamily = `"${chosen}"`;
-    else {
-      st.fontFamily = STANDARD_PDF_FONT[genericOf(families)];
-      substituted.add(families[0]!);
-    }
+    const generic = families.find(isGeneric)?.toLowerCase() as keyof typeof STANDARD_PDF_FONT | undefined;
+    t.style.fontFamily = chosen ? `"${chosen}"` : STANDARD_PDF_FONT[generic ?? 'sans-serif'];
+    // svg2pdf finds a face by weight 400 or 700 only.
+    t.style.fontWeight = bold ? '700' : '400';
+    t.style.fontStyle = italic ? 'italic' : 'normal';
   }
-  return [...substituted];
+  return { substituted: [...substituted], missing, underlines };
 }
 
 /**
- * svg2pdf ignores `paint-order`, so a text's halo stroke would be painted over its glyphs. Draw the halo
- * as a separate copy behind the text instead, and the text itself without a stroke.
+ * A one-page vector PDF of a laid-out standalone SVG (see mount.ts), which it changes: paths and text stay
+ * vector, with every font embedded. `warn` is told which installed fonts had to be replaced.
  */
-function splitHalos(root: SVGSVGElement) {
-  for (const t of Array.from(root.querySelectorAll<SVGTextElement>('text'))) {
-    if (!t.style.paintOrder.startsWith('stroke') || !t.style.stroke || t.style.stroke === 'none') continue;
-    const halo = t.cloneNode(true) as SVGTextElement;
-    halo.style.fill = 'none';
-    t.parentNode!.insertBefore(halo, t);
-    t.style.stroke = 'none';
-  }
-}
-
-/**
- * A one-page vector PDF of an on-screen SVG: paths and text stay vector, with fonts embedded where possible.
- * `warn` is told which fonts had to be replaced by a standard PDF font.
- */
-export async function svgToPdf(svg: SVGSVGElement, warn?: (message: string) => void): Promise<Blob> {
-  // Ask for installed fonts first, while the click that started the export still counts as a user gesture.
-  const fonts = installedFonts();
-  const [{ jsPDF }, { svg2pdf }] = await Promise.all([import('jspdf'), import('svg2pdf.js'), fonts]);
-  const w = Number(svg.getAttribute('width'));
-  const h = Number(svg.getAttribute('height'));
-  // svg2pdf reads layout from the DOM, so render the standalone copy off-screen.
-  const host = document.createElement('div');
-  host.style.cssText = 'position:fixed;left:-99999px;top:0;pointer-events:none';
-  host.innerHTML = standaloneSvg(svg);
-  document.body.appendChild(host);
-  try {
-    const el = host.firstElementChild as SVGSVGElement;
-    const pdf = new jsPDF({
-      unit: 'px',
-      format: [w, h],
-      orientation: w >= h ? 'landscape' : 'portrait',
-      hotfixes: ['px_scaling'],
-    });
-    splitHalos(el);
-    const substituted = await embedFonts(el, pdf);
-    await svg2pdf(el, pdf, { x: 0, y: 0, width: w, height: h });
-    if (substituted.length)
-      warn?.(
-        `PDF used a standard font in place of ${substituted.join(', ')} (not embeddable from this browser).`,
-      );
-    return pdf.output('blob');
-  } finally {
-    host.remove();
-  }
+export async function svgToPdf(el: SVGSVGElement, warn?: Warn): Promise<Blob> {
+  const [{ jsPDF }, { svg2pdf }] = await Promise.all([import('jspdf'), import('svg2pdf.js')]);
+  const w = Number(el.getAttribute('width'));
+  const h = Number(el.getAttribute('height'));
+  const pdf = new jsPDF({
+    unit: 'px',
+    format: [w, h],
+    orientation: w >= h ? 'landscape' : 'portrait',
+    hotfixes: ['px_scaling'],
+  });
+  bakeBaselines(el);
+  splitHalos(el);
+  const { substituted, missing, underlines } = await embedFonts(el, pdf);
+  drawUnderlines(el, (t) => underlines.get(t));
+  await svg2pdf(el, pdf, { x: 0, y: 0, width: w, height: h });
+  if (substituted.length)
+    warn?.(
+      `The PDF uses ${GENERIC_FAMILY['sans-serif']} in place of ${substituted.join(', ')}: this browser cannot embed installed fonts (Chromium-based browsers can, once allowed).`,
+    );
+  if (missing) warn?.(MISSING_FONTS);
+  return pdf.output('blob');
 }

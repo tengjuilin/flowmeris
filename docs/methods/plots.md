@@ -78,11 +78,25 @@ validated for color-vision-deficiency separation, and populations are always als
 
 ## Export (M-EXPORT-PLOT)
 
+Every figure is exported by one pipeline (`apps/web/src/lib/export`): the figure is built as a
+standalone SVG (the on-screen SVG with its computed styles inlined and on-screen-only parts removed),
+laid out, and written in the chosen format.
+
 SVG: axes, ticks, labels, gates, contours, histograms and ridges are vector; event rasters are
 re-rendered at the export DPI (default 300) and embedded as PNG. Point size and smoothing σ are scaled
-with the DPI so the export matches the screen. The SVG embeds a `<metadata>` block with the app version,
-sample SHA-256, plot specification and transforms. PNG export renders the same SVG at the chosen DPI and
-records the DPI in the PNG `pHYs` chunk.
+with the DPI so the export matches the screen. A plot's SVG embeds a `<metadata>` block with the app
+version, sample SHA-256, plot specification and transforms. PNG and JPEG render the same SVG at the chosen
+DPI (the SVG's px are 1/96 in); PNG records the DPI in its `pHYs` chunk. PDF converts the SVG to vector
+PDF (jsPDF and svg2pdf) on a page of the figure's size, 1 px = 0.75 pt, so text keeps its size. Text
+features svg2pdf does not draw are rewritten first, measured from the browser's layout: a text on a
+middle (or other non-alphabetic) baseline is moved by the shift the baseline gave it; an underline is drawn
+as a rectangle in the text's color, as thick as the font's underline, its top at the font's underline
+position but at least half its thickness (rounded up, ≥ 1 px) below the baseline, as Chromium draws it; a
+text halo is drawn as a stroked copy behind the text.
+
+Fonts (ADR-0011): figure text is set in bundled TrueType fonts, drawn without kerning or ligatures. The
+PDF embeds each face used as a TrueType font; SVG, PNG and JPEG carry them as `@font-face` data URLs. Text
+widths, and so anchoring and wrapping, are the same on screen and in every format.
 
 ## References
 

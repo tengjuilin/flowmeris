@@ -1,20 +1,25 @@
 import type { PlotSpec } from '@flowmeris/model';
 import { getPool } from '../engine-client/pool.ts';
-import { exportSvgFigure as exportSvg } from '../lib/export/figure.ts';
-import { type PlotExportSource, type PlotHandle, exportPlotFigure } from '../lib/export/plot.ts';
-import type { ImageFormat } from '../lib/export/svg.ts';
+import {
+  type FigureSource,
+  type ImageFormat,
+  type PlotExportSource,
+  type PlotHandle,
+  exportFigure as exportFigureFile,
+  plotFigure,
+} from '../lib/export/index.ts';
 import { APP_INFO, contextFor, toast, useStore } from './store.ts';
 
-/** Figure export wired to the app: warnings go to the toast, plot data comes from the store and worker getPool(). */
+/** Figure export wired to the app: warnings go to the toast, plot data comes from the store and the worker pool. */
 
-/** Export an on-screen SVG figure (see lib/export/figure.ts); font substitutions are reported in a toast. */
-export function exportSvgFigure(svg: SVGSVGElement, format: ImageFormat, baseName: string, dpi: number) {
-  return exportSvg(svg, format, baseName, dpi, toast);
+/** Download `figure` (see lib/export); messages for the user, such as substituted fonts, are toasted. */
+export function exportFigure(figure: FigureSource, format: ImageFormat, baseName: string, dpi: number) {
+  return exportFigureFile(figure, format, baseName, dpi, toast);
 }
 
 /**
  * The selected group's data for exporting `plot`: events of `sampleId` (by default the selected sample, or
- * the group's first sample when none of its samples is selected), rendered by the worker getPool().
+ * the group's first sample when none of its samples is selected), rendered by the worker pool.
  */
 export function plotSource(plot: PlotSpec, sampleId?: string): PlotExportSource {
   const st = useStore.getState();
@@ -33,17 +38,7 @@ export function plotSource(plot: PlotSpec, sampleId?: string): PlotExportSource 
   };
 }
 
-/**
- * Export a plot of the selected group, with the events of `sampleId` (default: as plotSource). SVG is written as built; PNG, JPEG and PDF render that SVG (axes
- * and gates stay vector in the PDF, the event raster is embedded at `dpi`).
- */
-export function exportPlot(
-  h: PlotHandle,
-  plot: PlotSpec,
-  format: ImageFormat,
-  baseName: string,
-  dpi = 300,
-  sampleId?: string,
-) {
-  return exportPlotFigure(h, plot, format, baseName, dpi, plotSource(plot, sampleId), toast);
+/** A plot of the selected group as a figure, with the events of `sampleId` (default: as plotSource). */
+export function storePlotFigure(h: PlotHandle, plot: PlotSpec, sampleId?: string): FigureSource {
+  return plotFigure(h, plot, plotSource(plot, sampleId));
 }

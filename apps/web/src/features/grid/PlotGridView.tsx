@@ -4,11 +4,12 @@ import { ExportMenu } from '../../components/controls/ExportMenu.tsx';
 import { useSize } from '../../components/hooks/useSize.ts';
 import { PlotSizeSlider } from '../../components/ui/PlotSizeSlider.tsx';
 import { SettingsToggle } from '../../components/ui/SettingsToggle.tsx';
-import type { PlotHandle } from '../../lib/export/plot.ts';
+import type { PlotHandle } from '../../lib/export/index.ts';
+import { stripDataExt } from '../../lib/files.ts';
 import { type RowFit, nearestColumns, rowMaxColumns, rowPlotSize, sideSpan } from '../../lib/fitSize.ts';
 import { cellSample, plotOf } from '../../lib/gridCells.ts';
 import { addCell, setCellPopulation } from '../../state/commands/grid.ts';
-import { exportPlot } from '../../state/export.ts';
+import { storePlotFigure } from '../../state/export.ts';
 import { mutateGroup, toast, useGroup, useSampleNames, useStore } from '../../state/store.ts';
 import { EditScopeToggle, ToolButtons } from '../plot/index.ts';
 import { PopulationTree } from '../tree/index.ts';
@@ -93,17 +94,13 @@ export function PlotGridView() {
           <ExportMenu
             className="side-export"
             disabled={emptySelected}
-            onExport={(format, dpi) =>
+            target={() =>
               !active || !handle.current
                 ? void toast('Select a plot to export it.')
-                : exportPlot(
-                    handle.current,
-                    plotOf(active),
-                    format,
-                    ws.samples[activeSample ?? '']?.fileName ?? 'plot',
-                    dpi,
-                    activeSample,
-                  )
+                : {
+                    figure: storePlotFigure(handle.current, plotOf(active), activeSample),
+                    name: stripDataExt(ws.samples[activeSample ?? '']?.fileName ?? 'plot'),
+                  }
             }
           />
           <div className="spacer" />

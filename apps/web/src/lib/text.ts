@@ -44,6 +44,8 @@ export function textMeasure(
   if (!ctx) return (s) => s.length * fontSize * 0.55;
   return (s) => {
     ctx.font = `${italic ? 'italic ' : ''}${bold ? 'bold ' : ''}${fontSize}px ${family}`;
+    // Figure text is drawn without kerning (styles/base.css), as in its PDF.
+    if ('fontKerning' in ctx) ctx.fontKerning = 'none';
     return ctx.measureText(s).width;
   };
 }

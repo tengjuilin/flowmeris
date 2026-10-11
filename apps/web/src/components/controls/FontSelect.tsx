@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { FONT_GROUPS, FONT_STACKS } from '../../lib/figure.ts';
+import { FONT_GROUPS, fontChoice, fontLabel } from '../../lib/fonts/index.ts';
 
 const CUSTOM_FONT = '__custom';
 
-/** A font picker: the app's font list, or the name of any font installed on this computer. */
+/**
+ * A font picker: the app's bundled fonts (lib/fonts), or the name of any font installed on this computer.
+ * A font id of an earlier version shows as the font it is drawn in.
+ */
 export function FontSelect({
   label,
   value,
@@ -19,7 +22,8 @@ export function FontSelect({
   /** No visible caption: `label` becomes the select's accessible name. */
   bare?: boolean;
 }) {
-  const custom = value !== undefined && !(value in FONT_STACKS);
+  const choice = value === undefined ? undefined : fontChoice(value);
+  const custom = value !== undefined && !choice;
   const [text, setText] = useState<string | null>(null);
   const commit = () => {
     if (text !== null) {
@@ -34,7 +38,7 @@ export function FontSelect({
         {!bare && label}
         <select
           aria-label={bare ? label : undefined}
-          value={custom ? CUSTOM_FONT : (value ?? '')}
+          value={custom ? CUSTOM_FONT : (choice?.id ?? '')}
           onChange={(e) => {
             const v = e.target.value;
             onChange(v === '' ? undefined : v === CUSTOM_FONT ? 'Helvetica Neue' : v);
@@ -47,7 +51,7 @@ export function FontSelect({
             <optgroup key={g.label} label={g.label}>
               {g.fonts.map((f) => (
                 <option key={f.id} value={f.id}>
-                  {f.label}
+                  {fontLabel(f.id)}
                 </option>
               ))}
             </optgroup>
@@ -58,7 +62,7 @@ export function FontSelect({
       {custom && (
         <label
           className={bare ? 'field tt-wide' : 'field'}
-          title="Used if the font is installed on the computer that views or exports the figure"
+          title="Used if the font is installed on the computer that views the figure; a PDF embeds it only in Chromium-based browsers, otherwise Liberation Sans"
         >
           Font name
           <input

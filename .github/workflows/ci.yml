@@ -20,6 +20,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Fetch large fixtures (SHA-256 verified)
         run: node tools/fetch-fixtures.mjs
+      - name: Fetch figure fonts (SHA-256 verified; postinstall only warns)
+        run: node tools/fetch-fonts.mjs
       - run: pnpm lint
       - run: pnpm lint:deps
       - run: pnpm lint:size
