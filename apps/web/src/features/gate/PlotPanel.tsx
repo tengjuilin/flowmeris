@@ -3,10 +3,11 @@ import { useRef } from 'react';
 import { ExportMenu } from '../../components/controls/ExportMenu.tsx';
 import { useSize } from '../../components/hooks/useSize.ts';
 import { OpenInIcon } from '../../components/ui/icons.tsx';
-import type { PlotHandle } from '../../lib/export/plot.ts';
+import type { PlotHandle } from '../../lib/export/index.ts';
+import { stripDataExt } from '../../lib/files.ts';
 import { openGatePlotInGrid, openInTilesView } from '../../state/commands/grid.ts';
 import { axisPickers, drill } from '../../state/commands/plots.ts';
-import { exportPlot } from '../../state/export.ts';
+import { storePlotFigure } from '../../state/export.ts';
 import { useGroup, useSampleNames, useStore } from '../../state/store.ts';
 import { EditScopeToggle, PlotCanvas, ToolButtons, usePlotForPopulation } from '../plot/index.ts';
 
@@ -25,8 +26,10 @@ export function GateExportCard() {
   return (
     <ExportMenu
       className="side-export"
-      onExport={(format, dpi) =>
-        gatePlotHandle.current ? exportPlot(gatePlotHandle.current, plot, format, name, dpi) : undefined
+      target={() =>
+        gatePlotHandle.current
+          ? { figure: storePlotFigure(gatePlotHandle.current, plot), name: stripDataExt(name) }
+          : undefined
       }
     />
   );

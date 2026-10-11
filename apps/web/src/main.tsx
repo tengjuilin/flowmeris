@@ -2,12 +2,15 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App.tsx';
 import { getPool } from './engine-client/pool.ts';
+import { registerBundledFonts } from './lib/fonts/index.ts';
 import { checkMissing } from './state/commands/ingest.ts';
 import { loadAutosave, startAutosave } from './state/persist.ts';
 import { useStore } from './state/store.ts';
 import './styles/index.css';
 
 async function boot() {
+  // The figure fonts (ADR-0011), downloaded when a figure first uses them.
+  registerBundledFonts();
   const saved = await loadAutosave();
   if (saved) useStore.getState().setWorkspace(saved);
   startAutosave();

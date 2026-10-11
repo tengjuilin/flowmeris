@@ -6,8 +6,8 @@ import { type Anchor, PickerMenu } from '../../components/ui/PickerMenu.tsx';
 import { TabStrip } from '../../components/ui/TabStrip.tsx';
 import { chartCsvRows, defaultPlot, seriesKey } from '../../lib/chartStyle.ts';
 import { download, safeName } from '../../lib/download.ts';
+import { svgFigure } from '../../lib/export/index.ts';
 import { addChart, removeChart } from '../../state/commands/charts.ts';
-import { exportSvgFigure } from '../../state/export.ts';
 import { useStore } from '../../state/store.ts';
 import { Chart } from './Chart.tsx';
 import { ChartDataTable } from './ChartDataTable.tsx';
@@ -108,9 +108,7 @@ export function ChartsView() {
         <ExportMenu
           className="side-export"
           disabled={!xCol || !yCol}
-          onExport={(format, dpi) =>
-            svgRef.current ? exportSvgFigure(svgRef.current, format, baseName, dpi) : undefined
-          }
+          target={() => (svgRef.current ? { figure: svgFigure(svgRef.current), name: baseName } : undefined)}
           csv={{ label: 'CSV (plotted data)', write: exportCsv }}
         />
         <ChartGroupsPanel chart={c} />

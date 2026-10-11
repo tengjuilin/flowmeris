@@ -68,6 +68,12 @@ body,
   height: 100%;
   margin: 0;
 }
+/* Figure text: no kerning or ligatures, so text has the same width on screen as in its PDF (ADR-0011). */
+svg text {
+  font-kerning: none;
+  font-variant-ligatures: none;
+}
+
 body {
   background: var(--bg);
   color: var(--text);

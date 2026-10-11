@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { PlotHandle } from '../../lib/export/plot.ts';
+import type { PlotHandle } from '../../lib/export/index.ts';
 import { DEFAULT_FIGURE, figureText } from '../../lib/figure.ts';
 import { plotKey } from '../../lib/keys.ts';
 import { plotFrame } from '../../lib/plotFrame.ts';

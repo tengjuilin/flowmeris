@@ -1,20 +1,33 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ImageFormat } from '../../lib/export/svg.ts';
+import {
+  FORMATS,
+  FORMAT_IDS,
+  type FigureSource,
+  type ImageFormat,
+  clampDpi,
+} from '../../lib/export/index.ts';
+import { exportFigure } from '../../state/export.ts';
 import { toast } from '../../state/store.ts';
 import { ExportIcon } from '../ui/icons.tsx';
 
+/** What an Export menu writes: the figure and its file name (without extension). */
+export interface ExportTarget {
+  figure: FigureSource;
+  name: string;
+}
+
 /**
- * Export button: opens a small form to choose the file format (and DPI for raster formats), and with
- * `csv` also the figure's data as CSV.
+ * The Export button of every figure: opens a small form to choose the file format (and DPI for raster
+ * formats), and with `csv` also the figure's data as CSV. Formats come from lib/export (FORMATS).
  */
 export function ExportMenu({
-  onExport,
+  target,
   csv,
   className,
   disabled = false,
 }: {
-  /** Write the figure as `format`; `dpi` applies to PNG and JPEG. Returns nothing when there is no figure yet. */
-  onExport: (format: ImageFormat, dpi: number) => Promise<void> | undefined;
+  /** The figure to export, read when Download is clicked; undefined when there is none yet. */
+  target: () => ExportTarget | undefined;
   /** Adds a CSV format to the list, labeled `label`, which `write` downloads. */
   csv?: { label: string; write: () => void };
   className?: string;
@@ -40,10 +53,10 @@ export function ExportMenu({
       setOpen(false);
       return;
     }
-    const job = onExport(format, Math.min(1200, Math.max(72, dpi || 300)));
-    if (!job) return;
+    const t = target();
+    if (!t) return;
     setBusy(true);
-    job
+    exportFigure(t.figure, format, t.name, clampDpi(dpi))
       .then(() => setOpen(false))
       .catch((e) => toast(`Export failed: ${e instanceof Error ? e.message : String(e)}`))
       .finally(() => setBusy(false));
@@ -59,14 +72,15 @@ export function ExportMenu({
           <label className="field">
             Format
             <select value={format} onChange={(e) => setFormat(e.target.value as ImageFormat | 'csv')}>
-              <option value="pdf">PDF (vector)</option>
-              <option value="png">PNG</option>
-              <option value="jpeg">JPG</option>
-              <option value="svg">SVG (vector)</option>
+              {FORMAT_IDS.map((f) => (
+                <option key={f} value={f}>
+                  {FORMATS[f].label}
+                </option>
+              ))}
               {csv && <option value="csv">{csv.label}</option>}
             </select>
           </label>
-          {(format === 'png' || format === 'jpeg') && (
+          {format !== 'csv' && FORMATS[format].raster && (
             <label className="field">
               Resolution (DPI)
               <input

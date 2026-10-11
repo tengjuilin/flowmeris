@@ -6,6 +6,7 @@ import {
   type TextStyle,
 } from '@flowmeris/model';
 import type { CSSProperties } from 'react';
+import { fontStack } from './fonts/index.ts';
 import { jsonClone, sortedJson } from './json.ts';
 import {
   type StyleScopes,
@@ -22,48 +23,6 @@ import {
   sharedMatch,
   withScopeChange,
 } from './styleScope.ts';
-
-export const FONT_GROUPS: { label: string; fonts: { id: string; label: string; stack: string }[] }[] = [
-  {
-    label: 'Sans-serif',
-    fonts: [
-      { id: 'sans', label: 'Sans-serif', stack: 'Inter, Helvetica, Arial, sans-serif' },
-      { id: 'arial', label: 'Arial (default)', stack: 'Arial, "Liberation Sans", Helvetica, sans-serif' },
-      { id: 'helvetica', label: 'Helvetica', stack: '"Helvetica Neue", Helvetica, Arial, sans-serif' },
-      { id: 'calibri', label: 'Calibri', stack: 'Calibri, Carlito, "Segoe UI", sans-serif' },
-      { id: 'verdana', label: 'Verdana', stack: 'Verdana, "DejaVu Sans", sans-serif' },
-      { id: 'tahoma', label: 'Tahoma', stack: 'Tahoma, Geneva, sans-serif' },
-      { id: 'trebuchet', label: 'Trebuchet MS', stack: '"Trebuchet MS", "Lucida Grande", sans-serif' },
-    ],
-  },
-  {
-    label: 'Serif',
-    fonts: [
-      { id: 'serif', label: 'Serif (default)', stack: 'Georgia, "Times New Roman", serif' },
-      { id: 'times', label: 'Times New Roman', stack: '"Times New Roman", Times, "Liberation Serif", serif' },
-      { id: 'georgia', label: 'Georgia', stack: 'Georgia, "DejaVu Serif", serif' },
-      { id: 'palatino', label: 'Palatino', stack: '"Palatino Linotype", Palatino, "Book Antiqua", serif' },
-      { id: 'garamond', label: 'Garamond', stack: 'Garamond, "EB Garamond", "Times New Roman", serif' },
-    ],
-  },
-  {
-    label: 'Monospace',
-    fonts: [
-      { id: 'mono', label: 'Monospace (default)', stack: 'Menlo, Consolas, "DejaVu Sans Mono", monospace' },
-      { id: 'courier', label: 'Courier New', stack: '"Courier New", Courier, "Liberation Mono", monospace' },
-      { id: 'consolas', label: 'Consolas', stack: 'Consolas, Menlo, "DejaVu Sans Mono", monospace' },
-    ],
-  },
-];
-
-export const FONT_STACKS: Record<string, string> = Object.fromEntries(
-  FONT_GROUPS.flatMap((g) => g.fonts.map((f) => [f.id, f.stack])),
-);
-
-/** CSS font-family for a font key, or for the name of any installed font. */
-export function fontStack(family: string): string {
-  return FONT_STACKS[family] ?? `"${family.replace(/["\\;<>{}]/g, '')}", sans-serif`;
-}
 
 /** Display settings of a new plot. */
 export const DEFAULT_STYLE: PlotStyle = {

@@ -23,4 +23,13 @@ describe('FontSelect', () => {
     fireEvent.blur(name);
     expect(onChange).toHaveBeenLastCalledWith('Futura');
   });
+
+  it('lists the bundled fonts with what they stand in for, and shows an old font id as its font', () => {
+    render(<FontSelect label="Font" value="helvetica" onChange={vi.fn()} />);
+    const select = screen.getByLabelText('Font') as HTMLSelectElement;
+    expect(select.value).toBe('arial');
+    expect(select.selectedOptions[0]?.textContent).toBe('Liberation Sans (Arial, Helvetica metrics)');
+    expect(screen.getByRole('option', { name: 'Carlito (Calibri metrics)' })).toBeTruthy();
+    expect(screen.queryByLabelText('Font name')).toBeNull();
+  });
 });

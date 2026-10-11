@@ -100,7 +100,7 @@ or hidden groups.
   Changing **Color by** clears these. **Ticks and spines** sets the color and width of the tick marks and
   of the axis lines, and a **Box aspect ratio** (plot area width ÷ height, fitted inside the chart's size;
   the chart shrinks to it), as in the Gate view. **Gridlines** turns them on or off and sets their color and width.
-- **Text:** the **Base font** (any font from the list or installed on this computer, a color, which is
+- **Text:** the **Base font** (any font from the list, which ships with Flowmeris, or one installed on this computer; a color, which is
   the theme's text color until you pick one, and a size that scales the other sizes with it); then
   **Tick labels** (on or off), **Axis titles** and the **Legend** (its place is in the Figure tab),
   each with its own font, size, bold, italic, underline and color, as in the plot panels.

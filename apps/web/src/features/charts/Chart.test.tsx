@@ -56,7 +56,7 @@ describe('Chart', () => {
     };
     const { container } = render(chart(series('a', 'b'), { ...plot, style }));
     const svg = container.querySelector<SVGSVGElement>('svg.stat-chart')!;
-    expect(svg.style.fontFamily).toContain('Times New Roman');
+    expect(svg.style.fontFamily).toContain('Liberation Serif');
     const tick = container.querySelector<SVGTextElement>('.chart-axis text')!;
     expect(tick.style.fontWeight).toBe('700');
     expect(tick.style.fill).toBe('');

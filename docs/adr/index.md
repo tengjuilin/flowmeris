@@ -15,6 +15,7 @@ Each record states a decision and why it was made. Code comments cite them by nu
 | [0008](./0008-web-layout-and-layering) | Web app layout and import layering | Accepted |
 | [0009](./0009-store-commands) | Store commands and explicit side effects | Accepted |
 | [0010](./0010-worker-api) | Worker API contract | Accepted |
+| [0011](./0011-bundled-figure-fonts) | Bundled figure fonts, embedded in every export | Accepted |
 
 To add a record, copy the shape of an existing one (title, status, decision, why) into the next number
 and add it to this table and to the sidebar in `docs/.vitepress/config.ts`.

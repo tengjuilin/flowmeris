@@ -1,6 +1,6 @@
 import type { RidgeStyle, TextStyle } from '@flowmeris/model';
 import { type CSSProperties, useState } from 'react';
-import { FONT_GROUPS } from '../../lib/figure.ts';
+import { fontLabel } from '../../lib/fonts/index.ts';
 import { clamp } from '../../lib/math.ts';
 import { ResetIcon } from '../ui/icons.tsx';
 import { FontSelect } from './FontSelect.tsx';
@@ -69,7 +69,7 @@ export function TextStyleEditor({
           bare
           label={`${label} font`}
           value={value.fontFamily}
-          inherit={FONT_GROUPS.flatMap((g) => g.fonts).find((f) => f.id === base)?.label ?? base}
+          inherit={fontLabel(base)}
           onChange={(fontFamily) => onChange({ ...value, fontFamily })}
         />
         <input

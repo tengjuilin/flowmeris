@@ -134,6 +134,14 @@ module.exports = {
       to: { path: '^apps/web/src/components/controls/(TextStyleEditor|FontSelect)\\.tsx$' },
     },
     {
+      name: 'web-figure-export-api',
+      comment:
+        'Figure export (lib/export) is used through its index.ts: views describe a figure and export it with ExportMenu (state/export.ts), so every format and fix reaches every view.',
+      severity: 'error',
+      from: { pathNot: '^apps/web/src/lib/export/' },
+      to: { path: '^apps/web/src/lib/export/(?!index\\.ts$)' },
+    },
+    {
       name: 'web-feature-public-api',
       comment: 'A feature folder is used through its index.ts; only its own files import its other files.',
       severity: 'error',
