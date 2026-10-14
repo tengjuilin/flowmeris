@@ -2,6 +2,7 @@ import type { Group, PlotFigure, PlotSpec, Workspace } from '@flowmeris/model';
 import { axisTicks } from '@flowmeris/transforms';
 import { useMemo } from 'react';
 import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from '../../components/ui/PickerMenu.tsx';
+import { SupLabel } from '../../components/ui/SupLabel.tsx';
 import { figureText } from '../../lib/figure.ts';
 import { scaleFor } from '../../lib/geometry.ts';
 import type { PlotFrame } from '../../lib/plotFrame.ts';
@@ -103,7 +104,7 @@ export function PlotAxes(props: PlotAxesProps) {
             <line y2={t.major ? 6 : 3} style={lineCss} />
             {fig.showTickLabels && t.label && (
               <text y={tickY} textAnchor="middle" style={tickCss}>
-                {t.label}
+                <SupLabel label={t.label} fontSize={fig.tickFontSize} />
               </text>
             )}
           </g>
@@ -129,7 +130,7 @@ export function PlotAxes(props: PlotAxesProps) {
                 <line x2={t.major ? -6 : -3} style={lineCss} />
                 {fig.showTickLabels && t.label && (
                   <text x={-9} dy="0.32em" textAnchor="end" style={tickCss}>
-                    {t.label}
+                    <SupLabel label={t.label} fontSize={fig.tickFontSize} />
                   </text>
                 )}
               </g>
