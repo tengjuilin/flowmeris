@@ -104,6 +104,7 @@ const KINDS: { id: PlotKind; label: string }[] = [
   { id: 'dot', label: 'Dot' },
   { id: 'density', label: 'Density' },
   { id: 'contour', label: 'Contour' },
+  { id: 'zebra', label: 'Zebra' },
   { id: 'histogram', label: 'Histogram' },
 ];
 

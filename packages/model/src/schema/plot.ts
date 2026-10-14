@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Id, Num } from './common.ts';
+import { HexColor, Id, Num } from './common.ts';
 import { CompRefSchema } from './compensation.ts';
 import { PlotFigureSchema } from './figure.ts';
 
@@ -16,7 +16,7 @@ export const AxisSpecSchema = z.object({
 });
 export type AxisSpec = z.infer<typeof AxisSpecSchema>;
 
-export const PlotKindSchema = z.enum(['dot', 'pseudocolor', 'density', 'contour', 'histogram']);
+export const PlotKindSchema = z.enum(['dot', 'pseudocolor', 'density', 'contour', 'zebra', 'histogram']);
 export type PlotKind = z.infer<typeof PlotKindSchema>;
 
 export const ContourSpecSchema = z.discriminatedUnion('mode', [
@@ -33,6 +33,10 @@ export const PlotStyleSchema = z.object({
   smoothSigmaBins: Num.nonnegative(),
   contour: ContourSpecSchema,
   showOutliers: z.boolean(),
+  /** Zebra plots: draw the contour lines over the filled bands. */
+  zebraLines: z.boolean().default(true),
+  /** Zebra plots: each band's gradient runs from the first color at its outer edge to the second at its inner edge. */
+  zebraColors: z.tuple([HexColor, HexColor]).default(['#0000ff', '#ffffff']),
   histBins: z.number().int().min(16).max(1024),
   histNorm: z.enum(['count', 'mode', 'area']),
   histSmooth: z.boolean(),

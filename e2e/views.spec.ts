@@ -127,6 +127,48 @@ test('plot grid: add, size, settings, delete, open in another tab', async ({ pag
   await expect(page.locator('.sample-list button.on .name')).toHaveText('A02');
 });
 
+test('zebra plots in the Gate view, Plot grid and Tiles, with their Display settings', async ({ page }) => {
+  await loadWells(page, { A01: 100, A02: 200 });
+
+  // Gate view: the bands come with the contour lines, which Display can turn off.
+  const gate = page.locator('.inspector');
+  await gate.getByRole('tab', { name: 'Figure' }).click();
+  await gate.getByLabel('Plot type').selectOption('zebra');
+  const lines = page.locator('svg.plot-overlay path.contour');
+  await expect.poll(() => lines.count()).toBeGreaterThan(0);
+  await expect(gate.getByLabel('Contours')).toHaveValue('p5');
+  await expect(gate.getByLabel('Show outliers')).toBeChecked();
+  await expect(gate.getByLabel('Outer color', { exact: true })).toHaveValue('#0000ff');
+  await expect(gate.getByLabel('Inner color', { exact: true })).toHaveValue('#ffffff');
+  await expect(gate.getByLabel('Color map')).toHaveCount(0);
+  const showLines = gate.getByLabel('Contour lines');
+  await expect(showLines).toBeChecked();
+  await showLines.uncheck();
+  await expect(lines).toHaveCount(0);
+  await page.locator('body').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(showLines).toBeChecked();
+  await expect.poll(() => lines.count()).toBeGreaterThan(0);
+
+  // Plot grid: a zebra plot can be added to an empty cell.
+  await tab(page, 'Plot').click();
+  const cells = page.locator('.plot-grid .grid-cell:not(.empty-cell)');
+  const start = await cells.count();
+  await page.locator('.plot-grid .empty-cell').first().getByRole('button', { name: 'Zebra' }).click();
+  await expect(cells).toHaveCount(start + 1);
+  await expect.poll(() => cells.last().locator('path.contour').count()).toBeGreaterThan(0);
+
+  // Tiles: every tile is drawn as a zebra plot once the type is picked.
+  await tab(page, 'Tiles').click();
+  const settingsBtn = page.locator('.tiles-view').getByRole('button', { name: 'Settings' });
+  if ((await settingsBtn.getAttribute('aria-expanded')) !== 'true') await settingsBtn.click();
+  const tiles = page.locator('.inspector');
+  await tiles.getByRole('tab', { name: 'Figure' }).click();
+  await tiles.getByLabel('Plot type').selectOption('zebra');
+  for (const t of await page.locator('.tiles-grid .tile').all())
+    await expect.poll(() => t.locator('path.contour').count()).toBeGreaterThan(0);
+});
+
 test('plot grid: drag plots to rearrange them; cut, copy and paste them', async ({ page }) => {
   await loadWells(page, { A01: 100, A02: 200, B01: 110 });
   await tab(page, 'Plot').click();

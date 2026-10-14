@@ -31,6 +31,8 @@ export const DEFAULT_STYLE: PlotStyle = {
   smoothSigmaBins: 2,
   contour: { mode: 'equal-prob', pct: 5 },
   showOutliers: true,
+  zebraLines: true,
+  zebraColors: ['#0000ff', '#ffffff'],
   histBins: 256,
   histNorm: 'mode',
   histSmooth: false,

@@ -1,5 +1,6 @@
 import type { PlotSpec } from '@flowmeris/model';
 import { COLORMAPS } from '@flowmeris/render';
+import { ColorField } from '../../components/ui/ColorField.tsx';
 import { NumInput } from '../../components/ui/NumInput.tsx';
 import { Card } from '../../components/ui/settings/index.ts';
 import { DEFAULT_FIGURE, DEFAULT_STYLE, TILE_FIGURE } from '../../lib/figure.ts';
@@ -46,7 +47,7 @@ export function StyleEditor({
     >
       {plot.kind !== 'histogram' && (
         <div className="grid2">
-          {plot.kind !== 'dot' && (
+          {plot.kind !== 'dot' && plot.kind !== 'zebra' && (
             <label className="field">
               Color map
               <select value={st.colormap} onChange={(e) => set((s) => void (s.colormap = e.target.value))}>
@@ -77,7 +78,7 @@ export function StyleEditor({
           )}
         </div>
       )}
-      {plot.kind === 'contour' && (
+      {(plot.kind === 'contour' || plot.kind === 'zebra') && (
         <div className="grid2">
           <label className="field">
             Contours
@@ -107,6 +108,17 @@ export function StyleEditor({
             />
             Show outliers
           </label>
+          {plot.kind === 'zebra' && <ZebraColors colors={st.zebraColors} set={set} />}
+          {plot.kind === 'zebra' && (
+            <label className="field check" title="Draw the contour lines over the filled bands">
+              <input
+                type="checkbox"
+                checked={st.zebraLines}
+                onChange={(e) => set((s) => void (s.zebraLines = e.target.checked))}
+              />
+              Contour lines
+            </label>
+          )}
         </div>
       )}
       {plot.kind === 'histogram' && (
@@ -163,4 +175,41 @@ export function StyleEditor({
       </label>
     </Card>
   );
+}
+
+const ZEBRA_ENDS = [
+  { label: 'Outer color', title: "Each band's color at its outer contour line" },
+  { label: 'Inner color', title: "Each band's color at its inner contour line" },
+] as const;
+
+/** A zebra plot's two colors: each band's gradient runs from the outer to the inner one (M-PLOT-ZEBRA). */
+function ZebraColors({
+  colors,
+  set,
+}: {
+  colors: [string, string];
+  set: (fn: (st: PlotSpec['style']) => void, merge?: string) => void;
+}) {
+  return ZEBRA_ENDS.map((end, i) => {
+    const def = DEFAULT_STYLE.zebraColors[i] as string;
+    const at = colors[i] as string;
+    return (
+      <ColorField
+        key={end.label}
+        inline
+        label={end.label}
+        inputLabel={end.label}
+        inputTitle={end.title}
+        value={at}
+        onChange={(v) => set((s) => void (s.zebraColors[i] = v), `zebraColor${i}`)}
+        reset={{
+          disabled: at.toLowerCase() === def,
+          label: `Reset ${end.label.toLowerCase()}`,
+          title:
+            at.toLowerCase() === def ? `${end.label} is the default` : `Reset ${end.label.toLowerCase()}`,
+          onReset: () => set((s) => void (s.zebraColors[i] = def)),
+        }}
+      />
+    );
+  });
 }

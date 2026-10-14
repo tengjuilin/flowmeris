@@ -30,6 +30,7 @@ range. That mass is already counted as off-scale.
 | **Pseudocolor** (M-PLOT-PSEUDO) | every pixel containing ≥ 1 event is colored by $\log(1+\hat f)/\log(1+\hat f_\max)$ of the smoothed density $\hat f$. Isolated events stay visible while dense regions show structure. Points are 3 px by default, as for dot plots. |
 | **Density** (M-PLOT-DENSITY) | the smoothed density image, linear color scale, cells below 0.5% of the maximum transparent |
 | **Contour** | iso-density lines of the smoothed density (marching squares) on a grid of 3-px cells |
+| **Zebra** (M-PLOT-ZEBRA) | the contour plot with each band between its lines filled by its own gradient, from the outer color at its outer line to the inner color at its inner line |
 | **Histogram** | 1-D counts in 256 bins (64–1024), optionally smoothed (σ = 1.5 bins). The y axis (picked on its title or in Display) shows **Count** (events per bin), **% of max** (heights over the highest bin; FlowJo's "normalized to mode") or **Fraction** (heights over their sum, i.e. unit area) |
 
 ### M-PLOT-CONTOUR-EQP — equal-probability contours
@@ -43,6 +44,20 @@ semantics for 2%, 5% and 10% contour plots.
 ### M-PLOT-CONTOUR-LOG — logarithmic contours
 
 The outermost line encloses 98% of events and each line inward encloses half as many as the previous one.
+
+### M-PLOT-ZEBRA — zebra plots
+
+FlowJo's zebra plot: a contour plot (same density, same levels: equal probability 2%, 5% or 10%, or
+logarithmic) whose bands are filled, each with its own gradient, so the fill shows density within each
+band as well as the band itself. The density $\hat f$ at each pixel's center is interpolated bilinearly
+between the 3-px cells, each cell's value placed at its center as marching squares places it, so the
+filled bands meet the contour lines. With ascending levels $L_1 … L_n$ and $L_{n+1} = \max \hat f$, a
+pixel with $L_k \le \hat f < L_{k+1}$ is in band $k$ and takes the color
+$(1-t)\,c_\text{outer} + t\,c_\text{inner}$ with $t = (\hat f - L_k)/(L_{k+1} - L_k)$, mixed per RGB
+channel: every band starts at the **Outer color** on its outer line (default blue, `#0000ff`) and reaches
+the **Inner color** (default white) at its inner line, where the next band starts again. Pixels below
+$L_1$ stay empty; with **Show outliers**, those holding events are drawn as dots, as on contour plots.
+**Contour lines** (on by default) draws the contour plot's lines over the bands. The color map is not used.
 
 ## Color
 
@@ -107,5 +122,5 @@ and wrapping, match the screen in every format.
 ## References
 
 - Wand MP. Fast computation of multivariate kernel estimators. *J Comput Graph Stat* 1994;3:433–445.
-- FlowJo documentation, "Contour Plots", "Pseudocolor Plots".
+- FlowJo documentation, "Contour Plots", "Pseudocolor Plots", "Zebra Plots".
 - Crameri F, Shephard GE, Heron PJ. The misuse of color in science communication. *Nat Commun* 2020;11:5444.

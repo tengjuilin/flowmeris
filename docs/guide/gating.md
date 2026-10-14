@@ -10,6 +10,11 @@
 | Range (H, histograms) | drag horizontally | drag either edge |
 | Bisector (B, histograms) | click where to split; the percentages on each side are shown before you click | drag the vertical line |
 
+- **Plot type** (in the settings panel's Figure tab, and when adding a Plot grid plot) is Pseudocolor,
+  Dot, Density, Contour, Zebra or Histogram ([definitions](../methods/plots#plot-types)). A zebra plot is
+  a contour plot whose bands are each filled with a gradient, from the outer color at a band's outer line
+  to the inner color at its inner line; Display sets the two colors, the contours, outliers and whether
+  the contour lines are drawn. Gates are drawn and edited the same way on every 2D type.
 - The inspector shows the selected gate's exact coordinates, in the gate's own units, and lets you type them.
 - Labels show the percentage of the parent population for the current sample, updated live while dragging.
 - **Double-click inside a gate** (or a quadrant/spider region) to open that population. Its plot starts
