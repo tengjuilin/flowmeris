@@ -15,8 +15,9 @@ Each record states a decision and why it was made. Code comments cite them by nu
 | [0008](./0008-web-layout-and-layering) | Web app layout and import layering | Accepted |
 | [0009](./0009-store-commands) | Store commands and explicit side effects | Accepted |
 | [0010](./0010-worker-api) | Worker API contract | Accepted |
-| [0011](./0011-bundled-figure-fonts) | Bundled figure fonts, embedded in every export | Amended by 0012 |
-| [0012](./0012-system-font-menu) | System fonts in the font menu, bundled fonts as fallbacks | Accepted |
+| [0011](./0011-bundled-figure-fonts) | Bundled figure fonts, embedded in every export | Amended by 0012, 0013 |
+| [0012](./0012-system-font-menu) | System fonts in the font menu, bundled fonts as fallbacks | Amended by 0013 |
+| [0013](./0013-standard-pdf-fonts) | Standard fonts in PDF and SVG exports, named, not embedded | Accepted |
 
 To add a record, copy the shape of an existing one (title, status, decision, why) into the next number
 and add it to this table and to the sidebar in `docs/.vitepress/config.ts`.

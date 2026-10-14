@@ -94,11 +94,15 @@ as a rectangle in the text's color, as thick as the font's underline, its top at
 position but at least half its thickness (rounded up, ≥ 1 px) below the baseline, as Chromium draws it; a
 text halo is drawn as a stroked copy behind the text.
 
-Fonts (ADR-0011, ADR-0012): figure text is set in a system font, with a bundled TrueType font of the same
-proportions as its fallback, drawn without kerning or ligatures. The PDF embeds each face used: the system
-font's where the browser can read it, else the fallback's (and the user is warned). SVG, PNG and JPEG
-carry the fallbacks as `@font-face` data URLs. Text widths, and so anchoring and wrapping, match the
-screen in every format.
+Fonts (ADR-0011, ADR-0012, ADR-0013): figure text is set in a system font, with a bundled TrueType font of
+the same proportions as its fallback, drawn without kerning or ligatures; tick exponents are raised digits
+at 0.7 times the tick size. The PDF names Arial, Helvetica, Times New Roman, Times, Courier New and Courier
+without embedding them: each face is written with its PostScript name, WinAnsiEncoding, and the character
+widths and descriptor of the bundled font with the same widths (Liberation), and the minus sign is drawn as
+an en dash. Other text embeds each face used: the system font's where the browser can read it, else the
+fallback's (and the user is warned). The PDF's streams are deflated. SVG files name the fonts without
+carrying them; PNG and JPEG carry the fallbacks as `@font-face` data URLs. Text widths, and so anchoring
+and wrapping, match the screen in every format.
 
 ## References
 

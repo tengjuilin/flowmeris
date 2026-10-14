@@ -139,14 +139,19 @@ shared `ExportMenu` (`components/controls`):
 | PNG and JPEG | `lib/export/raster.ts` |
 | PDF (jsPDF and svg2pdf, loaded on demand) | `lib/export/pdf.ts` |
 | text svg2pdf cannot draw (baselines, underline, halos), rewritten before the PDF | `lib/export/pdfText.ts`; add a step there for a new text feature |
-| fonts embedded in SVG, PNG and JPEG | `lib/export/fontFaces.ts` |
+| fonts a PDF names without embedding (Arial, Times New Roman, …) | `lib/export/pdfFonts.ts` |
+| fonts embedded in PNG and JPEG | `lib/export/fontFaces.ts` |
 | the font menu, a font's fallback, the bundled fallbacks | `lib/fonts/catalog.ts` and `tools/fonts.lock.json` (see their comments) |
 
 The pipeline (`writeFigure`): the source builds standalone SVG markup, which is laid out off-screen
-(`mount.ts`) and handed to the format's writer. Fonts (ADR-0011, ADR-0012): a figure's font is a system
-font followed by a bundled fallback of the same proportions (`fontStack`). The PDF embeds the system font
-where the browser can read it, else the fallback, and warns (`warning()` in `state/store.ts`, a red toast);
-SVG, PNG and JPEG carry the fallbacks as `@font-face`. Figure text has no kerning or ligatures
+(`mount.ts`) and handed to the format's writer. Fonts (ADR-0011, ADR-0012, ADR-0013): a figure's font is a
+system font followed by a bundled fallback of the same proportions (`fontStack`). The PDF names Arial,
+Helvetica, Times New Roman and Courier New without embedding them (jsPDF's standard fonts, with the exact
+widths read from Liberation; WinAnsiEncoding text only, minus signs as en dashes). For other text it embeds
+the system font where the browser can read it, else the fallback, and warns (`warning()` in
+`state/store.ts`, a red toast). SVG files only name their fonts; PNG and JPEG carry the fallbacks as
+`@font-face`. Draw tick exponents with `SupLabel` (raised digits): Unicode superscripts beyond ³ are not in
+Arial or WinAnsiEncoding, so they would make the PDF embed a font. Figure text has no kerning or ligatures
 (`styles/base.css`), as jsPDF draws none; keep it that way, or PDF text widths will differ from the screen.
 In the PDF, svg2pdf finds a face only by weight 400 or 700 and style `normal`/`italic`, registered under
 jsPDF's style names (`normal`, `bold`, `italic`, `bolditalic`). Guardrails: `lint:deps`
@@ -154,8 +159,9 @@ jsPDF's style names (`normal`, `bold`, `italic`, `bolditalic`). Guardrails: `lin
 when code outside `lib/export` imports jsPDF or svg2pdf, serializes SVG or encodes a canvas, or draws its
 own Export button; `lib/export/figure.test.ts` checks what each format receives; `lib/fonts/*.test.ts`
 check the catalog against the lock file and that jsPDF embeds every bundled face; `e2e/figure-export.spec.ts`
-checks, in real browsers, that each PDF text is set in an embedded font at its on-screen size (helper
-`pdfTextFonts`).
+checks, in real browsers, that each PDF text is set in the expected font, named or embedded, at its
+on-screen size (helper `pdfTextFonts`); `lib/export/pdfFonts.test.ts` checks the named fonts' objects and
+widths.
 
 ## Store rules
 

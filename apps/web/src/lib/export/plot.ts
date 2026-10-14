@@ -94,5 +94,5 @@ async function buildPlotSvg(
  * gates stay vector in the PDF, the event raster is embedded at the export DPI).
  */
 export function plotFigure(h: PlotHandle, plot: PlotSpec, source: PlotExportSource): FigureSource {
-  return { build: (dpi) => buildPlotSvg(h, plot, dpi, source) };
+  return { build: (dpi) => buildPlotSvg(h, plot, dpi, source), screen: () => h.svg };
 }

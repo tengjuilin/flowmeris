@@ -1,6 +1,6 @@
 /**
- * Reading font files (the sfnt container of TrueType and OpenType): which kind a file is, and the one
- * font of a collection (.ttc) that jsPDF can embed on its own.
+ * Reading font files (the sfnt container of TrueType and OpenType): which kind a file is, the one
+ * font of a collection (.ttc) that jsPDF can embed on its own, and the metrics a PDF names a font by.
  */
 
 /** 'truetype' (glyf outlines, which jsPDF embeds), 'cff' (OpenType PostScript outlines), 'collection'. */
@@ -104,4 +104,76 @@ export function underlineMetrics(b: Uint8Array): { offset: number; thickness: nu
   const thickness = v.getInt16(post.offset + 10);
   if (!upem || thickness <= 0) return undefined;
   return { offset: -position / upem, thickness: thickness / upem };
+}
+
+/** What a PDF needs to name a font without embedding it: in 1/1000 em, as PDF font dictionaries are. */
+export interface FaceMetrics {
+  /** Advance width of each code point asked for (that of glyph 0 where the font has none). */
+  widths: number[];
+  ascent: number;
+  descent: number;
+  capHeight: number;
+  bbox: [number, number, number, number];
+  /** Degrees counterclockwise from vertical ('post' italicAngle). */
+  italicAngle: number;
+}
+
+/** The glyph of each code point in the font's Unicode BMP map ('cmap' 3,1 or 0,3, format 4); 0 when absent. */
+function glyphIds(b: Uint8Array, t: TableRecord[], codes: number[]): number[] {
+  const v = view(b);
+  const cmap = t.find((x) => x.tag === 'cmap')!.offset;
+  let sub = -1;
+  for (let i = 0; i < v.getUint16(cmap + 2); i++) {
+    const r = cmap + 4 + i * 8;
+    const id = `${v.getUint16(r)},${v.getUint16(r + 2)}`;
+    const at = cmap + v.getUint32(r + 4);
+    if ((id === '3,1' || id === '0,3') && v.getUint16(at) === 4) sub = at;
+  }
+  if (sub < 0) return codes.map(() => 0);
+  const segX2 = v.getUint16(sub + 6);
+  const ends = sub + 14;
+  const starts = ends + segX2 + 2;
+  const deltas = starts + segX2;
+  const ranges = deltas + segX2;
+  return codes.map((c) => {
+    for (let s = 0; s < segX2; s += 2) {
+      if (c > v.getUint16(ends + s)) continue;
+      const start = v.getUint16(starts + s);
+      if (c < start) return 0;
+      const delta = v.getUint16(deltas + s);
+      const range = v.getUint16(ranges + s);
+      if (!range) return (c + delta) & 0xffff;
+      const g = v.getUint16(ranges + s + range + (c - start) * 2);
+      return g ? (g + delta) & 0xffff : 0;
+    }
+    return 0;
+  });
+}
+
+/**
+ * The widths of `codes` and the font descriptor values of a TrueType font ('head', 'hhea', 'hmtx', 'OS/2',
+ * 'post', 'cmap'), for a PDF that names the font without embedding it.
+ */
+export function faceMetrics(b: Uint8Array, codes: number[]): FaceMetrics {
+  const t = tables(b, 0);
+  const at = (tag: string) => t.find((x) => x.tag === tag)!.offset;
+  const v = view(b);
+  const head = at('head');
+  const hhea = at('hhea');
+  const hmtx = at('hmtx');
+  const os2 = t.find((x) => x.tag === 'OS/2');
+  const em = (n: number) => Math.round((n * 1000) / v.getUint16(head + 18));
+  const metrics = v.getUint16(hhea + 34);
+  const advance = (g: number) => em(v.getUint16(hmtx + 4 * Math.min(g, metrics - 1)));
+  const ascent = em(v.getInt16(hhea + 4));
+  // sCapHeight is in OS/2 version 2 and later.
+  const capHeight = os2 && v.getUint16(os2.offset) >= 2 ? em(v.getInt16(os2.offset + 88)) : ascent;
+  return {
+    widths: glyphIds(b, t, codes).map(advance),
+    ascent,
+    descent: em(v.getInt16(hhea + 6)),
+    capHeight,
+    bbox: [36, 38, 40, 42].map((o) => em(v.getInt16(head + o))) as FaceMetrics['bbox'],
+    italicAngle: Math.round((v.getInt32(at('post') + 4) / 65536) * 100) / 100,
+  };
 }

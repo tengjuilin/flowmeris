@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
 import { BUNDLED, FACES } from './catalog.ts';
-import { fontFromCollection, postscriptName, sfntKind, underlineMetrics } from './sfnt.ts';
+import { faceMetrics, fontFromCollection, postscriptName, sfntKind, underlineMetrics } from './sfnt.ts';
 
 /** A minimal sfnt: a 'name' table with PostScript name `ps`, and a 'data' table of `body`. */
 function sfnt(ps: string, body: number[]): Uint8Array {
@@ -96,5 +96,19 @@ describe.skipIf(!fetched)('bundled font files', () => {
     const m = underlineMetrics(readFileSync(`${dir}LiberationSans-Regular.ttf`))!;
     expect(m.offset).toBeCloseTo(67 / 2048, 9);
     expect(m.thickness).toBeCloseTo(150 / 2048, 9);
+  });
+
+  it('give the widths and descriptor a PDF names a font by, in 1/1000 em (Arial’s, for Liberation Sans)', () => {
+    const codes = [...' 1AW–'].map((c) => c.charCodeAt(0));
+    const regular = faceMetrics(readFileSync(`${dir}LiberationSans-Regular.ttf`), [...codes, 0xe000]);
+    // Arial: space 278, "1" 556, "A" 667, "W" 944, en dash 556; a character it lacks: glyph 0's width.
+    expect(regular.widths).toEqual([278, 556, 667, 944, 556, 750]);
+    expect(regular).toMatchObject({ ascent: 905, descent: -212, italicAngle: 0 });
+    expect(regular.bbox[2]).toBeGreaterThan(regular.bbox[0]);
+    const italic = faceMetrics(readFileSync(`${dir}LiberationSerif-Italic.ttf`), codes);
+    expect(italic.italicAngle).toBeCloseTo(-16.33, 2);
+    expect(faceMetrics(readFileSync(`${dir}LiberationMono-Bold.ttf`), codes).widths).toEqual(
+      Array(5).fill(600),
+    );
   });
 });

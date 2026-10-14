@@ -1,6 +1,8 @@
 # ADR-0012 System fonts in the font menu, bundled fonts as fallbacks
 
-**Status.** Accepted. Amends [ADR-0011](./0011-bundled-figure-fonts).
+**Status.** Accepted. Amends [ADR-0011](./0011-bundled-figure-fonts). Amended by
+[ADR-0013](./0013-standard-pdf-fonts): PDF and SVG files name Arial and the other standard fonts without
+embedding them.
 
 **Decision.** The font menu lists system fonts by name: Arial (the default of plots, ridge plots and
 charts), Helvetica, Times New Roman, Trebuchet MS, Verdana and Consolas, then *Other installed font…*.

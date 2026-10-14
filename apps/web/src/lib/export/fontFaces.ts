@@ -10,8 +10,8 @@ import type { Warn } from './formats.ts';
 import { SVG_NS, bytesToBase64 } from './standalone.ts';
 
 /**
- * Embedding the bundled fonts in SVG files and in the SVG that PNG and JPEG are drawn from (ADR-0011): an
- * SVG drawn as an image cannot use the page's fonts, and an SVG file should look the same anywhere.
+ * Embedding the bundled fonts in the SVG that PNG and JPEG are drawn from (ADR-0011): an SVG drawn as an
+ * image cannot use the page's fonts. SVG files do not carry them (ADR-0013).
  */
 
 export const MISSING_FONTS =

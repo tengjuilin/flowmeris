@@ -1,3 +1,4 @@
+import { inflateSync } from 'node:zlib';
 import { type Page, expect } from '@playwright/test';
 import { writeFcs } from '../packages/fcs/src/write.ts';
 
@@ -137,27 +138,45 @@ export async function waitForAutosave(page: Page, samples: number) {
     .toBe(samples);
 }
 
+/** A PDF's text, followed by that of its deflated streams (page contents, among others) inflated. */
+function pdfSource(pdf: Buffer): string {
+  const text = pdf.toString('latin1');
+  const streams = [...text.matchAll(/(?<!end)stream\r?\n/g)].map((m) => {
+    const start = m.index + m[0].length;
+    try {
+      return inflateSync(pdf.subarray(start, text.indexOf('endstream', start))).toString('latin1');
+    } catch {
+      return '';
+    }
+  });
+  return [text, ...streams].join('\n');
+}
+
 /**
- * The fonts a PDF's text is set in (jsPDF output, uncompressed): for each `Tf` operator, the font's size,
- * BaseFont, and whether the font program is embedded (a font with a descriptor) or a standard PDF font.
+ * The fonts a PDF's text is set in (jsPDF output): for each `Tf` operator, the font's size,
+ * BaseFont, and whether its font program is embedded (a FontFile in its descriptor, or in that of its
+ * descendant font) or the PDF only names it.
  */
 export function pdfTextFonts(pdf: Buffer): { size: number; font: string; embedded: boolean }[] {
-  const text = pdf.toString('latin1');
+  const text = pdfSource(pdf);
   const ref: Record<string, string> = {};
   for (const m of text.matchAll(/\/(F\d+) (\d+) 0 R/g)) ref[m[1]!] = m[2]!;
   const obj = (n: string | undefined) => {
     const i = text.indexOf(`\n${n} 0 obj`);
     return i < 0 ? '' : text.slice(i, text.indexOf('endobj', i));
   };
+  /** Whether object `n`, or one it refers to as its descriptor or descendant, holds a font program. */
+  const embeds = (n: string | undefined, depth = 0): boolean => {
+    const o = obj(n);
+    if (/\/FontFile/.test(o)) return true;
+    const refs = [...o.matchAll(/\/(?:FontDescriptor|DescendantFonts) \[?(\d+) 0 R/g)].map((m) => m[1]);
+    return depth < 2 && refs.some((r) => embeds(r, depth + 1));
+  };
   const used = new Map<string, { size: number; font: string; embedded: boolean }>();
   for (const [, name, size] of text.matchAll(/\/(F\d+) ([\d.]+) Tf/g)) {
     const o = obj(ref[name!]);
     const font = (o.match(/\/BaseFont \/(\S+)/)?.[1] ?? '?').replace(/#20/g, ' ');
-    used.set(`${name} ${size}`, {
-      size: Number(size),
-      font,
-      embedded: /DescendantFonts|FontDescriptor/.test(o),
-    });
+    used.set(`${name} ${size}`, { size: Number(size), font, embedded: embeds(ref[name!]) });
   }
   return [...used.values()];
 }

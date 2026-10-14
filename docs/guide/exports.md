@@ -17,15 +17,19 @@ Every figure (Gate, Plot and Ridge plots, charts) has the same **Export** menu:
 
 | Format | What you get |
 |---|---|
-| PDF (vector) | lines, shapes and text stay vector; the fonts are embedded |
+| PDF (vector) | lines, shapes and text stay vector; Arial, Helvetica, Times New Roman and Courier New are named, other fonts embedded |
 | PNG, JPG | an image at the chosen resolution (72–1200 DPI; PNG records it in the file) |
-| SVG (vector) | for editing; the fonts are embedded, and plots record the app version, sample hash and plot settings |
+| SVG (vector) | for editing; the fonts are named, not embedded, and plots record the app version, sample hash and plot settings |
 
-The text of an exported figure is in the same font, size, weight, slant and color as on screen, and the
-font is embedded. Where a font cannot be embedded (in a PDF made in Firefox or Safari, or a font that is
-not installed), the export uses an open font with the same proportions in its place, such as Liberation
-Sans for Arial, and a red warning names the fonts it replaced. Chrome and Edge ask once for permission to
-read the computer's fonts; allow it to embed the fonts themselves.
+The text of an exported figure is in the same font, size, weight, slant and color as on screen. A PDF in
+Arial (the default), Helvetica, Times New Roman or Courier New names the font without embedding it, so it
+stays small and shows in that font on any computer that has it (Windows and macOS have all four); PDF
+readers stand in a font of the same widths elsewhere. Minus signs in such a PDF are drawn as en dashes. A
+PDF in another font, or with characters those fonts lack in a PDF (such as Greek letters), embeds the font.
+Where it cannot (in Firefox or Safari, or a font that is not installed), it uses an open font with the same
+proportions in its place, such as DejaVu Sans for Verdana, and a red warning names the fonts it replaced.
+Chrome and Edge then ask once for permission to read the computer's fonts; allow it to embed the fonts
+themselves. An SVG file names its fonts without embedding them; open it on a computer that has them.
 
 ## Reporting checklist (MIFlowCyt)
 

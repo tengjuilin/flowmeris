@@ -17,6 +17,14 @@ const { seen, record } = vi.hoisted(() => {
 });
 vi.mock('./pdf.ts', () => ({ svgToPdf: (el: SVGSVGElement) => record('pdf')(el) }));
 vi.mock('./raster.ts', () => ({ svgToPng: record('png'), svgToJpeg: record('jpeg') }));
+const asked = vi.hoisted(() => ({ n: 0 }));
+vi.mock('../fonts/local.ts', () => ({
+  installedFonts: async () => {
+    asked.n++;
+    return [];
+  },
+  installedTrueType: async () => undefined,
+}));
 // jsdom's Blob has no stream(); the encoder is tested in @flowmeris/render.
 vi.mock('@flowmeris/render', () => ({ encodePngCompressed: async () => new Uint8Array([137, 80, 78, 71]) }));
 
@@ -35,6 +43,7 @@ function onScreen(): SVGSVGElement {
 
 afterEach(() => {
   seen.length = 0;
+  asked.n = 0;
   document.body.innerHTML = '';
 });
 
@@ -63,6 +72,30 @@ describe('svgFigure', () => {
     expect(text.getAttribute('style')).toContain('font-size:13px');
     expect(text.getAttribute('style')).toContain('font-weight:700');
     expect(seen).toEqual([]);
+  });
+
+  it('names the fonts in an SVG file without carrying them', async () => {
+    const svg = onScreen();
+    svg.querySelector('text')!.style.fontFamily = 'Arial, "Liberation Sans", sans-serif';
+    const out = (await writeFigure(svgFigure(svg), 'svg', 300)) as string;
+    expect(out).toContain('font-family:Arial, &quot;Liberation Sans&quot;, sans-serif');
+    expect(out).not.toContain('@font-face');
+    expect(out).not.toContain('<style');
+  });
+
+  it('asks for the computer’s fonts for a PDF only when a font may have to be embedded', async () => {
+    const svg = onScreen();
+    const text = svg.querySelector('text')!;
+    text.style.fontFamily = 'Arial, "Liberation Sans", sans-serif';
+    await writeFigure(svgFigure(svg), 'pdf', 300);
+    await writeFigure(svgFigure(svg), 'png', 300);
+    expect(asked.n).toBe(0);
+    text.style.fontFamily = 'Verdana, "DejaVu Sans", sans-serif';
+    await writeFigure(svgFigure(svg), 'pdf', 300);
+    expect(asked.n).toBe(1);
+    // A figure that does not show itself on screen: ask, in case.
+    await writeFigure({ build: svgFigure(svg).build }, 'pdf', 300);
+    expect(asked.n).toBe(2);
   });
 
   it('lays the figure out in the document for the other formats, and removes it after', async () => {
