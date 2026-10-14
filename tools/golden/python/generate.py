@@ -283,8 +283,12 @@ def mode_of(x: np.ndarray) -> float:
     return lo + (best + 0.5) / scale
 
 
-def value_stats(x: np.ndarray, ps=POP_PERCENTILES) -> dict:
-    """Value statistics as Flowmeris defines them (docs/methods/statistics.md), with NumPy."""
+def value_stats(x: np.ndarray, ps=POP_PERCENTILES, mode=True) -> dict:
+    """Value statistics as Flowmeris defines them (docs/methods/statistics.md), with NumPy.
+
+    `mode=False` leaves the mode out: the tallest bin jumps with the last bits of the values, so it is
+    reproducible only for values that are exact on every platform (not transformed or compensated).
+    """
     x = np.asarray(x, dtype=float)
     clean = x[~np.isnan(x)]
     n = int(clean.size)
@@ -308,7 +312,7 @@ def value_stats(x: np.ndarray, ps=POP_PERCENTILES) -> dict:
         rcv=fin(100 * rsd / median) if median != 0 else None,
         mad=fin(mad),
         madp=fin(100 * mad / median) if median != 0 else None,
-        mode=fin(mode_of(clean)),
+        **({"mode": fin(mode_of(clean))} if mode else {}),
         geom_mean=fin(math.exp(math.fsum(np.log(pos)) / pos.size)) if pos.size else None,
         geom_n=int(pos.size),
         min=fin(clean.min()),
@@ -384,9 +388,13 @@ def golden_scenarios():
         for j, ch in enumerate(s.pnn_labels):
             x = values[:, j].astype(float)
             cols[ch] = {sp: (x if t is None else apply_transform(t, x)) for sp, t in spaces.items()}
+        exact = {sp: sp == "linear" and man["compensation"]["kind"] == "none" for sp in spaces}
         st = {}
         for pid, m in member.items():
-            st[pid] = {ch: {sp: value_stats(v[m]) for sp, v in by_space.items()} for ch, by_space in cols.items()}
+            st[pid] = {
+                ch: {sp: value_stats(v[m], mode=exact[sp]) for sp, v in by_space.items()}
+                for ch, by_space in cols.items()
+            }
         write(
             f"stats_populations/{name}.json",
             {"scenario": name, "spaces": list(spaces), "percentiles": POP_PERCENTILES, "populations": st},

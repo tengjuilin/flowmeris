@@ -98,8 +98,11 @@ for (const sc of scenarios()) {
                 value: value ?? null,
               });
             };
-            for (const s of STATS)
+            for (const s of STATS) {
+              // The mode is recorded only for values exact on every platform (see generate.py).
+              if (s === 'mode' && !('mode' in v)) continue;
               add(s, v[KEY[s]] as number | null | undefined, undefined, s === 'geomMean');
+            }
             for (const p of g.percentiles) add('percentile', v.percentiles?.[String(p)], p);
           }
         const got = await engine.stats(ctx, sc.sampleId, specs);
