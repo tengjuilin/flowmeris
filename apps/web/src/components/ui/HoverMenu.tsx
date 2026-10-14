@@ -41,7 +41,14 @@ export function HoverMenu({ label, items }: { label: string; items: HoverMenuIte
         else if (e.key === 'ArrowDown') first.current?.focus();
       }}
     >
-      <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        // The pointer may never have left (a pick removes the list under it), so no enter event follows.
+        onMouseMove={() => setOpen(true)}
+      >
         {label}
       </button>
       {open && (

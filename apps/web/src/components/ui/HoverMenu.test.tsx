@@ -34,6 +34,15 @@ describe('HoverMenu', () => {
     expect(screen.getByRole('menuitem', { name: 'Files' }).querySelector('svg')).toBeNull();
   });
 
+  it('reopens when the pointer moves over the tab after a pick', () => {
+    const { tab } = setup();
+    fireEvent.mouseEnter(tab.parentElement as HTMLElement);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Files' }));
+    expect(screen.queryByRole('menu')).toBeNull();
+    fireEvent.mouseMove(tab);
+    expect(screen.getByRole('menu')).not.toBeNull();
+  });
+
   it('runs an item and closes', () => {
     const { tab, onFolder, onFiles } = setup();
     fireEvent.mouseEnter(tab.parentElement as HTMLElement);

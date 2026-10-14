@@ -32,12 +32,25 @@ test('Workspace → Export downloads the workspace JSON', async ({ page }) => {
   expect((await download).suggestedFilename()).toMatch(/\.json$/);
 });
 
-test('Add → Files opens the file picker', async ({ page }) => {
+test('Add → Folder and Files open the matching file pickers', async ({ page }) => {
   await page.goto('/');
-  await page.locator('header').getByRole('button', { name: 'Add', exact: true }).hover();
-  const chooser = page.waitForEvent('filechooser');
+  // Firefox's native picker blocks the click, so record the click on the hidden input instead.
+  await page.evaluate(() => {
+    const w = window as unknown as { picked: string[] };
+    w.picked = [];
+    HTMLInputElement.prototype.click = function (this: HTMLInputElement) {
+      w.picked.push(this.dataset.testid ?? '');
+    };
+  });
+  const add = page.locator('header').getByRole('button', { name: 'Add', exact: true });
+  await add.hover();
   await page.getByRole('menuitem', { name: 'Files' }).click();
-  expect((await chooser).isMultiple()).toBe(true);
+  await add.hover();
+  await page.getByRole('menuitem', { name: 'Folder' }).click();
+  expect(await page.evaluate(() => (window as unknown as { picked: string[] }).picked)).toEqual([
+    'file-input',
+    'folder-input',
+  ]);
 });
 
 test('Undo and Redo precede Workspace, and the workspace name never overlaps the buttons', async ({
