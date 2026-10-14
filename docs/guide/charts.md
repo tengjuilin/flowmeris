@@ -6,7 +6,8 @@ In the settings panel's **Statistics** tab, **New statistic** adds a column to t
 population, the statistic and, for statistics of event values, the channel. Every population's count, and
 the % of parent of every gated population, are in the table from the start.
 
-- **Frequencies**, which need no channel: % of parent, % of grandparent, % of total.
+- **Frequencies**, which need no channel: % of parent, % of grandparent, % of total, and % of population,
+  where you choose which ancestor of the population is 100%.
 - **Values of a channel**: mean, geometric mean, median, mode, SD, CV, robust SD, robust CV, MAD
   (median absolute deviation), MADP (MAD as a percentage of the median), any percentile, min and max.
 

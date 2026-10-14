@@ -167,6 +167,40 @@ describe('engine on data1.fcs vs Gating-ML truth', () => {
     expect(pct!.value).toBeCloseTo((100 * child!.count) / parent, 12);
   });
 
+  it('% of population divides by the chosen ancestor’s count', async () => {
+    addGate(
+      group,
+      {
+        id: 'g_child',
+        parentPop: 'p_rect1',
+        dims: [{ channel: 'FSC-H', comp: 'uncompensated', transform: tid }],
+        geometry: { kind: 'rect', min: [0.2], max: [null] },
+      },
+      [{ id: 'p_child', region: 'in', name: 'child' }],
+    );
+    const [child] = await engine.counts(ctx, s.sampleId, ['p_child']);
+    const rect1 = popcount(engine.popBits(ctx, s, 'p_rect1'));
+    const [ofRect, ofRoot, ofSelf, noBasis] = await Promise.all([
+      engine.stats(ctx, s.sampleId, [
+        { id: 'a', population: 'p_child', stat: 'pctOf', basis: 'p_rect1', space: 'linear' },
+      ]),
+      engine.stats(ctx, s.sampleId, [
+        { id: 'b', population: 'p_child', stat: 'pctOf', basis: 'root', space: 'linear' },
+      ]),
+      engine.stats(ctx, s.sampleId, [
+        { id: 'c', population: 'p_child', stat: 'pctOf', basis: 'p_child', space: 'linear' },
+      ]),
+      engine
+        .stats(ctx, s.sampleId, [{ id: 'd', population: 'p_child', stat: 'pctOf', space: 'linear' }])
+        .catch((e: Error) => e),
+    ]);
+    expect(ofRect[0]!.value).toBeCloseTo((100 * child!.count) / rect1, 12);
+    expect(ofRect[0]!.n).toBe(child!.count);
+    expect(ofRoot[0]!.value).toBeCloseTo((100 * child!.count) / s.eventCount, 12);
+    expect(ofSelf[0]!.value).toBe(100);
+    expect(noBasis).toBeInstanceOf(Error);
+  });
+
   it('table() matches counts() + stats(); cached statistics follow gate edits', async () => {
     const specs: StatSpec[] = [
       { id: 'a', population: 'p_rect1', stat: 'median', channel: 'FSC-H', space: 'linear' },

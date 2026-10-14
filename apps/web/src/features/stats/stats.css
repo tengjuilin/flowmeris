@@ -10,6 +10,12 @@
 .stats-inspector p.small {
   margin: 2px 0 6px;
 }
+/* The New statistic form's choosers share one width, whatever their longest option. */
+.insp-panel .add-stat .field:not(.check) > select {
+  width: 62%;
+  max-width: 62%;
+  flex: none;
+}
 .add-stat > button.primary {
   width: 100%;
   margin-top: 6px;

@@ -95,6 +95,45 @@ describe('a sample’s results as a table row', () => {
   });
 });
 
+describe('% of population', () => {
+  const pctOf: StatSpec = { id: 'st_2', population: 'pop_b', stat: 'pctOf', basis: 'root', space: 'linear' };
+  const counts = [{ popId: 'pop_b', count: 25, parentCount: 50, grandparentCount: 200, totalCount: 200 }];
+
+  it('is a frequency: its cell has no space and names the basis', () => {
+    const t = toTable(
+      's1',
+      counts,
+      [{ statId: 'st_2', sampleId: 's1', value: 12.5, n: 25, nExcluded: 0 }],
+      [pctOf],
+    );
+    expect(t.values.get('st_2')).toBe(12.5);
+    expect(t.cells.find((c) => c.statistic === 'pctOf')).toMatchObject({
+      population: 'pop_b',
+      basis: 'root',
+      space: 'n/a',
+    });
+  });
+
+  it('is labeled with the basis’s name', () => {
+    const g = group();
+    g.template.populations.pop_b = pop('pop_b', 'Live', 'pop_a');
+    g.stats.push(pctOf);
+    const pops = Object.values(g.template.populations);
+    const cols = statColumns(g, pops, () => undefined);
+    expect(cols.find((c) => c.key === 'st_2')!.label).toBe(`% of ${g.template.populations.root!.name}`);
+  });
+
+  it('changes the dependency key with its basis', () => {
+    const g = group();
+    g.template.populations.pop_b = pop('pop_b', 'Live', 'pop_a');
+    const pops = Object.values(g.template.populations);
+    g.stats.push(pctOf);
+    const k0 = sampleKeys(g, pops, {}, {}, ['s1']).get('s1');
+    g.stats[0] = { ...pctOf, basis: 'pop_a' };
+    expect(sampleKeys(g, pops, {}, {}, ['s1']).get('s1')).not.toBe(k0);
+  });
+});
+
 describe('statistic columns and the base table', () => {
   it('list each population’s count, % parent and statistics in population order', () => {
     const g = group();

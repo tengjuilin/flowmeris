@@ -176,6 +176,27 @@ describe('reference plots', () => {
   });
 });
 
+describe('statistics of removed populations', () => {
+  it('drops a % of population statistic when its basis is removed', () => {
+    const g = newGroup('g', [], ['FSC-A']);
+    g.template.gates.gt_1 = { id: 'gt_1', parentPop: 'root' } as never;
+    g.template.populations.pop_1 = { id: 'pop_1', parent: 'root', gate: 'gt_1' } as never;
+    g.template.gates.gt_2 = { id: 'gt_2', parentPop: 'pop_1' } as never;
+    g.template.populations.pop_2 = { id: 'pop_2', parent: 'pop_1', gate: 'gt_2' } as never;
+    g.stats.push(
+      { id: 'st_1', population: 'pop_2', stat: 'pctOf', basis: 'pop_1', space: 'linear' },
+      { id: 'st_2', population: 'pop_2', stat: 'pctOf', basis: 'root', space: 'linear' },
+    );
+    removeGateCascade(g, 'gt_2');
+    expect(g.stats).toEqual([]);
+    g.template.gates.gt_2 = { id: 'gt_2', parentPop: 'pop_1' } as never;
+    g.template.populations.pop_2 = { id: 'pop_2', parent: 'pop_1', gate: 'gt_2' } as never;
+    g.stats.push({ id: 'st_3', population: 'pop_2', stat: 'pctOf', basis: 'pop_1', space: 'linear' });
+    removeGateCascade(g, 'gt_1');
+    expect(g.stats).toEqual([]);
+  });
+});
+
 describe('plot grid', () => {
   const axis = {
     channel: 'FSC-A',

@@ -22,6 +22,7 @@ export const FREQUENCY_STATS: { id: StatKind; label: string }[] = [
   { id: 'pctParent', label: '% of parent' },
   { id: 'pctGrandparent', label: '% of grandparent' },
   { id: 'pctTotal', label: '% of total' },
+  { id: 'pctOf', label: '% of population…' },
 ];
 
 /** Replicate summaries of a grouped table. */

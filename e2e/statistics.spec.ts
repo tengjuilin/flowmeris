@@ -1,3 +1,5 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { type Page, expect, test } from '@playwright/test';
 import {
   downloadText,
@@ -367,4 +369,66 @@ test('the settings panel remembers its tab and closed sections', async ({ page }
   await panel.getByRole('tab', { name: 'Statistics' }).click();
   await expect(panel.getByRole('button', { name: '+ Formula' })).toHaveCount(0);
   await expect(panel.getByRole('button', { name: 'Add statistic' })).toBeVisible();
+});
+
+test('statistics: % of population takes its percentage of a chosen ancestor', async ({ page }) => {
+  await loadWells(page, MEDIANS);
+  await page.getByRole('tab', { name: 'Statistics' }).click();
+  await expect.poll(() => statsColumn(page, 'All events | Count')).toEqual(['200', '200', '200', '200']);
+
+  // The root has no ancestor, so there is no basis to choose: nothing is added and a toast says why.
+  const form = page.locator('.add-stat');
+  await form
+    .locator('label', { hasText: 'Statistic' })
+    .locator('select')
+    .selectOption({ label: '% of population…' });
+  await expect(form.locator('label', { hasText: 'Percent of' }).locator('select')).toHaveValue('');
+  await page.getByRole('button', { name: 'Add statistic' }).click();
+  await expect(page.getByText('This population has no population to take a percentage of.')).toBeVisible();
+  expect(await statsColumns(page)).toEqual(['Sample', 'Well', 'All events | Count']);
+});
+
+test('statistics: % of population of a gated population, and a basis that is only offered above it', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page
+    .getByTestId('file-input')
+    .first()
+    .setInputFiles([
+      resolve(dirname(fileURLToPath(import.meta.url)), '../fixtures/flowkit/gate_ref/data1.fcs'),
+    ]);
+  await expect(page.getByText('13,367').first()).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('button', { name: 'Rectangle' }).click();
+  const box = (await page.locator('svg.plot-overlay').boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.7);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.4, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.locator('.pop-row', { hasText: 'Gate 1' })).toBeVisible();
+  const gated = Number(
+    (await page.locator('.pop-row', { hasText: 'Gate 1' }).innerText())
+      .match(/[\d,]+/g)!
+      .pop()!
+      .replace(/,/g, ''),
+  );
+
+  await page.getByRole('tab', { name: 'Statistics' }).click();
+  const form = page.locator('.add-stat');
+  await form
+    .locator('label', { hasText: /^Population/ })
+    .locator('select')
+    .selectOption({ label: 'All events/Gate 1' });
+  await form
+    .locator('label', { hasText: 'Statistic' })
+    .locator('select')
+    .selectOption({ label: '% of population…' });
+  const basis = form.locator('label', { hasText: 'Percent of' }).locator('select');
+  // Only the ancestors are offered, the gated population itself is not.
+  await expect(basis.locator('option')).toHaveText(['All events']);
+  await page.getByRole('button', { name: 'Add statistic' }).click();
+
+  await expect.poll(() => statsColumns(page)).toContain('Gate 1 | % of All events');
+  const [value] = await statsColumn(page, 'Gate 1 | % of All events');
+  expect(Number(value)).toBeCloseTo((100 * gated) / 13367, 0);
 });

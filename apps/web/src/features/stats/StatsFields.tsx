@@ -1,6 +1,7 @@
 import { type Group, type StatKind, type StatSpec, newId, populationPath } from '@flowmeris/model';
 import type { Table } from '@flowmeris/table';
 import { useState } from 'react';
+import { basisChoices, defaultBasis } from '../../lib/statBasis.ts';
 import { exportColumnSections, toggleExportColumns } from '../../lib/statsExport.ts';
 import { toast, useStore } from '../../state/store.ts';
 
@@ -18,14 +19,26 @@ export function AddStatForm({
 }) {
   const popId = useStore((s) => s.ui.popId);
   const edit = useGroupMutate(group.id);
-  const [form, setForm] = useState<{ pop: string; stat: StatKind; channel: string; p: number }>({
+  const [form, setForm] = useState<{
+    pop: string;
+    stat: StatKind;
+    channel: string;
+    p: number;
+    basis?: string;
+  }>({
     pop: popId,
     stat: 'median',
     channel: '',
     p: 50,
   });
   const needsChannel = !FREQUENCY_STATS.some((s) => s.id === form.stat);
+  const bases = basisChoices(group.template, form.pop);
+  const basis = bases.some((b) => b.id === form.basis) ? form.basis : defaultBasis(group.template, form.pop);
   const addStat = () => {
+    if (form.stat === 'pctOf' && !basis) {
+      toast('This population has no population to take a percentage of.');
+      return;
+    }
     if (needsChannel && !form.channel) {
       toast('Choose a channel for this statistic.');
       return;
@@ -36,6 +49,7 @@ export function AddStatForm({
       stat: form.stat,
       ...(needsChannel ? { channel: form.channel } : {}),
       space: 'linear',
+      ...(form.stat === 'pctOf' && basis ? { basis } : {}),
       ...(form.stat === 'percentile' ? { p: form.p } : {}),
     };
     edit('Add statistic', (g) => void g.stats.push(spec));
@@ -62,6 +76,19 @@ export function AddStatForm({
           ))}
         </select>
       </label>
+      {form.stat === 'pctOf' && (
+        <label className="field">
+          Percent of
+          <select value={basis ?? ''} onChange={(e) => setForm({ ...form, basis: e.target.value })}>
+            {bases.length === 0 && <option value="">—</option>}
+            {bases.map((b) => (
+              <option key={b.id} value={b.id}>
+                {populationPath(group.template, b.id)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {form.stat === 'percentile' && (
         <label className="field">
           p

@@ -7,7 +7,7 @@ import type { Cached } from '../memo.ts';
 import type { Populations } from '../populations.ts';
 import type { AnalysisContext, SampleData, StatResult, StatSpec } from '../types.ts';
 
-const FREQUENCY_STATS = new Set(['count', 'pctParent', 'pctGrandparent', 'pctTotal']);
+const FREQUENCY_STATS = new Set(['count', 'pctParent', 'pctGrandparent', 'pctTotal', 'pctOf']);
 
 const statTransform = (spec: StatSpec): string | null =>
   spec.space === 'transformed' ? (spec.transform ?? null) : null;
@@ -34,7 +34,14 @@ export function statsOf(
   const groups = new Map<string, { bitsKey: string; colKey: string; specs: StatSpec[] }>();
   for (const spec of specs) {
     if (FREQUENCY_STATS.has(spec.stat)) {
-      const [c] = pops.counts(ctx, s, [spec.population], memo);
+      if (spec.stat === 'pctOf' && !spec.basis)
+        throw new Error('Statistic pctOf requires a basis population');
+      const [c, basis] = pops.counts(
+        ctx,
+        s,
+        spec.basis ? [spec.population, spec.basis] : [spec.population],
+        memo,
+      );
       const pct = (a: number, b: number) => (b > 0 ? (100 * a) / b : Number.NaN);
       const value =
         spec.stat === 'count'
@@ -43,7 +50,9 @@ export function statsOf(
             ? pct(c!.count, c!.parentCount)
             : spec.stat === 'pctGrandparent'
               ? pct(c!.count, c!.grandparentCount)
-              : pct(c!.count, c!.totalCount);
+              : spec.stat === 'pctOf'
+                ? pct(c!.count, basis!.count)
+                : pct(c!.count, c!.totalCount);
       out.push({ statId: spec.id, sampleId, value, n: c!.count, nExcluded: 0 });
       continue;
     }

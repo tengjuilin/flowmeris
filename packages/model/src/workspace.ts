@@ -7,6 +7,7 @@ import {
   ROOT_POPULATION_ID,
   RidgeCombineSchema,
   SCHEMA_VERSION,
+  type StatSpec,
   type Workspace,
   WorkspaceSchema,
 } from './schema/index.ts';
@@ -166,8 +167,10 @@ export function removeGateCascade(group: Group, gateId: string): void {
   for (const r of group.refPlots) if (r.population && doomedPops.has(r.population)) r.population = undefined;
   // Grid cells showing a removed population go back to the removed gate's parent population.
   for (const c of group.grid.cells) if (c && doomedPops.has(c.population)) c.population = parentPop;
-  const doomedStats = group.stats.filter((s) => doomedPops.has(s.population)).map((s) => s.id);
-  group.stats = group.stats.filter((s) => !doomedPops.has(s.population));
+  const isDoomed = (s: StatSpec) =>
+    doomedPops.has(s.population) || (s.basis !== undefined && doomedPops.has(s.basis));
+  const doomedStats = group.stats.filter(isDoomed).map((s) => s.id);
+  group.stats = group.stats.filter((s) => !isDoomed(s));
   dropColumns(
     group,
     new Set([...doomedStats, ...[...doomedPops].flatMap((p) => [`${p}|count`, `${p}|pctParent`])]),

@@ -21,6 +21,8 @@ export interface StatCell {
   population: string;
   statistic: string;
   channel?: string;
+  /** The population that is 100% for `pctOf`. */
+  basis?: string;
   space: 'linear' | 'transformed' | 'n/a';
   transform?: string;
   p?: number;
@@ -122,7 +124,8 @@ export function tidyRows(ws: Workspace, g: Group, cells: StatCell[], appVersion:
       ...variableValues(ws, c.sampleId),
       populationPath(g.template, c.population),
       c.population,
-      c.statistic,
+      // A `pctOf` row names its basis, so two of them on one population stay apart.
+      c.basis ? `${c.statistic}:${populationPath(g.template, c.basis)}` : c.statistic,
       c.p ?? '',
       c.channel ?? '',
       marker,
@@ -140,30 +143,37 @@ export function tidyRows(ws: Workspace, g: Group, cells: StatCell[], appVersion:
   return rows;
 }
 
-export function statLabel(spec: Pick<StatSpec, 'stat' | 'p' | 'channel' | 'space'>, marker?: string): string {
+/** `basisName` is the name of `spec.basis`, shown by `pctOf` ("% of Singlets"). */
+export function statLabel(
+  spec: Pick<StatSpec, 'stat' | 'p' | 'channel' | 'space'>,
+  marker?: string,
+  basisName?: string,
+): string {
   const name =
     spec.stat === 'percentile'
       ? `P${spec.p}`
-      : ((
-          {
-            count: 'Count',
-            pctParent: '% Parent',
-            pctGrandparent: '% Grandparent',
-            pctTotal: '% Total',
-            mean: 'Mean',
-            median: 'Median',
-            geomMean: 'Geo. mean',
-            sd: 'SD',
-            cv: 'CV',
-            rsd: 'rSD',
-            rcv: 'rCV',
-            mad: 'MAD',
-            madp: 'MADP',
-            mode: 'Mode',
-            min: 'Min',
-            max: 'Max',
-          } as Record<string, string>
-        )[spec.stat] ?? spec.stat);
+      : spec.stat === 'pctOf'
+        ? `% of ${basisName ?? '?'}`
+        : ((
+            {
+              count: 'Count',
+              pctParent: '% Parent',
+              pctGrandparent: '% Grandparent',
+              pctTotal: '% Total',
+              mean: 'Mean',
+              median: 'Median',
+              geomMean: 'Geo. mean',
+              sd: 'SD',
+              cv: 'CV',
+              rsd: 'rSD',
+              rcv: 'rCV',
+              mad: 'MAD',
+              madp: 'MADP',
+              mode: 'Mode',
+              min: 'Min',
+              max: 'Max',
+            } as Record<string, string>
+          )[spec.stat] ?? spec.stat);
   const ch = spec.channel ? ` ${marker ? `${marker} (${spec.channel})` : spec.channel}` : '';
   return `${name}${ch}${spec.space === 'transformed' ? ' [transformed]' : ''}`;
 }
@@ -171,7 +181,7 @@ export function statLabel(spec: Pick<StatSpec, 'stat' | 'p' | 'channel' | 'space
 /** Wide table: one row per sample (file, hash, sample variables), one column per (population, statistic). */
 export function wideRows(ws: Workspace, g: Group, cells: StatCell[]): unknown[][] {
   const colKey = (c: StatCell) =>
-    JSON.stringify([c.population, c.statistic, c.channel ?? '', c.space, c.p ?? '']);
+    JSON.stringify([c.population, c.statistic, c.basis ?? '', c.channel ?? '', c.space, c.p ?? '']);
   const cols = new Map<string, StatCell>();
   const pops = populationsDepthFirst(g.template).map((p) => p.id);
   for (const c of cells) if (!cols.has(colKey(c))) cols.set(colKey(c), c);
@@ -186,7 +196,7 @@ export function wideRows(ws: Workspace, g: Group, cells: StatCell[]): unknown[][
       const marker = c.channel
         ? ws.samples[c.sampleId]?.channels.find((ch) => ch.pnn === c.channel)?.pns
         : undefined;
-      return `${populationPath(g.template, c.population)} | ${statLabel({ stat: c.statistic as StatSpec['stat'], ...(c.p !== undefined ? { p: c.p } : {}), ...(c.channel ? { channel: c.channel } : {}), space: c.space === 'transformed' ? 'transformed' : 'linear' }, marker)}`;
+      return `${populationPath(g.template, c.population)} | ${statLabel({ stat: c.statistic as StatSpec['stat'], ...(c.p !== undefined ? { p: c.p } : {}), ...(c.channel ? { channel: c.channel } : {}), space: c.space === 'transformed' ? 'transformed' : 'linear' }, marker, c.basis ? g.template.populations[c.basis]?.name : undefined)}`;
     }),
   ];
   const rows: unknown[][] = [header];

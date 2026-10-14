@@ -25,6 +25,8 @@ type Base = 'helvetica' | 'times' | 'courier';
 
 interface StandardFont {
   base: Base;
+  /** The family name a viewer looks a stand-in up by, written as the descriptor's FontFamily. */
+  family: string;
   /** The PostScript name of each face: the PDF's BaseFont, which readers look up. */
   names: Record<FaceName, string>;
   /** The bundled family with the same character widths, read for the PDF's Widths and descriptor. */
@@ -57,6 +59,7 @@ const names = (regular: string, bold: string, italic: string, bolditalic: string
 /** By font family, lowercase. */
 const STANDARD: Record<string, StandardFont> = {
   arial: {
+    family: 'Arial',
     base: 'helvetica',
     names: names('ArialMT', 'Arial-BoldMT', 'Arial-ItalicMT', 'Arial-BoldItalicMT'),
     metrics: 'Liberation Sans',
@@ -65,6 +68,7 @@ const STANDARD: Record<string, StandardFont> = {
     underline: [ul(217, 150, 2048), ul(217, 215, 2048)],
   },
   helvetica: {
+    family: 'Helvetica',
     base: 'helvetica',
     names: names('Helvetica', 'Helvetica-Bold', 'Helvetica-Oblique', 'Helvetica-BoldOblique'),
     metrics: 'Liberation Sans',
@@ -73,6 +77,7 @@ const STANDARD: Record<string, StandardFont> = {
     underline: AFM_UNDERLINE,
   },
   'times new roman': {
+    family: 'Times New Roman',
     base: 'times',
     names: names(
       'TimesNewRomanPSMT',
@@ -86,6 +91,7 @@ const STANDARD: Record<string, StandardFont> = {
     underline: [ul(223, 100, 2048), ul(223, 195, 2048)],
   },
   times: {
+    family: 'Times',
     base: 'times',
     names: names('Times-Roman', 'Times-Bold', 'Times-Italic', 'Times-BoldItalic'),
     metrics: 'Liberation Serif',
@@ -94,6 +100,7 @@ const STANDARD: Record<string, StandardFont> = {
     underline: AFM_UNDERLINE,
   },
   'courier new': {
+    family: 'Courier New',
     base: 'courier',
     names: names(
       'CourierNewPSMT',
@@ -107,6 +114,7 @@ const STANDARD: Record<string, StandardFont> = {
     underline: [ul(477, 84, 2048), ul(477, 205, 2048)],
   },
   courier: {
+    family: 'Courier',
     base: 'courier',
     names: names('Courier', 'Courier-Bold', 'Courier-Oblique', 'Courier-BoldOblique'),
     metrics: 'Liberation Mono',
@@ -233,6 +241,9 @@ export class StandardPdfFonts {
     out('<<');
     out('/Type /FontDescriptor');
     out(`/FontName /${name}`);
+    out(`/FontFamily (${n.font.family})`);
+    out('/FontStretch /Normal');
+    out(`/FontWeight ${face.startsWith('bold') ? 700 : 400}`);
     out(`/Flags ${n.font.flags | (face.endsWith('italic') ? 64 : 0)}`);
     out(`/FontBBox [${m.bbox.join(' ')}]`);
     out(`/ItalicAngle ${m.italicAngle}`);

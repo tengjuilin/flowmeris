@@ -11,6 +11,7 @@ Statistics are computed on the events of a population, by default in **linear, c
 |---|---|
 | Count | number of events in the population |
 | % Parent | $100 \cdot n / n_\text{parent}$ |
+| % of population | $100 \cdot n / n_\text{basis}$, the basis being an ancestor chosen per statistic; NaN if it is empty |
 | % Grandparent | $100 \cdot n / n_\text{grandparent}$; NaN for populations directly under *All events* |
 | % Total | $100 \cdot n / n_\text{all events}$ |
 

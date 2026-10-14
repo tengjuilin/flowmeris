@@ -208,6 +208,7 @@ describe('M-EXPORT-STATS', () => {
       'Mode CD4 (PE-A) [transformed]',
     );
     expect(statLabel({ stat: 'pctGrandparent', space: 'linear' })).toBe('% Grandparent');
+    expect(statLabel({ stat: 'pctOf', space: 'linear' }, undefined, 'Singlets')).toBe('% of Singlets');
   });
   it('quotes CSV fields per RFC 4180', () => {
     expect(csvField('a,b')).toBe('"a,b"');

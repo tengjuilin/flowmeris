@@ -18,7 +18,7 @@ import { type Cell, type ColumnDef, type LevelOrder, type Table, uniqueLabel } f
  * state/hooks/stats.ts.
  */
 
-const FREQUENCY_STATS = new Set(['count', 'pctParent', 'pctGrandparent', 'pctTotal']);
+const FREQUENCY_STATS = new Set(['count', 'pctParent', 'pctGrandparent', 'pctTotal', 'pctOf']);
 
 /** One sample's row: values by column key (`pop|count`, `pop|pctParent`, or a StatSpec id) and export cells. */
 export interface SampleTable {
@@ -118,6 +118,7 @@ export function toTable(
       population: spec.population,
       statistic: spec.stat,
       ...(spec.channel ? { channel: spec.channel } : {}),
+      ...(spec.basis ? { basis: spec.basis } : {}),
       space: FREQUENCY_STATS.has(spec.stat) ? 'n/a' : spec.space,
       ...(spec.transform ? { transform: spec.transform } : {}),
       ...(spec.p !== undefined ? { p: spec.p } : {}),
@@ -145,6 +146,7 @@ export function statColumns(
     if (list) list.push(s);
     else byPop.set(s.population, [s]);
   }
+  const byId = new Map(pops.map((p) => [p.id, p]));
   for (const p of pops) {
     out.push({ key: `${p.id}|count`, label: 'Count', pop: p.id, stat: 'count' });
     if (p.id !== 'root')
@@ -152,7 +154,7 @@ export function statColumns(
     for (const s of byPop.get(p.id) ?? [])
       out.push({
         key: s.id,
-        label: statLabel(s, marker(s.channel)),
+        label: statLabel(s, marker(s.channel), s.basis ? byId.get(s.basis)?.name : undefined),
         pop: p.id,
         stat: s.stat,
         specId: s.id,

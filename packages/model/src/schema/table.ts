@@ -10,6 +10,7 @@ export const StatKindSchema = z.enum([
   'pctParent',
   'pctGrandparent',
   'pctTotal',
+  'pctOf',
   'mean',
   'median',
   'geomMean',
@@ -34,6 +35,8 @@ export const StatSpecSchema = z.object({
   /** Linear (compensated) data units, or the given axis transform's units. */
   space: z.enum(['linear', 'transformed']),
   transform: z.string().optional(),
+  /** The population whose count is 100% for stat = 'pctOf': an ancestor of `population`. */
+  basis: Id.optional(),
   /** Percentile in (0, 100) for stat = 'percentile'. */
   p: Num.min(0).max(100).optional(),
 });
