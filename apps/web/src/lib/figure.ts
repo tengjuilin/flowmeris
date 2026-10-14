@@ -29,7 +29,7 @@ import {
 export const DEFAULT_STYLE: PlotStyle = {
   colormap: 'viridis',
   pointPx: 3,
-  smoothPct: 0.5,
+  smoothPct: 1.5,
   contour: { mode: 'equal-prob', pct: 5 },
   showOutliers: true,
   outlierPx: 2,

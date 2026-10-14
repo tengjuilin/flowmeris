@@ -27,7 +27,7 @@ shown under the plot. They are never silently dropped.
 
 Smoothing is a separable Gaussian convolution of the binned counts (a binned kernel density estimate;
 Wand 1994), truncated at ±4σ and normalized. The kernel standard deviation σ is a percentage of each axis's
-displayed range (Display → Smoothing σ; default 0.5%, i.e. 1.28 bins; 0–10%), so the same bandwidth is
+displayed range (Display → Smoothing σ; default 1.5%, i.e. 3.84 bins; 0–10%), so the same bandwidth is
 used at every plot size, and the bandwidth is the same fraction of both axes. Density, contour and zebra
 plots smooth by at least one bin. Zero padding is used at the plot edges, so mass is lost beyond the
 displayed range. That mass is already counted as off-scale. The density at an image pixel is the grid's
@@ -122,8 +122,8 @@ text halo is drawn as a stroked copy behind the text.
 Fonts (ADR-0011, ADR-0012, ADR-0013): figure text is set in a system font, with a bundled TrueType font of
 the same proportions as its fallback, drawn without kerning or ligatures; tick exponents are raised digits
 at 0.7 times the tick size. The PDF names Arial, Helvetica, Times New Roman, Times, Courier New and Courier
-without embedding them: each face is written with its PostScript name, WinAnsiEncoding, and the character
-widths and descriptor of the bundled font with the same widths (Liberation), and the minus sign is drawn as
+without embedding them: each face is written as the standard font it matches (Helvetica, Times-Roman, Courier, which every viewer has built in), WinAnsiEncoding, and the character
+widths of the bundled font with the same widths (Liberation), and the minus sign is drawn as
 an en dash. Other text embeds each face used: the system font's where the browser can read it, else the
 fallback's (and the user is warned). The PDF's streams are deflated. SVG files name the fonts without
 carrying them; PNG and JPEG carry the fallbacks as `@font-face` data URLs. Text widths, and so anchoring
