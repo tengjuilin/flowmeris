@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { HoverMenu } from './HoverMenu.tsx';
 
@@ -41,6 +41,20 @@ describe('HoverMenu', () => {
     expect(screen.queryByRole('menu')).toBeNull();
     fireEvent.mouseMove(tab);
     expect(screen.getByRole('menu')).not.toBeNull();
+  });
+
+  it('moves along the tab and items with the arrow keys', () => {
+    const { tab } = setup();
+    act(() => tab.focus());
+    const items = screen.getAllByRole('menuitem');
+    fireEvent.keyDown(tab, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(items[0]);
+    fireEvent.keyDown(items[0] as HTMLElement, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(items[1]);
+    fireEvent.keyDown(items[1] as HTMLElement, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(items[1]);
+    fireEvent.keyDown(items[1] as HTMLElement, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(items[0]);
   });
 
   it('runs an item and closes', () => {

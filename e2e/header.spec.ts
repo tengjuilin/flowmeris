@@ -42,14 +42,18 @@ test('Add → Folder and Files open the matching file pickers', async ({ page })
       w.picked.push(this.dataset.testid ?? '');
     };
   });
+  // Keyboard only: focusing the tab opens the list, Down moves along it, Enter picks.
   const add = page.locator('header').getByRole('button', { name: 'Add', exact: true });
-  await add.hover();
-  await page.getByRole('menuitem', { name: 'Files' }).click();
-  await add.hover();
-  await page.getByRole('menuitem', { name: 'Folder' }).click();
+  await add.focus();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await add.focus();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
   expect(await page.evaluate(() => (window as unknown as { picked: string[] }).picked)).toEqual([
-    'file-input',
     'folder-input',
+    'file-input',
   ]);
 });
 

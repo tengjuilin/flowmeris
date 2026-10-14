@@ -16,7 +16,7 @@ export interface HoverMenuItem {
 export function HoverMenu({ label, items }: { label: string; items: HoverMenuItem[] }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
-  const first = useRef<HTMLButtonElement>(null);
+
   useEffect(() => {
     if (!open) return;
     const away = (e: MouseEvent) => {
@@ -36,9 +36,16 @@ export function HoverMenu({ label, items }: { label: string; items: HoverMenuIte
         if (!root.current?.contains(e.relatedTarget as Node | null)) setOpen(false);
       }}
       onKeyDown={(e) => {
-        if (e.key === 'Escape') setOpen(false);
-        else if (e.key === 'ArrowDown' && !open) setOpen(true);
-        else if (e.key === 'ArrowDown') first.current?.focus();
+        if (e.key === 'Escape') return setOpen(false);
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        e.preventDefault();
+        setOpen(true);
+        // The tab and the items, in order; the arrows move along them without wrapping.
+        const stops = [
+          ...(root.current?.querySelectorAll<HTMLElement>(':scope > button, [role=menuitem]') ?? []),
+        ];
+        const at = stops.indexOf(document.activeElement as HTMLElement);
+        stops[Math.min(stops.length - 1, Math.max(0, at + (e.key === 'ArrowDown' ? 1 : -1)))]?.focus();
       }}
     >
       <button
@@ -53,10 +60,9 @@ export function HoverMenu({ label, items }: { label: string; items: HoverMenuIte
       </button>
       {open && (
         <div className="hover-menu-list" role="menu" aria-label={label}>
-          {items.map((item, i) => (
+          {items.map((item) => (
             <button
               key={item.label}
-              ref={i === 0 ? first : undefined}
               type="button"
               role="menuitem"
               title={item.title}
