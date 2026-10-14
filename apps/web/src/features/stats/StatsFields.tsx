@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { exportColumnSections, toggleExportColumns } from '../../lib/statsExport.ts';
 import { toast, useStore } from '../../state/store.ts';
 
-import { AGG_FUNCS, VALUE_STATS } from './options.ts';
+import { AGG_FUNCS, FREQUENCY_STATS, VALUE_STATS } from './options.ts';
 import { useGroupMutate } from './useGroupMutate.ts';
 
 export function AddStatForm({
@@ -24,8 +24,9 @@ export function AddStatForm({
     channel: '',
     p: 50,
   });
+  const needsChannel = !FREQUENCY_STATS.some((s) => s.id === form.stat);
   const addStat = () => {
-    if (!form.channel) {
+    if (needsChannel && !form.channel) {
       toast('Choose a channel for this statistic.');
       return;
     }
@@ -33,7 +34,7 @@ export function AddStatForm({
       id: newId('st_'),
       population: form.pop,
       stat: form.stat,
-      channel: form.channel,
+      ...(needsChannel ? { channel: form.channel } : {}),
       space: 'linear',
       ...(form.stat === 'percentile' ? { p: form.p } : {}),
     };
@@ -54,7 +55,7 @@ export function AddStatForm({
       <label className="field">
         Statistic
         <select value={form.stat} onChange={(e) => setForm({ ...form, stat: e.target.value as StatKind })}>
-          {VALUE_STATS.map((s) => (
+          {[...FREQUENCY_STATS, ...VALUE_STATS].map((s) => (
             <option key={s.id} value={s.id}>
               {s.label}
             </option>
@@ -74,18 +75,20 @@ export function AddStatForm({
           />
         </label>
       )}
-      <label className="field">
-        Channel
-        <select value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value })}>
-          <option value="">—</option>
-          {group.channels.map((c) => (
-            <option key={c} value={c}>
-              {c}
-              {marker(c) ? ` (${marker(c)})` : ''}
-            </option>
-          ))}
-        </select>
-      </label>
+      {needsChannel && (
+        <label className="field">
+          Channel
+          <select value={form.channel} onChange={(e) => setForm({ ...form, channel: e.target.value })}>
+            <option value="">—</option>
+            {group.channels.map((c) => (
+              <option key={c} value={c}>
+                {c}
+                {marker(c) ? ` (${marker(c)})` : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <button type="button" className="primary" onClick={addStat}>
         Add statistic
       </button>

@@ -1,6 +1,6 @@
 # Statistics
 
-Implementation: `packages/stats` (`summary.ts`, `percentile.ts`, `tdist.ts`), `packages/engine` (`handlers/stats.ts`). Tests: `packages/stats/src/stats.test.ts`.
+Implementation: `packages/stats` (`summary.ts`, `percentile.ts`, `tdist.ts`), `packages/engine` (`handlers/stats.ts`). Tests: `packages/stats/src/stats.test.ts`, `packages/export/test/stats-golden.test.ts`.
 
 Statistics are computed on the events of a population, by default in **linear, compensated** units
 (the group's compensation setting). NaN values are excluded and counted in `n_excluded`.
@@ -25,11 +25,20 @@ Statistics are computed on the events of a population, by default in **linear, c
 | Percentile $p$ | Hyndman & Fan type 7 ("linear", NumPy default): $h = (n-1)\,p/100$, $Q = x_{(\lfloor h\rfloor)} + (h - \lfloor h\rfloor)(x_{(\lfloor h\rfloor+1)} - x_{(\lfloor h\rfloor)})$, using NumPy's two-sided interpolation for exactness at the ends |
 | Robust SD | $\tfrac12\,(P_{84.13} - P_{15.87})$ (FlowJo definition) |
 | Robust CV | $100 \cdot \mathrm{rSD} / \mathrm{median}$ (%) (FlowJo definition) |
+| MAD | median absolute deviation, $\mathrm{median}\,|x_i - \mathrm{median}|$, unscaled (FlowJo "Median Abs Dev") |
+| MADP | $100 \cdot \mathrm{MAD} / \mathrm{median}$ (%) (FlowJo definition) |
+| Mode | see [M-STAT-MODE](#m-stat-mode-mode) |
 | Geometric mean | $\exp\bigl(\frac1k\sum \ln x_i\bigr)$ over the $k$ values with $x_i > 0$; the others are counted in `n_excluded` |
 | Min / Max | extreme order statistics |
 
 For a normal distribution, $P_{84.13} - P_{15.87} \approx 2\sigma$, so the robust SD estimates $\sigma$
 and is insensitive to outliers.
+
+**M-STAT-MODE — mode.** The value found most often, as the peak of a histogram. The values are binned
+over $[\min, \max]$ with the Freedman–Diaconis width $2\,\mathrm{IQR}\,n^{-1/3}$ (range/256 when the IQR
+is 0), at most 1024 bins; the mode is the center of the tallest bin (the lowest on a tie), or the value
+itself when all values are equal. FlowJo reads the peak of its 256-bin histogram of the displayed scale,
+so modes agree only approximately.
 
 ::: warning Geometric mean differs between tools
 FlowJo computes the geometric mean "in graph space" so that it is defined for zero and negative values.

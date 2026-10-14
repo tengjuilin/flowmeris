@@ -266,6 +266,23 @@ def apply_transform(t, x: np.ndarray) -> np.ndarray:
     return y
 
 
+MODE_MAX_BINS = 1024
+
+
+def mode_of(x: np.ndarray) -> float:
+    """M-STAT-MODE: center of the tallest bin (lowest on a tie) of a Freedman–Diaconis histogram."""
+    lo, hi = float(x.min()), float(x.max())
+    if hi == lo:
+        return lo
+    iqr = float(np.percentile(x, 75)) - float(np.percentile(x, 25))
+    width = 2 * iqr / np.cbrt(x.size) if iqr > 0 else (hi - lo) / 256
+    bins = int(max(1, min(MODE_MAX_BINS, np.ceil((hi - lo) / width))))
+    scale = bins / (hi - lo)
+    idx = np.minimum(bins - 1, np.floor((x - lo) * scale).astype(np.int64))
+    best = int(np.argmax(np.bincount(idx, minlength=bins)))  # argmax: the first of equal maxima
+    return lo + (best + 0.5) / scale
+
+
 def value_stats(x: np.ndarray, ps=POP_PERCENTILES) -> dict:
     """Value statistics as Flowmeris defines them (docs/methods/statistics.md), with NumPy."""
     x = np.asarray(x, dtype=float)
@@ -280,6 +297,7 @@ def value_stats(x: np.ndarray, ps=POP_PERCENTILES) -> dict:
     p84, p16 = float(np.percentile(clean, 84.13)), float(np.percentile(clean, 15.87))
     median = float(np.median(clean))
     rsd = (p84 - p16) / 2
+    mad = float(sps.median_abs_deviation(clean, scale=1.0))
     pos = clean[clean > 0]
     out.update(
         mean=fin(mean),
@@ -288,6 +306,9 @@ def value_stats(x: np.ndarray, ps=POP_PERCENTILES) -> dict:
         median=fin(median),
         rsd=fin(rsd),
         rcv=fin(100 * rsd / median) if median != 0 else None,
+        mad=fin(mad),
+        madp=fin(100 * mad / median) if median != 0 else None,
+        mode=fin(mode_of(clean)),
         geom_mean=fin(math.exp(math.fsum(np.log(pos)) / pos.size)) if pos.size else None,
         geom_n=int(pos.size),
         min=fin(clean.min()),
@@ -428,6 +449,10 @@ def golden_stats_edge():
         "zero_mean": [-2.0, -1.0, 0.0, 1.0, 2.0],
         "lognormal": [float(v) for v in rng.lognormal(5, 1.5, size=1001)],
         "integers_even": [float(v) for v in rng.integers(-50, 50, size=1000)],
+        # Mode (M-STAT-MODE): two peaks, the fallback width when the IQR is 0, two equal tallest bins.
+        "bimodal": [float(v) for v in np.concatenate([rng.normal(0, 1, 600), rng.normal(8, 0.5, 400)])],
+        "zero_iqr": [0.0, 5.0, 5.0, 5.0, 5.0, 5.0, 10.0],
+        "mode_tie": [1.0] * 6 + [3.0] * 6,
     }
     out = []
     for name, xs in cases.items():

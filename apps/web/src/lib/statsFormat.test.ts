@@ -19,6 +19,8 @@ describe('statistics table cells', () => {
     expect(fmtStat(100, 'pctParent')).toBe('100');
     expect(fmtStat(123.4, 'cv')).toBe('120');
     expect(fmtStat(45.67, 'rcv')).toBe('46');
+    expect(fmtStat(4.547, 'madp')).toBe('4.5');
+    expect(fmtStat(50.4, 'mad')).toBe('50');
     expect(fmtStat(0, 'pctParent')).toBe('0.0');
   });
 

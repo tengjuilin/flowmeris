@@ -1,5 +1,20 @@
 # Statistics tables and charts
 
+## Adding statistics
+
+In the settings panel's **Statistics** tab, **New statistic** adds a column to the table: choose the
+population, the statistic and, for statistics of event values, the channel. Every population's count, and
+the % of parent of every gated population, are in the table from the start.
+
+- **Frequencies**, which need no channel: % of parent, % of grandparent, % of total.
+- **Values of a channel**: mean, geometric mean, median, mode, SD, CV, robust SD, robust CV, MAD
+  (median absolute deviation), MADP (MAD as a percentage of the median), any percentile, min and max.
+
+Statistics use linear, compensated values. Percentages, CVs and MADP are shown to 2 significant figures,
+the others as integers; exports keep full precision. Robust SD and CV, MAD and MADP are defined as in
+FlowJo. The mode is the peak of a histogram of the values, so it agrees with FlowJo's only approximately.
+Definitions: [Statistics](/methods/statistics).
+
 ## Derived columns
 
 The **Statistics** view has a settings panel at its right with three tabs: **Statistics** (add a statistic,

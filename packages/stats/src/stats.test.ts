@@ -96,6 +96,27 @@ describe('M-STAT definitions', () => {
     expect(rsd!.value).toBeCloseTo(10, 2);
     expect(rcv!.value).toBeCloseTo(10, 2);
   });
+  it('computes MAD, MADP and mode', () => {
+    // median 3, |x − 3| = 2, 1, 0, 1, 97 → MAD 1
+    const [mad, madp] = summarize([1, 2, 3, 4, 100], [{ stat: 'mad' }, { stat: 'madp' }]);
+    expect(mad!.value).toBe(1);
+    expect(madp!.value).toBeCloseTo(100 / 3, 12);
+    const [mode] = summarize([5, 5, 5, 5], [{ stat: 'mode' }]);
+    expect(mode!.value).toBe(5);
+    // a clear peak near 10 among a spread of values
+    const xs = [...Array.from({ length: 200 }, (_, i) => 10 + ((i % 7) - 3) * 0.01), 0, 3, 20, 30, 50];
+    const [m] = summarize(xs, [{ stat: 'mode' }]);
+    expect(Math.abs(m!.value - 10)).toBeLessThan(1);
+    // IQR 2 → 2 bins of width 1 holding six values each: the lower bin wins the tie
+    const [tie] = summarize([...Array(6).fill(1), ...Array(6).fill(3)], [{ stat: 'mode' }]);
+    expect(tie!.value).toBe(1.5);
+    // IQR 0 → 256 bins over [0, 10]; the five 5s fall in bin 128
+    const [flat] = summarize([0, 5, 5, 5, 5, 5, 10], [{ stat: 'mode' }]);
+    expect(flat!.value).toBe((128.5 * 10) / 256);
+    const [none, noneMad] = summarize([], [{ stat: 'mode' }, { stat: 'mad' }]);
+    expect(none!.value).toBeNaN();
+    expect(noneMad!.value).toBeNaN();
+  });
   it('excludes NaN and non-positive values where documented', () => {
     const [m, g] = summarize([1, Number.NaN, 4, -2], [{ stat: 'mean' }, { stat: 'geomMean' }]);
     expect(m).toEqual({ value: 1, n: 3, nExcluded: 1 });
@@ -109,6 +130,8 @@ describe('M-STAT definitions', () => {
       { stat: 'max' as const },
       { stat: 'rsd' as const },
       { stat: 'rcv' as const },
+      { stat: 'mad' as const },
+      { stat: 'madp' as const },
       { stat: 'percentile' as const, p: 0 },
       { stat: 'percentile' as const, p: 2.5 },
       { stat: 'percentile' as const, p: 99.9 },
@@ -124,20 +147,27 @@ describe('M-STAT definitions', () => {
           const want = (stat: string, p?: number): number => {
             const n = sorted.length;
             if (n === 0) return Number.NaN;
+            const med = medianSorted(sorted);
             const rsd = (percentileSorted(sorted, 84.13) - percentileSorted(sorted, 15.87)) / 2;
-            if (stat === 'median') return medianSorted(sorted);
-            if (stat === 'min') return sorted[0]!;
-            if (stat === 'max') return sorted[n - 1]!;
-            if (stat === 'rsd') return rsd;
-            if (stat === 'rcv') return (100 * rsd) / medianSorted(sorted);
-            return percentileSorted(sorted, p!);
+            const mad = () => medianSorted(Float64Array.from(sorted, (x) => Math.abs(x - med)).sort());
+            const byStat: Record<string, () => number> = {
+              median: () => med,
+              min: () => sorted[0]!,
+              max: () => sorted[n - 1]!,
+              rsd: () => rsd,
+              rcv: () => (100 * rsd) / med,
+              mad,
+              madp: () => (100 * mad()) / med,
+            };
+            return byStat[stat]?.() ?? percentileSorted(sorted, p!);
           };
           const got = summarize(xs, reqs);
           reqs.forEach((r, i) => {
             const w = want(r.stat, r.p);
             // A median of zero gives an infinite RCV whose sign follows the zero's (-0 or 0), which
             // depends on which of equal values a sort or selection lands on: only |RCV| is defined.
-            if (r.stat === 'rcv' && !Number.isFinite(w)) expect(Math.abs(got[i]!.value)).toBe(Math.abs(w));
+            if ((r.stat === 'rcv' || r.stat === 'madp') && !Number.isFinite(w))
+              expect(Math.abs(got[i]!.value)).toBe(Math.abs(w));
             else expect(got[i]!.value + 0).toBe(w + 0);
           });
           // Many ranks: the full-sort path.
@@ -172,12 +202,15 @@ describe('M-STAT definitions', () => {
       const got = summarize(xs, [
         { stat: 'median' },
         { stat: 'rcv' },
+        { stat: 'mad' },
         ...ps.map((p) => ({ stat: 'percentile' as const, p })),
       ]);
-      expect(got[0]!.value).toBe(medianSorted(sorted));
+      const med = medianSorted(sorted);
+      expect(got[0]!.value).toBe(med);
       const rsd = (percentileSorted(sorted, 84.13) - percentileSorted(sorted, 15.87)) / 2;
-      expect(got[1]!.value).toBe((100 * rsd) / medianSorted(sorted));
-      ps.forEach((p, i) => expect(got[i + 2]!.value).toBe(percentileSorted(sorted, p)));
+      expect(got[1]!.value).toBe((100 * rsd) / med);
+      expect(got[2]!.value).toBe(medianSorted(Float64Array.from(sorted, (x) => Math.abs(x - med)).sort()));
+      ps.forEach((p, i) => expect(got[i + 3]!.value).toBe(percentileSorted(sorted, p)));
     }
   });
   it('frequencies', () => {
@@ -290,6 +323,9 @@ interface EdgeCase {
   median?: number | null;
   rsd?: number | null;
   rcv?: number | null;
+  mad?: number | null;
+  madp?: number | null;
+  mode?: number | null;
   geom_mean?: number | null;
   geom_n?: number;
   min?: number | null;
@@ -306,6 +342,9 @@ describe('golden parity: statistics vs NumPy on edge cases', () => {
     ['median', 'median'],
     ['rsd', 'rsd'],
     ['rcv', 'rcv'],
+    ['mad', 'mad'],
+    ['madp', 'madp'],
+    ['mode', 'mode'],
     ['geomMean', 'geom_mean'],
     ['min', 'min'],
     ['max', 'max'],

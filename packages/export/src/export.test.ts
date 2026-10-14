@@ -11,6 +11,7 @@ import {
   eventsToCsv,
   eventsToFcs,
   exportGatingML,
+  statLabel,
   tidyRows,
   toCsv,
   wideRows,
@@ -200,6 +201,14 @@ describe('M-FCS-WRITE: gated events as FCS', () => {
 });
 
 describe('M-EXPORT-STATS', () => {
+  it('labels every statistic, with its channel when it has one', () => {
+    expect(statLabel({ stat: 'mad', channel: 'FSC-A', space: 'linear' })).toBe('MAD FSC-A');
+    expect(statLabel({ stat: 'madp', channel: 'FSC-A', space: 'linear' })).toBe('MADP FSC-A');
+    expect(statLabel({ stat: 'mode', channel: 'PE-A', space: 'transformed' }, 'CD4')).toBe(
+      'Mode CD4 (PE-A) [transformed]',
+    );
+    expect(statLabel({ stat: 'pctGrandparent', space: 'linear' })).toBe('% Grandparent');
+  });
   it('quotes CSV fields per RFC 4180', () => {
     expect(csvField('a,b')).toBe('"a,b"');
     expect(csvField('say "hi"')).toBe('"say ""hi"""');

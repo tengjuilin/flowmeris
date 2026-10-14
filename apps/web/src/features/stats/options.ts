@@ -9,9 +9,19 @@ export const VALUE_STATS: { id: StatKind; label: string }[] = [
   { id: 'cv', label: 'CV (%)' },
   { id: 'rsd', label: 'Robust SD' },
   { id: 'rcv', label: 'Robust CV (%)' },
+  { id: 'mode', label: 'Mode' },
+  { id: 'mad', label: 'Median abs. dev. (MAD)' },
+  { id: 'madp', label: 'MADP (%)' },
   { id: 'percentile', label: 'Percentile…' },
   { id: 'min', label: 'Min' },
   { id: 'max', label: 'Max' },
+];
+
+/** Frequency statistics of a population, which need no channel. */
+export const FREQUENCY_STATS: { id: StatKind; label: string }[] = [
+  { id: 'pctParent', label: '% of parent' },
+  { id: 'pctGrandparent', label: '% of grandparent' },
+  { id: 'pctTotal', label: '% of total' },
 ];
 
 /** Replicate summaries of a grouped table. */

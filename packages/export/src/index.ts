@@ -157,6 +157,9 @@ export function statLabel(spec: Pick<StatSpec, 'stat' | 'p' | 'channel' | 'space
             cv: 'CV',
             rsd: 'rSD',
             rcv: 'rCV',
+            mad: 'MAD',
+            madp: 'MADP',
+            mode: 'Mode',
             min: 'Min',
             max: 'Max',
           } as Record<string, string>

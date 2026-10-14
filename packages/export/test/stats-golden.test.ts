@@ -17,6 +17,9 @@ interface Values {
   median?: number | null;
   rsd?: number | null;
   rcv?: number | null;
+  mad?: number | null;
+  madp?: number | null;
+  mode?: number | null;
   geom_mean?: number | null;
   geom_n?: number;
   min?: number | null;
@@ -30,7 +33,20 @@ interface Golden {
   populations: Record<string, Record<string, Record<string, Values>>>;
 }
 
-const STATS = ['mean', 'sd', 'cv', 'median', 'rsd', 'rcv', 'geomMean', 'min', 'max'] as const;
+const STATS = [
+  'mean',
+  'sd',
+  'cv',
+  'median',
+  'rsd',
+  'rcv',
+  'mad',
+  'madp',
+  'mode',
+  'geomMean',
+  'min',
+  'max',
+] as const;
 const KEY: Record<(typeof STATS)[number], keyof Values> = {
   mean: 'mean',
   sd: 'sd',
@@ -38,6 +54,9 @@ const KEY: Record<(typeof STATS)[number], keyof Values> = {
   median: 'median',
   rsd: 'rsd',
   rcv: 'rcv',
+  mad: 'mad',
+  madp: 'madp',
+  mode: 'mode',
   geomMean: 'geom_mean',
   min: 'min',
   max: 'max',

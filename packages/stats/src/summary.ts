@@ -11,6 +11,10 @@
  *    h = (n − 1)·p/100, interpolated with numpy's two-sided lerp.
  *  - rsd (robust SD, FlowJo): (P84.13 − P15.87) / 2.
  *  - rcv (robust CV, FlowJo): 100 · rsd / median (%).
+ *  - mad: median of |x − median| (FlowJo "Median Abs Dev"), unscaled.
+ *  - madp: 100 · mad / median (%) (FlowJo MADP).
+ * *  - mode: center of the tallest bin of a histogram of the values (width from
+ *    the Freedman–Diaconis rule, at most MODE_MAX_BINS bins); the lowest wins a tie.
  *  - geomMean: exp(mean(ln x)) over x > 0; non-positive values are excluded
  *    and reported in n_excluded. (FlowJo instead computes the geometric mean
  *    "in graph space"; see the methods page.)
@@ -37,6 +41,9 @@ export type ValueStat =
   | 'cv'
   | 'rsd'
   | 'rcv'
+  | 'mad'
+  | 'madp'
+  | 'mode'
   | 'percentile'
   | 'min'
   | 'max';
@@ -47,6 +54,41 @@ export interface StatValue {
   n: number;
   /** Values excluded (NaN, or ≤ 0 for geomMean). */
   nExcluded: number;
+}
+
+/** Most bins the mode's histogram uses. */
+export const MODE_MAX_BINS = 1024;
+
+/**
+ * Mode (M-STAT-MODE): center of the tallest bin of a histogram over [min, max]. The bin width is the
+ * Freedman–Diaconis width 2·IQR·n^(−1/3) (range/256 when the IQR is 0), so there are at most
+ * MODE_MAX_BINS bins. `s` has its min, max, P25 and P75 ranks in sorted position.
+ */
+function modeOf(s: Float64Array): number {
+  const n = s.length;
+  if (n === 0) return Number.NaN;
+  const lo = s[0] as number;
+  const hi = s[n - 1] as number;
+  if (hi === lo) return lo;
+  const iqr = percentileSorted(s, 75) - percentileSorted(s, 25);
+  const width = iqr > 0 ? (2 * iqr) / Math.cbrt(n) : (hi - lo) / 256;
+  const bins = Math.max(1, Math.min(MODE_MAX_BINS, Math.ceil((hi - lo) / width)));
+  const counts = new Float64Array(bins);
+  const scale = bins / (hi - lo);
+  for (let i = 0; i < n; i++) counts[Math.min(bins - 1, Math.floor(((s[i] as number) - lo) * scale))]!++;
+  let best = 0;
+  for (let b = 1; b < bins; b++) if ((counts[b] as number) > (counts[best] as number)) best = b;
+  return lo + (best + 0.5) / scale;
+}
+
+/** Median absolute deviation about `med`, which reorders a copy of `s`. */
+function madOf(s: Float64Array, med: number): number {
+  const n = s.length;
+  const dev = new Float64Array(n);
+  for (let i = 0; i < n; i++) dev[i] = Math.abs((s[i] as number) - med);
+  const r = medianRanks(n);
+  if (r.length > 0) selectRanks(dev, r, 0, n - 1, 0, r.length - 1);
+  return medianSorted(dev);
 }
 
 /** Neumaier compensated summation. */
@@ -145,6 +187,17 @@ export function summarize(
         for (const r of [...percentileRanks(n, 84.13), ...percentileRanks(n, 15.87)]) ranks.add(r);
         if (stat === 'rcv') for (const r of medianRanks(n)) ranks.add(r);
         break;
+      case 'mad':
+      case 'madp':
+        for (const r of medianRanks(n)) ranks.add(r);
+        break;
+      case 'mode':
+        for (const r of [...percentileRanks(n, 25), ...percentileRanks(n, 75)]) ranks.add(r);
+        if (n > 0) {
+          ranks.add(0);
+          ranks.add(n - 1);
+        }
+        break;
       case 'min':
         if (n > 0) ranks.add(0);
         break;
@@ -182,6 +235,17 @@ export function summarize(
         out[i] = base((100 * rsd) / medianSorted(s));
         break;
       }
+      case 'mad':
+        out[i] = base(madOf(s, medianSorted(s)));
+        break;
+      case 'madp': {
+        const med = medianSorted(s);
+        out[i] = base((100 * madOf(s, med)) / med);
+        break;
+      }
+      case 'mode':
+        out[i] = base(modeOf(s));
+        break;
       case 'min':
         out[i] = base(n === 0 ? Number.NaN : (s[0] as number));
         break;

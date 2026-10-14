@@ -75,6 +75,29 @@ test('statistics: added, formatted per kind, and removed from their header', asy
   await expect.poll(() => statsColumns(page)).toContain('All events | CV FSC-A');
 });
 
+test('statistics: MAD and MADP of a channel; frequencies need no channel', async ({ page }) => {
+  await loadWells(page, MEDIANS);
+  await page.getByRole('tab', { name: 'Statistics' }).click();
+  await expect.poll(() => statsColumn(page, 'All events | Count')).toEqual(['200', '200', '200', '200']);
+
+  // FSC-A is 1000…1199: median 1099.5, |x − median| = 0.5, 0.5, 1.5, 1.5, … → MAD 50,
+  // MADP = 100 · 50 / 1099.5 = 4.5 %.
+  await addStat(page, 'Median abs. dev. (MAD)', 'FSC-A');
+  await addStat(page, 'MADP (%)', 'FSC-A');
+  await expect.poll(() => statsColumn(page, 'All events | MAD FSC-A')).toEqual(['50', '50', '50', '50']);
+  await expect.poll(() => statsColumn(page, 'All events | MADP FSC-A')).toEqual(['4.5', '4.5', '4.5', '4.5']);
+
+  // A frequency hides the channel and is added without one.
+  const form = page.locator('.add-stat');
+  await form
+    .locator('label', { hasText: 'Statistic' })
+    .locator('select')
+    .selectOption({ label: '% of total' });
+  await expect(form.locator('label', { hasText: 'Channel' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Add statistic' }).click();
+  await expect.poll(() => statsColumn(page, 'All events | % Total')).toEqual(['100', '100', '100', '100']);
+});
+
 test('derived columns: formula suggestions, errors, significant figures; normalization', async ({ page }) => {
   await loadWells(page, MEDIANS);
   await importDesign(page, DESIGN, 2);

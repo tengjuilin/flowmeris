@@ -15,7 +15,7 @@ export function fmtStat(v: Cell, stat: string | undefined, sig?: number): string
   if (Number.isNaN(v)) return 'NaN';
   if (stat === 'value') return String(v);
   if (stat === 'count' || stat === 'n') return String(Math.round(v));
-  if (stat?.startsWith('pct') || stat === 'cv' || stat === 'rcv') {
+  if (stat?.startsWith('pct') || stat === 'cv' || stat === 'rcv' || stat === 'madp') {
     const r = Number(v.toPrecision(2)); // 99.96 → 100, which toPrecision would print as 1.0e+2
     return Math.abs(r) >= 100 ? String(Math.round(r)) : r.toPrecision(2);
   }
