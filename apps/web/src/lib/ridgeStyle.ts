@@ -27,8 +27,18 @@ import {
 
 /** Ridge plot settings (style and overlap): defaults, per axis channel and across populations. */
 
-export const DEFAULT_RIDGE_STYLE: RidgeStyle = RidgeStyleSchema.parse({});
-export const DEFAULT_OVERLAP = 0.6;
+/** Ridge style and overlap as shipped. */
+export const FACTORY_RIDGE_STYLE: RidgeStyle = RidgeStyleSchema.parse({});
+export const FACTORY_OVERLAP = 0.6;
+/** The defaults in use (live bindings): the factory ones, or the user's (`setRidgeDefaults`). */
+export let DEFAULT_RIDGE_STYLE: RidgeStyle = FACTORY_RIDGE_STYLE;
+export let DEFAULT_OVERLAP = FACTORY_OVERLAP;
+
+/** Use `style` and `overlap` as the defaults from now on. */
+export function setRidgeDefaults(style: RidgeStyle, overlap: number) {
+  DEFAULT_RIDGE_STYLE = style;
+  DEFAULT_OVERLAP = overlap;
+}
 export const DEFAULT_RIDGE_COMBINE: RidgeCombine = RidgeCombineSchema.parse({});
 
 /** A copy of `c` that is safe to take of an Immer draft (`structuredClone` cannot clone one). */
@@ -51,7 +61,7 @@ export function ridgeColor(style: RidgeStyle, ridgeId: string, index: number): s
 const PER_POPULATION = ['ticks', 'axisTitle'] as const;
 
 const settingsOf = (l: RidgeLayout): RidgeSettings => ({ style: jsonClone(l.style), overlap: l.overlap });
-const DEFAULT_SETTINGS: RidgeSettings = { style: DEFAULT_RIDGE_STYLE, overlap: DEFAULT_OVERLAP };
+const defaultSettings = (): RidgeSettings => ({ style: DEFAULT_RIDGE_STYLE, overlap: DEFAULT_OVERLAP });
 
 /** Whether `s` is the default ridge settings. */
 export const isDefaultRidge = (s: RidgeSettings) =>
@@ -106,7 +116,7 @@ export function ridgePopulationsMatch(g: Group, id: string): boolean {
  * the defaults). Returns whether `l`'s settings were replaced.
  */
 export function withRidgeChannel(l: RidgeLayout, fn: () => void): boolean {
-  return withScopeChange(RIDGE_SCOPES, l, DEFAULT_SETTINGS, fn);
+  return withScopeChange(RIDGE_SCOPES, l, defaultSettings(), fn);
 }
 
 /** Apply `l`'s current settings to every axis channel of its population now, including channels not used yet. */
@@ -126,17 +136,17 @@ export function setRidgeChannelStyles(l: RidgeLayout, perChannel: boolean) {
 
 /** Default settings for `l`'s current channel only. */
 export function resetRidgeCurrent(l: RidgeLayout) {
-  resetCurrentScope(RIDGE_SCOPES, l, DEFAULT_SETTINGS);
+  resetCurrentScope(RIDGE_SCOPES, l, defaultSettings());
 }
 
 /** Default settings for `l` with every channel's saved settings dropped. */
 export function resetRidgeLayout(l: RidgeLayout) {
-  resetAllScopes(RIDGE_SCOPES, l, DEFAULT_SETTINGS);
+  resetAllScopes(RIDGE_SCOPES, l, defaultSettings());
 }
 
 /** Default settings for axis channel `ch` in every population's ridge plot, current or saved. */
 export function resetRidgeChannel(g: Group, ch: string) {
-  resetScopeEverywhere(RIDGE_SCOPES, ridgeLayouts(g), ch, DEFAULT_SETTINGS);
+  resetScopeEverywhere(RIDGE_SCOPES, ridgeLayouts(g), ch, defaultSettings());
 }
 
 /** Default settings for every ridge plot of `g`. */

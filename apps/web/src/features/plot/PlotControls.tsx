@@ -10,46 +10,39 @@ import {
   transformOfKind,
 } from '../../lib/axisDefaults.ts';
 import { withAxesChange } from '../../lib/figure.ts';
+import { keyHint } from '../../lib/settings/index.ts';
 import { type EditAxes, editPlot, setAxisChannel } from '../../state/commands/plots.ts';
+import { useSettings } from '../../state/settings.ts';
 import { type Tool, useStore } from '../../state/store.ts';
 
-const TOOLS: { id: Tool; label: string; key: string; title: string; oneD?: boolean; twoD?: boolean }[] = [
-  { id: 'select', label: 'Select', key: 'V', title: 'Select, move and edit gates (V)' },
-  { id: 'rect', label: 'Rectangle', key: 'R', title: 'Rectangle gate: drag (R)', twoD: true },
+const TOOLS: { id: Tool; label: string; title: string; oneD?: boolean; twoD?: boolean }[] = [
+  { id: 'select', label: 'Select', title: 'Select, move and edit gates' },
+  { id: 'rect', label: 'Rectangle', title: 'Rectangle gate: drag', twoD: true },
   {
     id: 'ellipse',
     label: 'Ellipse',
-    key: 'E',
-    title: 'Ellipse gate: drag, then rotate/resize with handles (E)',
+    title: 'Ellipse gate: drag, then rotate/resize with handles',
     twoD: true,
   },
   {
     id: 'polygon',
     label: 'Polygon',
-    key: 'P',
-    title: 'Polygon gate: click vertices; close by clicking the first vertex, double-click or Enter (P)',
+    title:
+      'Polygon gate: click vertices; close by clicking the first vertex, double-clicking or with the close key',
     twoD: true,
   },
-  { id: 'quadrant', label: 'Quadrant', key: 'Q', title: 'Quadrant gate: click the center (Q)', twoD: true },
+  { id: 'quadrant', label: 'Quadrant', title: 'Quadrant gate: click the center', twoD: true },
   {
     id: 'spider',
     label: 'Spider',
-    key: 'S',
-    title: 'Spider gate: click the center, then drag arm handles (S)',
+    title: 'Spider gate: click the center, then drag arm handles',
     twoD: true,
   },
-  {
-    id: 'range',
-    label: 'Range',
-    key: 'H',
-    title: 'Range gate on a histogram: drag horizontally (H)',
-    oneD: true,
-  },
+  { id: 'range', label: 'Range', title: 'Range gate on a histogram: drag horizontally', oneD: true },
   {
     id: 'split',
     label: 'Bisector',
-    key: 'B',
-    title: 'Bisector on a histogram: click to split the events into − and + at that value (B)',
+    title: 'Bisector on a histogram: click to split the events into − and + at that value',
     oneD: true,
   },
 ];
@@ -231,13 +224,14 @@ export function AxisSelects({ group, plot, edit }: { group: Group; plot: PlotSpe
 export function ToolButtons({ is1d, disabled = false }: { is1d: boolean; disabled?: boolean }) {
   const tool = useStore((s) => s.ui.tool);
   const setUi = useStore((s) => s.setUi);
+  const keys = useSettings((s) => s.hotkeys);
   return (
     <div className="seg tool-seg">
       {TOOLS.filter((t) => (is1d ? !t.twoD : !t.oneD)).map((t) => (
         <button
           type="button"
           key={t.id}
-          title={t.title}
+          title={`${t.title}${keyHint(keys, `tool.${t.id}`)}`}
           aria-label={t.label}
           aria-pressed={tool === t.id}
           className={tool === t.id && !disabled ? 'on' : ''}

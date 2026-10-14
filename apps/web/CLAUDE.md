@@ -14,14 +14,15 @@ several features. Update this file when the layout changes.
 | `src/state/store.ts` | the store: `ws` (workspace), `ui` (where the user is and what is selected), `views` (layout preferences), `status` (missing data, loading, toast), undo history, Back/Forward |
 | `src/state/prefs.ts` | preferences in browser storage: session view and layout, settings panels' tabs and collapsed cards (`usePanelState`; the stored format is in `lib/settingsPanel.ts`) |
 | `src/state/persist.ts` | IndexedDB autosave of `ws` (ring of 20 snapshots) |
+| `src/state/settings.ts` | the app settings (`useSettings`): default appearance and hotkeys in localStorage, for every workspace; a default change calls `applyDefaults` and restyles the open workspace in one undo step; `rev` redraws the view after the Settings dialog closes |
 | `src/engine-client/` | `pool.ts`: the worker pool (ADR-0003, ADR-0010), `getPool()`; `scheduler.ts`: its request queue and result cache |
 | `src/workers/compute.worker.ts` | worker side: wraps `@flowmeris/engine` behind Comlink (`ComputeApi`) |
 | `src/state/commands/` | named store commands: `gates.ts`, `plots.ts` (incl. `drill`, and `openPathPlot` for the Gating path), `grid.ts`, `refPlots.ts`, `charts.ts`, `metadata.ts` (delete a variable, detect wells), `ingest.ts`, `workspace.ts` (open, save, new) |
 | `src/state/hooks/` | data hooks that fetch from the worker pool: `stats.ts` (`useSampleStats`, `useAnalysisTable`) |
 | `src/state/export.ts` | figure export wired to the store, pool and toasts (`exportFigure`, `storePlotFigure`); see Figure export below |
 | `src/lib/` | pure logic, tested in Node: no store, pool, workers or components (`pnpm lint:deps` checks this). Functions documented "call inside `mutate`" work on a workspace draft |
-| `src/components/ui/` | generic controls that take data and callbacks as props: `icons.tsx`, `settings/` (every settings panel's parts: `SettingsPanel`, `EmptyPanel`, `Card`, `InspectorTabs`, `PanelReset`, and the Settings tab's `ApplyCard`, `ResetCard`, `ActionsCard`; see Settings panels below), `TabStrip` (closable tabs with +), `NumInput`/`OptNumInput` (commit while typing), `Slider`/`PercentSlider`, `SettingsToggle`, `ActionRow`, `PickerMenu`, `GroupPicker`, `PlotSizeSlider`, `SupLabel`, `ColorField` (swatch with reset), `ReorderList` (drag-to-reorder rows, with `useRowSelection`), `ListActions` (the Reverse and reset buttons above such a list). No store or pool imports (`lint:deps`) |
-| `src/components/controls/` | settings controls shared by several views, which may use the store: `AxisFields` (scale and range), `TicksEditor`, `ExportMenu`; `text/` (`BaseFontCard`, `TextCards`: the settings panels' text appearance, built on `FontSelect` and `TextStyleEditor`) |
+| `src/components/ui/` | generic controls that take data and callbacks as props: `icons.tsx`, `settings/` (every settings panel's parts: `SettingsPanel`, `EmptyPanel`, `Card`, `InspectorTabs`, `PanelReset`, and the Settings tab's `ApplyCard`, `ResetCard`, `ActionsCard`; see Settings panels below), `TabStrip` (closable tabs with +), `NumInput`/`OptNumInput` (commit while typing), `Slider`/`PercentSlider`, `SettingsToggle`, `ActionRow`, `PickerMenu`, `GroupPicker`, `PlotSizeSlider`, `SupLabel`, `ColorField` (swatch with reset), `ReorderList` (drag-to-reorder rows, with `useRowSelection`), `ListActions` (the Reverse and reset buttons above such a list), `SideTabs` (tabs down a dialog's left side). No store or pool imports (`lint:deps`) |
+| `src/components/controls/` | settings controls shared by several views, which may use the store: `AxisFields` (scale and range), `TicksEditor`, `ExportMenu`, `DefaultField` (one default setting of the Settings dialog, from its field spec); `text/` (`BaseFontCard`, `TextCards`: the settings panels' text appearance, built on `FontSelect` and `TextStyleEditor`) |
 | `src/components/hooks/` | DOM and timing hooks: `useSize`, `useWidth`, `useVisible`, `useSettled`/`useDebounced`, `useFontsLoaded` (measure text again once a font arrives) |
 | `src/features/plot/` | one plot: `PlotCanvas` (composes `usePlotData`, `useGateEditing`/`useGatePreview`, `GateShapes`, `DraftShapes`, `PlotAxes`, `PlotPaths`), `PlotControls` (plot type, channels and scales, drawing tools, edit scope), `usePlot` (`usePlotForPopulation`, `useTilePlot`) |
 | `src/features/gate/` | the Gate view: `PlotPanel` (with its title, whose buttons open the plot in the Plot or Tiles view, its toolbar and export card), `RefPlots`, and the plot settings panel `Inspector` (`GateInspector.tsx`, tabs in `tabs/`, cards `AxisEditor`, `StyleEditor`, `GateEditor`), also used by the Plot grid and Tiles views |
@@ -33,6 +34,7 @@ several features. Update this file when the layout changes.
 | `src/features/grid/` | the Plot grid view: `PlotGridView` and `GridCell`, `useGridDrag` (drag plots by their titles) and `useGridKeys` (Delete, cut, copy, paste); slot moves are in `lib/gridMove.ts`; its settings panel is `features/gate`'s `Inspector target="grid"`, whose Figure tab has the cell's population, sample and overlay fields (`gate/tabs/GridCellFields.tsx`) |
 | `src/features/path/` | the Gating path view: `GatingPathView` (Path and Tree layouts), `PathCards` (`StepCard`, `PopChip`, `WhenVisible`, `ViewErrorBoundary`), `PopulationsPanel` |
 | `src/features/metadata/` | the Metadata view: `MetadataView` (toolbar, variable chips), `MetaTable`, `PlateMap`, `ImportDialog`, and the settings panel `MetadataInspector` with `VariableFields` and `ValuesTab` |
+| `src/features/settings/` | the app Settings dialog (header gear): `SettingsDialog` with the tabs `DefaultsTab` (Plots, Ridges, Charts, from `DEFAULTS_TABS`), `HotkeysTab` and `TransferTab` (settings file) |
 | `src/features/samples/`, `src/features/compensation/`, `src/features/sidebar/` | the Samples view, the Compensation view, and the sidebar of groups and samples |
 | `src/styles/` | all CSS, global, in files imported in cascade order by `styles/index.css` (with the features' CSS) |
 
@@ -73,6 +75,7 @@ What is in `src/lib/`:
 | `metadata.ts`, `metaTable.ts`, `plate.ts`, `metaImport.ts`, `palette.ts` | sample variables (values, types, paste, the shown variable, wells detected); the Metadata table's cells (linked Well, Row and Column, `writeMetaCell`); the plate map (samples by well, series fills); importing a table or plate layout; colors of populations and values |
 | `ingest.ts`, `files.ts`, `names.ts` | grouping loaded files; data-file extensions; short sample names |
 | `export/` | figure export, used through its `index.ts`; see Figure export below |
+| `settings/` | app settings, used through its `index.ts`: hotkey actions, key combinations and matching (`hotkeys.ts`: `HOTKEY_ACTIONS`, `matchHotkey`, `setHotkey`, `keyHint`); the editable defaults and their fields (`defaultsSpec.ts`: `DEFAULTS_TABS`), resolving, applying and restyling (`defaults.ts`: `applyDefaults`, `restyleWorkspace`); the settings file (`file.ts`) |
 | `fonts/` | figure fonts (ADR-0011, ADR-0012), used through its `index.ts`: the font ids and menu (`catalog.ts`: `FONTS`, each system font with its bundled fallback; `FONT_MENU`; `FONT_ALIASES`; `fontStack`), the bundled fallback families (`BUNDLED`), their files (`files.ts`, `registerBundledFonts`), installed fonts (`local.ts`, `sfnt.ts`), which font a text is drawn in (`resolve.ts`) |
 | `geometry.ts`, `fitSize.ts`, `order.ts`, `text.ts`, `format.ts`, `json.ts`, `download.ts`, `sheets.ts` | gate drawing geometry; sizing (`nearestColumns`, and `RowFit` for rows of plots in Tiles and the Plot grid); moving ids in a list (`moveIds`); label wrapping, number formats, JSON copy/compare, downloads, spreadsheets |
 | `ticks.ts`, `math.ts`, `textScale.ts` | custom ticks (`parseTicks`, `formatTicks`, `customTicks`), histogram y ticks; `clamp`; font sizes (`clampFontSize`, `scaleFontSizes`: the base font size scaling the others) |
@@ -81,6 +84,13 @@ What is in `src/lib/`:
 | `plotPanels.ts` | the plot settings panel's per-tab defaults and reset (`panelAtDefaults`, `resetPanel`) |
 | `panelSpecs.ts`, `settingsPanel.ts` | every settings panel's tabs and cards with their titles (`PLOT_PANELS`, `RIDGE_PANEL`, `CHART_PANEL`, `STATS_PANEL`, `META_PANEL`); the spec types, card props and the remembered tab and collapsed cards |
 | `gatingPath.ts` | the Gating path: the plot showing each gate (`plotForGate`, built from the gate's axes when no saved plot matches), the tree (`treeLayout`), the path's steps |
+
+Default styles (`DEFAULT_STYLE`, `DEFAULT_FIGURE`, `TILE_FIGURE`, `TILE_STYLE` in `figure.ts`,
+`DEFAULT_RIDGE_STYLE`, `DEFAULT_OVERLAP` in `ridgeStyle.ts`, `DEFAULT_CHART_STYLE` in `chartStyle.ts`) are
+the user's defaults: live bindings set by `applyDefaults` (`lib/settings`). Read them when needed, never
+copy them into a module-level constant; the shipped values are the `FACTORY_*` constants. To make a new
+style setting a default users can edit, add it to `DEFAULTS_TABS`. Keyboard shortcuts go in
+`HOTKEY_ACTIONS` and are matched with `matchHotkey`, so users can change them.
 
 `figure.ts` has the SVG text styling (`textCss`, `figureText`); `fonts/catalog.ts` the fonts (`fontStack`);
 `ridgeStyle.ts` the ridge defaults and colors (`ridgeColor`). Search for a symbol before assuming where it lives.

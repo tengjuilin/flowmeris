@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Sidebar } from '../features/sidebar/index.ts';
+import { useSettings } from '../state/settings.ts';
 import { useStore } from '../state/store.ts';
 import { Header } from './Header.tsx';
 import { Overlays } from './Overlays.tsx';
@@ -17,6 +18,8 @@ export function App() {
   const setViews = useStore((s) => s.setViews);
   const setUi = useStore((s) => s.setUi);
   const groups = useStore((s) => s.ws.groups);
+  // Drawn again from scratch after the default appearance changed (Settings dialog).
+  const rev = useSettings((s) => s.rev);
   const { dragOver, props: dropProps } = useDropIngest();
   // On narrow windows the settings panel is a drawer opened from the Settings button.
   const [drawer, setDrawer] = useState(false);
@@ -40,7 +43,7 @@ export function App() {
       {groups.length === 0 ? (
         <Welcome />
       ) : (
-        <div className="main">
+        <div className="main" key={rev}>
           <Sidebar />
           <section className="center">
             <TabBar drawer={drawer} onToggleDrawer={() => setDrawer((d) => !d)} />

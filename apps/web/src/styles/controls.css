@@ -400,3 +400,51 @@ button.link:hover {
   border: 1px solid var(--border);
   flex: none;
 }
+
+/* Tabs down the left side of a dialog, beside their pane (ui/SideTabs). */
+.side-tabs {
+  display: flex;
+  min-height: 0;
+}
+.side-tabs-list {
+  flex: 0 0 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 8px;
+  background: var(--surface-2);
+  border-right: 1px solid var(--border);
+  overflow: auto;
+}
+.side-tabs-list button {
+  justify-content: flex-start;
+  border: none;
+  background: transparent;
+  padding: 7px 10px;
+  color: var(--text);
+}
+.side-tabs-list button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.side-tabs-list button.on {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  font-weight: 600;
+}
+.side-tabs-pane {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 14px 18px 18px;
+}
+@media (max-width: 700px) {
+  .side-tabs {
+    flex-direction: column;
+  }
+  .side-tabs-list {
+    flex: none;
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}

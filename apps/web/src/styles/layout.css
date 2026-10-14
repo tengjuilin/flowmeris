@@ -296,6 +296,10 @@
 .app-header .button.icon:hover {
   color: var(--text);
 }
+/* The Settings gear, the same size as the links beside it. */
+.app-header button.header-icon {
+  padding: 3px 4px;
+}
 .hover-menu-list .menu-icon {
   display: inline-flex;
   justify-content: center;
