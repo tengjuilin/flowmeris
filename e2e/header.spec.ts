@@ -10,9 +10,13 @@ test('the Workspace and Add menus open on hover, and Undo, Redo and Docs are ico
 
   await header.getByRole('button', { name: 'Workspace' }).hover();
   await expect(page.getByRole('menuitem')).toHaveText(['New', 'Export', 'Import']);
-  await header.getByRole('button', { name: 'Add', exact: true }).hover();
-  await expect(page.getByRole('menuitem')).toHaveText(['Folder', 'Files']);
-  await expect(page.getByRole('menuitem').locator('svg')).toHaveCount(2);
+  // Playwright's Firefox can replay its previous pointer position right after the menus change, which
+  // leaves Add at once; hovering again opens it for good.
+  await expect(async () => {
+    await header.getByRole('button', { name: 'Add', exact: true }).hover();
+    await expect(page.getByRole('menuitem')).toHaveText(['Folder', 'Files'], { timeout: 1000 });
+    await expect(page.getByRole('menuitem').locator('svg')).toHaveCount(2, { timeout: 1000 });
+  }).toPass();
   await header.getByRole('button', { name: 'Workspace' }).hover();
   await expect(page.getByRole('menuitem').locator('svg')).toHaveCount(3);
   await page.mouse.move(600, 400);
