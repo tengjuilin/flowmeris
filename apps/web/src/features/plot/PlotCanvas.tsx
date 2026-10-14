@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 import type { PlotHandle } from '../../lib/export/index.ts';
-import { DEFAULT_FIGURE, figureText } from '../../lib/figure.ts';
+import { DEFAULT_FIGURE, contourCss, figureText } from '../../lib/figure.ts';
 import { plotKey } from '../../lib/keys.ts';
 import { plotFrame } from '../../lib/plotFrame.ts';
 import { plotAriaLabel, plotBox } from '../../lib/plotLayout.ts';
@@ -196,6 +196,7 @@ export const PlotCanvas = forwardRef<PlotHandle, PlotCanvasProps>(function PlotC
               contourPaths={contourPaths}
               bgColor={bgPop?.color}
               ovColor={ovColor}
+              contourCss={contourCss(plot.style, pw)}
             />
             <GateShapes
               group={group}

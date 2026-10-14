@@ -25,18 +25,31 @@ export const ContourSpecSchema = z.discriminatedUnion('mode', [
 ]);
 export type ContourSpec = z.infer<typeof ContourSpecSchema>;
 
+/**
+ * Sizes in px (points, outliers, contour lines) are px of a plot whose plot area is `REFERENCE_PLOT_PX` wide;
+ * a plot drawn at another size scales them with its width, so it looks the same at every size.
+ */
+export const REFERENCE_PLOT_PX = 400;
+
 export const PlotStyleSchema = z.object({
   colormap: z.string(),
-  /** Point size in display px; fractional sizes are drawn with partly covered edge pixels. */
+  /** Point size in px at the reference plot width; fractional sizes are drawn with partly covered edge pixels. */
   pointPx: Num.min(0.25).max(10),
-  /** Gaussian smoothing σ in display bins (0 = none). */
-  smoothSigmaBins: Num.nonnegative(),
+  /** Gaussian smoothing σ of the density, in % of each axis's displayed range (0 = none). */
+  smoothPct: Num.min(0).max(10),
   contour: ContourSpecSchema,
   showOutliers: z.boolean(),
+  /** Contour and zebra plots: outlier size in px at the reference plot width, and color. */
+  outlierPx: Num.min(0.25).max(10).default(2),
+  outlierColor: HexColor.default('#000000'),
+  /** Contour and zebra plots: contour line width in px at the reference plot width. */
+  contourWidth: Num.min(0).max(10).default(1),
+  /** Contour and zebra plots: contour line color; omitted = the theme's. */
+  contourColor: HexColor.optional(),
   /** Zebra plots: draw the contour lines over the filled bands. */
   zebraLines: z.boolean().default(true),
   /** Zebra plots: each band's gradient runs from the first color at its outer edge to the second at its inner edge. */
-  zebraColors: z.tuple([HexColor, HexColor]).default(['#0000ff', '#ffffff']),
+  zebraColors: z.tuple([HexColor, HexColor]).default(['#000000', '#ffffff']),
   histBins: z.number().int().min(16).max(1024),
   histNorm: z.enum(['count', 'mode', 'area']),
   histSmooth: z.boolean(),

@@ -46,7 +46,6 @@ export function rasterOf(
     eventsPlotted: idx ? idx.length : s.eventCount,
     offScale: r.stats.offScale,
     nan: r.stats.nan,
-    sigmaPx: r.sigmaPx,
   };
 }
 

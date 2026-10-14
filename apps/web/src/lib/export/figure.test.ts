@@ -118,7 +118,7 @@ describe('plotFigure', () => {
       kind,
       population: 'root',
       x: { transform: 't' },
-      style: { pointPx: 3, smoothSigmaBins: 2 },
+      style: { pointPx: 3, smoothPct: 0.5 },
     }) as PlotSpec;
   const source = (): PlotExportSource & { calls: number[][] } => {
     const calls: number[][] = [];

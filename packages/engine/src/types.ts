@@ -52,7 +52,6 @@ export interface RasterResponse {
   eventsPlotted: number;
   offScale: number;
   nan: number;
-  sigmaPx: number;
 }
 
 export interface HistogramResponse {

@@ -1,5 +1,5 @@
 import type { HistogramResponse, RasterResponse } from '@flowmeris/engine';
-import { useMemo } from 'react';
+import { type CSSProperties, useMemo } from 'react';
 import type { PlotFrame } from '../../lib/plotFrame.ts';
 import { backgateHeights, contourPath, histAreaPath, histTop } from '../../lib/plotPaths.ts';
 
@@ -61,7 +61,13 @@ export function EventPaths({
   contourPaths,
   bgColor,
   ovColor,
-}: ReturnType<typeof usePlotPaths> & { bgColor: string | undefined; ovColor: string | undefined }) {
+  contourCss,
+}: ReturnType<typeof usePlotPaths> & {
+  bgColor: string | undefined;
+  ovColor: string | undefined;
+  /** The contour lines' width and color. */
+  contourCss: CSSProperties;
+}) {
   return (
     <>
       {histPath?.overlays.map((o, i) => (
@@ -78,7 +84,7 @@ export function EventPaths({
         <path d={bgHistPath} className="hist-backgate" style={{ fill: bgColor, stroke: bgColor }} />
       )}
       {contourPaths?.map((d, i) => (
-        <path key={i} className="contour" d={d} />
+        <path key={i} className="contour" d={d} style={contourCss} />
       ))}
     </>
   );

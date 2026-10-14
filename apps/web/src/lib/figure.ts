@@ -3,6 +3,7 @@ import {
   PlotFigureSchema,
   type PlotSpec,
   type PlotStyle,
+  REFERENCE_PLOT_PX,
   type TextStyle,
 } from '@flowmeris/model';
 import type { CSSProperties } from 'react';
@@ -28,15 +29,29 @@ import {
 export const DEFAULT_STYLE: PlotStyle = {
   colormap: 'viridis',
   pointPx: 3,
-  smoothSigmaBins: 2,
+  smoothPct: 0.5,
   contour: { mode: 'equal-prob', pct: 5 },
   showOutliers: true,
+  outlierPx: 2,
+  outlierColor: '#000000',
+  contourWidth: 1,
   zebraLines: true,
-  zebraColors: ['#0000ff', '#ffffff'],
+  zebraColors: ['#000000', '#ffffff'],
   histBins: 256,
   histNorm: 'mode',
   histSmooth: false,
 };
+
+/**
+ * The contour lines' style on a plot area `pw` px wide: their width is px at the reference plot width, so it
+ * scales with the plot; no color = the theme's.
+ */
+export function contourCss(style: PlotStyle, pw: number): CSSProperties {
+  return {
+    strokeWidth: (style.contourWidth * pw) / REFERENCE_PLOT_PX,
+    ...(style.contourColor !== undefined && { stroke: style.contourColor }),
+  };
+}
 
 /** Figure options of a plot that has none saved; the plot box is square. */
 export const DEFAULT_FIGURE: PlotFigure = PlotFigureSchema.parse({ boxAspect: 1 });

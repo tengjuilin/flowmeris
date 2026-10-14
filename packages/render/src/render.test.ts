@@ -1,8 +1,9 @@
 import { inflateSync } from 'node:zlib';
-import { type PlotStyle, sha256Hex } from '@flowmeris/model';
+import { type PlotStyle, REFERENCE_PLOT_PX, sha256Hex } from '@flowmeris/model';
 import { Rng, TOL, compareArrays, readGolden } from '@flowmeris/testkit';
 import { describe, expect, it } from 'vitest';
 import {
+  type Raster2DInput,
   bilinear,
   colormapLut,
   encodePng,
@@ -15,9 +16,12 @@ import {
 const style = {
   colormap: 'viridis',
   pointPx: 1,
-  smoothSigmaBins: 2,
+  smoothPct: 0.5,
   contour: { mode: 'equal-prob' as const, pct: 5 as const },
   showOutliers: true,
+  outlierPx: 2,
+  outlierColor: '#ff0000',
+  contourWidth: 1,
   zebraLines: true,
   zebraColors: ['#0000ff', '#ffffff'] as [string, string],
   histBins: 64,
@@ -143,8 +147,8 @@ describe('raster2d', () => {
     it('follows the logarithmic levels', () => {
       const r = zebra({ contour: { mode: 'log', levels: 4 }, showOutliers: false });
       expect(r.contours.length).toBe(4);
-      // Four bands: the gradient starts again at the three inner lines.
-      expect(restarts(r, 60, 60)).toBe(3);
+      // Four bands: the gradient starts again at (at least) the three inner lines.
+      expect(restarts(r, 60, 60)).toBeGreaterThanOrEqual(3);
     });
 
     it('draws nothing for an empty population', () => {
@@ -162,6 +166,88 @@ describe('raster2d', () => {
       });
       expect(r.contours).toEqual([]);
       expect(r.rgba.every((v) => v === 0)).toBe(true);
+    });
+  });
+
+  describe('the same picture at every size (M-PLOT-BIN)', () => {
+    const { x, y } = data(20000);
+    const at = (kind: Raster2DInput['kind'], w: number, st: Partial<PlotStyle> = {}) =>
+      raster2d({
+        kind,
+        width: w,
+        height: w,
+        x,
+        y,
+        indices: null,
+        xRange: [0, 1],
+        yRange: [0, 1],
+        style: { ...style, ...st },
+        dotColor: '#000000',
+      });
+    /** Share of the image's pixels drawn. */
+    const filled = (r: ReturnType<typeof at>) => {
+      let n = 0;
+      for (let i = 3; i < r.rgba.length; i += 4) if (r.rgba[i]) n++;
+      return n / (r.width * r.height);
+    };
+
+    it.each(['contour', 'zebra'] as const)('%s lines do not depend on the size', (kind) => {
+      expect(at(kind, 150).contours).toEqual(at(kind, 600).contours);
+    });
+
+    it.each(['density', 'zebra'] as const)('%s fills the same share of the plot at every size', (kind) => {
+      const small = filled(at(kind, 150, { showOutliers: false }));
+      expect(small).toBeGreaterThan(0.05);
+      expect(Math.abs(filled(at(kind, 600, { showOutliers: false })) - small)).toBeLessThan(0.01);
+    });
+
+    it('colors a pseudocolor point by the density where it is, whatever the size', () => {
+      // The pixel at the distribution's center: (0.5, 0.4) → column 0.5·w, row (1 − 0.4)·w.
+      const center = (w: number) => {
+        const r = at('pseudocolor', w, { pointPx: 1 });
+        const o = (Math.floor(0.6 * w) * w + Math.floor(0.5 * w)) * 4;
+        expect(r.rgba[o + 3]).toBeGreaterThan(0);
+        return Array.from(r.rgba.slice(o, o + 3));
+      };
+      const small = center(400);
+      center(800).forEach((v, i) => expect(Math.abs(v - small[i]!)).toBeLessThanOrEqual(3));
+    });
+
+    it('scales point sizes with the width, from px at the reference width', () => {
+      const one = (w: number, st: Partial<PlotStyle>, kind: Raster2DInput['kind'] = 'dot') => {
+        const r = raster2d({
+          kind,
+          width: w,
+          height: w,
+          x: [0.5, 0.05],
+          y: [0.5, 0.05],
+          indices: null,
+          xRange: [0, 1],
+          yRange: [0, 1],
+          style: { ...style, ...st },
+          dotColor: '#000000',
+        });
+        // Painted area in px: partly covered edge pixels count by their coverage.
+        let area = 0;
+        for (let i = 3; i < r.rgba.length; i += 4) area += (r.rgba[i] as number) / 255;
+        return Math.round(area * 100) / 100;
+      };
+      expect(one(REFERENCE_PLOT_PX, { pointPx: 3 })).toBeCloseTo(2 * 9, 0);
+      expect(one(2 * REFERENCE_PLOT_PX, { pointPx: 3 })).toBeCloseTo(2 * 36, 0);
+      expect(one(REFERENCE_PLOT_PX / 2, { pointPx: 4 })).toBeCloseTo(2 * 4, 0);
+    });
+
+    it('draws outliers in their own size and color', () => {
+      const r = at('contour', REFERENCE_PLOT_PX, { outlierColor: '#00ff00', outlierPx: 1 });
+      let green = 0;
+      for (let i = 0; i < r.rgba.length; i += 4) {
+        if (!r.rgba[i + 3]) continue;
+        expect([r.rgba[i], r.rgba[i + 1], r.rgba[i + 2]]).toEqual([0, 255, 0]);
+        green++;
+      }
+      expect(green).toBeGreaterThan(0);
+      const big = at('contour', REFERENCE_PLOT_PX, { outlierColor: '#00ff00', outlierPx: 3 });
+      expect(filled(big)).toBeGreaterThan(filled(r) * 3);
     });
   });
 

@@ -36,14 +36,12 @@ export interface PlotExportSource {
   generator: string;
 }
 
-/** The plot's events rendered for export at `scale` × the on-screen size (point size and smoothing scaled too). */
+/**
+ * The plot's events rendered for export at `scale` × the on-screen size. Point sizes and smoothing are
+ * relative to the plot's width and axes (M-PLOT-BIN), so the export is the on-screen picture, sharper.
+ */
 function hiResRaster(plot: PlotSpec, pw: number, ph: number, scale: number, source: PlotExportSource) {
-  const style = {
-    ...plot.style,
-    pointPx: Math.min(10 * scale, plot.style.pointPx * scale),
-    smoothSigmaBins: plot.style.smoothSigmaBins * scale,
-  };
-  return source.raster({ ...plot, style }, Math.round(pw * scale), Math.round(ph * scale));
+  return source.raster(plot, Math.round(pw * scale), Math.round(ph * scale));
 }
 
 /** The plot as a standalone SVG: vector axes and gates, the event raster re-rendered at `dpi`, provenance metadata. */

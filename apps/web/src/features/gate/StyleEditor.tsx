@@ -1,13 +1,14 @@
-import type { PlotSpec } from '@flowmeris/model';
+import { type PlotSpec, REFERENCE_PLOT_PX } from '@flowmeris/model';
 import { COLORMAPS } from '@flowmeris/render';
-import { ColorField } from '../../components/ui/ColorField.tsx';
 import { NumInput } from '../../components/ui/NumInput.tsx';
 import { Card } from '../../components/ui/settings/index.ts';
 import { DEFAULT_FIGURE, DEFAULT_STYLE, TILE_FIGURE } from '../../lib/figure.ts';
+import { clamp } from '../../lib/math.ts';
 import type { PlotCard } from '../../lib/panelSpecs.ts';
 import type { CardOf } from '../../lib/settingsPanel.ts';
 import { type PlotTarget, plotsOf } from '../../state/commands/plots.ts';
 import { useGroup, useStore } from '../../state/store.ts';
+import { ContourFields } from './ContourFields.tsx';
 
 /** The Display card: how events are drawn (color map, point size, smoothing and so on) and the off-scale note. */
 export function StyleEditor({
@@ -59,67 +60,28 @@ export function StyleEditor({
               </select>
             </label>
           )}
-          <NumInput
-            label="Point size (px)"
-            step={0.25}
-            value={st.pointPx}
-            onCommit={(v) => set((s) => void (s.pointPx = Math.max(0.25, Math.min(10, v))), 'pointPx')}
-            title="Size of each event's point, 0.25–10 px; fractional sizes are allowed"
-          />
+          {(plot.kind === 'dot' || plot.kind === 'pseudocolor') && (
+            <NumInput
+              label="Point size (px)"
+              step={0.25}
+              value={st.pointPx}
+              onCommit={(v) => set((s) => void (s.pointPx = clamp(v, 0.25, 10)), 'pointPx')}
+              title={`Size of each event's point, 0.25–10 px at a ${REFERENCE_PLOT_PX}-px-wide plot; it scales with the plot`}
+            />
+          )}
           {plot.kind !== 'dot' && (
             <NumInput
-              label="Smoothing σ (px)"
-              value={st.smoothSigmaBins}
-              onCommit={(v) =>
-                set((s) => void (s.smoothSigmaBins = Math.max(0, Math.min(20, v))), 'smoothing')
-              }
-              title="Gaussian kernel σ of the binned density estimate, in display pixels (0 = none)"
+              label="Smoothing σ (%)"
+              step={0.1}
+              value={st.smoothPct}
+              onCommit={(v) => set((s) => void (s.smoothPct = clamp(v, 0, 10)), 'smoothing')}
+              title="Gaussian kernel σ of the density estimate, in % of each axis's range (0 = none)"
             />
           )}
         </div>
       )}
       {(plot.kind === 'contour' || plot.kind === 'zebra') && (
-        <div className="grid2">
-          <label className="field">
-            Contours
-            <select
-              value={st.contour.mode === 'equal-prob' ? `p${st.contour.pct}` : 'log'}
-              onChange={(e) =>
-                set((s) => {
-                  const v = e.target.value;
-                  s.contour =
-                    v === 'log'
-                      ? { mode: 'log', levels: 8 }
-                      : { mode: 'equal-prob', pct: Number(v.slice(1)) as 2 | 5 | 10 };
-                })
-              }
-            >
-              <option value="p2">Equal probability 2%</option>
-              <option value="p5">Equal probability 5%</option>
-              <option value="p10">Equal probability 10%</option>
-              <option value="log">Logarithmic</option>
-            </select>
-          </label>
-          <label className="field check">
-            <input
-              type="checkbox"
-              checked={st.showOutliers}
-              onChange={(e) => set((s) => void (s.showOutliers = e.target.checked))}
-            />
-            Show outliers
-          </label>
-          {plot.kind === 'zebra' && <ZebraColors colors={st.zebraColors} set={set} />}
-          {plot.kind === 'zebra' && (
-            <label className="field check" title="Draw the contour lines over the filled bands">
-              <input
-                type="checkbox"
-                checked={st.zebraLines}
-                onChange={(e) => set((s) => void (s.zebraLines = e.target.checked))}
-              />
-              Contour lines
-            </label>
-          )}
-        </div>
+        <ContourFields st={st} zebra={plot.kind === 'zebra'} set={set} />
       )}
       {plot.kind === 'histogram' && (
         <div className="grid2">
@@ -175,41 +137,4 @@ export function StyleEditor({
       </label>
     </Card>
   );
-}
-
-const ZEBRA_ENDS = [
-  { label: 'Outer color', title: "Each band's color at its outer contour line" },
-  { label: 'Inner color', title: "Each band's color at its inner contour line" },
-] as const;
-
-/** A zebra plot's two colors: each band's gradient runs from the outer to the inner one (M-PLOT-ZEBRA). */
-function ZebraColors({
-  colors,
-  set,
-}: {
-  colors: [string, string];
-  set: (fn: (st: PlotSpec['style']) => void, merge?: string) => void;
-}) {
-  return ZEBRA_ENDS.map((end, i) => {
-    const def = DEFAULT_STYLE.zebraColors[i] as string;
-    const at = colors[i] as string;
-    return (
-      <ColorField
-        key={end.label}
-        inline
-        label={end.label}
-        inputLabel={end.label}
-        inputTitle={end.title}
-        value={at}
-        onChange={(v) => set((s) => void (s.zebraColors[i] = v), `zebraColor${i}`)}
-        reset={{
-          disabled: at.toLowerCase() === def,
-          label: `Reset ${end.label.toLowerCase()}`,
-          title:
-            at.toLowerCase() === def ? `${end.label} is the default` : `Reset ${end.label.toLowerCase()}`,
-          onReset: () => set((s) => void (s.zebraColors[i] = def)),
-        }}
-      />
-    );
-  });
 }

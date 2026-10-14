@@ -3,7 +3,7 @@ import { BoundedMemo } from './memo.ts';
 import type { SampleData, StatSpec } from './types.ts';
 
 /** Bumped whenever a numerical kernel changes, so cached results are not reused (ADR-0004). */
-export const KERNEL_VERSION = 'ts-1';
+export const KERNEL_VERSION = 'ts-2';
 
 /** Population cache keys computed within one request (a key hashes its whole lineage). */
 export type KeyMemo = Map<string, string>;

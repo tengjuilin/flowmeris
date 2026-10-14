@@ -10,7 +10,7 @@ import { readSession, writeSession } from './prefs.ts';
 
 enablePatches();
 
-export const APP_INFO = { version: __APP_VERSION__, commit: __APP_COMMIT__, kernels: 'ts-1' };
+export const APP_INFO = { version: __APP_VERSION__, commit: __APP_COMMIT__, kernels: 'ts-2' };
 
 export type Tool = 'select' | 'rect' | 'range' | 'split' | 'ellipse' | 'polygon' | 'quadrant' | 'spider';
 /** The app's views (tabs). Labels, tab order and contents are in app/views.tsx. */

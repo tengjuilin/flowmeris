@@ -8,7 +8,7 @@ import {
   logContourLevels,
   smooth2d,
 } from '@flowmeris/density';
-import type { PlotStyle } from '@flowmeris/model';
+import { type PlotStyle, REFERENCE_PLOT_PX } from '@flowmeris/model';
 import { colormapLut, hex } from './colormaps.ts';
 
 // ---------------------------------------------------------------------------
@@ -26,7 +26,7 @@ export interface Raster2DInput {
   xRange: [number, number];
   yRange: [number, number];
   style: PlotStyle;
-  /** Dot / outlier color (#rrggbb). */
+  /** Dot color (#rrggbb); outliers take the style's. */
   dotColor: string;
 }
 
@@ -36,8 +36,6 @@ export interface Raster2DOutput {
   rgba: Uint8ClampedArray;
   contours: ContourLine[];
   stats: BinStats;
-  /** Smoothing σ used, in pixels (reported on the plot for transparency). */
-  sigmaPx: number;
 }
 
 /**
@@ -78,27 +76,38 @@ function putPixel(
   }
 }
 
-/** Contour and zebra plots compute their density on a coarser grid (≈ 3 px cells) for smooth lines. */
-const CONTOUR_CELL = 3;
+/**
+ * Bins per axis of the density grid (M-PLOT-BIN). Fixed, so the density, its colors and its contours do not
+ * depend on the size the plot is drawn at.
+ */
+export const DENSITY_BINS = 256;
 
-/** The smoothed density of a contour or zebra plot, and its contour levels (M-PLOT-CONTOUR-EQP, -LOG). */
-function contourDensity(inp: Raster2DInput): { dens: Grid2D; levels: number[] } {
-  const { width: w, height: h, style } = inp;
-  const cg = bin2d(
+/** An RGB color, 0–255 per channel. */
+type Rgb = [number, number, number];
+
+/**
+ * The smoothed density on the fixed grid (M-PLOT-SMOOTH): σ is `smoothPct` % of each axis's range, at least
+ * `minBins` bins.
+ */
+function densityGrid(inp: Raster2DInput, minBins: number): { grid: Grid2D; stats: BinStats } {
+  const { grid, stats } = bin2d(
     inp.x,
     inp.y,
     inp.indices,
     inp.xRange,
     inp.yRange,
-    Math.ceil(w / CONTOUR_CELL),
-    Math.ceil(h / CONTOUR_CELL),
-  ).grid;
-  const dens = smooth2d(cg, Math.max(style.smoothSigmaBins / CONTOUR_CELL, 1));
-  const levels =
-    style.contour.mode === 'equal-prob'
-      ? equalProbabilityLevels(dens.values, style.contour.pct / 100)
-      : logContourLevels(dens.values, style.contour.levels);
-  return { dens, levels };
+    DENSITY_BINS,
+    DENSITY_BINS,
+  );
+  const sigma = Math.max((inp.style.smoothPct / 100) * DENSITY_BINS, minBins);
+  return { grid: smooth2d(grid, sigma), stats };
+}
+
+/** Contour levels of a density (M-PLOT-CONTOUR-EQP, -LOG). */
+function levelsOf(dens: Grid2D, style: PlotStyle): number[] {
+  return style.contour.mode === 'equal-prob'
+    ? equalProbabilityLevels(dens.values, style.contour.pct / 100)
+    : logContourLevels(dens.values, style.contour.levels);
 }
 
 /**
@@ -120,143 +129,135 @@ export function bilinear(g: Grid2D, fx: number, fy: number): number {
   );
 }
 
-/**
- * M-PLOT-ZEBRA: the contour plot's bands filled, each with a gradient from the first zebra color at its
- * outer line to the second at its inner line (the densest band: at the highest density), and events below
- * the outermost level drawn as outliers. Paints `rgba` and returns the contour lines (none when they are
- * turned off).
- */
-function paintZebra(
-  inp: Raster2DInput,
-  counts: Float64Array,
-  rgba: Uint8ClampedArray,
-  [dr, dg, db]: [number, number, number],
-): ContourLine[] {
-  const { width: w, height: h, style } = inp;
-  const { dens, levels } = contourDensity(inp);
-  const n = levels.length;
-  if (n === 0) return [];
-  let max = 0;
-  for (const v of dens.values) if (v > max) max = v;
-  const edges = [...levels, max];
-  const [fr, fg, fb] = hex(style.zebraColors[0]);
-  const [br, bg, bb] = hex(style.zebraColors[1]);
+/** The density at the center of every image pixel, row 0 = lowest y (as the grids). */
+function densityAtPixels(dens: Grid2D, w: number, h: number): Float64Array {
+  const out = new Float64Array(w * h);
   for (let gy = 0; gy < h; gy++) {
     const fy = ((gy + 0.5) * dens.ny) / h - 0.5;
-    for (let gx = 0; gx < w; gx++) {
-      const d = bilinear(dens, ((gx + 0.5) * dens.nx) / w - 0.5, fy);
-      if (d < (edges[0] as number)) {
-        if (style.showOutliers && (counts[gy * w + gx] as number) > 0)
-          putPixel(rgba, w, h, gx, h - 1 - gy, dr, dg, db, style.pointPx);
-        continue;
-      }
-      let k = 1;
-      while (k < n && d >= (edges[k] as number)) k++;
-      const lo = edges[k - 1] as number;
-      const hi = edges[k] as number;
-      const t = hi > lo ? Math.min(1, (d - lo) / (hi - lo)) : 0;
-      const o = ((h - 1 - gy) * w + gx) * 4;
-      rgba[o] = Math.round(fr + (br - fr) * t);
-      rgba[o + 1] = Math.round(fg + (bg - fg) * t);
-      rgba[o + 2] = Math.round(fb + (bb - fb) * t);
-      rgba[o + 3] = 255;
-    }
+    for (let gx = 0; gx < w; gx++) out[gy * w + gx] = bilinear(dens, ((gx + 0.5) * dens.nx) / w - 0.5, fy);
   }
-  return style.zebraLines ? contourLines(dens, levels) : [];
+  return out;
 }
 
+/** Writes one opaque pixel; `gy` counts from the lowest y, image row 0 is the top. */
+function setPixel(rgba: Uint8ClampedArray, w: number, h: number, gx: number, gy: number, [r, g, b]: Rgb) {
+  const o = ((h - 1 - gy) * w + gx) * 4;
+  rgba[o] = r;
+  rgba[o + 1] = g;
+  rgba[o + 2] = b;
+  rgba[o + 3] = 255;
+}
+
+/** One point per occupied pixel, `size` px wide, in the color `colorAt` gives it (null = none). */
+function paintPoints(
+  rgba: Uint8ClampedArray,
+  w: number,
+  h: number,
+  counts: Float64Array,
+  size: number,
+  colorAt: (i: number) => Rgb | null,
+) {
+  for (let gy = 0; gy < h; gy++)
+    for (let gx = 0; gx < w; gx++) {
+      const i = gy * w + gx;
+      if (!((counts[i] as number) > 0)) continue;
+      const c = colorAt(i);
+      if (c) putPixel(rgba, w, h, gx, h - 1 - gy, c[0], c[1], c[2], size);
+    }
+}
+
+/**
+ * M-PLOT-ZEBRA: each band between contour levels filled with a gradient from the first zebra color at its
+ * outer line to the second at its inner line (the densest band: at the highest density).
+ */
+function paintZebra(
+  rgba: Uint8ClampedArray,
+  w: number,
+  h: number,
+  atPx: Float64Array,
+  levels: number[],
+  max: number,
+  colors: [string, string],
+) {
+  const n = levels.length;
+  const edges = [...levels, max];
+  const [fr, fg, fb] = hex(colors[0]);
+  const [br, bg, bb] = hex(colors[1]);
+  for (let i = 0; i < atPx.length; i++) {
+    const d = atPx[i] as number;
+    if (n === 0 || d < (edges[0] as number)) continue;
+    let k = 1;
+    while (k < n && d >= (edges[k] as number)) k++;
+    const lo = edges[k - 1] as number;
+    const hi = edges[k] as number;
+    const t = hi > lo ? Math.min(1, (d - lo) / (hi - lo)) : 0;
+    const rgb: Rgb = [
+      Math.round(fr + (br - fr) * t),
+      Math.round(fg + (bg - fg) * t),
+      Math.round(fb + (bb - fb) * t),
+    ];
+    setPixel(rgba, w, h, i % w, Math.floor(i / w), rgb);
+  }
+}
+
+const maxOf = (v: Float64Array) => {
+  let m = 0;
+  for (let i = 0; i < v.length; i++) if ((v[i] as number) > m) m = v[i] as number;
+  return m;
+};
+
+/**
+ * A 2D plot's image at `width` × `height` px. Its density is estimated on a fixed grid and its point sizes
+ * are px at the reference plot width, scaled with `width`: the same plot drawn at any size, or exported at
+ * any DPI, is the same picture.
+ */
 export function raster2d(inp: Raster2DInput): Raster2DOutput {
   const { width: w, height: h, style } = inp;
-  const { grid, stats } = bin2d(inp.x, inp.y, inp.indices, inp.xRange, inp.yRange, w, h);
+  // Occupied image pixels: where points (dots, pseudocolor, outliers) are drawn.
+  const counts = bin2d(inp.x, inp.y, inp.indices, inp.xRange, inp.yRange, w, h).grid.values;
   const rgba = new Uint8ClampedArray(w * h * 4);
-  const [dr, dg, db] = hex(inp.dotColor);
-  const sigma = style.smoothSigmaBins;
+  const scale = w / REFERENCE_PLOT_PX;
   const lut = colormapLut(style.colormap);
+  const mapColor = (t: number): Rgb => {
+    const i = Math.max(0, Math.min(255, Math.round(t * 255)));
+    return [lut[i * 3]!, lut[i * 3 + 1]!, lut[i * 3 + 2]!];
+  };
+  const point = style.pointPx * scale;
+
+  if (inp.kind === 'dot') {
+    const dot = hex(inp.dotColor);
+    paintPoints(rgba, w, h, counts, point, () => dot);
+    return { width: w, height: h, rgba, contours: [], stats: densityGrid(inp, 0).stats };
+  }
+  const isContour = inp.kind === 'contour' || inp.kind === 'zebra';
+  const { grid: dens, stats } = densityGrid(inp, inp.kind === 'pseudocolor' ? 0 : 1);
+  const atPx = densityAtPixels(dens, w, h);
+  const max = maxOf(dens.values);
   let contours: ContourLine[] = [];
 
-  // grid row 0 is the lowest y → image row h−1.
-  const counts = grid.values;
-  const px = style.pointPx;
-
-  switch (inp.kind) {
-    case 'dot':
-      for (let gy = 0; gy < h; gy++) {
-        const row = gy * w;
-        for (let gx = 0; gx < w; gx++) {
-          if (!((counts[row + gx] as number) > 0)) continue;
-          if (px === 1) {
-            const o = ((h - 1 - gy) * w + gx) * 4;
-            rgba[o] = dr;
-            rgba[o + 1] = dg;
-            rgba[o + 2] = db;
-            rgba[o + 3] = 255;
-          } else putPixel(rgba, w, h, gx, h - 1 - gy, dr, dg, db, px);
-        }
-      }
-      break;
-    case 'pseudocolor': {
-      // M-PLOT-PSEUDO: each occupied pixel colored by log(1 + local density) / log(1 + max).
-      const dens = sigma > 0 ? smooth2d(grid, sigma).values : counts;
-      let max = 0;
-      for (let i = 0; i < dens.length; i++) if ((dens[i] as number) > max) max = dens[i] as number;
-      const lmax = Math.log1p(max);
-      for (let gy = 0; gy < h; gy++) {
-        const row = gy * w;
-        for (let gx = 0; gx < w; gx++) {
-          if (!((counts[row + gx] as number) > 0)) continue;
-          const d = dens[row + gx] as number;
-          const t = lmax > 0 ? Math.log1p(d) / lmax : 0;
-          const i = Math.max(0, Math.min(255, Math.round(t * 255)));
-          if (px === 1) {
-            const o = ((h - 1 - gy) * w + gx) * 4;
-            rgba[o] = lut[i * 3]!;
-            rgba[o + 1] = lut[i * 3 + 1]!;
-            rgba[o + 2] = lut[i * 3 + 2]!;
-            rgba[o + 3] = 255;
-          } else putPixel(rgba, w, h, gx, h - 1 - gy, lut[i * 3]!, lut[i * 3 + 1]!, lut[i * 3 + 2]!, px);
-        }
-      }
-      break;
+  if (inp.kind === 'pseudocolor') {
+    // M-PLOT-PSEUDO: each occupied pixel colored by log(1 + local density) / log(1 + max).
+    const lmax = Math.log1p(max);
+    paintPoints(rgba, w, h, counts, point, (i) =>
+      mapColor(lmax > 0 ? Math.log1p(atPx[i] as number) / lmax : 0),
+    );
+  } else if (inp.kind === 'density') {
+    // M-PLOT-DENSITY: linear color scale; pixels below 0.5% of the maximum are left transparent.
+    for (let i = 0; i < atPx.length; i++) {
+      const d = atPx[i] as number;
+      if (max > 0 && d >= 0.005 * max) setPixel(rgba, w, h, i % w, Math.floor(i / w), mapColor(d / max));
     }
-    case 'density': {
-      // M-PLOT-DENSITY: smoothed density image, linear color scale; cells below
-      // 0.5% of the maximum are left transparent.
-      const dens = smooth2d(grid, Math.max(sigma, 1));
-      let max = 0;
-      for (const v of dens.values) if (v > max) max = v;
-      for (let gy = 0; gy < h; gy++)
-        for (let gx = 0; gx < w; gx++) {
-          const d = dens.values[gy * w + gx] as number;
-          if (max === 0 || d < 0.005 * max) continue;
-          const i = Math.round((d / max) * 255);
-          const o = ((h - 1 - gy) * w + gx) * 4;
-          rgba[o] = lut[i * 3]!;
-          rgba[o + 1] = lut[i * 3 + 1]!;
-          rgba[o + 2] = lut[i * 3 + 2]!;
-          rgba[o + 3] = 255;
-        }
-      break;
+  } else if (isContour) {
+    const levels = levelsOf(dens, style);
+    if (inp.kind === 'zebra') paintZebra(rgba, w, h, atPx, levels, max, style.zebraColors);
+    if (inp.kind === 'contour' || style.zebraLines) contours = contourLines(dens, levels);
+    const lowest = levels[0];
+    if (style.showOutliers && lowest !== undefined) {
+      const out = hex(style.outlierColor);
+      paintPoints(rgba, w, h, counts, style.outlierPx * scale, (i) =>
+        (atPx[i] as number) < lowest ? out : null,
+      );
     }
-    case 'contour': {
-      const { dens, levels } = contourDensity(inp);
-      contours = contourLines(dens, levels);
-      if (style.showOutliers && levels.length > 0) {
-        const lowest = levels[0] as number;
-        for (let gy = 0; gy < h; gy++) {
-          const cy = Math.min(dens.ny - 1, Math.floor(gy / CONTOUR_CELL));
-          for (let gx = 0; gx < w; gx++) {
-            if (!((counts[gy * w + gx] as number) > 0)) continue;
-            const cx = Math.min(dens.nx - 1, Math.floor(gx / CONTOUR_CELL));
-            if ((dens.values[cy * dens.nx + cx] as number) < lowest)
-              putPixel(rgba, w, h, gx, h - 1 - gy, dr, dg, db, px);
-          }
-        }
-      }
-      break;
-    }
-    case 'zebra':
-      contours = paintZebra(inp, counts, rgba, [dr, dg, db]);
-      break;
   }
-  return { width: w, height: h, rgba, contours, stats, sigmaPx: inp.kind === 'dot' ? 0 : sigma };
+  return { width: w, height: h, rgba, contours, stats };
 }

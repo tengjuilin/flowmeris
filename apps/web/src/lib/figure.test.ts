@@ -7,6 +7,7 @@ import {
   applyToPairs,
   applyToPopulations,
   carryToPopulation,
+  contourCss,
   isDefaultStyle,
   pairAtDefaults,
   pairsMatch,
@@ -157,5 +158,21 @@ describe('resetting', () => {
     resetStyleKeys(p.style, PANEL_FIGURE_KEYS.text, null);
     expect(p.style.figure?.fontSize).toBe(DEFAULT_FIGURE.fontSize);
     expect(p.style.figure?.gateText.italic).toBe(false);
+  });
+});
+
+describe('contourCss', () => {
+  it('scales the line width with the plot width from the reference width; no color = the theme', () => {
+    expect(contourCss(DEFAULT_STYLE, 400)).toEqual({ strokeWidth: 1 });
+    expect(contourCss({ ...DEFAULT_STYLE, contourWidth: 1.5 }, 200)).toEqual({ strokeWidth: 0.75 });
+    expect(contourCss({ ...DEFAULT_STYLE, contourColor: '#ff0000' }, 800)).toEqual({
+      strokeWidth: 2,
+      stroke: '#ff0000',
+    });
+  });
+
+  it('defaults outliers and the zebra outer color to black', () => {
+    expect(DEFAULT_STYLE.outlierColor).toBe('#000000');
+    expect(DEFAULT_STYLE.zebraColors[0]).toBe('#000000');
   });
 });

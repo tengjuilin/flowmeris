@@ -138,7 +138,7 @@ test('zebra plots in the Gate view, Plot grid and Tiles, with their Display sett
   await expect.poll(() => lines.count()).toBeGreaterThan(0);
   await expect(gate.getByLabel('Contours')).toHaveValue('p5');
   await expect(gate.getByLabel('Show outliers')).toBeChecked();
-  await expect(gate.getByLabel('Outer color', { exact: true })).toHaveValue('#0000ff');
+  await expect(gate.getByLabel('Outer color', { exact: true })).toHaveValue('#000000');
   await expect(gate.getByLabel('Inner color', { exact: true })).toHaveValue('#ffffff');
   await expect(gate.getByLabel('Color map')).toHaveCount(0);
   const showLines = gate.getByLabel('Contour lines');
@@ -149,6 +149,18 @@ test('zebra plots in the Gate view, Plot grid and Tiles, with their Display sett
   await page.keyboard.press('ControlOrMeta+z');
   await expect(showLines).toBeChecked();
   await expect.poll(() => lines.count()).toBeGreaterThan(0);
+
+  // The lines' width (px at a 400-px-wide plot, scaled with the plot) and color; the outliers'.
+  await expect(gate.getByLabel('Outlier color', { exact: true })).toHaveValue('#000000');
+  await expect(gate.getByLabel('Outlier size (px)')).toHaveValue('2');
+  await gate.getByLabel('Line width (px)').fill('2');
+  await gate.getByLabel('Line color', { exact: true }).fill('#ff0000');
+  const frameWidth = await page
+    .locator('svg.plot-overlay rect.plot-frame')
+    .evaluate((r) => r.getBoundingClientRect().width);
+  await expect.poll(() => lines.first().evaluate((p) => getComputedStyle(p).stroke)).toBe('rgb(255, 0, 0)');
+  const stroke = await lines.first().evaluate((p) => Number.parseFloat(getComputedStyle(p).strokeWidth));
+  expect(stroke).toBeCloseTo((2 * frameWidth) / 400, 1);
 
   // Plot grid: a zebra plot can be added to an empty cell.
   await tab(page, 'Plot').click();
@@ -167,6 +179,43 @@ test('zebra plots in the Gate view, Plot grid and Tiles, with their Display sett
   await tiles.getByLabel('Plot type').selectOption('zebra');
   for (const t of await page.locator('.tiles-grid .tile').all())
     await expect.poll(() => t.locator('path.contour').count()).toBeGreaterThan(0);
+});
+
+test('a plot looks the same at every window size', async ({ page }) => {
+  await loadWells(page, { A01: 100 });
+  const gate = page.locator('.inspector');
+  await gate.getByRole('tab', { name: 'Figure' }).click();
+  await gate.getByLabel('Plot type').selectOption('contour');
+  const lines = page.locator('svg.plot-overlay path.contour');
+  /** The contour lines' extent and stroke, relative to the plot area. */
+  const shape = async () => {
+    await expect.poll(() => lines.count()).toBeGreaterThan(0);
+    return page.locator('svg.plot-overlay').evaluate((svg) => {
+      const f = svg.querySelector('rect.plot-frame')!.getBoundingClientRect();
+      const ps = [...svg.querySelectorAll('path.contour')];
+      const bs = ps.map((p) => p.getBoundingClientRect());
+      const rel = (v: number, o: number, s: number) => Math.round(((v - o) / s) * 100) / 100;
+      return {
+        lines: ps.length,
+        left: rel(Math.min(...bs.map((b) => b.left)), f.left, f.width),
+        right: rel(Math.max(...bs.map((b) => b.right)), f.left, f.width),
+        top: rel(Math.min(...bs.map((b) => b.top)), f.top, f.height),
+        stroke: Math.round((Number.parseFloat(getComputedStyle(ps[0]!).strokeWidth) / f.width) * 4e5) / 1e3,
+      };
+    });
+  };
+  await page.setViewportSize({ width: 1900, height: 1200 });
+  const wide = await shape();
+  const before = await page
+    .locator('svg.plot-overlay rect.plot-frame')
+    .evaluate((r) => r.getBoundingClientRect().width);
+  await page.setViewportSize({ width: 1000, height: 900 });
+  await expect
+    .poll(() =>
+      page.locator('svg.plot-overlay rect.plot-frame').evaluate((r) => r.getBoundingClientRect().width),
+    )
+    .not.toBe(before);
+  expect(await shape()).toEqual(wide);
 });
 
 test('plot grid: drag plots to rearrange them; cut, copy and paste them', async ({ page }) => {
