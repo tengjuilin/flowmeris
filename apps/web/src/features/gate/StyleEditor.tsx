@@ -48,7 +48,7 @@ export function StyleEditor({
     >
       {plot.kind !== 'histogram' && (
         <div className="grid2">
-          {plot.kind !== 'dot' && plot.kind !== 'zebra' && (
+          {plot.kind !== 'dot' && plot.kind !== 'zebra' && plot.kind !== 'contour' && (
             <label className="field">
               Color map
               <select value={st.colormap} onChange={(e) => set((s) => void (s.colormap = e.target.value))}>
