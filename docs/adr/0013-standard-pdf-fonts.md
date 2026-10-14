@@ -31,3 +31,10 @@ signs are slightly narrower (556 against 584 thousandths of an em). Glyph shapes
 of the reader's Arial, or its stand-in where the computer has none. A figure that mixes Arial and Helvetica
 names both after the first used (they share jsPDF's Helvetica). A PDF of a figure in Arial is a few
 kilobytes plus its event raster, and an SVG no longer grows with the faces it uses.
+
+Chromium's PDF viewer (Chrome, Edge) on macOS draws Arial in Helvetica and Times New Roman in Times:
+PDFium maps every name of these fonts (`ArialMT`, `Arial-BoldMT`, `Arial,Bold`, `Arial Bold`, …) to the
+standard font Helvetica or Times, which macOS has. Text keeps its place, since the PDF carries Arial's
+widths. No other name avoids this: macOS finds Arial only by its PostScript or full name, so a name that
+PDFium does not map (`Arial-Regular`) is drawn in another font by Preview and Safari, and naming the
+standard font (`Helvetica`) has them draw Helvetica too. Only embedding the font would change it.
