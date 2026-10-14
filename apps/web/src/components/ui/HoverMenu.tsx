@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 export interface HoverMenuItem {
   label: string;
+  /** A small icon shown before the label. */
+  icon?: ReactNode;
   onSelect: () => void;
   /** Tooltip with the item's details. */
   title?: string;
@@ -56,6 +58,7 @@ export function HoverMenu({ label, items }: { label: string; items: HoverMenuIte
                 item.onSelect();
               }}
             >
+              <span className="menu-icon">{item.icon}</span>
               {item.label}
             </button>
           ))}

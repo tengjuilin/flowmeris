@@ -9,7 +9,7 @@ function setup() {
     <HoverMenu
       label="Add"
       items={[
-        { label: 'Folder', onSelect: onFolder },
+        { label: 'Folder', icon: <svg data-testid="folder-icon" />, onSelect: onFolder },
         { label: 'Files', onSelect: onFiles },
       ]}
     />,
@@ -25,6 +25,13 @@ describe('HoverMenu', () => {
     expect(screen.getAllByRole('menuitem').map((e) => e.textContent)).toEqual(['Folder', 'Files']);
     fireEvent.mouseLeave(tab.parentElement as HTMLElement);
     expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  it("shows an item's icon before its label", () => {
+    const { tab } = setup();
+    fireEvent.click(tab);
+    expect(screen.getByRole('menuitem', { name: 'Folder' }).querySelector('svg')).not.toBeNull();
+    expect(screen.getByRole('menuitem', { name: 'Files' }).querySelector('svg')).toBeNull();
   });
 
   it('runs an item and closes', () => {

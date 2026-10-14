@@ -296,3 +296,9 @@
 .app-header .button.icon:hover {
   color: var(--text);
 }
+.hover-menu-list .menu-icon {
+  display: inline-flex;
+  justify-content: center;
+  width: 16px;
+  flex: none;
+}

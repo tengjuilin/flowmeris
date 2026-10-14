@@ -252,3 +252,33 @@ export function HelpIcon() {
     </svg>
   );
 }
+
+/** Folder: a folder with a tab. */
+export function FolderIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        d="M1.8 3.5h4l1.5 1.7h6.9v7.3H1.8z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** File: a sheet with a folded corner. */
+export function FileIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        d="M3.5 1.8h5.8l3.2 3.2v9.2h-9zM9.3 1.8V5h3.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

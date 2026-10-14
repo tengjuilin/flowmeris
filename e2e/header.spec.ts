@@ -12,6 +12,9 @@ test('the Workspace and Add menus open on hover, and Undo, Redo and Docs are ico
   await expect(page.getByRole('menuitem')).toHaveText(['New', 'Export', 'Import']);
   await header.getByRole('button', { name: 'Add', exact: true }).hover();
   await expect(page.getByRole('menuitem')).toHaveText(['Folder', 'Files']);
+  await expect(page.getByRole('menuitem').locator('svg')).toHaveCount(2);
+  await header.getByRole('button', { name: 'Workspace' }).hover();
+  await expect(page.getByRole('menuitem').locator('svg')).toHaveCount(3);
   await page.mouse.move(600, 400);
   await expect(page.getByRole('menu')).toHaveCount(0);
 

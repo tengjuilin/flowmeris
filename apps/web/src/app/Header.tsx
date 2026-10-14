@@ -1,6 +1,15 @@
 import { useRef } from 'react';
 import { HoverMenu } from '../components/ui/HoverMenu.tsx';
-import { HelpIcon, RedoIcon, UndoIcon } from '../components/ui/icons.tsx';
+import {
+  AddIcon,
+  ExportIcon,
+  FileIcon,
+  FolderIcon,
+  HelpIcon,
+  ImportIcon,
+  RedoIcon,
+  UndoIcon,
+} from '../components/ui/icons.tsx';
 import { getPool } from '../engine-client/pool.ts';
 import { DATA_FILE_ACCEPT } from '../lib/files.ts';
 import { filesFromInput } from '../lib/ingest.ts';
@@ -112,6 +121,7 @@ export function Header() {
         items={[
           {
             label: 'New',
+            icon: <AddIcon />,
             title: 'Start a new, empty workspace',
             onSelect: () => {
               if (
@@ -124,12 +134,14 @@ export function Header() {
           },
           {
             label: 'Export',
+            icon: <ExportIcon />,
             title:
               'Save the analysis (gates, transforms, compensation, statistics) as a JSON file. FCS data are not included.',
             onSelect: saveWorkspaceFile,
           },
           {
             label: 'Import',
+            icon: <ImportIcon />,
             title: 'Open a saved workspace (JSON)',
             onSelect: () => importRef.current?.click(),
           },
@@ -138,8 +150,8 @@ export function Header() {
       <HoverMenu
         label="Add"
         items={[
-          { label: 'Folder', title: FOLDER_TITLE, onSelect: addFolder },
-          { label: 'Files', title: 'Add FCS files to the workspace', onSelect: addFiles },
+          { label: 'Folder', icon: <FolderIcon />, title: FOLDER_TITLE, onSelect: addFolder },
+          { label: 'Files', icon: <FileIcon />, title: 'Add FCS files to the workspace', onSelect: addFiles },
         ]}
       />
       <div className="spacer" />
