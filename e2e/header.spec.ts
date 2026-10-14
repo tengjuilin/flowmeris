@@ -1,0 +1,71 @@
+import { expect, test } from '@playwright/test';
+
+test('the Workspace and Add menus open on hover, and Undo, Redo and Docs are icon buttons', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const header = page.locator('header.app-header');
+  const tabs = header.locator('.hover-menu > button');
+  await expect(tabs).toHaveText(['Workspace', 'Add']);
+
+  await header.getByRole('button', { name: 'Workspace' }).hover();
+  await expect(page.getByRole('menuitem')).toHaveText(['New', 'Export', 'Import']);
+  await header.getByRole('button', { name: 'Add', exact: true }).hover();
+  await expect(page.getByRole('menuitem')).toHaveText(['Folder', 'Files']);
+  await page.mouse.move(600, 400);
+  await expect(page.getByRole('menu')).toHaveCount(0);
+
+  for (const name of ['Undo', 'Redo']) {
+    await expect(header.getByRole('button', { name, exact: true }).locator('svg')).toHaveCount(1);
+  }
+  await expect(header.getByRole('link', { name: 'Docs' }).locator('svg')).toHaveCount(1);
+});
+
+test('Workspace → Export downloads the workspace JSON', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Workspace' }).hover();
+  const download = page.waitForEvent('download');
+  await page.getByRole('menuitem', { name: 'Export' }).click();
+  expect((await download).suggestedFilename()).toMatch(/\.json$/);
+});
+
+test('Add → Files opens the file picker', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('header').getByRole('button', { name: 'Add', exact: true }).hover();
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('menuitem', { name: 'Files' }).click();
+  expect((await chooser).isMultiple()).toBe(true);
+});
+
+test('Undo and Redo precede Workspace, and the workspace name never overlaps the buttons', async ({
+  page,
+}) => {
+  for (const width of [1200, 700, 520]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/');
+    const header = page.locator('header.app-header');
+    const box = async (loc: ReturnType<typeof header.locator>) => {
+      const b = await loc.boundingBox();
+      if (!b) throw new Error('not visible');
+      return b;
+    };
+    const undo = await box(header.getByRole('button', { name: 'Undo', exact: true }));
+    const redo = await box(header.getByRole('button', { name: 'Redo', exact: true }));
+    const workspace = await box(header.getByRole('button', { name: 'Workspace' }));
+    expect(undo.x + undo.width).toBeLessThanOrEqual(redo.x);
+    expect(redo.x + redo.width).toBeLessThanOrEqual(workspace.x);
+
+    const name = await box(header.getByLabel('Workspace name'));
+    const others = header.locator('.brand, button, a');
+    for (const b of await others.all()) {
+      const o = await b.boundingBox();
+      if (!o) continue;
+      const apart =
+        o.x + o.width <= name.x + 0.5 ||
+        name.x + name.width <= o.x + 0.5 ||
+        o.y + o.height <= name.y + 0.5 ||
+        name.y + name.height <= o.y + 0.5;
+      expect(apart).toBe(true);
+    }
+  }
+});

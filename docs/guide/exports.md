@@ -9,7 +9,7 @@
 | Gates | Statistics → settings › Export → *Gating-ML* | Gating-ML 2.0 for the template, plus one file per overridden sample |
 | Gated events | Statistics → settings › Export → *FCS (raw)* / *CSV (compensated)* | events of the current population for the selected sample |
 | Plots | Gate, Plot or Ridge → *Export* | the plot as a [figure](#figures): vector axes and gates with the events embedded as an image at the chosen DPI (300 by default). In the Plot view, the selected plot with the sample it shows (overlays are not drawn) |
-| Analysis | Header → *Save workspace* | JSON ([format](../methods/workspace)) |
+| Analysis | Header → *Workspace → Export* | JSON ([format](../methods/workspace)) |
 
 ## Figures
 

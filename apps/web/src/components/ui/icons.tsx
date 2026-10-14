@@ -209,3 +209,46 @@ export function DuplicateIcon() {
     </svg>
   );
 }
+
+/** Undo: the reset arrow, for the header's Undo button. */
+export function UndoIcon() {
+  return <ResetIcon />;
+}
+
+/** Redo: the undo arrow mirrored. */
+export function RedoIcon() {
+  return (
+    <svg
+      className="reset-icon"
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      style={{ transform: 'scaleX(-1)' }}
+    >
+      <path d="M5.8 3L2.4 6L5.8 9" />
+      <path d="M2.8 6H10.5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+  );
+}
+
+/** Help: a question mark in a circle. */
+export function HelpIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4" />
+      <path
+        d="M6.1 6.2a1.9 1.9 0 1 1 2.8 1.7c-.6.4-.9.8-.9 1.4"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <circle cx="8" cy="11.6" r=".85" fill="currentColor" />
+    </svg>
+  );
+}

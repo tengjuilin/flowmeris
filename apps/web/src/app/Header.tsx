@@ -1,4 +1,6 @@
 import { useRef } from 'react';
+import { HoverMenu } from '../components/ui/HoverMenu.tsx';
+import { HelpIcon, RedoIcon, UndoIcon } from '../components/ui/icons.tsx';
 import { getPool } from '../engine-client/pool.ts';
 import { DATA_FILE_ACCEPT } from '../lib/files.ts';
 import { filesFromInput } from '../lib/ingest.ts';
@@ -6,25 +8,14 @@ import { ingestFiles } from '../state/commands/ingest.ts';
 import { openWorkspaceFile, saveWorkspaceFile, startNewWorkspace } from '../state/commands/workspace.ts';
 import { useStore } from '../state/store.ts';
 
-/** The app header: workspace name, adding files, undo and redo, saving and opening workspaces. */
+/** The app header: the Workspace and Add menus, workspace name, undo and redo, and the link to the docs. */
 
-/** "Add folder…" and "Add files…" buttons with their hidden file inputs. */
-export function FolderButtons() {
+/** Hidden file inputs for adding a folder or files, with functions that open their pickers. */
+function useIngestPickers() {
   const dirInput = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  return (
+  const inputs = (
     <>
-      <button
-        type="button"
-        className="primary"
-        onClick={() => dirInput.current?.click()}
-        title="Each folder becomes a group sharing one analysis"
-      >
-        Add folder…
-      </button>
-      <button type="button" onClick={() => fileInput.current?.click()}>
-        Add files…
-      </button>
       <input
         ref={dirInput}
         type="file"
@@ -52,7 +43,30 @@ export function FolderButtons() {
       />
     </>
   );
+  return {
+    inputs,
+    addFolder: () => dirInput.current?.click(),
+    addFiles: () => fileInput.current?.click(),
+  };
 }
+
+/** "Add folder…" and "Add files…" buttons of the start page. */
+export function FolderButtons() {
+  const { inputs, addFolder, addFiles } = useIngestPickers();
+  return (
+    <>
+      <button type="button" className="primary" onClick={addFolder} title={FOLDER_TITLE}>
+        Add folder…
+      </button>
+      <button type="button" onClick={addFiles}>
+        Add files…
+      </button>
+      {inputs}
+    </>
+  );
+}
+
+const FOLDER_TITLE = 'Each folder becomes a group sharing one analysis';
 
 export function Header() {
   const ws = useStore((s) => s.ws);
@@ -62,6 +76,7 @@ export function Header() {
   const redo = useStore((s) => s.redo);
   const mutate = useStore((s) => s.mutate);
   const importRef = useRef<HTMLInputElement>(null);
+  const { inputs, addFolder, addFiles } = useIngestPickers();
   return (
     <header className="app-header">
       <div className="brand">
@@ -72,40 +87,73 @@ export function Header() {
         </svg>
         Flowmeris
       </div>
+      <button
+        type="button"
+        className="icon"
+        aria-label="Undo"
+        onClick={undo}
+        disabled={past.length === 0}
+        title={past.length ? `Undo: ${past[past.length - 1]!.label} (⌘Z)` : 'Undo'}
+      >
+        <UndoIcon />
+      </button>
+      <button
+        type="button"
+        className="icon"
+        aria-label="Redo"
+        onClick={redo}
+        disabled={future.length === 0}
+        title={future.length ? `Redo: ${future[0]!.label} (⇧⌘Z)` : 'Redo'}
+      >
+        <RedoIcon />
+      </button>
+      <HoverMenu
+        label="Workspace"
+        items={[
+          {
+            label: 'New',
+            title: 'Start a new, empty workspace',
+            onSelect: () => {
+              if (
+                confirm(
+                  'Start a new, empty workspace? The current one stays in your browser history only until replaced; save it first if needed.',
+                )
+              )
+                startNewWorkspace();
+            },
+          },
+          {
+            label: 'Export',
+            title:
+              'Save the analysis (gates, transforms, compensation, statistics) as a JSON file. FCS data are not included.',
+            onSelect: saveWorkspaceFile,
+          },
+          {
+            label: 'Import',
+            title: 'Open a saved workspace (JSON)',
+            onSelect: () => importRef.current?.click(),
+          },
+        ]}
+      />
+      <HoverMenu
+        label="Add"
+        items={[
+          { label: 'Folder', title: FOLDER_TITLE, onSelect: addFolder },
+          { label: 'Files', title: 'Add FCS files to the workspace', onSelect: addFiles },
+        ]}
+      />
+      <div className="spacer" />
       <input
         className="ws-name"
         aria-label="Workspace name"
         value={ws.name}
         onChange={(e) => mutate('Rename workspace', (w) => void (w.name = e.target.value))}
       />
-      <FolderButtons />
       <div className="spacer" />
-      <button
-        type="button"
-        onClick={undo}
-        disabled={past.length === 0}
-        title={past.length ? `Undo: ${past[past.length - 1]!.label} (⌘Z)` : 'Undo'}
-      >
-        Undo
-      </button>
-      <button
-        type="button"
-        onClick={redo}
-        disabled={future.length === 0}
-        title={future.length ? `Redo: ${future[0]!.label} (⇧⌘Z)` : 'Redo'}
-      >
-        Redo
-      </button>
-      <button
-        type="button"
-        onClick={saveWorkspaceFile}
-        title="Save the analysis (gates, transforms, compensation, statistics) as a JSON file. FCS data are not included."
-      >
-        Save workspace
-      </button>
-      <button type="button" onClick={() => importRef.current?.click()}>
-        Open workspace…
-      </button>
+      <a className="button icon" href="../" target="_blank" rel="noreferrer" aria-label="Docs" title="Docs">
+        <HelpIcon />
+      </a>
+      {inputs}
       <input
         ref={importRef}
         type="file"
@@ -117,22 +165,6 @@ export function Header() {
           if (f) void openWorkspaceFile(f);
         }}
       />
-      <button
-        type="button"
-        onClick={() => {
-          if (
-            confirm(
-              'Start a new, empty workspace? The current one stays in your browser history only until replaced; save it first if needed.',
-            )
-          )
-            startNewWorkspace();
-        }}
-      >
-        New
-      </button>
-      <a className="button" href="../" target="_blank" rel="noreferrer">
-        Docs
-      </a>
       {!getPool().opfs && (
         <span
           className="badge warn"
