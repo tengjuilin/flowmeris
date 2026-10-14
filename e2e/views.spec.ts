@@ -191,16 +191,19 @@ test('a plot looks the same at every window size', async ({ page }) => {
   const shape = async () => {
     await expect.poll(() => lines.count()).toBeGreaterThan(0);
     return page.locator('svg.plot-overlay').evaluate((svg) => {
-      const f = svg.querySelector('rect.plot-frame')!.getBoundingClientRect();
-      const ps = [...svg.querySelectorAll('path.contour')];
-      const bs = ps.map((p) => p.getBoundingClientRect());
-      const rel = (v: number, o: number, s: number) => Math.round(((v - o) / s) * 100) / 100;
+      // SVG geometry (getBBox: no stroke, no clipping), in the plot area's units: browsers agree on it.
+      const f = svg.querySelector<SVGRectElement>('rect.plot-frame')!;
+      const fw = f.width.baseVal.value;
+      const fh = f.height.baseVal.value;
+      const ps = [...svg.querySelectorAll<SVGPathElement>('path.contour')];
+      const bs = ps.map((p) => p.getBBox());
+      const rel = (v: number, s: number) => Math.round((v / s) * 100) / 100;
       return {
         lines: ps.length,
-        left: rel(Math.min(...bs.map((b) => b.left)), f.left, f.width),
-        right: rel(Math.max(...bs.map((b) => b.right)), f.left, f.width),
-        top: rel(Math.min(...bs.map((b) => b.top)), f.top, f.height),
-        stroke: Math.round((Number.parseFloat(getComputedStyle(ps[0]!).strokeWidth) / f.width) * 4e5) / 1e3,
+        left: rel(Math.min(...bs.map((b) => b.x)), fw),
+        right: rel(Math.max(...bs.map((b) => b.x + b.width)), fw),
+        top: rel(Math.min(...bs.map((b) => b.y)), fh),
+        stroke: Math.round((Number.parseFloat(getComputedStyle(ps[0]!).strokeWidth) / fw) * 4e5) / 1e3,
       };
     });
   };
