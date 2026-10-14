@@ -92,8 +92,16 @@ test('a plot in Arial names Arial in its PDF and SVG without embedding it', asyn
 
   const svg = (await exportAs(page, 'svg')).bytes.toString('utf8');
   expect(svg).not.toContain('@font-face');
-  // WebKit writes the families unquoted.
-  expect(svg).toMatch(/font-family:\s*Arial, (&quot;)?Liberation Sans(&quot;)?, sans-serif/);
+  // Each text's families, unquoted: browsers quote them differently.
+  const unquoted = svg.replaceAll('&quot;', '').replaceAll("'", '');
+  const stacks = [...unquoted.matchAll(/<(?:text|tspan)[^>]*?font-family:\s*([^;"]*)/g)].map((m) =>
+    m[1]!
+      .split(',')
+      .map((f) => f.trim())
+      .join(', '),
+  );
+  expect(stacks.length).toBeGreaterThan(0);
+  expect(new Set(stacks)).toEqual(new Set(['Arial, Liberation Sans, sans-serif']));
   expect(svg).toContain('<metadata>');
   // About 0.5 MB per face before, base64 font files.
   expect(svg.length).toBeLessThan(200_000);
