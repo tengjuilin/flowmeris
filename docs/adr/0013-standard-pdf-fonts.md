@@ -32,9 +32,11 @@ of the reader's Arial, or its stand-in where the computer has none. A figure tha
 names both after the first used (they share jsPDF's Helvetica). A PDF of a figure in Arial is a few
 kilobytes plus its event raster, and an SVG no longer grows with the faces it uses.
 
-Chromium's PDF viewer (Chrome, Edge) on macOS draws Arial in Helvetica and Times New Roman in Times:
-PDFium maps every name of these fonts (`ArialMT`, `Arial-BoldMT`, `Arial,Bold`, `Arial Bold`, …) to the
-standard font Helvetica or Times, which macOS has. Text keeps its place, since the PDF carries Arial's
-widths. No other name avoids this: macOS finds Arial only by its PostScript or full name, so a name that
-PDFium does not map (`Arial-Regular`) is drawn in another font by Preview and Safari, and naming the
-standard font (`Helvetica`) has them draw Helvetica too. Only embedding the font would change it.
+Browsers' PDF viewers on macOS do not draw Arial. Chrome's (PDFium) maps every name of Arial and Times
+New Roman (`ArialMT`, `Arial-BoldMT`, `Arial,Bold`, `Arial Bold`, …) to the standard font Helvetica or
+Times, which macOS has. Edge's (powered by Adobe Acrobat) maps them to the standard fonts too, and draws
+those in Adobe Sans MM and Adobe Serif MM, the multiple master fonts it carries, stretched to the PDF's
+widths; only names it does not know as standard (`Arial-Regular`) reach the computer's Arial. Text keeps
+its place in both, since the PDF carries Arial's widths. No name avoids this: Preview and Safari find
+Arial only by its PostScript or full name, so `Arial-Regular` is drawn in another font there, and naming
+the standard font (`Helvetica`) has them draw Helvetica too. Only embedding the font would change it.
