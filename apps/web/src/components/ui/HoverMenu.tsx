@@ -30,13 +30,7 @@ export function HoverMenu({ label, items }: { label: string; items: HoverMenuIte
       ref={root}
       className="hover-menu"
       onMouseEnter={() => setOpen(true)}
-      // Firefox may report a leave while the pointer is still on the tab (when another menu's list is
-      // removed), and nothing follows it, so the list closes only if the pointer really is away.
-      onMouseLeave={() =>
-        requestAnimationFrame(() => {
-          if (!root.current?.matches(':hover')) setOpen(false);
-        })
-      }
+      onMouseLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}
       onBlur={(e) => {
         if (!root.current?.contains(e.relatedTarget as Node | null)) setOpen(false);

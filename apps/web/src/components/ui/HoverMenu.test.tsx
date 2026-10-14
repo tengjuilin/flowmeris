@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { HoverMenu } from './HoverMenu.tsx';
 
@@ -18,24 +18,13 @@ function setup() {
 }
 
 describe('HoverMenu', () => {
-  it('lists its items only while the pointer is over it', async () => {
+  it('lists its items only while the pointer is over it', () => {
     const { tab } = setup();
     expect(screen.queryByRole('menu')).toBeNull();
     fireEvent.mouseEnter(tab.parentElement as HTMLElement);
     expect(screen.getAllByRole('menuitem').map((e) => e.textContent)).toEqual(['Folder', 'Files']);
     fireEvent.mouseLeave(tab.parentElement as HTMLElement);
-    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
-  });
-
-  it('stays open when a leave is reported but the pointer is still over it', async () => {
-    const { tab } = setup();
-    const root = tab.parentElement as HTMLElement;
-    const hover = vi.spyOn(root, 'matches').mockImplementation((s) => s === ':hover');
-    fireEvent.mouseEnter(root);
-    fireEvent.mouseLeave(root);
-    await new Promise((r) => requestAnimationFrame(() => r(null)));
-    expect(screen.getByRole('menu')).not.toBeNull();
-    hover.mockRestore();
+    expect(screen.queryByRole('menu')).toBeNull();
   });
 
   it("shows an item's icon before its label", () => {
