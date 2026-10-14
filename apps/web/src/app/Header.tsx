@@ -1,23 +1,31 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { HoverMenu } from '../components/ui/HoverMenu.tsx';
 import {
   AddIcon,
   ExportIcon,
   FileIcon,
   FolderIcon,
+  GearIcon,
+  GitHubIcon,
   HelpIcon,
   ImportIcon,
   RedoIcon,
   UndoIcon,
 } from '../components/ui/icons.tsx';
 import { getPool } from '../engine-client/pool.ts';
+import { SettingsDialog } from '../features/settings/index.ts';
 import { DATA_FILE_ACCEPT } from '../lib/files.ts';
 import { filesFromInput } from '../lib/ingest.ts';
+import { keyHint } from '../lib/settings/index.ts';
 import { ingestFiles } from '../state/commands/ingest.ts';
 import { openWorkspaceFile, saveWorkspaceFile, startNewWorkspace } from '../state/commands/workspace.ts';
+import { useSettings } from '../state/settings.ts';
 import { useStore } from '../state/store.ts';
 
-/** The app header: the Workspace and Add menus, workspace name, undo and redo, and the link to the docs. */
+/**
+ * The app header: the Workspace and Add menus, workspace name, undo and redo, and at the right the
+ * Settings dialog and the links to the source code and the docs.
+ */
 
 /** Hidden file inputs for adding a folder or files, with functions that open their pickers. */
 function useIngestPickers() {
@@ -76,6 +84,7 @@ export function FolderButtons() {
 }
 
 const FOLDER_TITLE = 'Each folder becomes a group sharing one analysis';
+export const REPO_URL = 'https://github.com/tengjuilin/flowmeris';
 
 export function Header() {
   const ws = useStore((s) => s.ws);
@@ -86,6 +95,8 @@ export function Header() {
   const mutate = useStore((s) => s.mutate);
   const importRef = useRef<HTMLInputElement>(null);
   const { inputs, addFolder, addFiles } = useIngestPickers();
+  const keys = useSettings((s) => s.hotkeys);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   return (
     <header className="app-header">
       <div className="brand">
@@ -102,7 +113,7 @@ export function Header() {
         aria-label="Undo"
         onClick={undo}
         disabled={past.length === 0}
-        title={past.length ? `Undo: ${past[past.length - 1]!.label} (⌘Z)` : 'Undo'}
+        title={past.length ? `Undo: ${past[past.length - 1]!.label}${keyHint(keys, 'undo')}` : 'Undo'}
       >
         <UndoIcon />
       </button>
@@ -112,7 +123,7 @@ export function Header() {
         aria-label="Redo"
         onClick={redo}
         disabled={future.length === 0}
-        title={future.length ? `Redo: ${future[0]!.label} (⇧⌘Z)` : 'Redo'}
+        title={future.length ? `Redo: ${future[0]!.label}${keyHint(keys, 'redo')}` : 'Redo'}
       >
         <RedoIcon />
       </button>
@@ -162,9 +173,30 @@ export function Header() {
         onChange={(e) => mutate('Rename workspace', (w) => void (w.name = e.target.value))}
       />
       <div className="spacer" />
+      <button
+        type="button"
+        className="icon header-icon"
+        aria-label="App settings"
+        title="App settings: default appearance and hotkeys"
+        aria-haspopup="dialog"
+        onClick={() => setSettingsOpen(true)}
+      >
+        <GearIcon />
+      </button>
+      <a
+        className="button icon"
+        href={REPO_URL}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="GitHub"
+        title="Source code on GitHub"
+      >
+        <GitHubIcon />
+      </a>
       <a className="button icon" href="../" target="_blank" rel="noreferrer" aria-label="Docs" title="Docs">
         <HelpIcon />
       </a>
+      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
       {inputs}
       <input
         ref={importRef}

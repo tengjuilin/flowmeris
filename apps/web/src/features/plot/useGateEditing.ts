@@ -27,9 +27,14 @@ import {
 } from '../../lib/gateEdit.ts';
 import { type DimMap, dimMap } from '../../lib/geometry.ts';
 import { type PlotFrame, type ShownGate, hitGate, popAt } from '../../lib/plotFrame.ts';
+import { matchHotkey } from '../../lib/settings/index.ts';
 import { createGate, deleteGate, setGateGeometry, setLabelOffset } from '../../state/commands/gates.ts';
+import { useSettings } from '../../state/settings.ts';
 import { type Tool, useStore } from '../../state/store.ts';
 import { useDragPreview, useHoverPreview } from './useGatePreview.ts';
+
+const POLYGON_KEYS = ['polygon.close', 'polygon.undoVertex', 'polygon.cancel'] as const;
+const NUDGE_KEYS = ['gate.left', 'gate.right', 'gate.up', 'gate.down'] as const;
 
 type XY = [number, number];
 
@@ -302,39 +307,44 @@ export function useGateEditing(a: GateEditingArgs) {
     if (pop && onDrill) onDrill(pop);
   };
 
-  /** Keys while a polygon is being drawn: Escape drops it, Backspace removes a vertex, Enter closes it. */
+  /** Keys while a polygon is being drawn (set in the Settings dialog): cancel it, remove a vertex, close it. */
   const polygonKey = (e: KeyboardEvent, poly: XY[]) => {
-    if (e.key === 'Escape') setPoly(null);
-    else if (e.key === 'Backspace') setPoly(poly.length > 1 ? poly.slice(0, -1) : null);
-    else if (e.key === 'Enter' && poly.length >= 3) {
+    const id = matchHotkey(useSettings.getState().hotkeys, POLYGON_KEYS, e);
+    if (id === 'polygon.cancel') setPoly(null);
+    else if (id === 'polygon.undoVertex') setPoly(poly.length > 1 ? poly.slice(0, -1) : null);
+    else if (id === 'polygon.close' && poly.length >= 3) {
       finishCreate({ kind: 'polygon', vertices: poly });
       setPoly(null);
     }
   };
 
-  /** Arrow keys nudge the selected gate by a pixel (10 with Shift). */
-  const nudge = (e: KeyboardEvent, sel: Gate) => {
+  /** Nudge the selected gate by a pixel (10 with Shift) in direction `dir`. */
+  const nudge = (e: KeyboardEvent, sel: Gate, dir: (typeof NUDGE_KEYS)[number]) => {
     e.preventDefault();
     const step = (e.shiftKey ? 10 : 1) / pw;
-    const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+    const dx = dir === 'gate.left' ? -step : dir === 'gate.right' ? step : 0;
     const dy = is1d
       ? 0
-      : e.key === 'ArrowUp'
+      : dir === 'gate.up'
         ? step * (yr[1] - yr[0])
-        : e.key === 'ArrowDown'
+        : dir === 'gate.down'
           ? -step * (yr[1] - yr[0])
           : 0;
     commit(sel.id, translate(effectiveGeometry(group, sel.id, sampleId), dx * (xr[1] - xr[0]), dy));
   };
 
-  /** Keys on the selected gate: arrows nudge it, Delete or Backspace removes it, Escape deselects it. */
+  /** Keys on the selected gate (set in the Settings dialog): nudge it, remove it, deselect it. */
   const selectedKey = (e: KeyboardEvent, sel: Gate) => {
-    if (e.key.startsWith('Arrow') && maps(sel).every((m) => m.identity)) nudge(e, sel);
-    else if (e.key === 'Delete' || e.key === 'Backspace') {
+    const keys = useSettings.getState().hotkeys;
+    const dir = matchHotkey(keys, NUDGE_KEYS, e);
+    const id = matchHotkey(keys, ['gate.delete', 'gate.deselect'] as const, e);
+    if (dir) {
+      if (maps(sel).every((m) => m.identity)) nudge(e, sel, dir);
+    } else if (id === 'gate.delete') {
       e.preventDefault();
       deleteGate(group.id, sel.id);
       setUi({ selectedGateId: null });
-    } else if (e.key === 'Escape') setUi({ selectedGateId: null });
+    } else if (id === 'gate.deselect') setUi({ selectedGateId: null });
   };
 
   useEffect(() => {
@@ -342,6 +352,8 @@ export function useGateEditing(a: GateEditingArgs) {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
+      // Nor in a dialog over the plot (Settings).
+      if (t instanceof Element && t.closest('dialog')) return;
       if (poly) {
         polygonKey(e, poly);
         return;

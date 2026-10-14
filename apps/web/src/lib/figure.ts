@@ -25,8 +25,8 @@ import {
   withScopeChange,
 } from './styleScope.ts';
 
-/** Display settings of a new plot. */
-export const DEFAULT_STYLE: PlotStyle = {
+/** Display settings of a new plot, as shipped (the user's own defaults are `DEFAULT_STYLE`). */
+export const FACTORY_STYLE: PlotStyle = {
   colormap: 'viridis',
   pointPx: 3,
   smoothPct: 1.5,
@@ -53,21 +53,39 @@ export function contourCss(style: PlotStyle, pw: number): CSSProperties {
   };
 }
 
-/** Figure options of a plot that has none saved; the plot box is square. */
-export const DEFAULT_FIGURE: PlotFigure = PlotFigureSchema.parse({ boxAspect: 1 });
+/** Figure options of a plot that has none saved, as shipped; the plot box is square. */
+export const FACTORY_FIGURE: PlotFigure = PlotFigureSchema.parse({ boxAspect: 1 });
 
-/** Figure options of a new Tiles plot: an 11 px base font, the other sizes scaled with it. */
-export const TILE_FIGURE: PlotFigure = PlotFigureSchema.parse({
+/** Text sizes of a Tiles or Plot grid plot, as shipped: an 11 px base font, the other sizes scaled with it. */
+export const FACTORY_TILE_SIZES = {
   fontSize: 11,
   titleFontSize: 14,
   tickFontSize: 11,
   axisTitleFontSize: 12,
   gateFontSize: 11.5,
-  boxAspect: 1,
-});
+} satisfies Partial<PlotFigure>;
 
+export type TileSizes = typeof FACTORY_TILE_SIZES;
+
+// The defaults in use: the factory ones, or the user's (Settings dialog, `setPlotDefaults`). They are
+// live bindings, so every module reads the current ones.
+
+/** Display settings of a new plot. */
+export let DEFAULT_STYLE: PlotStyle = FACTORY_STYLE;
+/** Figure options of a plot that has none saved. */
+export let DEFAULT_FIGURE: PlotFigure = FACTORY_FIGURE;
+/** Figure options of a new Tiles plot, and of a Tiles or Plot grid plot that has none saved: the Gate view's with smaller text. */
+export let TILE_FIGURE: PlotFigure = { ...FACTORY_FIGURE, ...FACTORY_TILE_SIZES };
 /** Settings of a new Tiles plot; its figure options are always saved, so resets keep the Tiles sizes. */
-export const TILE_STYLE: PlotStyle = { ...DEFAULT_STYLE, figure: TILE_FIGURE };
+export let TILE_STYLE: PlotStyle = { ...DEFAULT_STYLE, figure: TILE_FIGURE };
+
+/** Use `style`, `figure` and the Tiles text sizes `tile` as the defaults from now on. */
+export function setPlotDefaults(style: PlotStyle, figure: PlotFigure, tile: TileSizes) {
+  DEFAULT_STYLE = style;
+  DEFAULT_FIGURE = figure;
+  TILE_FIGURE = { ...figure, ...tile };
+  TILE_STYLE = { ...style, figure: TILE_FIGURE };
+}
 
 /**
  * `plot` drawn with a `px` base font: its other text sizes keep their ratio to the base (as when the base

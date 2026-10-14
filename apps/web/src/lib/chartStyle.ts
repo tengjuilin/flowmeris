@@ -4,7 +4,15 @@ import type { Cell, ColumnDef, PlotSeries } from '@flowmeris/table';
 
 /** Styles, series and data of the statistics charts (Charts view). */
 
-export const DEFAULT_CHART_STYLE: ChartStyle = ChartStyleSchema.parse({});
+/** Chart style as shipped. */
+export const FACTORY_CHART_STYLE: ChartStyle = ChartStyleSchema.parse({});
+/** The default chart style in use (a live binding): the factory one, or the user's (`setChartDefaults`). */
+export let DEFAULT_CHART_STYLE: ChartStyle = FACTORY_CHART_STYLE;
+
+/** Use `style` as the default chart style from now on. */
+export function setChartDefaults(style: ChartStyle) {
+  DEFAULT_CHART_STYLE = style;
+}
 
 export const CHART_ERRORS: { id: StatPlot['error']; label: string }[] = [
   { id: 'none', label: 'None' },

@@ -1,0 +1,168 @@
+/* The Settings dialog (features/settings): a modal with tabs down its left side and a scrolling pane of
+   setting groups, each row a setting with its reset (or a hotkey with Change, Reset and Clear). */
+.settings-dialog {
+  width: min(880px, calc(100vw - 32px));
+  height: min(720px, calc(100vh - 64px));
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  overflow: hidden;
+}
+.settings-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+.settings-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.settings-head h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.settings-close {
+  height: 26px;
+}
+.settings-intro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-2);
+}
+.settings-intro p {
+  margin: 0 0 10px;
+  max-width: 62ch;
+}
+.settings-note:not(:empty) {
+  display: block;
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.settings-group {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 0 0 12px;
+  padding: 2px 12px 6px;
+}
+.settings-group > legend {
+  font-weight: 600;
+  padding: 0 4px;
+}
+.settings-group-note {
+  margin: 2px 0 4px;
+}
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+.settings-dialog .side-tabs {
+  flex: 1;
+}
+.settings-dialog .side-tabs-pane h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+/* A default setting: its labeled control, then its reset button. */
+.default-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  border-top: 1px solid var(--border);
+}
+.settings-group > .default-row:first-of-type {
+  border-top: none;
+}
+.default-row > .field {
+  flex: 1;
+  justify-content: space-between;
+  color: var(--text);
+}
+.default-row > .field.check {
+  justify-content: flex-start;
+}
+.default-row input[type="number"] {
+  width: 90px;
+}
+.default-row select {
+  width: 220px;
+  max-width: 50vw;
+}
+.default-color {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.default-row input[type="color"].swatch {
+  width: 34px;
+  height: 22px;
+  padding: 0 1px;
+}
+
+/* A hotkey: its action, its keys, then Change, Reset and Clear. */
+.hotkey-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(90px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  border-top: 1px solid var(--border);
+}
+.settings-group > .hotkey-row:first-of-type {
+  border-top: none;
+}
+.hotkey-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.hotkey-keys kbd {
+  font: 12px / 1 var(--font);
+  min-width: 24px;
+  text-align: center;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface-2);
+}
+.hotkey-actions {
+  display: flex;
+  gap: 4px;
+}
+/* Change keeps its width while it reads "Press a key…". */
+.hotkey-actions > button:first-child {
+  min-width: 7.5em;
+  justify-content: center;
+}
+
+@media (max-width: 700px) {
+  .settings-intro {
+    flex-direction: column;
+  }
+  .hotkey-row {
+    grid-template-columns: 1fr auto;
+  }
+  .hotkey-actions {
+    grid-column: span 2;
+    padding-bottom: 6px;
+  }
+}

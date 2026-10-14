@@ -5,6 +5,8 @@ import { getPool } from './engine-client/pool.ts';
 import { registerBundledFonts } from './lib/fonts/index.ts';
 import { checkMissing } from './state/commands/ingest.ts';
 import { loadAutosave, startAutosave } from './state/persist.ts';
+// The user's default appearance, in use before anything is drawn.
+import './state/settings.ts';
 import { useStore } from './state/store.ts';
 import './styles/index.css';
 

@@ -34,6 +34,7 @@ export default defineConfig({
             { text: 'Sample variables and plate maps', link: '/guide/metadata' },
             { text: 'Statistics tables and charts', link: '/guide/charts' },
             { text: 'Exports and reporting', link: '/guide/exports' },
+            { text: 'App settings', link: '/guide/settings' },
             { text: 'Privacy and storage', link: '/guide/privacy' },
           ],
         },
