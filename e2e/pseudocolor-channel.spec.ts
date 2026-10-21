@@ -64,6 +64,21 @@ test('pseudocolor channel: points colored by a third channel, set in the Color a
   await expect(color.getByLabel('Channel')).toHaveValue('FL2-H');
   await expect(color.getByLabel('Color map')).toHaveValue('magma');
   await expect(color.getByLabel('Color by')).toHaveValue('max');
+
+  // Opened in the Plot view and the Tiles view, the plot keeps its color channel.
+  const views = page.locator('[role="tablist"]:not([aria-label])');
+  const title = page.locator('.gate-plot-title');
+  await title.getByRole('button', { name: 'Open this plot in the Plot view' }).click();
+  const cell = page.locator('.plot-grid .grid-cell.on svg[role="img"]');
+  await expect(cell).toHaveAttribute('aria-label', /^pseudocolor channel plot of .*colored by .*FL2-H$/);
+  await expect(page.locator('.plot-grid .grid-cell.on .plot-message')).toHaveCount(0);
+  await views.getByRole('tab', { name: 'Gate', exact: true }).click();
+  await title.getByRole('button', { name: 'Open this plot in the Tiles view' }).click();
+  await expect(page.locator('.tiles-grid .tile svg[role="img"]').first()).toHaveAttribute(
+    'aria-label',
+    /colored by .*FL2-H$/,
+  );
+  await expect(page.locator('.tiles-grid .tile .plot-message')).toHaveCount(0);
 });
 
 test('pseudocolor density: its color map is on the Color axis card, not on Display', async ({ page }) => {

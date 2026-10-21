@@ -68,6 +68,7 @@ export function RefPlots() {
     x: ref.x,
     style: ref.style,
     ...(ref.y ? { y: ref.y } : {}),
+    ...(ref.color ? { color: ref.color } : {}),
   };
   const gated = group.template.populations[curPop];
   const canBackgate = curPop !== popId && curPop !== 'root' && !!gated;

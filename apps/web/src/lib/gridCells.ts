@@ -26,5 +26,6 @@ export function plotOf(cell: PlotCell): PlotSpec {
     x: cell.x,
     style: cell.style.figure ? cell.style : { ...cell.style, figure: TILE_FIGURE },
     ...(cell.y ? { y: cell.y } : {}),
+    ...(cell.color ? { color: cell.color } : {}),
   };
 }
