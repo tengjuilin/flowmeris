@@ -32,6 +32,11 @@ test('axis scales: hyperlog, FlowJo biex and Miltenyi with their settings', asyn
   await width.fill('-100');
   await width.press('Enter');
   await expect(width).toHaveValue('-100');
+  // A width basis above −1 is refused and the field goes back.
+  await width.fill('-0.5');
+  await width.press('Enter');
+  await expect(page.getByText(/Biex: width must be ≤ -1/)).toBeVisible();
+  await expect(width).toHaveValue('-100');
 
   await scale.selectOption('miltenyi');
   await expect(y.getByLabel('Log decades M')).toHaveValue('4');

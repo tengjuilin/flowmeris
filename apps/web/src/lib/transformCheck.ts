@@ -23,6 +23,7 @@ export function transformError(t: Transform): string | null {
     const issue = parsed.error.issues[0]!;
     const name = `${SCALE_NAMES[t.kind]}: ${issue.path.join('.')}`;
     if (issue.code === 'too_small') return `${name} must be ${issue.inclusive ? '≥' : '>'} ${issue.minimum}`;
+    if (issue.code === 'too_big') return `${name} must be ${issue.inclusive ? '≤' : '<'} ${issue.maximum}`;
     return `${name} must be a finite number`;
   }
   try {

@@ -25,6 +25,7 @@ describe('transformError', () => {
     [{ kind: 'logicle', T: 100, W: -1, M: 4.5, A: 0 }, 'Logicle: W must be ≥ 0'],
     [{ kind: 'logicle', T: 100, W: 3, M: 4.5, A: 0 }, 'Logicle: W must be ≤ M/2'],
     [{ kind: 'flog', T: Number.NaN, M: 4 }, 'Log10: T must be a finite number'],
+    [{ kind: 'biex', T: 1024, width: -0.5, pos: 4.4, neg: 0 }, 'Biex: width must be ≤ -1'],
     [{ kind: 'biex', T: 1024, width: -10, pos: 4.4, neg: -1 }, 'Biex: neg must be ≥ 0'],
     [
       { kind: 'biex', T: 1024, width: -1e6, pos: 2, neg: 0 },
