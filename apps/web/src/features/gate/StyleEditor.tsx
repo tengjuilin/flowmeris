@@ -1,13 +1,14 @@
 import { type PlotSpec, REFERENCE_PLOT_PX } from '@flowmeris/model';
-import { COLORMAPS } from '@flowmeris/render';
 import { NumInput } from '../../components/ui/NumInput.tsx';
 import { Card } from '../../components/ui/settings/index.ts';
 import { DEFAULT_FIGURE, DEFAULT_STYLE, TILE_FIGURE } from '../../lib/figure.ts';
 import { clamp } from '../../lib/math.ts';
 import type { PlotCard } from '../../lib/panelSpecs.ts';
+import { hasColorAxis } from '../../lib/plotKinds.ts';
 import type { CardOf } from '../../lib/settingsPanel.ts';
 import { type PlotTarget, plotsOf } from '../../state/commands/plots.ts';
 import { useGroup, useStore } from '../../state/store.ts';
+import { ColormapField } from './ColormapField.tsx';
 import { ContourFields } from './ContourFields.tsx';
 
 /** The Display card: how events are drawn (color map, point size, smoothing and so on) and the off-scale note. */
@@ -30,10 +31,12 @@ export function StyleEditor({
     );
   const st = plot.style;
   const showNote = st.figure?.showOffScaleNote ?? true;
+  // A plot type with a color axis has its color map on the Color axis card, which resets it.
+  const colorAxis = hasColorAxis(plot.kind);
   const changed =
     !showNote ||
     (Object.keys(DEFAULT_STYLE) as (keyof PlotSpec['style'])[]).some(
-      (k) => JSON.stringify(st[k]) !== JSON.stringify(DEFAULT_STYLE[k]),
+      (k) => !(colorAxis && k === 'colormap') && JSON.stringify(st[k]) !== JSON.stringify(DEFAULT_STYLE[k]),
     );
   return (
     <Card
@@ -41,24 +44,17 @@ export function StyleEditor({
         changed,
         onReset: () =>
           set((s) => {
+            const { colormap } = s;
             Object.assign(s, structuredClone(DEFAULT_STYLE));
+            if (colorAxis) s.colormap = colormap;
             if (s.figure) s.figure.showOffScaleNote = true;
           }),
       })}
     >
       {plot.kind !== 'histogram' && (
         <div className="grid2">
-          {plot.kind !== 'dot' && plot.kind !== 'zebra' && plot.kind !== 'contour' && (
-            <label className="field">
-              Color map
-              <select value={st.colormap} onChange={(e) => set((s) => void (s.colormap = e.target.value))}>
-                {COLORMAPS.map((c) => (
-                  <option key={c} value={c}>
-                    {c === 'classic' ? 'classic (not perceptually uniform)' : c}
-                  </option>
-                ))}
-              </select>
-            </label>
+          {plot.kind === 'density' && (
+            <ColormapField value={st.colormap} onChange={(c) => set((s) => void (s.colormap = c))} />
           )}
           {(plot.kind === 'dot' || plot.kind === 'pseudocolor' || plot.kind === 'pseudocolor-channel') && (
             <NumInput

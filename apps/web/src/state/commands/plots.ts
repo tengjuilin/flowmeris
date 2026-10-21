@@ -1,5 +1,5 @@
 import type { Group, PlotCell, PlotSpec, Workspace } from '@flowmeris/model';
-import { defaultAxis } from '../../lib/axisDefaults.ts';
+import { defaultAxis, defaultColorAxis } from '../../lib/axisDefaults.ts';
 import { withAxesChange } from '../../lib/figure.ts';
 import { savedPlotLike } from '../../lib/tileChannels.ts';
 import { UNSAVED_PLOT_ID } from '../../lib/unsavedPlot.ts';
@@ -52,8 +52,20 @@ export const targetEdit =
 /** Edits the group's Tiles plot `plotId`, leaving the Gate view's plots alone. */
 export const tilesEdit = (groupId: string, plotId: string): EditAxes => targetEdit(groupId, plotId, 'tiles');
 
-/** Put `channel` on a plot's axis with that channel's default scale. */
-export function setAxisChannel(edit: EditAxes, axis: 'x' | 'y', channel: string) {
+/** A plot axis whose channel can be picked: x, y, or a Pseudocolor channel plot's color axis. */
+export type ChannelAxis = 'x' | 'y' | 'color';
+
+/**
+ * Put `channel` on a plot's axis with that channel's default scale. A new color channel keeps the color
+ * axis's statistic, and the settings of the channel pair stay in use.
+ */
+export function setAxisChannel(edit: EditAxes, axis: ChannelAxis, channel: string) {
+  if (axis === 'color') {
+    edit('Change color channel', (p, g, w) => {
+      p.color = { ...defaultColorAxis(w, g, channel), stat: p.color?.stat ?? 'median' };
+    });
+    return;
+  }
   edit('Change axis channel', (p, g, w) => {
     withAxesChange(p, () => {
       p[axis] = { ...defaultAxis(w, g, channel) };
@@ -73,7 +85,7 @@ export function axisChannelSetter(group: Group, plot: PlotSpec, edit?: EditAxes)
 export function axisPickers(group: Group, plot: PlotSpec, edit?: EditAxes) {
   const ed: EditAxes = edit ?? ((label, fn) => editPlot(group.id, plot.id, label, fn));
   return {
-    onPickChannel: (axis: 'x' | 'y', channel: string) => setAxisChannel(ed, axis, channel),
+    onPickChannel: (axis: ChannelAxis, channel: string) => setAxisChannel(ed, axis, channel),
     onPickHistNorm: (norm: PlotSpec['style']['histNorm']) =>
       ed('Change histogram y axis', (p) => {
         p.style.histNorm = norm;

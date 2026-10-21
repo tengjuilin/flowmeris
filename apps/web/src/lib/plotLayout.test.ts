@@ -1,7 +1,7 @@
 import type { PlotSpec, Workspace } from '@flowmeris/model';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_FIGURE } from './figure.ts';
-import { axisLabel, colorBarLayout, plotAriaLabel, plotBox } from './plotLayout.ts';
+import { axisLabel, colorBarLayout, colorBarSpan, plotAriaLabel, plotBox } from './plotLayout.ts';
 
 const plot = (figure: Partial<typeof DEFAULT_FIGURE> = {}, kind = 'dot'): PlotSpec =>
   ({
@@ -95,5 +95,14 @@ describe('color bar', () => {
     expect(on.titleX).toBeGreaterThan(on.labelX);
     expect(off.titleX).toBeLessThan(on.titleX);
     expect(on.width).toBeGreaterThan(on.titleX);
+  });
+
+  it('is as wide as set, and as long as set (% of the plot height, centered)', () => {
+    const wide = colorBarLayout(colored({ colorBarWidth: 30 }))!;
+    const base = colorBarLayout(colored())!;
+    expect(wide.barWidth).toBe(30);
+    expect(wide.labelX - base.labelX).toBe(18);
+    expect(colorBarSpan({ ...DEFAULT_FIGURE, colorBarLength: 50 }, 200)).toEqual({ top: 50, height: 100 });
+    expect(colorBarSpan(DEFAULT_FIGURE, 200)).toEqual({ top: 0, height: 200 });
   });
 });

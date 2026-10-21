@@ -61,3 +61,38 @@ describe('plot settings panel reset', () => {
     expect(panelAtDefaults('text', tile, g, ws, true)).toBe(false);
   });
 });
+
+describe('color axis on the Axis tab', () => {
+  it("holds a pseudocolor plot's color map; the Figure tab holds a density plot's", () => {
+    const { ws, g, p } = setup();
+    p.style.colormap = 'magma';
+    expect(panelAtDefaults('figure', p, g, ws, true)).toBe(true);
+    expect(panelAtDefaults('axis', p, g, ws, true)).toBe(false);
+    resetPanel('figure', p, g, ws, true);
+    expect(p.style.colormap).toBe('magma');
+    resetPanel('axis', p, g, ws, true);
+    expect(p.style.colormap).toBe('viridis');
+
+    p.kind = 'density';
+    p.style.colormap = 'magma';
+    expect(panelAtDefaults('axis', p, g, ws, true)).toBe(true);
+    expect(panelAtDefaults('figure', p, g, ws, true)).toBe(false);
+  });
+
+  it("resets a Pseudocolor channel plot's statistic and color bar, and ignores a color axis kept hidden", () => {
+    const { ws, g } = setup();
+    const p = newPlot(ws, g, 'root', 'pseudocolor-channel');
+    p.color!.stat = 'max';
+    p.style.figure = { ...structuredClone(DEFAULT_FIGURE), colorBarWidth: 30, colorTicks: [{ value: 10 }] };
+    expect(panelAtDefaults('axis', p, g, ws, true)).toBe(false);
+    p.kind = 'dot';
+    p.style.figure = undefined;
+    expect(panelAtDefaults('axis', p, g, ws, true)).toBe(true);
+    p.kind = 'pseudocolor-channel';
+    p.style.figure = { ...structuredClone(DEFAULT_FIGURE), colorBarWidth: 30 };
+    resetPanel('axis', p, g, ws, true);
+    expect(p.color!.stat).toBe('median');
+    expect(p.style.figure?.colorBarWidth).toBe(12);
+    expect(panelAtDefaults('axis', p, g, ws, true)).toBe(true);
+  });
+});

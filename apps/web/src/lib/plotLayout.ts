@@ -1,4 +1,4 @@
-import type { PlotSpec, Workspace } from '@flowmeris/model';
+import type { PlotFigure, PlotSpec, Workspace } from '@flowmeris/model';
 import type { PlotMargin } from './export/index.ts';
 import { DEFAULT_FIGURE } from './figure.ts';
 import { plotKindLabel } from './plotKinds.ts';
@@ -35,23 +35,30 @@ export function plotBox(plot: PlotSpec, availWidth: number, availHeight: number,
   return { margin, pw, ph, width, height, tickY, xTitleY, yTitleX, title, bar };
 }
 
-/** The color bar's distance right of the plot area and its width, in px. */
-export const COLOR_BAR = { gap: 14, width: 12 } as const;
+/** The color bar's distance right of the plot area, in px. */
+export const COLOR_BAR_GAP = 14;
 
 /**
- * Where a Pseudocolor channel plot's color bar puts its parts, in px right of the plot area: the tick
- * labels' left edge (`labelX`) and the title's baseline (`titleX`, read upward as the y title); `width` is
- * the right margin it needs. Null when the plot shows no color bar.
+ * Where a Pseudocolor channel plot's color bar puts its parts, in px right of the plot area: the bar
+ * (`barX`, `barWidth`), the tick labels' left edge (`labelX`) and the title's baseline (`titleX`, read
+ * upward as the y title); `width` is the right margin it needs. Null when the plot shows no color bar.
  */
 export function colorBarLayout(plot: PlotSpec) {
   const fig = plot.style.figure ?? DEFAULT_FIGURE;
   if (plot.kind !== 'pseudocolor-channel' || !plot.color || !fig.colorBar) return null;
-  const barEnd = COLOR_BAR.gap + COLOR_BAR.width;
-  const labelX = barEnd + 7;
+  const barX = COLOR_BAR_GAP;
+  const barWidth = fig.colorBarWidth;
+  const labelX = barX + barWidth + 7;
   // As wide as the y axis's tick labels are taken to be (plotBox's yTitleX).
-  const labelsEnd = fig.showTickLabels ? labelX + 3 * fig.tickFontSize : barEnd + 4;
+  const labelsEnd = fig.showTickLabels ? labelX + 3 * fig.tickFontSize : barX + barWidth + 4;
   const titleX = labelsEnd + 4 + fig.axisTitleFontSize;
-  return { labelX, titleX, width: titleX + 8 };
+  return { barX, barWidth, labelX, titleX, width: titleX + 8 };
+}
+
+/** The color bar's top and height in a plot area `ph` px high: `colorBarLength` % of it, centered. */
+export function colorBarSpan(fig: PlotFigure, ph: number): { top: number; height: number } {
+  const height = (ph * fig.colorBarLength) / 100;
+  return { top: (ph - height) / 2, height };
 }
 
 /**

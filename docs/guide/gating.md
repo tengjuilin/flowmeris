@@ -19,7 +19,7 @@
   a contour plot whose bands are each filled with a gradient, from the outer color (black) at a band's
   outer line to the inner color (white) at its inner line. Gates are drawn and edited the same way on
   every 2D type.
-- **Display** sets how events are drawn. For contour and zebra plots it sets the contours, the contour
+- **Display** sets how events are drawn (a pseudocolor plot's color map is on its Color axis card). For contour and zebra plots it sets the contours, the contour
   lines' width and color (and, for zebra plots, whether they are drawn and the two colors), and the
   outliers' size and color (black by default). Smoothing σ is a percentage of the axis range.
 - A plot looks the same whatever its size: point, outlier and line sizes are px of a plot 400 px wide and
@@ -75,20 +75,24 @@ gate is drawn mapped onto the new scale, and its membership does not change
 
 ## Color axis
 
-A **Pseudocolor channel** plot colors each point by a third channel, FlowJo's color mapping. Its color
-axis is set in the settings panel's Axis tab, in the **Color axis** card below the Y axis:
+Pseudocolor plots have a **Color axis** card in the settings panel's Axis tab, below the Y axis. For a
+**Pseudocolor density** plot it holds the **Color map** only. A **Pseudocolor channel** plot colors each
+point by a third channel, FlowJo's color mapping, and its card sets:
 
 - **Channel**: the channel that colors the points. A new Pseudocolor channel plot takes the first
-  fluorescence channel on neither axis. The color channel is kept when you change the plot type or the X
-  and Y channels.
+  fluorescence channel on neither axis. You can also click the color bar's title to pick another, as
+  with an axis title. The color channel is kept when you change the plot type or the X and Y channels.
 - **Scale and range**, as for the X and Y axes: the color map spans the range, lowest values at its
   first color. Values beyond the range take the color at its end.
+- **Color map**: viridis (default), magma, classic or gray.
 - **Color by**: the **Median** (default), **Mean** or **Maximum** of the color channel's values of the
   events drawn at a point. Where points overlap, the higher value is drawn on top.
 - **Show color bar** (on by default) draws the color map with the color axis's ticks and title right of
-  the plot, in exports too. **Title** replaces the channel name on it.
+  the plot, in exports too. Under it: **Bar width** (px), **Bar length** (% of the plot's height,
+  centered on it), **Title** (replaces the channel name) and **Custom ticks** (one per line, in data
+  units, as for the X and Y axes).
 
-The **Color map** is picked in the Figure tab's Display card, as for a pseudocolor density plot
+The card's ↺ resets all of these; the channel keeps its own default scale
 ([definition](../methods/plots#m-plot-pseudo-channel-points-colored-by-a-third-channel)).
 
 ## Reference plots

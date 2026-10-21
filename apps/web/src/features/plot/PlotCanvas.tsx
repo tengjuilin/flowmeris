@@ -14,6 +14,7 @@ import { DEFAULT_FIGURE, contourCss, figureText } from '../../lib/figure.ts';
 import { plotKey } from '../../lib/keys.ts';
 import { plotFrame } from '../../lib/plotFrame.ts';
 import { plotAriaLabel, plotBox } from '../../lib/plotLayout.ts';
+import type { ChannelAxis } from '../../state/commands/plots.ts';
 import { contextFor, useStore } from '../../state/store.ts';
 import { ColorBar } from './ColorBar.tsx';
 import { DraftShapes } from './DraftShapes.tsx';
@@ -24,7 +25,7 @@ import { useGateEditing } from './useGateEditing.ts';
 import { useBackgate, useGateCounts, useOverlaySamples, usePlotEvents } from './usePlotData.ts';
 
 const UNIT: [number, number] = [0, 1];
-const BOTH_AXES = ['x', 'y'] as const;
+const ALL_AXES: readonly ChannelAxis[] = ['x', 'y', 'color'];
 const NO_OVERLAYS: { color: string; heights: Float64Array }[] = [];
 
 export interface PlotCanvasProps {
@@ -51,9 +52,9 @@ export interface PlotCanvasProps {
    */
   overlay?: { color: string; samples: { sampleId: string; color: string }[] };
   /** Makes the axis titles clickable, to pick another channel for that axis. */
-  onPickChannel?: (axis: 'x' | 'y', channel: string) => void;
-  /** The axes whose titles `onPickChannel` makes clickable (both by default). */
-  pickChannelAxes?: readonly ('x' | 'y')[];
+  onPickChannel?: (axis: ChannelAxis, channel: string) => void;
+  /** The axes whose titles `onPickChannel` makes clickable (x, y and the color bar's by default). */
+  pickChannelAxes?: readonly ChannelAxis[];
   /** Makes a histogram's y-axis title clickable, to pick what the y axis shows. */
   onPickHistNorm?: (norm: HistNorm) => void;
 }
@@ -78,7 +79,7 @@ export const PlotCanvas = forwardRef<PlotHandle, PlotCanvasProps>(function PlotC
     backgate,
     overlay,
     onPickChannel,
-    pickChannelAxes = BOTH_AXES,
+    pickChannelAxes = ALL_AXES,
     onPickHistNorm,
   },
   ref,
@@ -248,7 +249,19 @@ export const PlotCanvas = forwardRef<PlotHandle, PlotCanvasProps>(function PlotC
                 canPickHistNorm={!!onPickHistNorm}
                 onOpenMenu={setAxisMenu}
               />
-              <ColorBar ws={ws} sampleId={sampleId} plot={plot} fig={fig} pw={pw} ph={ph} />
+              <ColorBar
+                ws={ws}
+                sampleId={sampleId}
+                plot={plot}
+                fig={fig}
+                pw={pw}
+                ph={ph}
+                onOpenMenu={
+                  onPickChannel && pickChannelAxes.includes('color')
+                    ? (anchor) => setAxisMenu({ axis: 'color', anchor })
+                    : undefined
+                }
+              />
             </>
           )}
         </g>

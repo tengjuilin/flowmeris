@@ -2,15 +2,21 @@ import type { Group, PlotSpec } from '@flowmeris/model';
 import { memo, useCallback, useMemo, useState } from 'react';
 import { type TileAxis, channelTilePlots, tileChannels, variedAxis } from '../../lib/tileChannels.ts';
 import { openTileInGrid } from '../../state/commands/grid.ts';
-import { axisPickers, openTileInGate, setAxisChannel, tilesEdit } from '../../state/commands/plots.ts';
+import {
+  type ChannelAxis,
+  axisPickers,
+  openTileInGate,
+  setAxisChannel,
+  tilesEdit,
+} from '../../state/commands/plots.ts';
 import { useSelectedSampleIds, useStore } from '../../state/store.ts';
 import { useRegisterBuilt } from '../plot/index.ts';
 import type { TileListProps } from './SampleTiles.tsx';
 import { Tile, TileButton } from './Tile.tsx';
 
 /** The axis titles a Channels tile lets the user pick a channel for: both, none for a histogram. */
-const BOTH: readonly TileAxis[] = ['x', 'y'];
-const NONE: readonly TileAxis[] = [];
+const ALL: readonly ChannelAxis[] = ['x', 'y', 'color'];
+const NONE: readonly ChannelAxis[] = [];
 
 /**
  * The sample the Channels mode shows: the one selected in the sidebar when it is in the group, else the
@@ -117,9 +123,9 @@ const ChannelTile = memo(function ChannelTile({
       // Picking a channel for an axis fixes that axis on it; the other axis goes through the channels.
       onPickChannel={(axis, ch) => {
         setAxisChannel(edit, axis, ch);
-        if (axis !== fixed) setViews({ tilesFixedAxis: axis });
+        if (axis !== 'color' && axis !== fixed) setViews({ tilesFixedAxis: axis });
       }}
-      pickChannelAxes={plot.kind === 'histogram' || !plot.y ? NONE : BOTH}
+      pickChannelAxes={plot.kind === 'histogram' || !plot.y ? NONE : ALL}
       name={name}
       current={current}
       onSelect={() => onSelect(channel)}

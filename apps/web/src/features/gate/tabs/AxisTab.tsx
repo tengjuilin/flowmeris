@@ -4,13 +4,14 @@ import { NumInput } from '../../../components/ui/NumInput.tsx';
 import { Card } from '../../../components/ui/settings/index.ts';
 import { withAxesChange } from '../../../lib/figure.ts';
 import { clamp } from '../../../lib/math.ts';
+import { hasColorAxis } from '../../../lib/plotKinds.ts';
 import { AxisEditor } from '../AxisEditor.tsx';
 import type { TabProps } from '../figureEdits.ts';
 import { ColorAxisCard } from './ColorAxisCard.tsx';
 
 /**
- * The Axis tab: swap X and Y, each axis (channel, scale, range, title), a Pseudocolor channel plot's color
- * axis, and ticks and spine.
+ * The Axis tab: swap X and Y, each axis (channel, scale, range, title), a pseudocolor plot's color axis,
+ * and ticks and spine.
  */
 export function AxisTab(props: TabProps) {
   const { plot, target, card, fx } = props;
@@ -73,7 +74,7 @@ export function AxisTab(props: TabProps) {
           {titleField('yTitle', 'Y axis title')}
         </AxisEditor>
       )}
-      {is2d && plot.kind === 'pseudocolor-channel' && <ColorAxisCard {...props} />}
+      {is2d && hasColorAxis(plot.kind) && <ColorAxisCard {...props} />}
       <Card
         {...card(
           'ticks',

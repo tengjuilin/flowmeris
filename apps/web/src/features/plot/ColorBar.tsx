@@ -2,17 +2,20 @@ import type { PlotFigure, PlotSpec, Workspace } from '@flowmeris/model';
 import { colormapCss } from '@flowmeris/render';
 import { axisTicks } from '@flowmeris/transforms';
 import { useId, useMemo } from 'react';
+import { type Anchor, pickerTrigger } from '../../components/ui/PickerMenu.tsx';
 import { SupLabel } from '../../components/ui/SupLabel.tsx';
 import { figureText } from '../../lib/figure.ts';
 import { scaleFor } from '../../lib/geometry.ts';
-import { COLOR_BAR, axisLabel, colorBarLayout } from '../../lib/plotLayout.ts';
+import { axisLabel, colorBarLayout, colorBarSpan } from '../../lib/plotLayout.ts';
+import { customTicks } from '../../lib/ticks.ts';
 
 /** Color stops sampled along the color map, enough for its gradient to match the points' colors. */
 const STOPS = 16;
 
 /**
  * A Pseudocolor channel plot's color bar, right of the plot area (`pw` × `ph`): the color map over the color
- * axis's range, lowest at the bottom, with the axis's ticks and title, styled as the y axis.
+ * axis's range, lowest at the bottom, with the axis's ticks and title, styled as the y axis. With
+ * `onOpenMenu` its title opens a picker of the color channel.
  */
 export function ColorBar({
   ws,
@@ -21,7 +24,16 @@ export function ColorBar({
   fig,
   pw,
   ph,
-}: { ws: Workspace; sampleId: string; plot: PlotSpec; fig: PlotFigure; pw: number; ph: number }) {
+  onOpenMenu,
+}: {
+  ws: Workspace;
+  sampleId: string;
+  plot: PlotSpec;
+  fig: PlotFigure;
+  pw: number;
+  ph: number;
+  onOpenMenu?: (anchor: Anchor) => void;
+}) {
   const gradId = `cbar${useId().replace(/:/g, '')}`;
   const layout = colorBarLayout(plot);
   const color = plot.color;
@@ -29,18 +41,23 @@ export function ColorBar({
     if (!color) return [];
     try {
       const s = scaleFor(ws, color.transform);
-      return axisTicks(s.def, s.apply, s.inverse, color.range[0], color.range[1]);
+      return fig.colorTicks
+        ? customTicks(fig.colorTicks, s.apply, color.range)
+        : axisTicks(s.def, s.apply, s.inverse, color.range[0], color.range[1]);
     } catch {
       return [];
     }
-  }, [ws, color?.transform, color?.range[0], color?.range[1]]);
+  }, [ws, color?.transform, color?.range[0], color?.range[1], fig.colorTicks]);
   if (!layout || !color) return null;
   const [lo, hi] = color.range;
-  const Y = (v: number) => ph - ((v - lo) / (hi - lo)) * ph;
-  const x0 = pw + COLOR_BAR.gap;
+  const { top, height } = colorBarSpan(fig, ph);
+  const Y = (v: number) => top + height - ((v - lo) / (hi - lo)) * height;
+  const x0 = pw + layout.barX;
+  const x1 = x0 + layout.barWidth;
   const tickCss = figureText(fig, fig.tickText, fig.tickFontSize);
   const lineCss = { strokeWidth: fig.tickWidth, ...(fig.axisColor ? { stroke: fig.axisColor } : {}) };
   const spineCss = { strokeWidth: fig.spineWidth, ...(fig.spineColor ? { stroke: fig.spineColor } : {}) };
+  const title = axisLabel(ws, sampleId, plot, 'color');
   return (
     <g className="axis color-bar">
       <defs>
@@ -50,25 +67,26 @@ export function ColorBar({
           ))}
         </linearGradient>
       </defs>
-      <rect x={x0} y={0} width={COLOR_BAR.width} height={ph} fill={`url(#${gradId})`} />
-      <rect x={x0} y={0} width={COLOR_BAR.width} height={ph} className="plot-frame" style={spineCss} />
+      <rect x={x0} y={top} width={layout.barWidth} height={height} fill={`url(#${gradId})`} />
+      <rect x={x0} y={top} width={layout.barWidth} height={height} className="plot-frame" style={spineCss} />
       {ticks.map((t, i) => (
-        <g key={i} transform={`translate(${x0 + COLOR_BAR.width},${Y(t.pos)})`}>
+        <g key={i} transform={`translate(${x1},${Y(t.pos)})`}>
           <line x2={t.major ? 4 : 2} style={lineCss} />
           {fig.showTickLabels && t.label && (
-            <text x={layout.labelX - COLOR_BAR.gap - COLOR_BAR.width} dy="0.32em" style={tickCss}>
+            <text x={pw + layout.labelX - x1} dy="0.32em" style={tickCss}>
               <SupLabel label={t.label} fontSize={fig.tickFontSize} />
             </text>
           )}
         </g>
       ))}
       <text
-        className="axis-title"
+        className={`axis-title${onOpenMenu ? ' pickable' : ''}`}
+        {...(onOpenMenu ? pickerTrigger(`Color axis: ${title}. Change channel`, onOpenMenu) : {})}
         transform={`translate(${pw + layout.titleX},${ph / 2}) rotate(-90)`}
         textAnchor="middle"
         style={figureText(fig, fig.axisTitleText, fig.axisTitleFontSize)}
       >
-        {axisLabel(ws, sampleId, plot, 'color')}
+        {title}
       </text>
     </g>
   );

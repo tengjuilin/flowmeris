@@ -15,3 +15,8 @@ export const PLOT_KINDS: { id: PlotKind; label: string }[] = [
 export function plotKindLabel(kind: PlotKind): string {
   return PLOT_KINDS.find((k) => k.id === kind)?.label ?? kind;
 }
+
+/** Plot types whose color map is set on the Color axis card (Axis tab) instead of the Display card. */
+export function hasColorAxis(kind: PlotKind): boolean {
+  return kind === 'pseudocolor' || kind === 'pseudocolor-channel';
+}

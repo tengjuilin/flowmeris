@@ -8,6 +8,7 @@ import { scaleFor } from '../../lib/geometry.ts';
 import type { PlotFrame } from '../../lib/plotFrame.ts';
 import { axisLabel } from '../../lib/plotLayout.ts';
 import { customTicks, formatHistTick, histYTicks } from '../../lib/ticks.ts';
+import type { ChannelAxis } from '../../state/commands/plots.ts';
 
 export type HistNorm = PlotSpec['style']['histNorm'];
 
@@ -23,8 +24,8 @@ export function histNormTitle(norm: HistNorm): string {
   return HIST_NORMS.find((o) => o.value === norm)?.label ?? 'Count';
 }
 
-/** An open axis-title menu: which axis, and where its title is. */
-export type AxisMenu = { axis: 'x' | 'y'; anchor: Anchor };
+/** An open axis-title menu: which axis (or the color bar), and where its title is. */
+export type AxisMenu = { axis: ChannelAxis; anchor: Anchor };
 
 export interface PlotAxesProps {
   ws: Workspace;
@@ -166,7 +167,7 @@ export function AxisPickerMenu({
   sampleId: string;
   plot: PlotSpec;
   is1d: boolean;
-  onPickChannel?: (axis: 'x' | 'y', channel: string) => void;
+  onPickChannel?: (axis: ChannelAxis, channel: string) => void;
   onPickHistNorm?: (norm: HistNorm) => void;
   onClose: () => void;
 }) {
@@ -184,7 +185,7 @@ export function AxisPickerMenu({
   return onPickChannel ? (
     <PickerMenu
       anchor={menu.anchor}
-      title={`${menu.axis.toUpperCase()} axis channel`}
+      title={menu.axis === 'color' ? 'Color axis channel' : `${menu.axis.toUpperCase()} axis channel`}
       options={channelOptions(group, ws.samples[sampleId])}
       value={plot[menu.axis]?.channel}
       onPick={(ch) => onPickChannel(menu.axis, ch)}

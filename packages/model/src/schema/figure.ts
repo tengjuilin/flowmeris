@@ -54,5 +54,10 @@ export const PlotFigureSchema = z.object({
   /** Pseudocolor channel plots: the color bar right of the plot, and its title (omitted = "<marker> :: <channel>"). */
   colorBar: z.boolean().default(true),
   colorTitle: z.string().optional(),
+  /** The color bar's width (px) and length (% of the plot area's height, centered on it). */
+  colorBarWidth: Num.min(2).max(60).default(12),
+  colorBarLength: Num.min(10).max(100).default(100),
+  /** The color bar's ticks in data (linear) units; omitted = automatic. */
+  colorTicks: z.array(z.object({ value: Num, label: z.string().optional() })).optional(),
 });
 export type PlotFigure = z.infer<typeof PlotFigureSchema>;
