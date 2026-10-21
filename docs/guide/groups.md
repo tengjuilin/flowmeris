@@ -36,3 +36,20 @@ gates or overrides.
 
 In **Tiles**, the plot type and X / Y channels can be changed directly; they are the same settings as in
 the Gate view for the current population.
+
+**Tiles by channel.** *Samples* | *Channels* in the Tiles toolbar switches between the plot for every
+checked sample and one sample's plot over its channels. In *Channels* mode:
+
+- the sample is picked in the toolbar (◀ ▶ step through the group), or with a sample tile's **Channels**
+  button;
+- *X fixed* / *Y fixed* chooses the axis every tile keeps; the other axis goes through the channels. A
+  histogram keeps no axis: there is one histogram per channel;
+- the **Channels** menu checks which channels get a tile (the fixed axis's channel never does). The
+  choice lasts until the page is reloaded;
+- each tile's varied axis has the group's default scale for its channel (the Tiles plot's own scale and
+  range on the channel it is set to). Clicking the fixed axis's title changes its channel for every tile;
+- click a tile to select it, then draw and edit gates on it as in the Gate view: a gate drawn there is
+  on that tile's two channels;
+- **Gate** opens the tile in the Gate view (the population's saved plot on those channels, if there is
+  one), **Plot** adds it to the Plot view, and **Samples** puts its channel on the Tiles plot and goes back
+  to tiling the samples.

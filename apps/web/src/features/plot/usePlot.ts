@@ -1,4 +1,4 @@
-import type { Group, PlotSpec } from '@flowmeris/model';
+import type { Group, PlotSpec, Workspace } from '@flowmeris/model';
 import { useEffect, useMemo } from 'react';
 import { newTilePlot } from '../../lib/plotFactories.ts';
 import { gateViewPlot } from '../../lib/unsavedPlot.ts';
@@ -19,18 +19,26 @@ export function usePlotForPopulation(): PlotSpec | undefined {
     [ws, group, popId, plotId, unsavedPlot],
   );
   // The transforms and axis defaults an unsaved plot's axes need, registered so they can be drawn.
-  const registers = !!shown && shown.ws !== ws;
+  useRegisterBuilt(ws, shown?.ws, group?.id);
+  return shown?.plot;
+}
+
+/**
+ * Registers in the workspace, without an undo step, the transforms and axis defaults that building plots
+ * on a copy of it (`built`) added, so those plots can be drawn.
+ */
+export function useRegisterBuilt(ws: Workspace, built: Workspace | undefined, groupId: string | undefined) {
+  const registers = !!built && built !== ws;
   useEffect(() => {
-    if (!registers || !shown) return;
+    if (!registers || !built) return;
     useStore.getState().mutateQuiet((w) => {
-      for (const [id, t] of Object.entries(shown.ws.transforms)) w.transforms[id] ??= structuredClone(t);
-      const from = shown.ws.groups.find((x) => x.id === group?.id);
-      const to = w.groups.find((x) => x.id === group?.id);
+      for (const [id, t] of Object.entries(built.transforms)) w.transforms[id] ??= structuredClone(t);
+      const from = built.groups.find((x) => x.id === groupId);
+      const to = w.groups.find((x) => x.id === groupId);
       if (from && to)
         for (const [ch, a] of Object.entries(from.axisDefaults)) to.axisDefaults[ch] ??= { ...a };
     });
-  }, [registers, shown, group?.id]);
-  return shown?.plot;
+  }, [registers, built, groupId]);
 }
 
 /** The Tiles plot of the population being gated; made from the Gate view's plot on first visit. */

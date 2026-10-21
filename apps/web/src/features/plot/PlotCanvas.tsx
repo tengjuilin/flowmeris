@@ -23,6 +23,7 @@ import { useGateEditing } from './useGateEditing.ts';
 import { useBackgate, useGateCounts, useOverlaySamples, usePlotEvents } from './usePlotData.ts';
 
 const UNIT: [number, number] = [0, 1];
+const BOTH_AXES = ['x', 'y'] as const;
 const NO_OVERLAYS: { color: string; heights: Float64Array }[] = [];
 
 export interface PlotCanvasProps {
@@ -50,6 +51,8 @@ export interface PlotCanvasProps {
   overlay?: { color: string; samples: { sampleId: string; color: string }[] };
   /** Makes the axis titles clickable, to pick another channel for that axis. */
   onPickChannel?: (axis: 'x' | 'y', channel: string) => void;
+  /** The axes whose titles `onPickChannel` makes clickable (both by default). */
+  pickChannelAxes?: readonly ('x' | 'y')[];
   /** Makes a histogram's y-axis title clickable, to pick what the y axis shows. */
   onPickHistNorm?: (norm: HistNorm) => void;
 }
@@ -74,6 +77,7 @@ export const PlotCanvas = forwardRef<PlotHandle, PlotCanvasProps>(function PlotC
     backgate,
     overlay,
     onPickChannel,
+    pickChannelAxes = BOTH_AXES,
     onPickHistNorm,
   },
   ref,
@@ -239,7 +243,7 @@ export const PlotCanvas = forwardRef<PlotHandle, PlotCanvasProps>(function PlotC
                 xTitleY={xTitleY}
                 yTitleX={yTitleX}
                 histTop={histPath?.top ?? 1}
-                canPickChannel={!!onPickChannel}
+                canPickChannel={(axis) => !!onPickChannel && pickChannelAxes.includes(axis)}
                 canPickHistNorm={!!onPickHistNorm}
                 onOpenMenu={setAxisMenu}
               />

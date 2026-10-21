@@ -75,6 +75,12 @@ export interface ViewPrefs {
   tilesSettings: boolean;
   /** Tile plot size (px) picked with the Tiles view's slider; the tiles per row follow the width. */
   tilesPlotSize: number;
+  /** What the Tiles view tiles: the plot for every sample, or one sample's plot over its channels. */
+  tilesMode: 'samples' | 'channels';
+  /** The axis kept in the Tiles view's Channels mode; the other goes through the channels. */
+  tilesFixedAxis: 'x' | 'y';
+  /** Channels left out of the Tiles view's Channels mode. */
+  tilesHiddenChannels: string[];
   /** Plot size (px) picked with the slider of the Gating path view's path (as many steps per row as fit). */
   pathPlotSize: number;
   /** Layout of the Gating path view: the path to the selected population, or the whole tree. */
@@ -192,6 +198,9 @@ export const useStore = create<Store>((set, get) => ({
   views: {
     tilesSettings: false,
     tilesPlotSize: 260,
+    tilesMode: 'samples',
+    tilesFixedAxis: 'x',
+    tilesHiddenChannels: [],
     pathPlotSize: 240,
     pathMode: readSession(PATH_MODE_KEY, ['path', 'tree'] as const, 'path'),
     treePlotSize: 280,

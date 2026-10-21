@@ -40,7 +40,7 @@ export interface PlotAxesProps {
   /** A histogram's y-axis top, in its normalization's units. */
   histTop: number;
   /** Axis titles open a picker when the caller can change the channel (or what a histogram's y shows). */
-  canPickChannel: boolean;
+  canPickChannel: (axis: 'x' | 'y') => boolean;
   canPickHistNorm: boolean;
   onOpenMenu: (menu: AxisMenu) => void;
 }
@@ -87,7 +87,7 @@ export function PlotAxes(props: PlotAxesProps) {
             ),
           }
         : { className: 'axis-title' }
-      : canPickChannel
+      : canPickChannel(axis)
         ? {
             className: 'axis-title pickable',
             ...pickerTrigger(`${axis.toUpperCase()} axis: ${label(axis)}. Change channel`, (anchor) =>

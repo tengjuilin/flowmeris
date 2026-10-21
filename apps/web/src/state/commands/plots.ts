@@ -1,6 +1,7 @@
 import type { Group, PlotCell, PlotSpec, Workspace } from '@flowmeris/model';
 import { defaultAxis } from '../../lib/axisDefaults.ts';
 import { withAxesChange } from '../../lib/figure.ts';
+import { savedPlotLike } from '../../lib/tileChannels.ts';
 import { UNSAVED_PLOT_ID } from '../../lib/unsavedPlot.ts';
 import { mutateGroup, useStore } from '../store.ts';
 
@@ -94,4 +95,13 @@ export function openPathPlot(popId: string, plot: PlotSpec | null, real: boolean
     drill(popId);
     useStore.getState().setUi({ view: 'gate' });
   }
+}
+
+/**
+ * Open a Tiles view plot (of the selected sample) in the Gate view: the population's saved plot on the
+ * same channels, else the plot unsaved, drawn with the Gate view's figure defaults.
+ */
+export function openTileInGate(group: Group, plot: PlotSpec) {
+  const saved = savedPlotLike(group, plot);
+  openPathPlot(plot.population, saved ?? { ...plot, style: { ...plot.style, figure: undefined } }, !!saved);
 }

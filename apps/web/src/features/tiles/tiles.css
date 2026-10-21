@@ -76,3 +76,48 @@
 .tile .gate-label {
   font-size: 10px;
 }
+/* Channels mode: the sample shown, with previous and next buttons. */
+.tiles-sample {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.tiles-sample > select {
+  max-width: 220px;
+}
+/* The checklist of channels shown in Channels mode, opened from the toolbar. */
+.tiles-channels {
+  position: relative;
+}
+.tiles-channels-pop {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 220px;
+  max-height: min(420px, 70vh);
+  overflow: auto;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.15);
+}
+.tiles-channels-actions {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.tiles-channel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.tiles-channel-detail {
+  color: var(--muted);
+}
