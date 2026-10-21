@@ -21,6 +21,7 @@ import { ingestFiles } from '../state/commands/ingest.ts';
 import { openWorkspaceFile, saveWorkspaceFile, startNewWorkspace } from '../state/commands/workspace.ts';
 import { useSettings } from '../state/settings.ts';
 import { useStore } from '../state/store.ts';
+import { SaveStatus } from './SaveStatus.tsx';
 
 /**
  * The app header: the Workspace and Add menus, workspace name, undo and redo, and at the right the
@@ -173,6 +174,7 @@ export function Header() {
         onChange={(e) => mutate('Rename workspace', (w) => void (w.name = e.target.value))}
       />
       <div className="spacer" />
+      <SaveStatus />
       <button
         type="button"
         className="icon header-icon"

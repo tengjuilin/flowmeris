@@ -296,6 +296,32 @@
 .app-header .button.icon:hover {
   color: var(--text);
 }
+/* The workspace's save state in this browser, left of the Settings gear. */
+.save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.save-status.failed {
+  color: var(--danger);
+}
+.save-status .spin {
+  animation: save-spin 0.9s linear infinite;
+}
+@keyframes save-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .save-status .spin {
+    animation: none;
+  }
+}
 /* The Settings gear, the same size as the links beside it. */
 .app-header button.header-icon {
   padding: 3px 4px;

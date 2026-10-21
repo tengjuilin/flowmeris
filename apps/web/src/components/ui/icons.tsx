@@ -309,3 +309,32 @@ export function GitHubIcon() {
     </svg>
   );
 }
+
+/** Saved: a check mark in a circle. */
+export function SavedIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true">
+      <circle cx="8" cy="8" r="6.2" strokeWidth="1.4" />
+      <path d="M5.2 8.2l2 2 3.6-4" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Saving: three quarters of a circle, turned by CSS (`.spin`). */
+export function SavingIcon() {
+  return (
+    <svg className="spin" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="6.2" stroke="currentColor" strokeWidth="1.6" opacity="0.25" />
+      <path d="M8 1.8a6.2 6.2 0 0 1 6.2 6.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** Unsaved: a filled dot, as on an edited document's tab. */
+export function UnsavedIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+      <circle cx="8" cy="8" r="4" fill="currentColor" />
+    </svg>
+  );
+}

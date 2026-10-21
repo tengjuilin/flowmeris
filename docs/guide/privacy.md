@@ -6,6 +6,10 @@
 - **Where data are kept.** Decoded event columns are stored in the Origin Private File System (OPFS).
   The workspace autosaves to IndexedDB, together with its last 20 versions. Both stay in this browser
   profile on this computer. Flowmeris asks the browser to make this storage persistent.
+- **Save status.** Left of the Settings gear, the header shows whether the workspace is saved in this
+  browser: *Unsaved* right after an edit (the autosave runs a second after the last one), *Saving…*,
+  then *Saved*; hover it for the time of the last save. *Not saved*, in red, means the browser refused to
+  store it (for example, storage is full): use *Workspace → Export* to keep a copy.
 - **App settings.** Default appearance and hotkeys (see [App settings](./settings)) are kept in the
   browser's local storage, for every workspace.
 - **Private browsing.** Some browsers disable OPFS in private windows. Flowmeris then keeps data in memory

@@ -93,3 +93,21 @@ test('Undo and Redo precede Workspace, and the workspace name never overlaps the
     }
   }
 });
+
+test('the save status, left of the Settings gear, follows the browser autosave', async ({ page }) => {
+  await page.goto('/');
+  const header = page.locator('header.app-header');
+  const status = header.locator('.save-status');
+  await expect(status).toHaveText('Saved');
+  // It sits just left of the gear.
+  const s = (await status.boundingBox())!;
+  const gear = (await header.getByRole('button', { name: 'App settings' }).boundingBox())!;
+  expect(s.x + s.width).toBeLessThanOrEqual(gear.x);
+  expect(gear.x - (s.x + s.width)).toBeLessThan(20);
+
+  // An edit is unsaved until the autosave writes it, a second later.
+  await header.getByRole('textbox', { name: 'Workspace name' }).fill('Renamed');
+  await expect(status).toHaveText('Unsaved');
+  await expect(status).toHaveText('Saved', { timeout: 5000 });
+  await expect(status).toHaveAttribute('title', /^Saved in this browser at .+\. .*Export/);
+});

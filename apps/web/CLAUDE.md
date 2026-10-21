@@ -10,10 +10,10 @@ several features. Update this file when the layout changes.
 
 | Path | Contents |
 |---|---|
-| `src/app/` | the shell: `views.tsx` (VIEW_DEFS: every view's label, content, settings panel, tool keys, tab action; VIEW_ORDER), `App.tsx`, `Header.tsx`, `TabBar.tsx`, `Overlays.tsx`, `useHotkeys.ts`, `useDropIngest.ts` |
-| `src/state/store.ts` | the store: `ws` (workspace), `ui` (where the user is and what is selected), `views` (layout preferences), `status` (missing data, loading, toast), undo history, Back/Forward |
+| `src/app/` | the shell: `views.tsx` (VIEW_DEFS: every view's label, content, settings panel, tool keys, tab action; VIEW_ORDER), `App.tsx`, `Header.tsx` (with `SaveStatus`, the autosave's state), `TabBar.tsx`, `Overlays.tsx`, `useHotkeys.ts`, `useDropIngest.ts` |
+| `src/state/store.ts` | the store: `ws` (workspace), `ui` (where the user is and what is selected), `views` (layout preferences), `status` (missing data, loading, toast, the autosave's state `save`), undo history, Back/Forward |
 | `src/state/prefs.ts` | preferences in browser storage: session view and layout, settings panels' tabs and collapsed cards (`usePanelState`; the stored format is in `lib/settingsPanel.ts`) |
-| `src/state/persist.ts` | IndexedDB autosave of `ws` (ring of 20 snapshots) |
+| `src/state/persist.ts` | IndexedDB autosave of `ws` (ring of 20 snapshots); reports its state in `status.save` (`lib/saveStatus.ts`: the states and their header text) |
 | `src/state/settings.ts` | the app settings (`useSettings`): default appearance and hotkeys in localStorage, for every workspace; a default change calls `applyDefaults` and restyles the open workspace in one undo step; `rev` redraws the view after the Settings dialog closes |
 | `src/engine-client/` | `pool.ts`: the worker pool (ADR-0003, ADR-0010), `getPool()`; `scheduler.ts`: its request queue and result cache |
 | `src/workers/compute.worker.ts` | worker side: wraps `@flowmeris/engine` behind Comlink (`ComputeApi`) |

@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { create } from 'zustand';
 import { gridCarry } from '../lib/gridCarry.ts';
 import { displayNames } from '../lib/names.ts';
+import type { SaveState } from '../lib/saveStatus.ts';
 import { addUnsaved, gateViewPlot, settleUnsaved } from '../lib/unsavedPlot.ts';
 import { readSession, writeSession } from './prefs.ts';
 
@@ -102,6 +103,8 @@ interface StatusState {
   ingest: IngestProgress | null;
   /** A message over the app; a `warning` is drawn in red with an icon and stays until dismissed or replaced. */
   toast: { text: string; tone?: 'warning'; action?: { label: string; run: () => void } } | null;
+  /** The browser autosave of the workspace (state/persist.ts), shown in the header. */
+  save: SaveState;
 }
 
 /** Where the user is: the tab and what it shows. Back and Forward return to one. */
@@ -206,7 +209,7 @@ export const useStore = create<Store>((set, get) => ({
     metaSettings: true,
     metaMode: 'table',
   },
-  status: { missing: {}, ingest: null, toast: null },
+  status: { missing: {}, ingest: null, toast: null, save: { state: 'saved', at: null } },
   past: [],
   future: [],
   nav: { back: [], forward: [] },
