@@ -66,6 +66,14 @@ describe('popAt', () => {
     expect(popAt(f, template, quad, 10, 90, false)).toBe('q4');
   });
 
+  it('answers by the leg on the side of an offset quadrant the point is on', () => {
+    const quad = [
+      shown('quad', { kind: 'quadrant', center: [0.5, 0.5], offset: { axis: 'x', lo: 0.2, hi: 0.8 } }),
+    ];
+    expect(popAt(f, template, quad, 50, 10, false)).toBe('q1');
+    expect(popAt(f, template, quad, 50, 90, false)).toBe('q3');
+  });
+
   it('answers with the side of a split', () => {
     const split = [shown('split', { kind: 'split', at: 0.5 }, 1)];
     expect(popAt(f, template, split, 10, 50, true)).toBe('lo');

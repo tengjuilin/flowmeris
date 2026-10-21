@@ -17,6 +17,8 @@ import {
   or,
   popcount,
   preparePolygon,
+  quadrantDividers,
+  quadrantRegion,
   spiderFromQuadrant,
   spiderRegion,
   toIndices,
@@ -85,6 +87,33 @@ describe('M-GATE-QUAD', () => {
     expect(Array.from(toIndices(r.Q2!))).toEqual([1]);
     expect(Array.from(toIndices(r.Q3!))).toEqual([2, 3]);
     expect(Array.from(toIndices(r.Q4!))).toEqual([4]);
+  });
+  it('separates the legs of an offset divider, with ties on the upper side', () => {
+    // Vertical legs at x = 2 above y = 1 and x = 0 below it.
+    const x = Float64Array.from([1, 2, 0, -1, 1, 0]);
+    const y = Float64Array.from([2, 1, 0, 0.5, 0, 1]);
+    const g: Geometry = { kind: 'quadrant', center: [1, 1], offset: { axis: 'x', lo: 0, hi: 2 } };
+    const r = evaluateGate(g, [x, y], 6, null).regions;
+    expect(Array.from(toIndices(r.Q1!))).toEqual([0, 5]);
+    expect(Array.from(toIndices(r.Q2!))).toEqual([1]);
+    expect(Array.from(toIndices(r.Q3!))).toEqual([2, 4]);
+    expect(Array.from(toIndices(r.Q4!))).toEqual([3]);
+  });
+  it('without an offset, or with equal legs, is the plain quadrant gate', () => {
+    fc.assert(
+      fc.property(coord, coord, fc.array(fc.tuple(coord, coord), { maxLength: 60 }), (cx, cy, pts) => {
+        const x = Float64Array.from([...pts.map((p) => p[0]), cx, cx]);
+        const y = Float64Array.from([...pts.map((p) => p[1]), cy, cy - 1]);
+        const plain = evaluateGate({ kind: 'quadrant', center: [cx, cy] }, [x, y], x.length, null).regions;
+        for (const axis of ['x', 'y'] as const) {
+          const lo = axis === 'x' ? cx : cy;
+          const g: Geometry = { kind: 'quadrant', center: [cx, cy], offset: { axis, lo, hi: lo } };
+          const off = evaluateGate(g, [x, y], x.length, null).regions;
+          for (const k of ['Q1', 'Q2', 'Q3', 'Q4'] as const)
+            expect(Array.from(off[k]!)).toEqual(Array.from(plain[k]!));
+        }
+      }),
+    );
   });
 });
 
@@ -234,9 +263,17 @@ describe('evaluateGate kernels agree with the per-event predicates', () => {
       }
       case 'quadrant': {
         const [cx, cy] = geometry.center;
+        const off = geometry.offset;
+        // An offset leg replaces the center's coordinate on the side of the other divider it is on.
+        const xDiv = (yv: number) => (off?.axis === 'x' ? (yv >= cy ? off.hi : off.lo) : cx);
+        const yDiv = (xv: number) => (off?.axis === 'y' ? (xv >= cx ? off.hi : off.lo) : cy);
         const q = (xp: boolean, yp: boolean) =>
           keep(
-            (i) => !Number.isNaN(x[i]!) && !Number.isNaN(y[i]!) && x[i]! >= cx === xp && y[i]! >= cy === yp,
+            (i) =>
+              !Number.isNaN(x[i]!) &&
+              !Number.isNaN(y[i]!) &&
+              x[i]! >= xDiv(y[i]!) === xp &&
+              y[i]! >= yDiv(x[i]!) === yp,
           );
         return { Q1: q(false, true), Q2: q(true, true), Q3: q(true, false), Q4: q(false, false) };
       }
@@ -325,6 +362,30 @@ describe('evaluateGate kernels agree with the per-event predicates', () => {
             [x, y],
             par,
           );
+        },
+      ),
+    );
+  });
+
+  it('offset quadrant, on either axis, with legs either way round', () => {
+    fc.assert(
+      fc.property(
+        events,
+        fc.constantFrom('x' as const, 'y' as const),
+        fc.constantFrom(-0.5, 0, 0.5),
+        fc.constantFrom(-0.5, 0.25, 1),
+        ([x, y, , par], axis, lo, hi) => {
+          const center: [number, number] = axis === 'x' ? [(lo + hi) / 2, 0.25] : [0, (lo + hi) / 2];
+          const geometry: Geometry = { kind: 'quadrant', center, offset: { axis, lo, hi } };
+          check(geometry, [x, y], par);
+          const r = evaluateGate(geometry, [x, y], par.length, fromBooleans(par)).regions;
+          const d = quadrantDividers(center, { axis, lo, hi });
+          par.forEach((p, i) => {
+            const k = (['Q1', 'Q2', 'Q3', 'Q4'] as const).filter((q) => getBit(r[q]!, i));
+            const nan = Number.isNaN(x[i]!) || Number.isNaN(y[i]!);
+            expect(k.length).toBe(p && !nan ? 1 : 0);
+            if (k.length) expect(k[0]).toBe(`Q${quadrantRegion(d, x[i]!, y[i]!)}`);
+          });
         },
       ),
     );

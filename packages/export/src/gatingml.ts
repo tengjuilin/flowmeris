@@ -35,6 +35,43 @@ function num(v: number): string {
   return String(v);
 }
 
+type QuadrantGeometry = Extract<Geometry, { kind: 'quadrant' }>;
+
+/**
+ * An offset quadrant as four RectangleGates, one per region, with open sides. Each region is exactly
+ * such a rectangle, with the same min-inclusive, max-exclusive rule. A QuadrantGate with one divider per
+ * leg would also be valid Gating-ML, but readers such as FlowKit cannot evaluate two dividers on one
+ * channel. A Flowmeris extension element keeps the gate's definition.
+ */
+function offsetQuadrantRects(
+  gate: Gate,
+  geom: QuadrantGeometry,
+  pops: { id: string; region: string }[],
+  parent: string,
+  name: (id: string) => string,
+  dimAttrs: (d: GateDim) => string,
+  fcsDim: (d: GateDim) => string,
+): string {
+  const [dx, dy] = gate.dims as [GateDim, GateDim];
+  const [cx, cy] = geom.center;
+  const off = geom.offset!;
+  const bound = (attr: 'min' | 'max', v: number) => ` gating:${attr}="${num(v)}"`;
+  let body = '';
+  for (const p of pops) {
+    const xp = p.region === 'Q2' || p.region === 'Q3';
+    const yp = p.region === 'Q1' || p.region === 'Q2';
+    // The divider that is offset has its leg on this region's side of the other divider.
+    const xc = off.axis === 'x' ? (yp ? off.hi : off.lo) : cx;
+    const yc = off.axis === 'y' ? (xp ? off.hi : off.lo) : cy;
+    body += `  <gating:RectangleGate gating:id="${esc(p.id)}"${parent}>\n`;
+    body += `    <data-type:custom_info><flowmeris:name>${name(p.id)}</flowmeris:name><flowmeris:quadrant gate="${esc(gate.id)}" region="${p.region}" center="${cx},${cy}" offset="${off.axis},${off.lo},${off.hi}" /></data-type:custom_info>\n`;
+    body += `    <gating:dimension ${dimAttrs(dx)}${bound(xp ? 'min' : 'max', xc)}>${fcsDim(dx)}</gating:dimension>\n`;
+    body += `    <gating:dimension ${dimAttrs(dy)}${bound(yp ? 'min' : 'max', yc)}>${fcsDim(dy)}</gating:dimension>\n`;
+    body += '  </gating:RectangleGate>\n';
+  }
+  return body;
+}
+
 function transformXml(id: string, t: Transform): string {
   const attrs = Object.entries(t)
     .filter(([k]) => k !== 'kind')
@@ -115,6 +152,10 @@ export function exportGatingML(ws: Workspace, g: Group, opts: GmlExportOptions):
         break;
       }
       case 'quadrant': {
+        if (geom.offset) {
+          body += offsetQuadrantRects(gate, geom, pops, parentAttr(gate), name, dimAttrs, fcsDim);
+          break;
+        }
         const [dx, dy] = gate.dims as [GateDim, GateDim];
         body += `  <gating:QuadrantGate gating:id="${esc(gate.id)}"${parentAttr(gate)}>\n`;
         body += quadrantNames(pops);

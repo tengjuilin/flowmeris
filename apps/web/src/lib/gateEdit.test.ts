@@ -1,7 +1,16 @@
 import { ellipseAxes } from '@flowmeris/gating';
 import type { Geometry, PlotSpec } from '@flowmeris/model';
 import { describe, expect, it } from 'vitest';
-import { applyHandle, clampToRange, edgeArms, newGateBase, shapeFromDrag, translate } from './gateEdit.ts';
+import {
+  applyHandle,
+  clampToRange,
+  edgeArms,
+  newGateBase,
+  shapeFromDrag,
+  straighten,
+  translate,
+  withLegs,
+} from './gateEdit.ts';
 
 const unit = (p: readonly [number, number]) => clampToRange(p, [0, 1], [0, 1]);
 
@@ -95,6 +104,35 @@ describe('applyHandle', () => {
     });
     // the top arm swung past the right one
     expect(applyHandle(spider, 'arm0', [1, 0.2], false, unit)).toBeNull();
+  });
+
+  it('offsets one quadrant leg, moves the whole gate by its center, and rejoins equal legs', () => {
+    const quad: Geometry = { kind: 'quadrant', center: [1, 2] };
+    const up = applyHandle(quad, 'up', [3, 9], false, unit);
+    expect(up).toEqual({ kind: 'quadrant', center: [2, 2], offset: { axis: 'x', lo: 1, hi: 3 } });
+    expect(applyHandle(up!, 'c', [3, 3], false, unit)).toEqual({
+      kind: 'quadrant',
+      center: [3, 3],
+      offset: { axis: 'x', lo: 2, hi: 4 },
+    });
+    expect(applyHandle(up!, 'down', [3, 0], false, unit)).toEqual({ kind: 'quadrant', center: [3, 2] });
+    // with the vertical legs apart, a horizontal leg moves its whole divider
+    expect(applyHandle(up!, 'left', [0, 5], false, unit)).toEqual({
+      kind: 'quadrant',
+      center: [2, 5],
+      offset: { axis: 'x', lo: 1, hi: 3 },
+    });
+    expect(applyHandle(quad, 'right', [7, 4], false, unit)).toEqual({
+      kind: 'quadrant',
+      center: [1, 3],
+      offset: { axis: 'y', lo: 2, hi: 4 },
+    });
+  });
+
+  it('straightens an offset quadrant at its center', () => {
+    const g = withLegs({ kind: 'quadrant', center: [0, 1] }, 'y', 0, 4);
+    expect(g).toEqual({ kind: 'quadrant', center: [0, 2], offset: { axis: 'y', lo: 0, hi: 4 } });
+    expect(straighten(g)).toEqual({ kind: 'quadrant', center: [0, 2] });
   });
 });
 

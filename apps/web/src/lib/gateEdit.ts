@@ -1,4 +1,4 @@
-import { ellipseAxes, ellipseFromAxes, validateSpider } from '@flowmeris/gating';
+import { ellipseAxes, ellipseFromAxes, quadrantDividers, validateSpider } from '@flowmeris/gating';
 import type { Gate, Geometry, PlotSpec } from '@flowmeris/model';
 
 type XY = [number, number];
@@ -16,8 +16,12 @@ export function translate(g: Geometry, dx: number, dy: number): Geometry {
       return { ...g, vertices: g.vertices.map(([x, y]) => [x + dx, y + dy]) };
     case 'ellipse':
       return { ...g, mean: [g.mean[0] + dx, g.mean[1] + dy] };
-    case 'quadrant':
-      return { ...g, center: [g.center[0] + dx, g.center[1] + dy] };
+    case 'quadrant': {
+      const center: XY = [g.center[0] + dx, g.center[1] + dy];
+      if (!g.offset) return { ...g, center };
+      const d = g.offset.axis === 'x' ? dx : dy;
+      return { ...g, center, offset: { ...g.offset, lo: g.offset.lo + d, hi: g.offset.hi + d } };
+    }
     case 'spider':
       return {
         ...g,
@@ -51,8 +55,8 @@ export function edgeArms(xr: readonly number[], yr: readonly number[]): [XY, XY,
 
 /**
  * `base` with one handle dragged to `p` (gate units). Handles: rect `n`/`s`/`e`/`w` and corners (y ignored
- * on a histogram), polygon `v<i>`, ellipse axes `a` and `b`, quadrant and spider center `c`, spider
- * `arm<i>`, split `c`. `clamp` keeps spider points in the plot. Returns null for a spider arm that
+ * on a histogram), polygon `v<i>`, ellipse axes `a` and `b`, quadrant and spider center `c`, quadrant
+ * legs `up`/`right`/`down`/`left` (see dragLeg), spider `arm<i>`, split `c`. `clamp` keeps spider points in the plot. Returns null for a spider arm that
  * would make the gate invalid.
  */
 export function applyHandle(
@@ -73,7 +77,8 @@ export function applyHandle(
     case 'ellipse':
       return dragEllipseAxis(base, handle, p);
     case 'quadrant':
-      return { ...base, center: p };
+      if (handle === 'c') return translate(base, p[0] - base.center[0], p[1] - base.center[1]);
+      return dragLeg(base, handle, p);
     case 'spider': {
       // arms stay where they are (inside the plot) while the center moves
       if (handle === 'c') return { ...base, center: clamp(p) };
@@ -87,6 +92,38 @@ export function applyHandle(
 }
 
 type RectGeometry = Extract<Geometry, { kind: 'rect' }>;
+type QuadrantGeometry = Extract<Geometry, { kind: 'quadrant' }>;
+
+/**
+ * Quadrant `g` with the legs of its divider on `axis` at `lo` (below or left of the center) and `hi`
+ * (above or right of it), and its center between them. Equal legs make a plain quadrant again.
+ */
+export function withLegs(g: QuadrantGeometry, axis: 'x' | 'y', lo: number, hi: number): QuadrantGeometry {
+  const center: XY = axis === 'x' ? [(lo + hi) / 2, g.center[1]] : [g.center[0], (lo + hi) / 2];
+  if (lo === hi) return { kind: 'quadrant', center };
+  return { kind: 'quadrant', center, offset: { axis, lo, hi } };
+}
+
+/** An offset quadrant made plain, with its divider at the legs' midpoint (its center). */
+export function straighten(g: QuadrantGeometry): QuadrantGeometry {
+  return { kind: 'quadrant', center: g.center };
+}
+
+/**
+ * Quadrant leg `handle` dragged to `p`: `up` and `down` move one leg of the vertical divider sideways,
+ * `left` and `right` one leg of the horizontal divider up or down (FlowJo's offset quadrant). Only one
+ * divider can be offset: when the other one already is, the leg moves its whole divider.
+ */
+function dragLeg(base: QuadrantGeometry, handle: string, p: XY): QuadrantGeometry {
+  const axis = handle === 'up' || handle === 'down' ? 'x' : 'y';
+  const v = axis === 'x' ? p[0] : p[1];
+  if (base.offset && base.offset.axis !== axis)
+    return { ...base, center: axis === 'x' ? [v, base.center[1]] : [base.center[0], v] };
+  const d = quadrantDividers(base.center, base.offset);
+  if (axis === 'x')
+    return withLegs(base, 'x', handle === 'down' ? v : d.xBelow, handle === 'up' ? v : d.xAbove);
+  return withLegs(base, 'y', handle === 'left' ? v : d.yLeft, handle === 'right' ? v : d.yRight);
+}
 type EllipseGeometry = Extract<Geometry, { kind: 'ellipse' }>;
 
 /** Rectangle sides named in `handle` moved to `p`, swapped when dragged past each other. */

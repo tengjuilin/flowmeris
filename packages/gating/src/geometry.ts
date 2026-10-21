@@ -138,6 +138,56 @@ export function ellipseAxes(
 }
 
 /**
+ * Where a quadrant gate's four legs are: the vertical divider below and above the center, the
+ * horizontal divider left and right of it. Without an offset all four are the center's coordinates.
+ */
+export interface QuadrantDividers {
+  xBelow: number;
+  xAbove: number;
+  yLeft: number;
+  yRight: number;
+}
+
+/** The dividers of a quadrant gate with `center` and, for an offset quadrant, its `offset` legs. */
+export function quadrantDividers(
+  center: readonly [number, number],
+  offset?: { axis: 'x' | 'y'; lo: number; hi: number },
+): QuadrantDividers {
+  const [cx, cy] = center;
+  const x = offset?.axis === 'x';
+  const y = offset?.axis === 'y';
+  return {
+    xBelow: x ? offset.lo : cx,
+    xAbove: x ? offset.hi : cx,
+    yLeft: y ? offset.lo : cy,
+    yRight: y ? offset.hi : cy,
+  };
+}
+
+/**
+ * M-GATE-QUAD: the region of (x, y) in a quadrant gate, offset or not. The divider that is not offset
+ * is decided first (both of its legs are at one value), then the event is compared with the other
+ * divider's leg on its side. Every divider is [−∞, c) and [c, +∞), as in Gating-ML. Q1 = (−,+),
+ * Q2 = (+,+), Q3 = (+,−), Q4 = (−,−).
+ *
+ * Returns 1–4 (Q1–Q4) or 0 for NaN input.
+ */
+export function quadrantRegion(d: QuadrantDividers, x: number, y: number): 0 | 1 | 2 | 3 | 4 {
+  if (Number.isNaN(x) || Number.isNaN(y)) return 0;
+  let xPlus: boolean;
+  let yPlus: boolean;
+  if (d.yLeft !== d.yRight) {
+    xPlus = x >= d.xBelow;
+    yPlus = y >= (xPlus ? d.yRight : d.yLeft);
+  } else {
+    yPlus = y >= d.yLeft;
+    xPlus = x >= (yPlus ? d.xAbove : d.xBelow);
+  }
+  if (yPlus) return xPlus ? 2 : 1;
+  return xPlus ? 3 : 4;
+}
+
+/**
  * M-GATE-SPIDER: four regions bounded by rays from the center through the
  * arm points [up, right, down, left].
  *

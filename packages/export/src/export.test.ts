@@ -108,6 +108,25 @@ function setup() {
     },
     ['Q1', 'Q2', 'Q3', 'Q4'],
   );
+  // Offset quadrants, exported as four open-sided rectangles each.
+  add(
+    {
+      id: 'offx',
+      parentPop: 'root',
+      dims: [d('FL1-H'), d('FL4-H')],
+      geometry: { kind: 'quadrant', center: [0.45, 0.45], offset: { axis: 'x', lo: 0.3, hi: 0.6 } },
+    },
+    ['Q1', 'Q2', 'Q3', 'Q4'],
+  );
+  add(
+    {
+      id: 'offy',
+      parentPop: 'rect_in',
+      dims: [d('FL2-H'), d('FL3-H')],
+      geometry: { kind: 'quadrant', center: [0.4, 0.4], offset: { axis: 'y', lo: 0.5, hi: 0.3 } },
+    },
+    ['Q1', 'Q2', 'Q3', 'Q4'],
+  );
   add(
     {
       id: 'spi',

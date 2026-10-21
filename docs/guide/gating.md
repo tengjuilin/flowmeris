@@ -5,7 +5,7 @@
 | Rectangle (R) | drag a box | drag corners/edges; drag inside to move |
 | Ellipse (E) | drag a bounding box | drag the *a* handle to resize and rotate, the *b* handle for the minor axis |
 | Polygon (P) | click vertices; close by clicking the first vertex, double-clicking or pressing Enter; Backspace removes the last vertex | drag vertices; click an edge midpoint to insert a vertex |
-| Quadrant (Q) | click the center | drag the center |
+| Quadrant (Q) | click the center | drag the center to move it; drag a leg's round handle to offset that leg |
 | Spider (S) | click the center | drag the center or any arm end; arms keep their order around the center |
 | Range (H, histograms) | drag horizontally | drag either edge |
 | Bisector (B, histograms) | click where to split; the percentages on each side are shown before you click | drag the vertical line |
@@ -40,6 +40,13 @@
   view. Arrow keys and Enter pick from the list; long lists can be filtered by typing.
 - Quadrant and spider gates create four populations, Q1 (top-left) to Q4 (bottom-left) clockwise, named
   by marker sign (e.g. `CD4+ CD8−`). Rename any population by double-clicking it in the population tree.
+- **Offset quadrants** (as in FlowJo): drag the round handle on a quadrant leg to move that leg alone. Use
+  this when a population's positive end sits further out than its negative end. The upper and lower legs
+  move sideways, and the left and right legs move up and down. Only one line can be offset at a time: once
+  the vertical legs are apart, dragging a horizontal leg moves the whole horizontal line, and the other way
+  round. Dragging the center moves the whole gate and keeps the offset. The gate's inspector card shows
+  the two legs' coordinates. **Straighten** joins them at the center, as does dragging one leg back onto
+  the other ([M-GATE-QUAD](../methods/gating#m-gate-quad-quadrant)).
 - A new population takes the first of the eight palette colors no other population in the group uses,
   so a deleted population's color comes back first. Past eight populations the colors repeat in order.
 - A bisector (FlowJo's binary histogram gate) splits the histogram's events into two populations that

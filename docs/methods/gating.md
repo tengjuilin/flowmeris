@@ -49,6 +49,27 @@ A quadrant gate with center $(c_x, c_y)$ produces four populations, named as in 
 Ties go to the upper side, as for Gating-ML quadrant dividers ($[\,c, +\infty)$). The four counts sum
 to the parent count unless some events have NaN coordinates ([M-TR-LOGNP](./transforms#m-tr-lognp-non-positive-values-on-a-log-scale)).
 
+**Offset quadrant** (FlowJo's offset quadrant). The two legs of one divider may be moved apart, so that
+one quadrant gate fits populations whose positive and negative ends are not aligned. Only one divider at
+a time is offset:
+
+- *Vertical legs offset*: the vertical divider is at $x_\mathrm{lo}$ below the horizontal divider and at
+  $x_\mathrm{hi}$ above it. An event is on the + side of y if $y \ge c_y$, then on the + side of x if
+  $x \ge x_\mathrm{hi}$ (when $y \ge c_y$) or $x \ge x_\mathrm{lo}$ (when $y < c_y$).
+- *Horizontal legs offset*: the horizontal divider is at $y_\mathrm{lo}$ left of the vertical divider and at
+  $y_\mathrm{hi}$ right of it. An event is on the + side of x if $x \ge c_x$, then on the + side of y if
+  $y \ge y_\mathrm{hi}$ (when $x \ge c_x$) or $y \ge y_\mathrm{lo}$ (when $x < c_x$).
+
+Regions are then named as in the table above, with the same tie rule on every divider. Each region is a
+rectangle with open sides, so every non-NaN event is in exactly one region, and equal legs give the
+plain quadrant gate; property tests check both. The gate's center is the midpoint of the offset legs.
+
+Gating-ML can describe an offset quadrant as a quadrant gate with one divider per leg, but FlowKit cannot
+evaluate two dividers on the same channel. Export therefore writes four `RectangleGate`s, one per region,
+with open sides and the same min-inclusive, max-exclusive rule, plus a `flowmeris:quadrant` extension
+element holding the definition. Evaluated by FlowKit 1.2.3, they match the engine event for event (one
+gate offset on each axis, on `data1.fcs` and the keyword-compensated file).
+
 ## M-GATE-SPLIT — bisector
 
 A bisector (FlowJo "bisector" gate) on a histogram is one divider at $t$ on a single dimension. It

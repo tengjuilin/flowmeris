@@ -104,6 +104,12 @@
   opacity: 0.6;
   cursor: copy;
 }
+.handle-leg-x {
+  cursor: ew-resize;
+}
+.handle-leg-y {
+  cursor: ns-resize;
+}
 .draft {
   fill: color-mix(in srgb, var(--accent) 12%, transparent);
   stroke: var(--accent);

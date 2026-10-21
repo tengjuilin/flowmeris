@@ -53,6 +53,26 @@
       <gating:position gating:divider_ref="t48_y" gating:location="-0.53" />
     </gating:Quadrant>
   </gating:QuadrantGate>
+  <gating:RectangleGate gating:id="t48off_Q1" gating:parent_id="cd3_in">
+    <data-type:custom_info><flowmeris:name>t48off Q1</flowmeris:name><flowmeris:quadrant gate="t48off" region="Q1" center="0.55,0.47" offset="x,0.5,0.6" /></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a" gating:max="0.6"><data-type:fcs-dimension data-type:name="FL1-H" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a" gating:min="0.47"><data-type:fcs-dimension data-type:name="FL4-H" /></gating:dimension>
+  </gating:RectangleGate>
+  <gating:RectangleGate gating:id="t48off_Q2" gating:parent_id="cd3_in">
+    <data-type:custom_info><flowmeris:name>t48off Q2</flowmeris:name><flowmeris:quadrant gate="t48off" region="Q2" center="0.55,0.47" offset="x,0.5,0.6" /></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a" gating:min="0.6"><data-type:fcs-dimension data-type:name="FL1-H" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a" gating:min="0.47"><data-type:fcs-dimension data-type:name="FL4-H" /></gating:dimension>
+  </gating:RectangleGate>
+  <gating:RectangleGate gating:id="t48off_Q3" gating:parent_id="cd3_in">
+    <data-type:custom_info><flowmeris:name>t48off Q3</flowmeris:name><flowmeris:quadrant gate="t48off" region="Q3" center="0.55,0.47" offset="x,0.5,0.6" /></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a" gating:min="0.5"><data-type:fcs-dimension data-type:name="FL1-H" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a" gating:max="0.47"><data-type:fcs-dimension data-type:name="FL4-H" /></gating:dimension>
+  </gating:RectangleGate>
+  <gating:RectangleGate gating:id="t48off_Q4" gating:parent_id="cd3_in">
+    <data-type:custom_info><flowmeris:name>t48off Q4</flowmeris:name><flowmeris:quadrant gate="t48off" region="Q4" center="0.55,0.47" offset="x,0.5,0.6" /></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a" gating:max="0.5"><data-type:fcs-dimension data-type:name="FL1-H" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a" gating:max="0.47"><data-type:fcs-dimension data-type:name="FL4-H" /></gating:dimension>
+  </gating:RectangleGate>
   <gating:QuadrantGate gating:id="deep" gating:parent_id="t48_Q2">
     <data-type:custom_info><flowmeris:name quadrant="deep_lo">deep lo</flowmeris:name><flowmeris:name quadrant="deep_hi">deep hi</flowmeris:name></data-type:custom_info>
     <gating:divider gating:id="deep_x" gating:compensation-ref="uncompensated" gating:transformation-ref="t_5d53e32c2cc0637a"><data-type:fcs-dimension data-type:name="FL2-H" /><gating:value>0.6</gating:value></gating:divider>

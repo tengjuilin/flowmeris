@@ -5,56 +5,15 @@
  *
  * Changing a scenario changes the inputs: run `corepack pnpm golden` to rewrite and re-evaluate them.
  */
-import { createHash } from 'node:crypto';
 import { parseMatrixCsv } from '@flowmeris/compensation';
-import {
-  type AnalysisContext,
-  Engine,
-  MemoryStorage,
-  type SampleData,
-  sampleDataFromDataset,
-  sampleMetaFromDataset,
-} from '@flowmeris/engine';
-import { type FcsDataset, parseFcs } from '@flowmeris/fcs';
-import {
-  type CompRef,
-  type Gate,
-  type Group,
-  type Region,
-  type Transform,
-  type Workspace,
-  newGroup,
-  newWorkspace,
-  populationPath,
-  transformId,
-} from '@flowmeris/model';
+import { type AnalysisContext, Engine, MemoryStorage } from '@flowmeris/engine';
+import { populationPath } from '@flowmeris/model';
 import { hasFixture, readFixture } from '@flowmeris/testkit';
 import { exportGatingML } from '../src/index.ts';
+import { type FcsExport, type Scenario, type ScenarioName, base, pick } from './golden-scenario-base.ts';
 
-export type ScenarioName = 'data1' | 'comp_kw' | 'comp_csv';
+export type { FcsExport, Scenario, ScenarioName };
 
-export interface FcsExport {
-  pop: string;
-  mode: 'raw' | 'compensated';
-}
-
-export interface Scenario {
-  name: ScenarioName;
-  /** FCS file, relative to fixtures/. */
-  file: string;
-  /** Compensation as FlowKit should apply it for statistics. */
-  compensation: { kind: 'none' } | { kind: 'keyword' } | { kind: 'csv'; path: string };
-  ws: Workspace;
-  group: Group;
-  sampleId: string;
-  ds: FcsDataset;
-  data: SampleData;
-  /** Transform ids, in order: statistics are computed in linear space and in each of these. */
-  statTransforms: string[];
-  fcsExports: FcsExport[];
-}
-
-const APP = { version: 'golden', commit: 'golden', kernels: 'ts-1' };
 const SRC_DIR = 'golden/inputs';
 
 /** Fixed provenance keywords, so exported FCS files are byte-stable. */
@@ -73,53 +32,6 @@ export const inputPath = {
   manifest: (sc: Scenario) => `${SRC_DIR}/${sc.name}.json`,
   fcs: (sc: Scenario, e: FcsExport) => `${SRC_DIR}/${sc.name}_${e.pop}_${e.mode}.fcs`,
 };
-
-function base(name: ScenarioName, file: string, groupName: string) {
-  const bytes = readFixture(file);
-  const sha = createHash('sha256').update(bytes).digest('hex');
-  const ds = parseFcs(bytes).datasets[0]!;
-  const ws = newWorkspace(name, APP);
-  // Fixed ids and times keep the exported files byte-stable.
-  ws.id = `ws_${name}`;
-  ws.createdAt = ws.modifiedAt = '2026-01-01T00:00:00.000Z';
-  const meta = sampleMetaFromDataset(ds, {
-    name: file.split('/').pop()!,
-    relativePath: file,
-    size: bytes.length,
-    sha256: sha,
-  });
-  ws.samples[meta.id] = meta;
-  const group = newGroup(
-    groupName,
-    [meta.id],
-    meta.channels.map((c) => c.pnn),
-  );
-  group.id = `grp_${name}`;
-  ws.groups.push(group);
-  const tr = (t: Transform) => {
-    const id = transformId(t);
-    ws.transforms[id] = t;
-    return id;
-  };
-  const add = (gate: Gate, regions: Region[], names: Partial<Record<Region, string>> = {}) => {
-    group.template.gates[gate.id] = gate;
-    for (const r of regions)
-      group.template.populations[`${gate.id}_${r}`] = {
-        id: `${gate.id}_${r}`,
-        parent: gate.parentPop,
-        gate: gate.id,
-        region: r,
-        name: names[r] ?? `${gate.id} ${r}`,
-        color: '#000',
-      };
-  };
-  const dim = (channel: string, transform: string | null, comp: CompRef = 'group') => ({
-    channel,
-    comp,
-    transform,
-  });
-  return { ws, group, ds, data: sampleDataFromDataset(ds, sha), sampleId: meta.id, tr, add, dim };
-}
 
 /**
  * data1.fcs (no compensation): every gate kind, on linear, flin, logicle, arcsinh and hyperlog
@@ -182,6 +94,15 @@ function data1(): Scenario {
     },
     ['Q1', 'Q2', 'Q3', 'Q4'],
     { Q2: 'CD4+ & CD8+ <double>' },
+  );
+  add(
+    {
+      id: 't48off',
+      parentPop: 'cd3_in',
+      dims: [dim('FL1-H', lg), dim('FL4-H', lg)],
+      geometry: { kind: 'quadrant', center: [0.55, 0.47], offset: { axis: 'x', lo: 0.5, hi: 0.6 } },
+    },
+    ['Q1', 'Q2', 'Q3', 'Q4'],
   );
   add(
     {
@@ -345,6 +266,15 @@ function compKw(): Scenario {
   );
   add(
     {
+      id: 'cd48off',
+      parentPop: 'cd3_in',
+      dims: [dim('V655-A', lg), dim('V800-A', lg)],
+      geometry: { kind: 'quadrant', center: [0.45, 0.45], offset: { axis: 'y', lo: 0.4, hi: 0.5 } },
+    },
+    ['Q1', 'Q2', 'Q3', 'Q4'],
+  );
+  add(
+    {
       id: 'poly',
       parentPop: 'scat_in',
       dims: [dim('B515-A', lg), dim('G560-A', as)],
@@ -440,10 +370,6 @@ function compCsv(): Scenario {
     statTransforms: [lg],
     fcsExports: [{ pop: 'p38_hi', mode: 'compensated' }],
   };
-}
-
-function pick(b: ReturnType<typeof base>) {
-  return { ws: b.ws, group: b.group, sampleId: b.sampleId, ds: b.ds, data: b.data };
 }
 
 const BUILDERS: Record<ScenarioName, { file: string; build: () => Scenario }> = {

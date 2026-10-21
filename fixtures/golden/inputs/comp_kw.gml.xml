@@ -41,6 +41,26 @@
       <gating:position gating:divider_ref="cd48_y" gating:location="-0.55" />
     </gating:Quadrant>
   </gating:QuadrantGate>
+  <gating:RectangleGate gating:id="cd48off_Q1" gating:parent_id="cd3_in">
+    <data-type:custom_info><flowmeris:name>cd48off Q1</flowmeris:name><flowmeris:quadrant gate="cd48off" region="Q1" center="0.45,0.45" offset="y,0.4,0.5" /></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="FCS" gating:transformation-ref="t_6dd1a59b93c49653" gating:max="0.45"><data-type:fcs-dimension data-type:name="V655-A" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="FCS" gating:transformation-ref="t_6dd1a59b93c49653" gating:min="0.4"><data-type:fcs-dimension data-type:name="V800-A" /></gating:dimension>
+  </gating:RectangleGate>
+  <gating:RectangleGate gating:id="cd48off_Q2" gating:parent_id="cd3_in">
+    <data-type:custom_info><flowmeris:name>cd48off Q2</flowmeris:name><flowmeris:quadrant gate="cd48off" region="Q2" center="0.45,0.45" offset="y,0.4,0.5" /></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="FCS" gating:transformation-ref="t_6dd1a59b93c49653" gating:min="0.45"><data-type:fcs-dimension data-type:name="V655-A" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="FCS" gating:transformation-ref="t_6dd1a59b93c49653" gating:min="0.5"><data-type:fcs-dimension data-type:name="V800-A" /></gating:dimension>
+  </gating:RectangleGate>
+  <gating:RectangleGate gating:id="cd48off_Q3" gating:parent_id="cd3_in">
+    <data-type:custom_info><flowmeris:name>cd48off Q3</flowmeris:name><flowmeris:quadrant gate="cd48off" region="Q3" center="0.45,0.45" offset="y,0.4,0.5" /></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="FCS" gating:transformation-ref="t_6dd1a59b93c49653" gating:min="0.45"><data-type:fcs-dimension data-type:name="V655-A" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="FCS" gating:transformation-ref="t_6dd1a59b93c49653" gating:max="0.5"><data-type:fcs-dimension data-type:name="V800-A" /></gating:dimension>
+  </gating:RectangleGate>
+  <gating:RectangleGate gating:id="cd48off_Q4" gating:parent_id="cd3_in">
+    <data-type:custom_info><flowmeris:name>cd48off Q4</flowmeris:name><flowmeris:quadrant gate="cd48off" region="Q4" center="0.45,0.45" offset="y,0.4,0.5" /></data-type:custom_info>
+    <gating:dimension gating:compensation-ref="FCS" gating:transformation-ref="t_6dd1a59b93c49653" gating:max="0.45"><data-type:fcs-dimension data-type:name="V655-A" /></gating:dimension>
+    <gating:dimension gating:compensation-ref="FCS" gating:transformation-ref="t_6dd1a59b93c49653" gating:max="0.4"><data-type:fcs-dimension data-type:name="V800-A" /></gating:dimension>
+  </gating:RectangleGate>
   <gating:PolygonGate gating:id="poly_in" gating:parent_id="scat_in">
     <data-type:custom_info><flowmeris:name>poly in</flowmeris:name></data-type:custom_info>
     <gating:dimension gating:compensation-ref="FCS" gating:transformation-ref="t_6dd1a59b93c49653"><data-type:fcs-dimension data-type:name="B515-A" /></gating:dimension>

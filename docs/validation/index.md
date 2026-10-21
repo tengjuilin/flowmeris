@@ -32,7 +32,7 @@ listed in `fixtures/PROVENANCE.md`.
 | Engine | gates defined through the app's data model, evaluated via the engine | exact against the ISAC truth files |
 | Statistics | mean, SD, median, min, max, geometric mean, 9 percentiles on 8 channels | within 10⁻¹²; percentiles exact on linear channels |
 | Gating-ML export | all gate types round-tripped through XML | exact |
-| Gating-ML export, evaluated by FlowKit | 38 populations on three files: rectangle (with open bounds), 1-D range, polygon (incl. self-intersecting), ellipse (linear and transformed), quadrant, spider, bisector, five levels deep; linear, flin, logicle, arcsinh, hyperlog; no, keyword and CSV-matrix compensation; ties on integer-valued boundaries | **exact** membership of every event; % of parent and of total within 10⁻¹² |
+| Gating-ML export, evaluated by FlowKit | 46 populations on three files: rectangle (with open bounds), 1-D range, polygon (incl. self-intersecting), ellipse (linear and transformed), quadrant, offset quadrant (each axis), spider, bisector, five levels deep; linear, flin, logicle, arcsinh, hyperlog; no, keyword and CSV-matrix compensation; ties on integer-valued boundaries | **exact** membership of every event; % of parent and of total within 10⁻¹² |
 | Population statistics | every population above × every channel × linear and each transform's units (incl. log of compensated values, with non-positive values excluded): n, excluded, mean, SD, CV, median, robust SD/CV, MAD (SciPy), MADP, geometric mean, min, max, 5 percentiles, and the mode of uncompensated linear values (the tallest bin can change with the last bits of transformed or compensated values, which differ between platforms); about 34,000 values | within the tolerance of the values' own space (below) |
 | Statistics edge cases | n = 0, 1, 2; ties; NaN; zeros and negatives (geometric mean); 10⁹ offset; 10⁻²⁰⁰ and 10³⁰⁰ magnitudes; for the mode, two peaks, an IQR of 0 and two equally tall bins | within 10⁻¹²; percentiles exact |
 | Replicate summaries | mean, SD, SEM, 95% CI half-width, median, CV, min, max, grouped by two variables (pandas); t quantiles and CDF for df 1 – 10⁵ (SciPy) | within 10⁻¹² (t distribution 10⁻¹⁰) |
@@ -43,7 +43,8 @@ listed in `fixtures/PROVENANCE.md`.
 | End-to-end | gates drawn in the browser on three 8-color samples, exported, re-evaluated by FlowKit | every population count identical |
 
 Property-based tests (fast-check) cover FCS write→read round trips, bitset algebra, logicle
-invertibility and monotonicity, spider-gate partitioning, and spider/quadrant equivalence.
+invertibility and monotonicity, spider-gate and offset-quadrant partitioning, spider/quadrant
+equivalence, and offset quadrants with equal legs against the plain quadrant.
 
 ## Tolerances
 

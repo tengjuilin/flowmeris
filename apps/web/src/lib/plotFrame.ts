@@ -1,4 +1,4 @@
-import { spiderRegion } from '@flowmeris/gating';
+import { quadrantDividers, quadrantRegion, spiderRegion } from '@flowmeris/gating';
 import { type Gate, type GatingTemplate, type Geometry, populationsOfGate } from '@flowmeris/model';
 import { type DimMap, type Pt, outlineGateSpace, pointInPolygonPx } from './geometry.ts';
 
@@ -110,7 +110,7 @@ export function popAt(
       const gy = maps[1]!.inv(dy);
       let r: number;
       if (geom.kind === 'spider') r = spiderRegion(geom.center[0], geom.center[1], geom.arms, gx, gy);
-      else r = gy >= geom.center[1] ? (gx >= geom.center[0] ? 2 : 1) : gx >= geom.center[0] ? 3 : 4;
+      else r = quadrantRegion(quadrantDividers(geom.center, geom.offset), gx, gy);
       return pops.find((p) => p.region === `Q${r}`)?.id;
     }
     if (hitGate(f, shown, px, py, is1d)?.id === gate.id) return pops[0]?.id;

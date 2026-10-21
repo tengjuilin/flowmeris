@@ -1,7 +1,7 @@
 import { invert } from '@flowmeris/compensation';
 import type { Geometry, Region } from '@flowmeris/model';
 import { type Bitset, emptyBitset, fullBitset } from './bitset.ts';
-import { inPolygon, preparePolygon, spiderRegion } from './geometry.ts';
+import { inPolygon, preparePolygon, quadrantDividers, spiderRegion } from './geometry.ts';
 
 export interface GateResult {
   /** Region → membership bitset. Simple gates produce only 'in'. */
@@ -156,7 +156,9 @@ export function evaluateGate(
     }
     case 'quadrant': {
       if (!y) throw new Error('Quadrant gate needs two dimensions');
-      const [cx, cy] = geometry.center;
+      // M-GATE-QUAD (quadrantRegion), inlined: the divider that is not offset decides first.
+      const { xBelow, xAbove, yLeft, yRight } = quadrantDividers(geometry.center, geometry.offset);
+      const yOffset = yLeft !== yRight;
       const q1 = emptyBitset(n);
       const q2 = emptyBitset(n);
       const q3 = emptyBitset(n);
@@ -177,10 +179,19 @@ export function evaluateGate(
           const yv = y[i] as number;
           if (Number.isNaN(xv) || Number.isNaN(yv)) continue;
           // Gating-ML quadrant: [−∞, c) and [c, +∞) on each divider.
-          if (yv >= cy) {
-            if (xv >= cx) o2 |= t;
+          let xp: boolean;
+          let yp: boolean;
+          if (yOffset) {
+            xp = xv >= xBelow;
+            yp = yv >= (xp ? yRight : yLeft);
+          } else {
+            yp = yv >= yLeft;
+            xp = xv >= (yp ? xAbove : xBelow);
+          }
+          if (yp) {
+            if (xp) o2 |= t;
             else o1 |= t;
-          } else if (xv >= cx) o3 |= t;
+          } else if (xp) o3 |= t;
           else o4 |= t;
         }
         q1[w] = o1;

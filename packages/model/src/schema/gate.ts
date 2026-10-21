@@ -28,7 +28,17 @@ export const GeometrySchema = z.discriminatedUnion('kind', [
     cov: z.tuple([Point, Point]),
     d2: Num.positive(),
   }),
-  z.object({ kind: z.literal('quadrant'), center: Point }),
+  /**
+   * Quadrant gate. With `offset` (FlowJo's offset quadrant) the two legs of one divider are apart: on
+   * axis 'x' the vertical divider is at `lo` below the center (y < cy) and at `hi` above it; on axis 'y'
+   * the horizontal divider is at `lo` left of the center (x < cx) and at `hi` right of it. The center's
+   * coordinate on that axis is then the legs' midpoint and is not used for membership.
+   */
+  z.object({
+    kind: z.literal('quadrant'),
+    center: Point,
+    offset: z.object({ axis: z.enum(['x', 'y']), lo: Num, hi: Num }).optional(),
+  }),
   /**
    * Spider gate: four rays from `center` through the four `arms` points, in
    * order [up (Q1|Q2), right (Q2|Q3), down (Q3|Q4), left (Q4|Q1)] — see

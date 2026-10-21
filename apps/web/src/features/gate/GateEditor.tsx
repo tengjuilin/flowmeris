@@ -3,6 +3,7 @@ import { type Geometry, effectiveGeometry, isOverridden, populationsOfGate } fro
 import { NumInput } from '../../components/ui/NumInput.tsx';
 import { DeleteIcon } from '../../components/ui/icons.tsx';
 import { Card } from '../../components/ui/settings/index.ts';
+import { straighten, translate, withLegs } from '../../lib/gateEdit.ts';
 import type { PlotCard } from '../../lib/panelSpecs.ts';
 import type { CardOf } from '../../lib/settingsPanel.ts';
 import { deleteGate, promoteOverride, revertOverride, setGateGeometry } from '../../state/commands/gates.ts';
@@ -76,37 +77,18 @@ export function GateEditor({ gateId, card }: { gateId: string; card: CardOf<Plot
           />
         </div>
       )}
-      {(geom.kind === 'quadrant' || geom.kind === 'spider') && (
+      {geom.kind === 'quadrant' && <QuadrantFields geom={geom} commit={commit} />}
+      {geom.kind === 'spider' && (
         <div className="grid2">
           <NumInput
             label="Center x"
             value={geom.center[0]}
-            onCommit={(v) =>
-              commit(
-                geom.kind === 'quadrant'
-                  ? { ...geom, center: [v, geom.center[1]] }
-                  : {
-                      ...geom,
-                      center: [v, geom.center[1]],
-                      arms: geom.arms.map(([a, b]) => [a + v - geom.center[0], b]) as typeof geom.arms,
-                    },
-              )
-            }
+            onCommit={(v) => commit(translate(geom, v - geom.center[0], 0))}
           />
           <NumInput
             label="Center y"
             value={geom.center[1]}
-            onCommit={(v) =>
-              commit(
-                geom.kind === 'quadrant'
-                  ? { ...geom, center: [geom.center[0], v] }
-                  : {
-                      ...geom,
-                      center: [geom.center[0], v],
-                      arms: geom.arms.map(([a, b]) => [a, b + v - geom.center[1]]) as typeof geom.arms,
-                    },
-              )
-            }
+            onCommit={(v) => commit(translate(geom, 0, v - geom.center[1]))}
           />
         </div>
       )}
@@ -148,5 +130,58 @@ export function GateEditor({ gateId, card }: { gateId: string; card: CardOf<Plot
         </div>
       )}
     </Card>
+  );
+}
+
+type QuadrantGeometry = Extract<Geometry, { kind: 'quadrant' }>;
+
+/**
+ * A quadrant's center and, once a leg has been dragged apart (an offset quadrant), its two legs on the
+ * offset divider and a button that joins them again.
+ */
+function QuadrantFields({ geom, commit }: { geom: QuadrantGeometry; commit: (g: Geometry) => void }) {
+  const off = geom.offset;
+  return (
+    <>
+      <div className="grid2">
+        <NumInput
+          label="Center x"
+          value={geom.center[0]}
+          onCommit={(v) => commit(translate(geom, v - geom.center[0], 0))}
+        />
+        <NumInput
+          label="Center y"
+          value={geom.center[1]}
+          onCommit={(v) => commit(translate(geom, 0, v - geom.center[1]))}
+        />
+        {off && (
+          <>
+            <NumInput
+              label={off.axis === 'x' ? 'Lower leg x' : 'Left leg y'}
+              value={off.lo}
+              onCommit={(v) => commit(withLegs(geom, off.axis, v, off.hi))}
+            />
+            <NumInput
+              label={off.axis === 'x' ? 'Upper leg x' : 'Right leg y'}
+              value={off.hi}
+              onCommit={(v) => commit(withLegs(geom, off.axis, off.lo, v))}
+            />
+          </>
+        )}
+      </div>
+      {off ? (
+        <div className="row">
+          <button
+            type="button"
+            title="Join the legs at the center into a plain quadrant"
+            onClick={() => commit(straighten(geom))}
+          >
+            Straighten
+          </button>
+        </div>
+      ) : (
+        <p className="muted small">Drag a leg's round handle to offset it.</p>
+      )}
+    </>
   );
 }
