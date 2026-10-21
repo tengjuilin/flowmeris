@@ -23,7 +23,7 @@ type TreeView = { left: number; top: number; sw: number; sh: number };
 /** Where each group's tree was scrolled to, kept while the Path layout or other views are shown. */
 const treeScroll = new Map<string, TreeView>();
 
-/** The Gating path view. Clicking a plot opens it in the Gate view. */
+/** The Gating path view. Each plot's card has buttons opening it in the Gate, Plot or Tiles view. */
 export function GatingPathView() {
   const ws = useStore((s) => s.ws);
   const uiSampleId = useStore((s) => s.ui.sampleId);

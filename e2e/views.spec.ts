@@ -387,6 +387,9 @@ test('gating path: steps, plot size, Path and Tree each with their own size, pan
   await expect(page.locator('.path-arrow')).toHaveCount(2);
   await expect(page.locator('.path-arrow').nth(0)).toContainText('Gate 1');
   await expect(page.locator('.path-arrow').nth(1)).toContainText('Gate 2');
+  // Each card names its population below the plot, with buttons opening it in other views above.
+  await expect(cards.nth(1).locator('.path-card-foot')).toContainText('Gate 1');
+  await expect(cards.nth(1).getByRole('button', { name: 'Open Gate 1 in the Tiles view' })).toBeVisible();
 
   // Smallest size: every step in one row; largest: one per row.
   await slideTo(page, 'min');
@@ -409,6 +412,15 @@ test('gating path: steps, plot size, Path and Tree each with their own size, pan
   expect(await slider(page).inputValue()).toBe(pathValue);
   await page.getByRole('button', { name: 'Tree', exact: true }).click();
   expect(await slider(page).inputValue()).toBe(treeValue);
+
+  // A card's Tiles button opens its plot in the Tiles view, and its Gate button in the Gate view.
+  await page.getByRole('button', { name: 'Path', exact: true }).click();
+  await cards.nth(1).getByRole('button', { name: 'Open Gate 1 in the Tiles view' }).click();
+  await expect(tab(page, 'Tiles')).toHaveAttribute('aria-selected', 'true');
+  await tab(page, 'Gating path').click();
+  await cards.nth(1).getByRole('button', { name: 'Open Gate 1 in the Gate view' }).click();
+  await expect(tab(page, 'Gate')).toHaveAttribute('aria-selected', 'true');
+  await tab(page, 'Gating path').click();
 
   // Picking a population in the panel changes the path.
   await page.getByRole('button', { name: 'Path', exact: true }).click();

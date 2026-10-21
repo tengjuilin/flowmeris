@@ -121,7 +121,37 @@
   border-radius: 8px;
   padding: 4px;
 }
-.path-card .tile-title .swatch,
+/* Buttons opening the plot in the Gate, Plot or Tiles view, above it. */
+.path-card-links {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 2px 0 2px 4px;
+}
+.path-card-links button.icon.labeled {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+/* The population's name, count and percentage of its parent, below the plot. */
+.path-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 11.5px;
+  padding: 2px 4px;
+  overflow: hidden;
+}
+.path-card-foot > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.path-card-foot .swatch,
 .path-arrow-label .swatch {
   display: inline-block;
   vertical-align: -1px;

@@ -1,8 +1,11 @@
 import type { Group, PlotSpec, Population, Workspace } from '@flowmeris/model';
 import { Component, type ReactNode, memo, useEffect, useMemo, useRef, useState } from 'react';
+import { OpenInIcon } from '../../components/ui/icons.tsx';
 import { withBaseFont } from '../../lib/figure.ts';
 import { type Count, pctOfParent } from '../../lib/gatingPath.ts';
+import { openGatePlotInGrid, openInTilesView } from '../../state/commands/grid.ts';
 import { openPathPlot } from '../../state/commands/plots.ts';
+import { useSampleNames } from '../../state/store.ts';
 import { PlotCanvas, plotBox } from '../plot/index.ts';
 
 /** Base font size (px) of the plots, as in Tiles. */
@@ -56,7 +59,11 @@ interface CardProps {
   backgate?: { popId: string; color: string };
 }
 
-/** Memoised: a card re-renders only when its own plot, count, size or overlay changes. */
+/**
+ * A population's plot: buttons opening it in the Gate, Plot or Tiles view above it, and the population's
+ * name, count and percentage of its parent below it. Memoised: a card re-renders only when its own plot,
+ * count, size or overlay changes.
+ */
 export const StepCard = memo(function StepCard({
   ws,
   group,
@@ -73,23 +80,31 @@ export const StepCard = memo(function StepCard({
   // Drawn with the small base font; the saved plot itself (opened on click) keeps its own.
   const shown = useMemo(() => withBaseFont(plot, FONT_PX), [plot]);
   const box = plotBox(shown, size, size);
+  const sampleName = useSampleNames(group)[sampleId] ?? sampleId;
   return (
     <div className="path-card">
-      <button
-        type="button"
-        className="tile-title"
-        title={`Open ${pop.name} in the Gate view`}
-        onClick={() => openPathPlot(pop.id, plot, real)}
-      >
-        <span>
-          <span className="swatch" style={{ background: pop.color }} aria-hidden="true" /> {pop.name}
-        </span>
-        <span className="muted num">
-          {/* A space until the count arrives, so the title keeps its height. */}
-          {c ? c.count.toLocaleString() : '\u00a0'}
-          {pop.parent && c ? ` · ${pctOfParent(c)}` : ''}
-        </span>
-      </button>
+      <div className="path-card-links">
+        <OpenButton
+          view="Gate"
+          name={pop.name}
+          title="Open in the Gate view"
+          onClick={() => openPathPlot(pop.id, plot, real)}
+        />
+        <OpenButton
+          view="Plot"
+          name={pop.name}
+          title="Open in the Plot view (as a new plot unless it is already there)"
+          onClick={() => openGatePlotInGrid(group, plot, sampleId)}
+        />
+        <OpenButton
+          view="Tiles"
+          name={pop.name}
+          title="Open in the Tiles view"
+          onClick={() =>
+            openInTilesView(group, plot, sampleId, sampleName, 'Open Gating path plot in Tiles view')
+          }
+        />
+      </div>
       <WhenVisible width={box.width} height={box.height}>
         {/* While the size changes, the last render is stretched to the live size (as in Tiles). */}
         <div style={{ width: size, height: size, overflow: 'hidden' }}>
@@ -114,9 +129,40 @@ export const StepCard = memo(function StepCard({
           </div>
         </div>
       </WhenVisible>
+      <div className="path-card-foot">
+        <span>
+          <span className="swatch" style={{ background: pop.color }} aria-hidden="true" /> {pop.name}
+        </span>
+        <span className="muted num">
+          {/* A space until the count arrives, so the line keeps its height. */}
+          {c ? c.count.toLocaleString() : '\u00a0'}
+          {pop.parent && c ? ` · ${pctOfParent(c)}` : ''}
+        </span>
+      </div>
     </div>
   );
 });
+
+/** A card's button opening its plot in another view. */
+function OpenButton({
+  view,
+  name,
+  title,
+  onClick,
+}: { view: string; name: string; title: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className="icon labeled"
+      title={title}
+      aria-label={`Open ${name} in the ${view} view`}
+      onClick={onClick}
+    >
+      <OpenInIcon />
+      {view}
+    </button>
+  );
+}
 
 export function PopChip({ pop, count: c, on }: { pop: Population; count: Count | undefined; on: boolean }) {
   return (

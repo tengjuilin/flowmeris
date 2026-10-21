@@ -124,5 +124,8 @@ sample and a population in its toolbar (they follow the current sample and popul
   histogram (so its area is the fraction of the plotted population it represents).
 
 If a step's gate was drawn on axes other than the population's saved plot, the step is drawn on the
-gate's own channels using the group's default axes. Click a plot title to open that population in the
-Gate view.
+gate's own channels using the group's default axes. Each plot card shows, under the plot, the plotted
+population's name, event count and percentage of its parent. **Gate**, **Plot** and **Tiles** above the
+plot open it in that view for the sample: **Gate** opens the population with this plot, **Plot** selects
+the grid plot that already shows it for this sample or adds one, and **Tiles** opens the population with
+the sample highlighted and sets the Tiles plot type and axes to the plot's.
