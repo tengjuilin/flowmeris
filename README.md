@@ -11,9 +11,9 @@ implementations.
   editable parameters.
 - **Plots:** dot, pseudocolor, density, contour (equal-probability or logarithmic levels, with
   outliers) and histogram; tiled per-sample panels and ridge plots for groups.
-- **Gates:** rectangle, ellipse, polygon, quadrant, spider, histogram range and bisector. Gates are hierarchical,
-  you can drill into any population, and edits apply to the whole group or to one sample only
-  (overrides are flagged everywhere).
+- **Gates:** rectangle, ellipse, polygon, quadrant (with offset legs), curly quadrant, spider, histogram
+  range and bisector. Gates are hierarchical, you can drill into any population, and edits apply to the
+  whole group or to one sample only (overrides are flagged everywhere).
 - **Output:** tidy and wide statistics CSV with provenance, Gating-ML 2.0, gated events as FCS 3.1 or
   CSV, SVG/PNG plots at 300 dpi, and the workspace as JSON.
 - **Privacy:** no server. Data stay in the browser's private storage. A Content-Security-Policy forbids

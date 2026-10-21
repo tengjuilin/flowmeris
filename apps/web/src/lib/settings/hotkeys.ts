@@ -37,6 +37,7 @@ export const HOTKEY_ACTIONS = [
   { id: 'tool.polygon', label: 'Polygon', scope: 'tools', keys: ['P'] },
   { id: 'tool.quadrant', label: 'Quadrant', scope: 'tools', keys: ['Q'] },
   { id: 'tool.spider', label: 'Spider', scope: 'tools', keys: ['S'] },
+  { id: 'tool.curly', label: 'Curly quadrant', scope: 'tools', keys: ['C'] },
   { id: 'tool.range', label: 'Range', scope: 'tools', keys: ['H'] },
   { id: 'tool.split', label: 'Bisector', scope: 'tools', keys: ['B'] },
   { id: 'grid.cut', label: 'Cut plot', scope: 'grid', keys: ['Mod+X'] },

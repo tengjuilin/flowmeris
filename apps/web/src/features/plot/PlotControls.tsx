@@ -38,6 +38,12 @@ const TOOLS: { id: Tool; label: string; title: string; oneD?: boolean; twoD?: bo
     title: 'Spider gate: click the center, then drag arm handles',
     twoD: true,
   },
+  {
+    id: 'curly',
+    label: 'Curly quadrant',
+    title: 'Curly quadrant: click the center; the upper and right legs curve with photon-counting spread',
+    twoD: true,
+  },
   { id: 'range', label: 'Range', title: 'Range gate on a histogram: drag horizontally', oneD: true },
   {
     id: 'split',
@@ -76,6 +82,12 @@ const TOOL_ICONS: Record<Tool, ReactNode> = {
     <>
       <path d="M9.8 9 11.8 2.5M9.8 9 2.5 13M9.8 9l7.7 2.7M9.8 9l3.4 8.5" />
       <circle cx="9.8" cy="9" r="1.8" fill="currentColor" stroke="none" />
+    </>
+  ),
+  curly: (
+    <>
+      <path d="M7.5 17.5v-5M2.5 12.5h5M7.5 12.5c.4-4 1.2-7 2.5-10M7.5 12.5c4-.4 7-1.2 10-2.5" />
+      <circle cx="7.5" cy="12.5" r="1.8" fill="currentColor" stroke="none" />
     </>
   ),
   range: (

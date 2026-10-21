@@ -112,6 +112,52 @@ outside any data range) plus a `flowmeris:spider` element holding the exact defi
 a ray may be classified differently by other tools' polygon tests; everywhere else the result is identical
 (verified by round-trip test).
 
+## M-GATE-CURLY — curly quadrant
+
+A curly quadrant (FlowJo "curly quad") is a quadrant gate whose upper leg (between Q1 and Q2) and right
+leg (between Q2 and Q3) curve away from Q2, so that the positive gate widens with the spread that photon
+counting adds to bright events. The lower and left legs are straight lines from the center $(c_x, c_y)$,
+as in a quadrant gate.
+
+The curved legs follow the detection-limit model $p_2 = a\sqrt{p_1} + b$ in linear data units ($X$, $Y$,
+with the center at $C_x$, $C_y$), through the center:
+
+$$
+\text{upper leg: } X = C_x + a_\uparrow\left(\sqrt{Y^+} - \sqrt{C_y^+}\right) \quad (Y \ge C_y), \qquad
+\text{right leg: } Y = C_y + a_\rightarrow\left(\sqrt{X^+} - \sqrt{C_x^+}\right) \quad (X \ge C_x),
+$$
+
+with $v^+ = \max(v, 0)$ and curliness $a_\uparrow, a_\rightarrow \ge 0$ ($a = 0$ is a straight leg). Gate
+coordinates are in the gate's own (transformed) units, so each leg is evaluated at 49 points evenly spaced
+in gate units from the center to the top of scale (1 on a transformed dimension, or the plot's edge if
+further out), mapped through the dimensions' transforms, and **stored as a polyline in gate units**.
+Beyond its last point a leg goes straight on (straight up, or straight right). The stored polylines
+define the gate: membership needs no transform, the export writes them unchanged, and the app rebuilds
+them from the center and the curliness whenever the gate is edited.
+
+Membership of an event $(x, y)$ in gate units:
+
+| Condition | Region |
+|---|---|
+| $y < c_y$, $x < c_x$ | Q4 |
+| $y < c_y$, $x \ge c_x$ | Q3 |
+| $y \ge c_y$, left of the upper leg | Q1 |
+| $y \ge c_y$, on or right of the upper leg, on or above the right leg | Q2 |
+| $y \ge c_y$, on or right of the upper leg, below the right leg | Q3 |
+
+"Left of" and "above" are decided on the polyline segment that spans the event's $y$ (or $x$), with the
+same cross product as the polygon test (M-GATE-POLY), so no slope is computed. Ties on a curved leg go to
+Q2, as ties on a quadrant divider go to the upper side. Every non-NaN event is in exactly one region; with
+$a_\uparrow = a_\rightarrow = 0$ the gate is the plain quadrant gate, ties included (property tests check
+both). The app keeps the legs from crossing: a curliness that would make them cross is not applied, and
+moving the center reduces the curliness until they do not.
+
+Gating-ML has no curly quadrant. Export writes four `PolygonGate`s, one per region, whose edges are the
+stored legs continued straight out to $10^9$ gate units, plus a `flowmeris:curly` extension element with
+the center, the curliness and both legs. Evaluated by FlowKit 1.2.3, they match the engine event for event
+(one curly quadrant on `data1.fcs` and one on the keyword-compensated file, both on logicle dimensions);
+events exactly on a leg may be classified differently by other tools' polygon tests.
+
 ## M-GATE-TREE — hierarchy, groups and overrides
 
 - A population is the set of events of its parent population that are inside its gate (region).

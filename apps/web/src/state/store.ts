@@ -13,7 +13,16 @@ enablePatches();
 
 export const APP_INFO = { version: __APP_VERSION__, commit: __APP_COMMIT__, kernels: 'ts-2' };
 
-export type Tool = 'select' | 'rect' | 'range' | 'split' | 'ellipse' | 'polygon' | 'quadrant' | 'spider';
+export type Tool =
+  | 'select'
+  | 'rect'
+  | 'range'
+  | 'split'
+  | 'ellipse'
+  | 'polygon'
+  | 'quadrant'
+  | 'spider'
+  | 'curly';
 /** The app's views (tabs). Labels, tab order and contents are in app/views.tsx. */
 export const VIEW_IDS = [
   'gate',

@@ -30,6 +30,11 @@ export function translate(g: Geometry, dx: number, dy: number): Geometry {
       };
     case 'split':
       return { ...g, at: g.at + dx };
+    case 'curly': {
+      // Shifted as drawn; the app rebuilds the legs for the new center with curlyAt (curlyEdit.ts).
+      const shift = ([x, y]: readonly [number, number]): XY => [x + dx, y + dy];
+      return { ...g, center: shift(g.center), up: g.up.map(shift), right: g.right.map(shift) };
+    }
   }
 }
 
@@ -56,7 +61,7 @@ export function edgeArms(xr: readonly number[], yr: readonly number[]): [XY, XY,
 /**
  * `base` with one handle dragged to `p` (gate units). Handles: rect `n`/`s`/`e`/`w` and corners (y ignored
  * on a histogram), polygon `v<i>`, ellipse axes `a` and `b`, quadrant and spider center `c`, quadrant
- * legs `up`/`right`/`down`/`left` (see dragLeg), spider `arm<i>`, split `c`. `clamp` keeps spider points in the plot. Returns null for a spider arm that
+ * legs `up`/`right`/`down`/`left` (see dragLeg), spider `arm<i>`, split `c` (curly quadrants: dragCurly). `clamp` keeps spider points in the plot. Returns null for a spider arm that
  * would make the gate invalid.
  */
 export function applyHandle(
@@ -88,6 +93,9 @@ export function applyHandle(
     }
     case 'split':
       return { ...base, at: p[0] };
+    case 'curly':
+      // Its legs depend on the axis scales: dragCurly (curlyEdit.ts) handles it.
+      return null;
   }
 }
 

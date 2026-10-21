@@ -39,7 +39,7 @@ export const inputPath = {
  */
 function data1(): Scenario {
   const b = base('data1', 'flowkit/gate_ref/data1.fcs', 'data1 gates');
-  const { add, dim, tr } = b;
+  const { add, dim, tr, curly } = b;
   b.group.compensation = { mode: 'none' };
   const lg = tr({ kind: 'logicle', T: 1024, W: 0.5, M: 4.5, A: 0 });
   const as = tr({ kind: 'fasinh', T: 1024, M: 4, A: 0 });
@@ -101,6 +101,15 @@ function data1(): Scenario {
       parentPop: 'cd3_in',
       dims: [dim('FL1-H', lg), dim('FL4-H', lg)],
       geometry: { kind: 'quadrant', center: [0.55, 0.47], offset: { axis: 'x', lo: 0.5, hi: 0.6 } },
+    },
+    ['Q1', 'Q2', 'Q3', 'Q4'],
+  );
+  add(
+    {
+      id: 't48curly',
+      parentPop: 'cd3_in',
+      dims: [dim('FL1-H', lg), dim('FL4-H', lg)],
+      geometry: curly([0.45, 0.4], [1.5, 2], lg),
     },
     ['Q1', 'Q2', 'Q3', 'Q4'],
   );
@@ -221,7 +230,7 @@ function data1(): Scenario {
 function compKw(): Scenario {
   const file = 'flowio/100715.fcs';
   const b = base('comp_kw', file, 'keyword compensation');
-  const { add, dim, tr } = b;
+  const { add, dim, tr, curly } = b;
   b.group.compensation = { mode: 'per-sample-keyword' };
   const lg = tr({ kind: 'logicle', T: 262144, W: 0.5, M: 4.5, A: 0 });
   const as = tr({ kind: 'fasinh', T: 262144, M: 4.5, A: 0 });
@@ -270,6 +279,15 @@ function compKw(): Scenario {
       parentPop: 'cd3_in',
       dims: [dim('V655-A', lg), dim('V800-A', lg)],
       geometry: { kind: 'quadrant', center: [0.45, 0.45], offset: { axis: 'y', lo: 0.4, hi: 0.5 } },
+    },
+    ['Q1', 'Q2', 'Q3', 'Q4'],
+  );
+  add(
+    {
+      id: 'cd48curly',
+      parentPop: 'cd3_in',
+      dims: [dim('V655-A', lg), dim('V800-A', lg)],
+      geometry: curly([0.4, 0.4], [3, 4], lg),
     },
     ['Q1', 'Q2', 'Q3', 'Q4'],
   );

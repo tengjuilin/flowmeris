@@ -32,15 +32,16 @@ quadrant ids, so parent references follow the population tree. Compensation refe
 sample's `$SPILLOVER`), `uncompensated`, or the exported matrix. Spider gates are exported as four polygon
 gates plus a `flowmeris:spider` extension element ([M-GATE-SPIDER](./gating#m-gate-spider-spider)), offset
 quadrants as four rectangle gates with open sides plus a `flowmeris:quadrant` extension element
-([M-GATE-QUAD](./gating#m-gate-quad-quadrant)), and bisectors as one-divider quadrant gates ([M-GATE-SPLIT](./gating#m-gate-split-bisector)). The schema
+([M-GATE-QUAD](./gating#m-gate-quad-quadrant)), curly quadrants as four polygon gates plus a
+`flowmeris:curly` extension element ([M-GATE-CURLY](./gating#m-gate-curly-curly-quadrant)), and bisectors as one-divider quadrant gates ([M-GATE-SPLIT](./gating#m-gate-split-bisector)). The schema
 allows no `custom_info` inside a `Quadrant`, so the names of a quadrant gate's populations are written in
 the gate's own `custom_info`, one `flowmeris:name` element per quadrant.
 
-Round-trip test: for rectangle, polygon, ellipse, quadrant, offset quadrant, spider and bisector gates on `data1.fcs`, evaluating
+Round-trip test: for rectangle, polygon, ellipse, quadrant, offset quadrant, spider, curly quadrant and bisector gates on `data1.fcs`, evaluating
 the exported XML with the independent Gating-ML evaluator gives membership identical to the engine.
 An end-to-end check exported gates drawn in the app on three 8-color samples; FlowKit 1.2.3 reproduced
 every population count, including those of a sample with an override. Golden test: Gating-ML the app
-exports for 38 populations on three files (every gate kind; linear, flin, logicle, arcsinh and hyperlog
+exports for 54 populations on three files (every gate kind; linear, flin, logicle, arcsinh and hyperlog
 dimensions; keyword, matrix and no compensation) is evaluated by FlowKit, and the engine's membership
 is identical event by event ([Validation](../validation/)).
 

@@ -12,6 +12,7 @@ const TOOL_KEYS = {
   'tool.polygon': 'polygon',
   'tool.quadrant': 'quadrant',
   'tool.spider': 'spider',
+  'tool.curly': 'curly',
   'tool.range': 'range',
   'tool.split': 'split',
 } as const satisfies Partial<Record<HotkeyId, Tool>>;

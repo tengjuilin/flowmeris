@@ -47,6 +47,21 @@ export const GeometrySchema = z.discriminatedUnion('kind', [
    */
   z.object({ kind: z.literal('spider'), center: Point, arms: z.tuple([Point, Point, Point, Point]) }),
   /**
+   * Curly quadrant (FlowJo's curly quad): a quadrant gate whose upper leg (Q1|Q2) and right leg
+   * (Q2|Q3) curve away from Q2 as x = cx + a·(√y − √cy) in linear data units (photon-counting spread).
+   * `a` holds the curliness of [up, right]. The legs are stored as gate-space polylines that start at
+   * the center (`up` with rising y, `right` with rising x), so membership needs no transform; the app
+   * rebuilds them from `center` and `a` on every edit (see gating/curly.ts). The lower and left legs
+   * are straight.
+   */
+  z.object({
+    kind: z.literal('curly'),
+    center: Point,
+    a: z.tuple([Num.nonnegative(), Num.nonnegative()]),
+    up: z.array(Point).min(2),
+    right: z.array(Point).min(2),
+  }),
+  /**
    * 1D split (FlowJo's bisector): one divider at `at` cuts the axis into two mutually exclusive
    * regions, 'lo' = [−∞, at) and 'hi' = [at, +∞), as a Gating-ML quadrant gate with one divider.
    */

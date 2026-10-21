@@ -1,6 +1,7 @@
 import { invert } from '@flowmeris/compensation';
 import type { Geometry, Region } from '@flowmeris/model';
 import { type Bitset, emptyBitset, fullBitset } from './bitset.ts';
+import { curlyRegion } from './curly.ts';
 import { inPolygon, preparePolygon, quadrantDividers, spiderRegion } from './geometry.ts';
 
 export interface GateResult {
@@ -13,7 +14,7 @@ const SPLIT_REGIONS: Region[] = ['lo', 'hi'];
 
 export function regionsOf(g: Geometry): Region[] {
   if (g.kind === 'split') return SPLIT_REGIONS;
-  return g.kind === 'quadrant' || g.kind === 'spider' ? QUADRANT_REGIONS : ['in'];
+  return g.kind === 'quadrant' || g.kind === 'spider' || g.kind === 'curly' ? QUADRANT_REGIONS : ['in'];
 }
 
 /**
@@ -201,10 +202,14 @@ export function evaluateGate(
       }
       return { regions: { Q1: q1, Q2: q2, Q3: q3, Q4: q4 } };
     }
-    case 'spider': {
-      if (!y) throw new Error('Spider gate needs two dimensions');
-      const [cx, cy] = geometry.center;
-      const arms = geometry.arms;
+    case 'spider':
+    case 'curly': {
+      if (!y) throw new Error(`${geometry.kind} gate needs two dimensions`);
+      const g = geometry;
+      const region =
+        g.kind === 'spider'
+          ? (xv: number, yv: number) => spiderRegion(g.center[0], g.center[1], g.arms, xv, yv)
+          : (xv: number, yv: number) => curlyRegion(g.center, g.up, g.right, xv, yv);
       const q = [emptyBitset(n), emptyBitset(n), emptyBitset(n), emptyBitset(n)] as const;
       const o = new Int32Array(4);
       for (let w = 0; w < words; w++) {
@@ -216,7 +221,7 @@ export function evaluateGate(
           const t = v & -v;
           v ^= t;
           const i = base + (31 - Math.clz32(t));
-          const r = spiderRegion(cx, cy, arms, x[i] as number, y[i] as number);
+          const r = region(x[i] as number, y[i] as number);
           if (r !== 0) o[r - 1] = (o[r - 1] as number) | t;
         }
         for (let k = 0; k < 4; k++) (q[k] as Bitset)[w] = o[k] as number;

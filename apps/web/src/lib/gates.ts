@@ -18,7 +18,7 @@ function shortName(ws: Workspace, g: Group, channel: string): string {
 
 /**
  * Add a gate and its population(s) to group `groupId`'s template, in place (call inside `mutate`).
- * Quadrant and spider gates get four populations named after the markers (Q1 … Q4), a split gate gets
+ * Quadrant, spider and curly quadrant gates get four populations named after the markers (Q1 … Q4), a split gate gets
  * `marker−` and `marker+`, and any other gate one population named `baseName` or `Gate <n>`.
  * Returns the first population's id.
  */
@@ -40,7 +40,11 @@ export function addGate(ws: Workspace, groupId: string, gate: Omit<Gate, 'id'>, 
     g.template.populations[p.id] = p;
     return p;
   };
-  if (gate.geometry.kind === 'quadrant' || gate.geometry.kind === 'spider') {
+  if (
+    gate.geometry.kind === 'quadrant' ||
+    gate.geometry.kind === 'spider' ||
+    gate.geometry.kind === 'curly'
+  ) {
     const xn = shortName(ws, g, gate.dims[0]!.channel);
     const yn = shortName(ws, g, gate.dims[1]!.channel);
     for (const r of ['Q1', 'Q2', 'Q3', 'Q4'] as const) {

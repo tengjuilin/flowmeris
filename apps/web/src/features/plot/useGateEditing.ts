@@ -16,6 +16,14 @@ import {
   useEffect,
   useState,
 } from 'react';
+import {
+  type CurlyGeometry,
+  curlyAt,
+  curlyAxes,
+  curlyTop,
+  dragCurly,
+  newCurly,
+} from '../../lib/curlyEdit.ts';
 import type { PlotMargin } from '../../lib/export/index.ts';
 import {
   applyHandle,
@@ -46,8 +54,8 @@ export type Drag =
   /** A population's label: `start` in pixels, the offsets in fractions of the plot size. */
   | { kind: 'label'; popId: string; start: XY; base: XY; cur: XY };
 
-/** The quadrant, spider or split gate a click would place under the cursor. */
-export type HoverGeometry = Extract<Geometry, { kind: 'quadrant' | 'spider' | 'split' }>;
+/** The quadrant, spider, curly quadrant or split gate a click would place under the cursor. */
+export type HoverGeometry = Extract<Geometry, { kind: 'quadrant' | 'spider' | 'split' | 'curly' }>;
 
 export interface GateEditingArgs {
   ws: Workspace;
@@ -97,6 +105,11 @@ export function useGateEditing(a: GateEditingArgs) {
   const geomOf = (gate: Gate): Geometry =>
     draft?.gateId === gate.id ? draft.geom : effectiveGeometry(group, gate.id, sampleId);
   const shownGates = (): ShownGate[] => gates.map((gate) => ({ gate, geom: geomOf(gate), maps: maps(gate) }));
+  /** A new curly quadrant at `p`, on the plot's axes. */
+  const curlyNew = (p: XY): CurlyGeometry => {
+    const dims = newGateBase(plot, false).dims;
+    return newCurly(p, curlyAxes(ws, dims), curlyTop(dims, xr, yr), xr, yr);
+  };
   /** Clamp a data point to the plotted range (spider arm handles stay inside the plot). */
   const clampPt = (p: readonly [number, number]) => clampToRange(p, xr, yr);
 
@@ -110,9 +123,11 @@ export function useGateEditing(a: GateEditingArgs) {
         ? { kind: 'quadrant', center: hover }
         : !is1d && tool === 'spider'
           ? { kind: 'spider', center: hover, arms: edgeArms(xr, yr) }
-          : is1d && tool === 'split'
-            ? { kind: 'split', at: hover[0] }
-            : null
+          : !is1d && tool === 'curly'
+            ? curlyNew(hover)
+            : is1d && tool === 'split'
+              ? { kind: 'split', at: hover[0] }
+              : null
       : null;
   const hoverKey = hoverGeom && canDraw ? JSON.stringify(hoverGeom) : '';
   const hoverCounts = useHoverPreview(
@@ -187,6 +202,9 @@ export function useGateEditing(a: GateEditingArgs) {
       case 'quadrant':
         if (!is1d) finishCreate({ kind: 'quadrant', center: p });
         return;
+      case 'curly':
+        if (!is1d) finishCreate(curlyNew(p));
+        return;
       case 'spider':
         if (!is1d) {
           finishCreate({ kind: 'spider', center: p, arms: edgeArms(xr, yr) });
@@ -227,6 +245,13 @@ export function useGateEditing(a: GateEditingArgs) {
   /** The gate moved or reshaped with the pointer at `p`; null when the shape would be invalid. */
   const dragged = (drag: Extract<Drag, { kind: 'move' | 'handle' }>, p: XY): Geometry | null => {
     let next: Geometry | null = null;
+    if (drag.base.kind === 'curly') {
+      // Its legs are rebuilt for the axis scales on every move.
+      const axes = curlyAxes(ws, group.template.gates[drag.gateId]!.dims);
+      if (drag.kind === 'handle') return dragCurly(drag.base, drag.handle, p, axes);
+      const c = drag.base.center;
+      return curlyAt(drag.base, [c[0] + p[0] - drag.start[0], c[1] + p[1] - drag.start[1]], axes);
+    }
     if (drag.kind === 'move')
       next = translate(drag.base, p[0] - drag.start[0], is1d ? 0 : p[1] - drag.start[1]);
     else next = applyHandle(drag.base, drag.handle, p, is1d, clampPt);
@@ -243,7 +268,7 @@ export function useGateEditing(a: GateEditingArgs) {
     // tracking it otherwise would re-render the whole plot on every pointer move.
     if (
       poly ||
-      ((tool === 'quadrant' || tool === 'spider') && !is1d && canDraw) ||
+      ((tool === 'quadrant' || tool === 'spider' || tool === 'curly') && !is1d && canDraw) ||
       (tool === 'split' && is1d && canDraw)
     )
       setHover(px >= 0 && py >= 0 && px <= pw && py <= ph ? p : null);
@@ -330,7 +355,11 @@ export function useGateEditing(a: GateEditingArgs) {
         : dir === 'gate.down'
           ? -step * (yr[1] - yr[0])
           : 0;
-    commit(sel.id, translate(effectiveGeometry(group, sel.id, sampleId), dx * (xr[1] - xr[0]), dy));
+    const g = effectiveGeometry(group, sel.id, sampleId);
+    const ddx = dx * (xr[1] - xr[0]);
+    if (g.kind === 'curly')
+      commit(sel.id, curlyAt(g, [g.center[0] + ddx, g.center[1] + dy], curlyAxes(ws, sel.dims)));
+    else commit(sel.id, translate(g, ddx, dy));
   };
 
   /** Keys on the selected gate (set in the Settings dialog): nudge it, remove it, deselect it. */

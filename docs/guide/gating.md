@@ -7,6 +7,7 @@
 | Polygon (P) | click vertices; close by clicking the first vertex, double-clicking or pressing Enter; Backspace removes the last vertex | drag vertices; click an edge midpoint to insert a vertex |
 | Quadrant (Q) | click the center | drag the center to move it; drag a leg's round handle to offset that leg |
 | Spider (S) | click the center | drag the center or any arm end; arms keep their order around the center |
+| Curly quadrant (C) | click the center; the curled legs are shown before you click | drag the center to move it; drag a curved leg's round handle to change how much it curls |
 | Range (H, histograms) | drag horizontally | drag either edge |
 | Bisector (B, histograms) | click where to split; the percentages on each side are shown before you click | drag the vertical line |
 
@@ -23,7 +24,7 @@
   window, or exporting at another DPI, only changes how sharp it is.
 - The inspector shows the selected gate's exact coordinates, in the gate's own units, and lets you type them.
 - Labels show the percentage of the parent population for the current sample, updated live while dragging.
-- **Double-click inside a gate** (or a quadrant/spider region) to open that population. Its plot starts
+- **Double-click inside a gate** (or a quadrant, spider or curly quadrant region) to open that population. Its plot starts
   with the parent's axes.
 - Opening a population that has no plot, from the Gate tab, the population tree or the Gating path,
   shows a plot without saving it, so looking around never changes the workspace. The plot is saved with
@@ -38,7 +39,7 @@
 - **Click an axis title** to pick another channel for that axis; it takes the channel's default scale. This
   works on every plot with axis titles: the Gate view, Plot grid, Tiles, reference plots and the Ridge
   view. Arrow keys and Enter pick from the list; long lists can be filtered by typing.
-- Quadrant and spider gates create four populations, Q1 (top-left) to Q4 (bottom-left) clockwise, named
+- Quadrant, spider and curly quadrant gates create four populations, Q1 (top-left) to Q4 (bottom-left) clockwise, named
   by marker sign (e.g. `CD4+ CD8−`). Rename any population by double-clicking it in the population tree.
 - **Offset quadrants** (as in FlowJo): drag the round handle on a quadrant leg to move that leg alone. Use
   this when a population's positive end sits further out than its negative end. The upper and lower legs
@@ -47,6 +48,14 @@
   round. Dragging the center moves the whole gate and keeps the offset. The gate's inspector card shows
   the two legs' coordinates. **Straighten** joins them at the center, as does dragging one leg back onto
   the other ([M-GATE-QUAD](../methods/gating#m-gate-quad-quadrant)).
+- **Curly quadrants** (FlowJo's curly quad) are for bright, fluorescent data: the upper and right legs
+  curve away from the double-positive quadrant as the spread from photon counting grows with intensity
+  ($x = c_x + a(\sqrt{y} - \sqrt{c_y})$ in linear data units), while the lower and left legs stay straight
+  and can mark the upper background limit from an FMO control. A new gate's curved legs each bend by a
+  tenth of the plot by its edge. Drag a curved leg's round handle sideways (upper leg) or up and down
+  (right leg) to set its curliness, or type it in the inspector; 0 makes the leg straight. A curliness that
+  would make the two legs cross is not applied. Dragging the center keeps the curliness
+  ([M-GATE-CURLY](../methods/gating#m-gate-curly-curly-quadrant)).
 - A new population takes the first of the eight palette colors no other population in the group uses,
   so a deleted population's color comes back first. Past eight populations the colors repeat in order.
 - A bisector (FlowJo's binary histogram gate) splits the histogram's events into two populations that

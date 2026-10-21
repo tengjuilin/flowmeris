@@ -16,6 +16,7 @@
     "@flowmeris/testkit": "workspace:*",
     "@flowmeris/gatingml": "workspace:*",
     "@flowmeris/gating": "workspace:*",
-    "@flowmeris/engine": "workspace:*"
+    "@flowmeris/engine": "workspace:*",
+    "@flowmeris/transforms": "workspace:*"
   }
 }

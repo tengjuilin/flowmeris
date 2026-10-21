@@ -1,6 +1,6 @@
 import type { Region } from '@flowmeris/model';
 import type { PlotFrame } from '../../lib/plotFrame.ts';
-import { QUAD_CORNERS } from './GateShapes.tsx';
+import { QUAD_CORNERS, curlyLegs } from './crossShapes.tsx';
 import type { Drag, HoverGeometry } from './useGateEditing.ts';
 import type { RegionCounts } from './useGatePreview.ts';
 
@@ -40,7 +40,7 @@ function CreatingShape({ drag, f }: { drag: Extract<Drag, { kind: 'create' }>; f
   );
 }
 
-/** Quadrant, spider or split: the gate and its region percentages under the cursor before it is placed. */
+/** Quadrant, spider, curly quadrant or split: the gate and its region percentages under the cursor before it is placed. */
 function HoverShape({ geom, f, counts }: { geom: HoverGeometry; f: PlotFrame; counts: RegionCounts | null }) {
   const { X, Y, pw, ph } = f;
   const hoverPct = (r: Region) =>
@@ -65,7 +65,7 @@ function HoverShape({ geom, f, counts }: { geom: HoverGeometry; f: PlotFrame; co
   const cy = Y(geom.center[1]);
   const far = 4 * (pw + ph);
   const ends: [number, number][] =
-    geom.kind === 'quadrant'
+    geom.kind === 'quadrant' || geom.kind === 'curly'
       ? [
           [cx, -far],
           [cx + far, cy],
@@ -78,10 +78,16 @@ function HoverShape({ geom, f, counts }: { geom: HoverGeometry; f: PlotFrame; co
           const n = Math.hypot(dx, dy) || 1;
           return [cx + (dx / n) * far, cy + (dy / n) * far];
         });
+  // A curly quadrant's legs are drawn as polylines (gate units are the plot's on a new gate).
+  const span = 4 * Math.max(Math.abs(f.xr[1] - f.xr[0]), Math.abs(f.yr[1] - f.yr[0]));
+  const lines =
+    geom.kind === 'curly'
+      ? curlyLegs(geom, span).map((l) => l.map(([a, b]) => `${X(a)},${Y(b)}`).join(' '))
+      : ends.map(([ex, ey]) => `${cx},${cy} ${ex},${ey}`);
   return (
     <g className="hover-draft" pointerEvents="none">
-      {ends.map(([ex, ey], i) => (
-        <line key={i} x1={cx} y1={cy} x2={ex} y2={ey} className="draft" />
+      {lines.map((pts, i) => (
+        <polyline key={i} points={pts} className="draft" style={{ fill: 'none' }} />
       ))}
       <circle cx={cx} cy={cy} r={3} className="draft-vertex" />
       {(Object.keys(QUAD_CORNERS) as Region[]).map((r) => {

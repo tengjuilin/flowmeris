@@ -59,7 +59,7 @@ export function useDragPreview(ctx: AnalysisContext, sampleId: string) {
 }
 
 /**
- * Counts of the quadrant, spider or split gate a click would place under the cursor. `key` identifies
+ * Counts of the quadrant, spider, curly quadrant or split gate a click would place under the cursor. `key` identifies
  * `gate` (empty for none); a new key, context or sample restarts the preview. Coalesced like
  * useDragPreview: only the newest cursor position waits for the worker.
  */

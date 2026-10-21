@@ -1,8 +1,15 @@
 import { ellipseAxes, ellipseFromAxes } from '@flowmeris/gating';
-import { type Geometry, effectiveGeometry, isOverridden, populationsOfGate } from '@flowmeris/model';
+import {
+  type Gate,
+  type Geometry,
+  effectiveGeometry,
+  isOverridden,
+  populationsOfGate,
+} from '@flowmeris/model';
 import { NumInput } from '../../components/ui/NumInput.tsx';
 import { DeleteIcon } from '../../components/ui/icons.tsx';
 import { Card } from '../../components/ui/settings/index.ts';
+import { type CurlyGeometry, curlyAt, curlyAxes, withCurliness } from '../../lib/curlyEdit.ts';
 import { straighten, translate, withLegs } from '../../lib/gateEdit.ts';
 import type { PlotCard } from '../../lib/panelSpecs.ts';
 import type { CardOf } from '../../lib/settingsPanel.ts';
@@ -26,9 +33,11 @@ export function GateEditor({ gateId, card }: { gateId: string; card: CardOf<Plot
   const name =
     geom.kind === 'split'
       ? 'Bisector'
-      : pops.length > 1
-        ? `${geom.kind[0]!.toUpperCase()}${geom.kind.slice(1)}`
-        : (pops[0]?.name ?? 'Gate');
+      : geom.kind === 'curly'
+        ? 'Curly quadrant'
+        : pops.length > 1
+          ? `${geom.kind[0]!.toUpperCase()}${geom.kind.slice(1)}`
+          : (pops[0]?.name ?? 'Gate');
 
   return (
     <Card
@@ -78,6 +87,7 @@ export function GateEditor({ gateId, card }: { gateId: string; card: CardOf<Plot
         </div>
       )}
       {geom.kind === 'quadrant' && <QuadrantFields geom={geom} commit={commit} />}
+      {geom.kind === 'curly' && <CurlyFields geom={geom} dims={gate.dims} commit={commit} />}
       {geom.kind === 'spider' && (
         <div className="grid2">
           <NumInput
@@ -182,6 +192,46 @@ function QuadrantFields({ geom, commit }: { geom: QuadrantGeometry; commit: (g: 
       ) : (
         <p className="muted small">Drag a leg's round handle to offset it.</p>
       )}
+    </>
+  );
+}
+
+/**
+ * A curly quadrant's center and the curliness a of its upper and right legs (x = cx + a·(√y − √cy) in
+ * linear data units). A curliness that would make the legs cross is not applied.
+ */
+function CurlyFields({
+  geom,
+  dims,
+  commit,
+}: { geom: CurlyGeometry; dims: Gate['dims']; commit: (g: Geometry) => void }) {
+  const ws = useStore((s) => s.ws);
+  const axes = curlyAxes(ws, dims);
+  const [cx, cy] = geom.center;
+  const [aUp, aRight] = geom.a;
+  const setA = (a: [number, number]) => {
+    const g = a[0] >= 0 && a[1] >= 0 ? withCurliness(geom, a, axes) : null;
+    if (g) commit(g);
+  };
+  return (
+    <>
+      <div className="grid2">
+        <NumInput label="Center x" value={cx} onCommit={(v) => commit(curlyAt(geom, [v, cy], axes))} />
+        <NumInput label="Center y" value={cy} onCommit={(v) => commit(curlyAt(geom, [cx, v], axes))} />
+        <NumInput
+          label="Upper leg curliness"
+          value={aUp}
+          onCommit={(v) => setA([v, aRight])}
+          title="a in x = cx + a·(√y − √cy), in linear data units; 0 makes the leg straight"
+        />
+        <NumInput
+          label="Right leg curliness"
+          value={aRight}
+          onCommit={(v) => setA([aUp, v])}
+          title="a in y = cy + a·(√x − √cx), in linear data units; 0 makes the leg straight"
+        />
+      </div>
+      <p className="muted small">Drag a curved leg's round handle to change how much it curls.</p>
     </>
   );
 }

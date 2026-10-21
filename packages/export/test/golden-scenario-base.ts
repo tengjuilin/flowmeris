@@ -5,9 +5,11 @@
 import { createHash } from 'node:crypto';
 import { type SampleData, sampleDataFromDataset, sampleMetaFromDataset } from '@flowmeris/engine';
 import { type FcsDataset, parseFcs } from '@flowmeris/fcs';
+import { type CurlyAxis, curlyLeg } from '@flowmeris/gating';
 import {
   type CompRef,
   type Gate,
+  type Geometry,
   type Group,
   type Region,
   type Transform,
@@ -17,6 +19,7 @@ import {
   transformId,
 } from '@flowmeris/model';
 import { readFixture } from '@flowmeris/testkit';
+import { makeScale } from '@flowmeris/transforms';
 
 export type ScenarioName = 'data1' | 'comp_kw' | 'comp_csv';
 
@@ -88,7 +91,14 @@ export function base(name: ScenarioName, file: string, groupName: string) {
     comp,
     transform,
   });
-  return { ws, group, ds, data: sampleDataFromDataset(ds, sha), sampleId: meta.id, tr, add, dim };
+  /** A curly quadrant on two dimensions with transform `t`, its legs built as the app builds them. */
+  const curly = (center: [number, number], a: [number, number], t: string): Geometry => {
+    const s = makeScale(ws.transforms[t]!);
+    const ax: CurlyAxis = { toLinear: s.inverse, fromLinear: s.apply };
+    const up = curlyLeg(center, a[0], 1, [ax, ax], 1);
+    return { kind: 'curly', center, a, up, right: curlyLeg(center, a[1], 0, [ax, ax], 1) };
+  };
+  return { ws, group, ds, data: sampleDataFromDataset(ds, sha), sampleId: meta.id, tr, add, dim, curly };
 }
 
 export function pick(b: ReturnType<typeof base>) {

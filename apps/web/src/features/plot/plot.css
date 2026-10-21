@@ -29,6 +29,7 @@
 .plot-overlay.tool-polygon,
 .plot-overlay.tool-quadrant,
 .plot-overlay.tool-spider,
+.plot-overlay.tool-curly,
 .plot-overlay.tool-range {
   cursor: crosshair;
 }

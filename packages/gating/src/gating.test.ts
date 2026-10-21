@@ -4,6 +4,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   and,
+  curlyRegion,
   ellipseAxes,
   ellipseFromAxes,
   evaluateGate,
@@ -280,6 +281,11 @@ describe('evaluateGate kernels agree with the per-event predicates', () => {
       case 'spider': {
         const [cx, cy] = geometry.center;
         const r = (k: number) => keep((i) => spiderRegion(cx, cy, geometry.arms, x[i]!, y[i]!) === k);
+        return { Q1: r(1), Q2: r(2), Q3: r(3), Q4: r(4) };
+      }
+      case 'curly': {
+        const r = (k: number) =>
+          keep((i) => curlyRegion(geometry.center, geometry.up, geometry.right, x[i]!, y[i]!) === k);
         return { Q1: r(1), Q2: r(2), Q3: r(3), Q4: r(4) };
       }
       case 'split':

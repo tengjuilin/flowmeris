@@ -1,6 +1,6 @@
 import { Engine, MemoryStorage, sampleDataFromDataset, sampleMetaFromDataset } from '@flowmeris/engine';
 import { linearize, parseFcs } from '@flowmeris/fcs';
-import { getBit } from '@flowmeris/gating';
+import { type CurlyAxis, curlyLeg, getBit } from '@flowmeris/gating';
 import { evaluateGatingML, parseGatingML } from '@flowmeris/gatingml';
 import { type Gate, type Transform, newGroup, newWorkspace, transformId } from '@flowmeris/model';
 import { readFixture } from '@flowmeris/testkit';
@@ -141,6 +141,24 @@ function setup() {
           [0.35, 0.1],
           [0.1, 0.3],
         ],
+      },
+    },
+    ['Q1', 'Q2', 'Q3', 'Q4'],
+  );
+  // Curly quadrant, curved for a log-like scale (gate units 0–1 over 1–10⁵), exported as four polygons.
+  const log5: CurlyAxis = { toLinear: (v) => 10 ** (5 * v), fromLinear: (v) => Math.log10(v) / 5 };
+  const cc: [number, number] = [0.35, 0.3];
+  add(
+    {
+      id: 'curly',
+      parentPop: 'root',
+      dims: [d('FL1-H'), d('FL2-H')],
+      geometry: {
+        kind: 'curly',
+        center: cc,
+        a: [8, 12],
+        up: curlyLeg(cc, 8, 1, [log5, log5], 1),
+        right: curlyLeg(cc, 12, 0, [log5, log5], 1),
       },
     },
     ['Q1', 'Q2', 'Q3', 'Q4'],

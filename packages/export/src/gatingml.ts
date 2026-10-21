@@ -18,7 +18,8 @@ import {
  * divider. Spider gates have no Gating-ML equivalent and
  * are written as four PolygonGates (one per region; the outer vertices lie far
  * outside any plausible data range) plus a Flowmeris extension element that
- * preserves the exact definition for re-import.
+ * preserves the exact definition for re-import. Curly quadrants are written the same way, their curved
+ * legs as the polygon edges they are stored as.
  */
 
 const NS =
@@ -36,6 +37,31 @@ function num(v: number): string {
 }
 
 type QuadrantGeometry = Extract<Geometry, { kind: 'quadrant' }>;
+type CurlyGeometry = Extract<Geometry, { kind: 'curly' }>;
+
+/**
+ * One region of a curly quadrant (M-GATE-CURLY) as polygon vertices: the curved legs as stored, each
+ * continued straight out to `far` past its last vertex, and the straight lower and left legs.
+ */
+function curlyRegionVertices(g: CurlyGeometry, region: string): [number, number][] {
+  const far = 1e9;
+  const [cx, cy] = g.center;
+  const up = g.up.slice(1).map(([x, y]): [number, number] => [x, y]);
+  const right = g.right.slice(1).map(([x, y]): [number, number] => [x, y]);
+  const ux = up.at(-1)![0];
+  const ry = right.at(-1)![1];
+  const c: [number, number] = [cx, cy];
+  switch (region) {
+    case 'Q1':
+      return [c, ...up, [ux, far], [-far, far], [-far, cy]];
+    case 'Q2':
+      return [c, ...right, [far, ry], [far, far], [ux, far], ...up.reverse()];
+    case 'Q3':
+      return [c, [cx, -far], [far, -far], [far, ry], ...right.reverse()];
+    default:
+      return [c, [-far, cy], [-far, -far], [cx, -far]];
+  }
+}
 
 /**
  * An offset quadrant as four RectangleGates, one per region, with open sides. Each region is exactly
@@ -101,6 +127,21 @@ export function exportGatingML(ws: Workspace, g: Group, opts: GmlExportOptions):
   const fcsDim = (d: GateDim) => `<data-type:fcs-dimension data-type:name="${esc(d.channel)}" />`;
   const parentAttr = (gate: Gate) =>
     gate.parentPop === ROOT_POPULATION_ID ? '' : ` gating:parent_id="${esc(gate.parentPop)}"`;
+  /** A region of a spider or curly quadrant as a PolygonGate, with its Flowmeris extension element `ext`. */
+  const polygonGate = (
+    popId: string,
+    gate: Gate,
+    ext: string,
+    verts: readonly (readonly [number, number])[],
+  ) => {
+    let xml = `  <gating:PolygonGate gating:id="${esc(popId)}"${parentAttr(gate)}>\n`;
+    xml += `    <data-type:custom_info><flowmeris:name>${esc(t.populations[popId]?.name ?? popId)}</flowmeris:name>${ext}</data-type:custom_info>\n`;
+    for (const d of gate.dims)
+      xml += `    <gating:dimension ${dimAttrs(d)}>${fcsDim(d)}</gating:dimension>\n`;
+    for (const [x, y] of verts)
+      xml += `    <gating:vertex><gating:coordinate data-type:value="${num(x)}" /><gating:coordinate data-type:value="${num(y)}" /></gating:vertex>\n`;
+    return `${xml}  </gating:PolygonGate>\n`;
+  };
   const geomOf = (gate: Gate): Geometry =>
     opts.sampleId ? effectiveGeometry(g, gate.id, opts.sampleId) : gate.geometry;
 
@@ -210,13 +251,16 @@ export function exportGatingML(ws: Workspace, g: Group, opts: GmlExportOptions):
             const th = a0 + ((a1 - a0) * k) / steps;
             verts.push([cx + far * Math.cos(th), cy + far * Math.sin(th)]);
           }
-          body += `  <gating:PolygonGate gating:id="${esc(p.id)}"${parentAttr(gate)}>\n`;
-          body += `    <data-type:custom_info><flowmeris:name>${name(p.id)}</flowmeris:name><flowmeris:spider gate="${esc(gate.id)}" region="${p.region}" center="${cx},${cy}" arms="${geom.arms.map((q) => q.join(',')).join(';')}" /></data-type:custom_info>\n`;
-          for (const d of gate.dims)
-            body += `    <gating:dimension ${dimAttrs(d)}>${fcsDim(d)}</gating:dimension>\n`;
-          for (const [x, y] of verts)
-            body += `    <gating:vertex><gating:coordinate data-type:value="${num(x)}" /><gating:coordinate data-type:value="${num(y)}" /></gating:vertex>\n`;
-          body += '  </gating:PolygonGate>\n';
+          const ext = `<flowmeris:spider gate="${esc(gate.id)}" region="${p.region}" center="${cx},${cy}" arms="${geom.arms.map((q) => q.join(',')).join(';')}" />`;
+          body += polygonGate(p.id, gate, ext, verts);
+        }
+        break;
+      }
+      case 'curly': {
+        const path = (l: readonly (readonly [number, number])[]) => l.map((q) => q.join(',')).join(';');
+        for (const p of pops) {
+          const ext = `<flowmeris:curly gate="${esc(gate.id)}" region="${p.region}" center="${geom.center.join(',')}" a="${geom.a.join(',')}" up="${path(geom.up)}" right="${path(geom.right)}" />`;
+          body += polygonGate(p.id, gate, ext, curlyRegionVertices(geom, p.region));
         }
         break;
       }

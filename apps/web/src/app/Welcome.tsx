@@ -12,7 +12,10 @@ export function Welcome() {
         locally and never uploaded.
       </p>
       <ol>
-        <li>Gate on the first sample: rectangle, ellipse, polygon, quadrant, spider or range gates.</li>
+        <li>
+          Gate on the first sample: rectangle, ellipse, polygon, quadrant, curly quadrant, spider or range
+          gates.
+        </li>
         <li>Double-click a gate to drill into that population and keep gating.</li>
         <li>
           Check every sample in <strong>Tiles</strong> and <strong>Ridge</strong> views; adjust individual

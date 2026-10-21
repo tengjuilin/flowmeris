@@ -1,4 +1,4 @@
-import { quadrantDividers, quadrantRegion, spiderRegion } from '@flowmeris/gating';
+import { curlyRegion, quadrantDividers, quadrantRegion, spiderRegion } from '@flowmeris/gating';
 import { type Gate, type GatingTemplate, type Geometry, populationsOfGate } from '@flowmeris/model';
 import { type DimMap, type Pt, outlineGateSpace, pointInPolygonPx } from './geometry.ts';
 
@@ -58,12 +58,12 @@ export function shapePx(f: PlotFrame, maps: DimMap[], geom: Geometry): Pt[] {
 }
 
 /**
- * The topmost gate under pixel (px, py): near a quadrant or spider center, near a split divider,
+ * The topmost gate under pixel (px, py): near a quadrant, spider or curly quadrant center, near a split divider,
  * between a histogram range's edges, or inside a closed shape.
  */
 export function hitGate(f: PlotFrame, shown: ShownGate[], px: number, py: number, is1d: boolean) {
   for (const { gate, geom, maps } of [...shown].reverse()) {
-    if (geom.kind === 'quadrant' || geom.kind === 'spider') {
+    if (geom.kind === 'quadrant' || geom.kind === 'spider' || geom.kind === 'curly') {
       const cx = f.X(maps[0]!.f(geom.center[0]));
       const cy = f.Y(maps[1]!.f(geom.center[1]));
       if (Math.hypot(px - cx, py - cy) < 12) return gate;
@@ -86,7 +86,7 @@ export function hitGate(f: PlotFrame, shown: ShownGate[], px: number, py: number
 }
 
 /**
- * The population under pixel (px, py), for drilling down. The topmost split, quadrant or spider gate
+ * The population under pixel (px, py), for drilling down. The topmost split, quadrant, spider or curly quadrant gate
  * answers with the region the point is in, wherever it is; other gates answer when the point is inside.
  */
 export function popAt(
@@ -104,12 +104,13 @@ export function popAt(
       const v = maps[0]!.inv(f.toData(px, py)[0]);
       return pops.find((p) => p.region === (v >= geom.at ? 'hi' : 'lo'))?.id;
     }
-    if (geom.kind === 'quadrant' || geom.kind === 'spider') {
+    if (geom.kind === 'quadrant' || geom.kind === 'spider' || geom.kind === 'curly') {
       const [dx, dy] = f.toData(px, py);
       const gx = maps[0]!.inv(dx);
       const gy = maps[1]!.inv(dy);
       let r: number;
       if (geom.kind === 'spider') r = spiderRegion(geom.center[0], geom.center[1], geom.arms, gx, gy);
+      else if (geom.kind === 'curly') r = curlyRegion(geom.center, geom.up, geom.right, gx, gy);
       else r = quadrantRegion(quadrantDividers(geom.center, geom.offset), gx, gy);
       return pops.find((p) => p.region === `Q${r}`)?.id;
     }

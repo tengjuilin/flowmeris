@@ -201,6 +201,9 @@ importers:
       '@flowmeris/testkit':
         specifier: workspace:*
         version: link:../testkit
+      '@flowmeris/transforms':
+        specifier: workspace:*
+        version: link:../transforms
 
   packages/fcs:
     dependencies:

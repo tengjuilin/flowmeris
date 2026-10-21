@@ -133,7 +133,7 @@ export function populationsDepthFirst(template: GatingTemplate): Population[] {
   return out;
 }
 
-/** Populations produced by a gate (one for simple gates, four for quadrant/spider). */
+/** Populations produced by a gate (one for simple gates, four for quadrant, spider and curly quadrant). */
 export function populationsOfGate(template: GatingTemplate, gateId: string): Population[] {
   return Object.values(template.populations).filter((p) => p.gate === gateId);
 }
