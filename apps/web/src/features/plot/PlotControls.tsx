@@ -4,12 +4,14 @@ import {
   SCALE_KINDS,
   type ScaleKind,
   defaultAxis,
+  ensureColorAxis,
   groupSample,
   registerTransform,
   scaleKindOf,
   transformOfKind,
 } from '../../lib/axisDefaults.ts';
 import { withAxesChange } from '../../lib/figure.ts';
+import { PLOT_KINDS } from '../../lib/plotKinds.ts';
 import { keyHint } from '../../lib/settings/index.ts';
 import { type EditAxes, editPlot, setAxisChannel } from '../../state/commands/plots.ts';
 import { useSettings } from '../../state/settings.ts';
@@ -104,15 +106,6 @@ const TOOL_ICONS: Record<Tool, ReactNode> = {
   ),
 };
 
-const KINDS: { id: PlotKind; label: string }[] = [
-  { id: 'pseudocolor', label: 'Pseudocolor' },
-  { id: 'dot', label: 'Dot' },
-  { id: 'density', label: 'Density' },
-  { id: 'contour', label: 'Contour' },
-  { id: 'zebra', label: 'Zebra' },
-  { id: 'histogram', label: 'Histogram' },
-];
-
 /** Plot type picker; edits the population's Gate-view plot, or `edit`'s target. */
 export function PlotKindSelect({
   group,
@@ -129,13 +122,14 @@ export function PlotKindSelect({
           const other = g.channels.find((c) => c !== p.x.channel) ?? p.x.channel;
           p.y = { ...defaultAxis(w, g, other) };
         }
+        ensureColorAxis(w, g, p);
       });
     });
   return (
     <label className="field">
       {label}
       <select value={plot.kind} onChange={(e) => setKind(e.target.value as PlotKind)}>
-        {KINDS.map((k) => (
+        {PLOT_KINDS.map((k) => (
           <option key={k.id} value={k.id}>
             {k.label}
           </option>

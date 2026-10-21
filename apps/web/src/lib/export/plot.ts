@@ -6,7 +6,7 @@ import { SVG_NS, bytesToBase64, standaloneClone } from './standalone.ts';
 
 /**
  * Gate-view plot export (method M-EXPORT-PLOT). Axes, gates, labels, contours and histograms are
- * exported as vector SVG; event rasters (dot / pseudocolor / density) are re-rendered at the requested
+ * exported as vector SVG; event rasters (dot / pseudocolor density or channel / density) are re-rendered at the requested
  * DPI and embedded as PNG.
  */
 
@@ -30,8 +30,8 @@ export interface PlotExportSource {
   raster(plot: PlotSpec, width: number, height: number): Promise<RasterResponse>;
   /** SHA-256 of the sample's file, recorded in the SVG metadata. */
   sha256: string | undefined;
-  /** The axes' transforms, recorded in the SVG metadata. */
-  transforms: { x: Transform | undefined; y: Transform | undefined };
+  /** The axes' transforms (and a Pseudocolor channel plot's color axis's), recorded in the SVG metadata. */
+  transforms: { x: Transform | undefined; y: Transform | undefined; color?: Transform | undefined };
   /** Generator string recorded in the SVG metadata (app name, version, commit). */
   generator: string;
 }

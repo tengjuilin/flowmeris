@@ -40,5 +40,6 @@ export function plotKey(ws: Workspace, g: Group, sampleId: string, plot: PlotSpe
     plot,
     ws.transforms[plot.x.transform],
     plot.y ? ws.transforms[plot.y.transform] : null,
+    plot.kind === 'pseudocolor-channel' && plot.color ? ws.transforms[plot.color.transform] : null,
   ]);
 }

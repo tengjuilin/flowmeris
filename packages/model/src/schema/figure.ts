@@ -51,5 +51,8 @@ export const PlotFigureSchema = z.object({
   /** Axis titles; omitted = "<marker> :: <channel>". */
   xTitle: z.string().optional(),
   yTitle: z.string().optional(),
+  /** Pseudocolor channel plots: the color bar right of the plot, and its title (omitted = "<marker> :: <channel>"). */
+  colorBar: z.boolean().default(true),
+  colorTitle: z.string().optional(),
 });
 export type PlotFigure = z.infer<typeof PlotFigureSchema>;

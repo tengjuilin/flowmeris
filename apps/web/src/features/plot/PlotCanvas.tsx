@@ -15,6 +15,7 @@ import { plotKey } from '../../lib/keys.ts';
 import { plotFrame } from '../../lib/plotFrame.ts';
 import { plotAriaLabel, plotBox } from '../../lib/plotLayout.ts';
 import { contextFor, useStore } from '../../state/store.ts';
+import { ColorBar } from './ColorBar.tsx';
 import { DraftShapes } from './DraftShapes.tsx';
 import { GateShapes } from './GateShapes.tsx';
 import { type AxisMenu, AxisPickerMenu, type HistNorm, PlotAxes } from './PlotAxes.tsx';
@@ -247,6 +248,7 @@ export const PlotCanvas = forwardRef<PlotHandle, PlotCanvasProps>(function PlotC
                 canPickHistNorm={!!onPickHistNorm}
                 onOpenMenu={setAxisMenu}
               />
+              <ColorBar ws={ws} sampleId={sampleId} plot={plot} fig={fig} pw={pw} ph={ph} />
             </>
           )}
         </g>

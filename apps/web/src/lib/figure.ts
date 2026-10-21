@@ -127,7 +127,7 @@ export function figureText(fig: PlotFigure, t: TextStyle, size: number): CSSProp
 }
 
 /** Figure options that stay with each population's plot when settings are carried or applied across populations. */
-export const PER_PLOT = ['title', 'xTicks', 'yTicks', 'xTitle', 'yTitle'] as const;
+export const PER_PLOT = ['title', 'xTicks', 'yTicks', 'xTitle', 'yTitle', 'colorTitle'] as const;
 
 /** `from`'s shareable settings over `to`'s per-plot ones. */
 export function sharedStyle(from: PlotStyle, to: PlotStyle): PlotStyle {
@@ -237,6 +237,8 @@ export const PANEL_FIGURE_KEYS: Record<'figure' | 'axis' | 'text', (keyof PlotFi
     'yTicks',
     'xTitle',
     'yTitle',
+    'colorBar',
+    'colorTitle',
   ],
   text: [
     'fontFamily',

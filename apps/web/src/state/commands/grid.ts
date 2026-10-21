@@ -1,6 +1,6 @@
 import type { Group, PlotCell, PlotKind, PlotSpec, PlotStyle, Workspace } from '@flowmeris/model';
 import { newId } from '@flowmeris/model';
-import { defaultAxis, defaultChannels } from '../../lib/axisDefaults.ts';
+import { defaultAxis, defaultChannels, ensureColorAxis } from '../../lib/axisDefaults.ts';
 import { TILE_FIGURE, TILE_STYLE, withAxesChange } from '../../lib/figure.ts';
 import { type DropSide, moveSlot, putSlot } from '../../lib/gridMove.ts';
 import { sameJson } from '../../lib/json.ts';
@@ -44,6 +44,7 @@ export function addCell(
       style: structuredClone(TILE_STYLE),
     };
     if (kind !== 'histogram') c.y = { ...defaultAxis(w, g, yc) };
+    ensureColorAxis(w, g, c);
     while (g.grid.cells.length < slot) g.grid.cells.push(null);
     g.grid.cells[slot] = c;
     id = c.id;
@@ -65,7 +66,8 @@ export function openInGateView(group: Group, cell: PlotCell, sampleId: string | 
     p.population === cell.population &&
     p.kind === cell.kind &&
     p.x.channel === cell.x.channel &&
-    (cell.kind === 'histogram' || p.y?.channel === cell.y?.channel);
+    (cell.kind === 'histogram' || p.y?.channel === cell.y?.channel) &&
+    (cell.kind !== 'pseudocolor-channel' || p.color?.channel === cell.color?.channel);
   let plotId = group.plots.find(same)?.id;
   if (!plotId) {
     const id = newId('plt_');
@@ -76,6 +78,7 @@ export function openInGateView(group: Group, cell: PlotCell, sampleId: string | 
         kind: cell.kind,
         x: { ...cell.x },
         ...(cell.y ? { y: { ...cell.y } } : {}),
+        ...(cell.color ? { color: { ...cell.color } } : {}),
         // The grid's figure options (smaller text) stay with the grid plot.
         style: { ...cell.style, figure: undefined },
       });
@@ -137,17 +140,18 @@ export function pasteCell(group: Group, slot: number) {
 }
 
 /** What a plot shows, for opening it in another view: a grid cell, a tile or the Gate view's plot. */
-type ShownPlot = Pick<PlotSpec, 'population' | 'kind' | 'x' | 'y' | 'style'>;
+type ShownPlot = Pick<PlotSpec, 'population' | 'kind' | 'x' | 'y' | 'color' | 'style'>;
 
 /**
- * Whether `plot` has `from`'s type and axes: the x and y channel, compensation, scale and range, or for a
- * histogram the x axis and what its y axis shows (`histNorm`).
+ * Whether `plot` has `from`'s type and axes: the x and y channel, compensation, scale and range (and a
+ * Pseudocolor channel plot's color axis), or for a histogram the x axis and what its y axis shows (`histNorm`).
  */
 function sameTypeAndAxes(plot: PlotSpec, from: ShownPlot): boolean {
   return (
     plot.kind === from.kind &&
     sameJson(plot.x, from.x) &&
-    (from.kind === 'histogram' ? plot.style.histNorm === from.style.histNorm : sameJson(plot.y, from.y))
+    (from.kind === 'histogram' ? plot.style.histNorm === from.style.histNorm : sameJson(plot.y, from.y)) &&
+    (from.kind !== 'pseudocolor-channel' || sameJson(plot.color, from.color))
   );
 }
 
@@ -174,6 +178,7 @@ export function openInTilesView(
         p.kind = from.kind;
         p.x = { ...from.x };
         if (from.kind !== 'histogram' && from.y) p.y = { ...from.y };
+        if (from.color) p.color = { ...from.color };
       });
       // After the axes change, which may restore the settings saved for the new channel pair.
       if (from.kind === 'histogram') p.style.histNorm = from.style.histNorm;
@@ -201,7 +206,8 @@ function openInGrid(group: Group, plot: ShownPlot, sampleId: string, label: stri
     c.population === plot.population &&
     c.kind === plot.kind &&
     c.x.channel === plot.x.channel &&
-    (plot.kind === 'histogram' || c.y?.channel === plot.y?.channel);
+    (plot.kind === 'histogram' || c.y?.channel === plot.y?.channel) &&
+    (plot.kind !== 'pseudocolor-channel' || c.color?.channel === plot.color?.channel);
   let id = group.grid.cells.find(same)?.id;
   if (!id) {
     const cellId = newId('cell_');
@@ -215,6 +221,7 @@ function openInGrid(group: Group, plot: ShownPlot, sampleId: string, label: stri
         kind: plot.kind,
         x: { ...plot.x },
         ...(plot.y && plot.kind !== 'histogram' ? { y: { ...plot.y } } : {}),
+        ...(plot.color ? { color: { ...plot.color } } : {}),
         style: structuredClone(style),
       };
       if (slot >= 0) g.grid.cells[slot] = c;

@@ -11,7 +11,7 @@ definition used.
 | Axis scales | [Transforms](./transforms) | M-TR-FLIN, -FLOG, -LOGNP, -FASINH, -LOGICLE, -HYPERLOG, -BIEX, -MILTENYI, -TICKS |
 | Gates and populations | [Gating](./gating) | M-GATE-SPACE, -RECT, -POLY, -ELLIPSE, -QUAD, -SPIDER, -CURLY, -TREE |
 | Population statistics | [Statistics](./statistics) | M-STAT-* |
-| Visualization | [Plots](./plots) | M-PLOT-BIN, -SMOOTH, -PSEUDO, -DENSITY, -CONTOUR-EQP, -CONTOUR-LOG, -ZEBRA, M-EXPORT-PLOT |
+| Visualization | [Plots](./plots) | M-PLOT-BIN, -SMOOTH, -PSEUDO, -PSEUDO-CHANNEL, -DENSITY, -CONTOUR-EQP, -CONTOUR-LOG, -ZEBRA, M-EXPORT-PLOT |
 | Output files | [Exports](./exports) | M-EXPORT-STATS, -GML, M-FCS-WRITE |
 | Saved analyses | [Workspace format](./workspace) | M-MODEL-CANON |
 

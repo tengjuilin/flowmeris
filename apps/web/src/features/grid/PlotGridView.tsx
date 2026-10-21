@@ -1,4 +1,3 @@
-import type { PlotKind } from '@flowmeris/model';
 import { useRef, useState } from 'react';
 import { ExportMenu } from '../../components/controls/ExportMenu.tsx';
 import { useSize } from '../../components/hooks/useSize.ts';
@@ -8,6 +7,7 @@ import type { PlotHandle } from '../../lib/export/index.ts';
 import { stripDataExt } from '../../lib/files.ts';
 import { type RowFit, nearestColumns, rowMaxColumns, rowPlotSize, sideSpan } from '../../lib/fitSize.ts';
 import { cellSample, plotOf } from '../../lib/gridCells.ts';
+import { PLOT_KINDS } from '../../lib/plotKinds.ts';
 import { addCell, setCellPopulation } from '../../state/commands/grid.ts';
 import { storePlotFigure } from '../../state/export.ts';
 import { mutateGroup, toast, useGroup, useSampleNames, useStore } from '../../state/store.ts';
@@ -16,15 +16,6 @@ import { PopulationTree } from '../tree/index.ts';
 import { GridCell } from './GridCell.tsx';
 import { useGridDrag } from './useGridDrag.ts';
 import { useGridKeys } from './useGridKeys.ts';
-
-const KINDS: { id: PlotKind; label: string }[] = [
-  { id: 'pseudocolor', label: 'Pseudocolor' },
-  { id: 'dot', label: 'Dot' },
-  { id: 'density', label: 'Density' },
-  { id: 'contour', label: 'Contour' },
-  { id: 'zebra', label: 'Zebra' },
-  { id: 'histogram', label: 'Histogram' },
-];
 
 /** Grid cells 8 px apart, at least 160 px wide (as tiles), so plots keep room for their axes. */
 const GRID_ROW: RowFit = { gap: 8, pad: 0, minSize: 160, minColumns: 2, maxColumns: 12 };
@@ -175,7 +166,7 @@ export function PlotGridView() {
             >
               <span className="muted small">Add plot</span>
               <div className="add-kinds">
-                {KINDS.map((k) => (
+                {PLOT_KINDS.map((k) => (
                   <button
                     type="button"
                     key={k.id}

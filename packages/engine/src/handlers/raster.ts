@@ -37,6 +37,15 @@ export function rasterOf(
     yRange: plot.y.range,
     style: plot.style,
     dotColor: req.dotColor,
+    ...(plot.kind === 'pseudocolor-channel' && plot.color
+      ? {
+          color: {
+            values: axisColumn(columns, ctx, s, plot.color),
+            range: plot.color.range,
+            stat: plot.color.stat,
+          },
+        }
+      : {}),
   });
   return {
     width: r.width,

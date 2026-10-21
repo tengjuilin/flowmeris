@@ -6,5 +6,6 @@
 
 export { CATEGORICAL, COLORMAPS, colormapCss, colormapLut } from './colormaps.ts';
 export * from './raster2d.ts';
+export { channelColorAtPixels } from './channelColor.ts';
 export * from './histogram.ts';
 export * from './png.ts';

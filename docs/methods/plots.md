@@ -39,11 +39,26 @@ marching squares places it).
 | Type | Definition |
 |---|---|
 | **Dot** | every pixel containing ≥ 1 event is drawn in the dot color, as a point of Display → Point size (default 3 px; 0.25–10 px, at the reference width) |
-| **Pseudocolor** (M-PLOT-PSEUDO) | every pixel containing ≥ 1 event is colored by $\log(1+\hat f)/\log(1+\hat f_\max)$ of the smoothed density $\hat f$. Isolated events stay visible while dense regions show structure. Points are 3 px by default, as for dot plots. |
+| **Pseudocolor density** (M-PLOT-PSEUDO) | every pixel containing ≥ 1 event is colored by $\log(1+\hat f)/\log(1+\hat f_\max)$ of the smoothed density $\hat f$. Isolated events stay visible while dense regions show structure. Points are 3 px by default, as for dot plots. |
+| **Pseudocolor channel** (M-PLOT-PSEUDO-CHANNEL) | every pixel containing ≥ 1 event is colored by a third channel, the plot's color axis: the median (default), mean or maximum of that channel's values of the events in the pixel, as defined below. Not smoothed. Points are 3 px by default, as for dot plots. |
 | **Density** (M-PLOT-DENSITY) | the smoothed density image, linear color scale, cells below 0.5% of the maximum transparent |
 | **Contour** | iso-density lines of the smoothed density (marching squares on the density grid), Display → Line width (default 1 px at the reference width) and Line color (default: the theme's) |
 | **Zebra** (M-PLOT-ZEBRA) | the contour plot with each band between its lines filled by its own gradient, from the outer color at its outer line to the inner color at its inner line |
 | **Histogram** | 1-D counts in 256 bins (64–1024), optionally smoothed (σ = 1.5 bins). The y axis (picked on its title or in Display) shows **Count** (events per bin), **% of max** (heights over the highest bin; FlowJo's "normalized to mode") or **Fraction** (heights over their sum, i.e. unit area) |
+
+### M-PLOT-PSEUDO-CHANNEL — points colored by a third channel
+
+FlowJo's color mapping ("Color Axis"). The color axis has a channel, a scale and a displayed range
+$[c_\min, c_\max]$ in transformed units, as an x or y axis. Each event of the population is placed in an
+image pixel as for the dot plot (M-PLOT-BIN: off-scale events piled on the edges). Its color-channel value
+$c$ (transformed) becomes $t = (c - c_\min)/(c_\max - c_\min)$, clamped to $[0, 1]$; a NaN value (the log
+of a non-positive value) is taken as $t = 0$. Values beyond the color range are thus piled on its ends, as
+on the x and y axes. A pixel's color is the color map at the **median** of its events' $t$ (NumPy's
+median: the mean of the two middle values for an even count), their **mean**, or their **maximum**
+(Color axis → Color by). Clamping before the median or maximum gives what clamping after would; the mean
+is of the clamped values. Points are drawn from the lowest value to the highest, so where points overlap
+the higher value is on top. A color bar right of the plot shows the color map over the color axis's
+range with its ticks and title (Color axis → Show color bar).
 
 ### M-PLOT-CONTOUR-EQP — equal-probability contours
 
@@ -132,5 +147,5 @@ and wrapping, match the screen in every format.
 ## References
 
 - Wand MP. Fast computation of multivariate kernel estimators. *J Comput Graph Stat* 1994;3:433–445.
-- FlowJo documentation, "Contour Plots", "Pseudocolor Plots", "Zebra Plots".
+- FlowJo documentation, "Contour Plots", "Pseudocolor Plots", "Zebra Plots", "Color Mapping".
 - Crameri F, Shephard GE, Heron PJ. The misuse of color in science communication. *Nat Commun* 2020;11:5444.

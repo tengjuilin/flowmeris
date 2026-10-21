@@ -1,5 +1,12 @@
-import { type Group, type PlotKind, type PlotSpec, type Workspace, newId } from '@flowmeris/model';
-import { defaultAxis, defaultChannels } from './axisDefaults.ts';
+import {
+  type ColorAxis,
+  type Group,
+  type PlotKind,
+  type PlotSpec,
+  type Workspace,
+  newId,
+} from '@flowmeris/model';
+import { defaultAxis, defaultChannels, ensureColorAxis } from './axisDefaults.ts';
 import { DEFAULT_STYLE, TILE_STYLE } from './figure.ts';
 
 /** New plots with the default axes and appearance (on a draft: call inside `mutate`). */
@@ -24,6 +31,7 @@ function makePlot(
   population: string,
   kind: PlotKind = 'pseudocolor',
   xy?: [string, string],
+  color?: ColorAxis,
 ): PlotSpec {
   const [xc, yc] = xy ?? defaultChannels(ws, g);
   const plot: PlotSpec = {
@@ -32,8 +40,10 @@ function makePlot(
     kind,
     x: { ...defaultAxis(ws, g, xc) },
     style: structuredClone(DEFAULT_STYLE),
+    ...(color ? { color: { ...color } } : {}),
   };
   if (kind !== 'histogram') plot.y = { ...defaultAxis(ws, g, yc) };
+  ensureColorAxis(ws, g, plot);
   return plot;
 }
 
@@ -49,7 +59,8 @@ export function populationPlot(ws: Workspace, g: Group, popId: string): PlotSpec
     ? [parentPlot.x.channel, parentPlot.y.channel]
     : undefined;
   const kind = parentPlot?.kind === 'histogram' ? 'pseudocolor' : (parentPlot?.kind ?? 'pseudocolor');
-  return makePlot(ws, g, popId, kind, xy);
+  // A Pseudocolor channel parent passes on its color channel too.
+  return makePlot(ws, g, popId, kind, xy, parentPlot?.color);
 }
 
 /**
@@ -70,6 +81,8 @@ export function newTilePlot(ws: Workspace, g: Group, population: string): PlotSp
     style: structuredClone(TILE_STYLE),
   };
   if (plot.kind !== 'histogram') plot.y = { ...(src?.y ?? defaultAxis(ws, g, yc)) };
+  if (src?.color) plot.color = { ...src.color };
+  ensureColorAxis(ws, g, plot);
   g.tilePlots.push(plot);
   return plot;
 }

@@ -60,7 +60,7 @@ export function StyleEditor({
               </select>
             </label>
           )}
-          {(plot.kind === 'dot' || plot.kind === 'pseudocolor') && (
+          {(plot.kind === 'dot' || plot.kind === 'pseudocolor' || plot.kind === 'pseudocolor-channel') && (
             <NumInput
               label="Point size (px)"
               step={0.25}
@@ -69,7 +69,7 @@ export function StyleEditor({
               title={`Size of each event's point, 0.25–10 px at a ${REFERENCE_PLOT_PX}-px-wide plot; it scales with the plot`}
             />
           )}
-          {plot.kind !== 'dot' && (
+          {plot.kind !== 'dot' && plot.kind !== 'pseudocolor-channel' && (
             <NumInput
               label="Smoothing σ (%)"
               step={0.1}

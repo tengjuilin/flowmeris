@@ -6,9 +6,14 @@ import { withAxesChange } from '../../../lib/figure.ts';
 import { clamp } from '../../../lib/math.ts';
 import { AxisEditor } from '../AxisEditor.tsx';
 import type { TabProps } from '../figureEdits.ts';
+import { ColorAxisCard } from './ColorAxisCard.tsx';
 
-/** The Axis tab: swap X and Y, each axis (channel, scale, range, title), and ticks and spine. */
-export function AxisTab({ plot, target, card, fx }: TabProps) {
+/**
+ * The Axis tab: swap X and Y, each axis (channel, scale, range, title), a Pseudocolor channel plot's color
+ * axis, and ticks and spine.
+ */
+export function AxisTab(props: TabProps) {
+  const { plot, target, card, fx } = props;
   const { fig, edit, set, resetOf } = fx;
   const is2d = plot.kind !== 'histogram' && !!plot.y;
   const titleReset = (k: 'xTitle' | 'yTitle') => ({
@@ -68,6 +73,7 @@ export function AxisTab({ plot, target, card, fx }: TabProps) {
           {titleField('yTitle', 'Y axis title')}
         </AxisEditor>
       )}
+      {is2d && plot.kind === 'pseudocolor-channel' && <ColorAxisCard {...props} />}
       <Card
         {...card(
           'ticks',

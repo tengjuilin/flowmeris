@@ -1,5 +1,5 @@
 import type { Group, PlotSpec, Workspace } from '@flowmeris/model';
-import { axisAtFactory, resetAxisToFactory } from './axisDefaults.ts';
+import { axisAtFactory, axisOnly, resetAxisToFactory } from './axisDefaults.ts';
 import {
   DEFAULT_FIGURE,
   DEFAULT_STYLE,
@@ -32,7 +32,12 @@ export function panelAtDefaults(
     tab === 'figure' ? (gateView ? DEFAULT_STYLE : TILE_STYLE) : null,
     gateView ? DEFAULT_FIGURE : TILE_FIGURE,
   );
-  return tab === 'axis' ? at && [p.x, p.y].every((a) => !a || axisAtFactory(ws, g, a)) : at;
+  if (tab !== 'axis') return at;
+  return (
+    at &&
+    [p.x, p.y, p.color].every((a) => !a || axisAtFactory(ws, g, a)) &&
+    (p.color?.stat ?? 'median') === 'median'
+  );
 }
 
 /**
@@ -48,9 +53,10 @@ export function resetPanel(tab: PlotPanelTab, p: PlotSpec, g: Group, w: Workspac
     gateView ? DEFAULT_FIGURE : TILE_FIGURE,
   );
   if (tab !== 'axis') return;
-  for (const a of [p.x, p.y]) {
+  for (const a of [p.x, p.y, p.color]) {
     if (!a) continue;
     resetAxisToFactory(w, g, a);
-    if (gateView) g.axisDefaults[a.channel] = { ...a };
+    if (gateView) g.axisDefaults[a.channel] = axisOnly(a);
   }
+  if (p.color) p.color.stat = 'median';
 }

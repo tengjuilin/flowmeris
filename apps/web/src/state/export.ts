@@ -33,6 +33,9 @@ export function plotSource(plot: PlotSpec, sampleId?: string): PlotExportSource 
     transforms: {
       x: st.ws.transforms[plot.x.transform],
       y: plot.y ? st.ws.transforms[plot.y.transform] : undefined,
+      ...(plot.kind === 'pseudocolor-channel' && plot.color
+        ? { color: st.ws.transforms[plot.color.transform] }
+        : {}),
     },
     generator: `Flowmeris ${APP_INFO.version} (${APP_INFO.commit})`,
   };

@@ -16,8 +16,31 @@ export const AxisSpecSchema = z.object({
 });
 export type AxisSpec = z.infer<typeof AxisSpecSchema>;
 
-export const PlotKindSchema = z.enum(['dot', 'pseudocolor', 'density', 'contour', 'zebra', 'histogram']);
+/**
+ * `pseudocolor` is shown as "Pseudocolor density" (colored by local event density); `pseudocolor-channel`
+ * colors each point by a third channel, its `color` axis.
+ */
+export const PlotKindSchema = z.enum([
+  'dot',
+  'pseudocolor',
+  'pseudocolor-channel',
+  'density',
+  'contour',
+  'zebra',
+  'histogram',
+]);
 export type PlotKind = z.infer<typeof PlotKindSchema>;
+
+/** What a pixel of a Pseudocolor channel plot shows of the color channel's values of its events. */
+export const ColorStatSchema = z.enum(['median', 'mean', 'max']);
+export type ColorStat = z.infer<typeof ColorStatSchema>;
+
+/**
+ * The color axis of a Pseudocolor channel plot: a channel, its scale and range (as an x or y axis; colors
+ * span the range), and the statistic of the values of each pixel's events.
+ */
+export const ColorAxisSchema = AxisSpecSchema.extend({ stat: ColorStatSchema.default('median') });
+export type ColorAxis = z.infer<typeof ColorAxisSchema>;
 
 export const ContourSpecSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('equal-prob'), pct: z.union([z.literal(2), z.literal(5), z.literal(10)]) }),
@@ -64,6 +87,8 @@ export const PlotSpecSchema = z.object({
   kind: PlotKindSchema,
   x: AxisSpecSchema,
   y: AxisSpecSchema.optional(),
+  /** Pseudocolor channel plots: the channel coloring the points; kept when the plot type changes. */
+  color: ColorAxisSchema.optional(),
   style: PlotStyleSchema,
   /** One set of settings whatever the axes' channels; omitted = on. */
   styleFollow: z.boolean().optional(),
@@ -87,6 +112,8 @@ export const RefPlotSchema = z.object({
   kind: PlotKindSchema,
   x: AxisSpecSchema,
   y: AxisSpecSchema.optional(),
+  /** Pseudocolor channel plots: the channel coloring the points; kept when the plot type changes. */
+  color: ColorAxisSchema.optional(),
   style: PlotStyleSchema,
   /** Overlay the population being gated, in its color. */
   backgate: z.boolean().default(false),
@@ -104,6 +131,8 @@ export const PlotCellSchema = z.object({
   kind: PlotKindSchema,
   x: AxisSpecSchema,
   y: AxisSpecSchema.optional(),
+  /** Pseudocolor channel plots: the channel coloring the points; kept when the plot type changes. */
+  color: ColorAxisSchema.optional(),
   style: PlotStyleSchema,
 });
 export type PlotCell = z.infer<typeof PlotCellSchema>;

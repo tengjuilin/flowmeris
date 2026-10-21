@@ -1,6 +1,8 @@
 import {
   type AxisSpec,
+  type ColorAxis,
   type Group,
+  type PlotSpec,
   type Sample,
   type Transform,
   type Workspace,
@@ -137,4 +139,34 @@ export function defaultChannels(ws: Workspace, g: Group): [string, string] {
   const x = pick(/^FSC-A$/i) ?? pick(/^FSC/i) ?? names[0] ?? g.channels[0] ?? '';
   const y = pick(/^SSC-A$/i) ?? pick(/^SSC/i) ?? names.find((n) => n !== x) ?? x;
   return [x, y];
+}
+
+/** Just the axis fields of `a` (a color axis without its statistic), to save as a channel's default. */
+export function axisOnly(a: AxisSpec): AxisSpec {
+  return { channel: a.channel, comp: a.comp, transform: a.transform, range: [a.range[0], a.range[1]] };
+}
+
+/**
+ * The channel a new Pseudocolor channel plot colors by: the first of the group's channels that is on
+ * neither axis, a fluorescence channel before scatter, time and others; else the x channel.
+ */
+export function defaultColorChannel(ws: Workspace, g: Group, x: string, y: string | undefined): string {
+  const s = groupSample(ws, g);
+  const free = g.channels.filter((c) => c !== x && c !== y);
+  const fluor = free.find((c) => s?.channels.find((ch) => ch.pnn === c)?.kind === 'fluor');
+  return fluor ?? free.find((c) => s?.channels.find((ch) => ch.pnn === c)?.kind !== 'time') ?? free[0] ?? x;
+}
+
+/** The group's default axis for `channel` as a color axis, coloring by the median (call inside `mutate`). */
+export function defaultColorAxis(ws: Workspace, g: Group, channel: string): ColorAxis {
+  return { ...axisOnly(defaultAxis(ws, g, channel)), stat: 'median' };
+}
+
+/**
+ * Gives a Pseudocolor channel plot without a color axis its default one (`defaultColorChannel`); other
+ * plots are left alone, and keep a color axis they have for when they are switched back (call inside `mutate`).
+ */
+export function ensureColorAxis(ws: Workspace, g: Group, p: Pick<PlotSpec, 'kind' | 'x' | 'y' | 'color'>) {
+  if (p.kind !== 'pseudocolor-channel' || p.color) return;
+  p.color = defaultColorAxis(ws, g, defaultColorChannel(ws, g, p.x.channel, p.y?.channel));
 }

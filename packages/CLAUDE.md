@@ -15,7 +15,7 @@ and is imported by name (`@flowmeris/stats`), never by path. Unit tests sit next
 | `stats` | summary statistics, percentiles, frequencies, Student t | – | M-STAT-* |
 | `density` | 1D/2D binning, smoothing, contour levels and lines, replicate histograms for ridges | – | M-PLOT-BIN, -SMOOTH, -CONTOUR-*, -RIDGE-COMBINE |
 | `gating` | gate geometry, event membership, population bitsets | model, compensation | M-GATE-* |
-| `render` | colormaps, 2D raster, histogram, PNG encoder (ADR-0001) | model, density | M-PLOT-PSEUDO, -DENSITY |
+| `render` | colormaps, 2D raster, histogram, PNG encoder (ADR-0001) | model, density | M-PLOT-PSEUDO, -PSEUDO-CHANNEL, -DENSITY |
 | `gatingml` | Gating-ML 2.0 reader and evaluator (ISAC compliance suite) | model, compensation, gating, transforms | M-GATE-* |
 | `table` | statistics table: derived columns, formulas, replicate aggregation, table import | model, stats | M-STAT-AGG, -NORM, -EXPR |
 | `export` | statistics CSV, Gating-ML writer, gated events as FCS/CSV | model, compensation, fcs | M-EXPORT-* |
@@ -45,5 +45,5 @@ Every package except `model` and `testkit` may use `testkit` in its tests.
 | `model` | `schema/`: one file per section of the workspace schema (`transform`, `compensation`, `sample`, `gate`, `plot`, `figure`, `ridge`, `table`, `chart`, `workspace`; `common.ts` holds the shared `Num`, `Id`, `HexColor` and is not exported); `canonical.ts`, `ids.ts`, `workspace.ts` (helpers), `storage.ts` |
 | `engine` | `engine.ts`: the `Engine` facade, which loads a request's sample and columns and calls `columns.ts` (loading, linear, compensated and transformed columns), `populations.ts` (keys, bitsets, indices, counts) and `handlers/` (`stats`, `raster` with histograms, `preview`, `events`); `keys.ts` (`KERNEL_VERSION`, cache keys, fingerprints), `memo.ts`, `lru.ts`, `storage-memory.ts` |
 | `fcs` | `parse.ts` (`parseFcs`) → `header.ts`, `text.ts`, `dataset.ts` (keywords, DATA offsets, channel parameters) → `data.ts` (binary and ASCII decoders); `linearize.ts`, `write.ts` |
-| `render` | `colormaps.ts`, `raster2d.ts`, `histogram.ts`, `png.ts` (including `encodePngCompressed`) |
+| `render` | `colormaps.ts`, `raster2d.ts` (with `channelColor.ts`: Pseudocolor channel plots' colors), `histogram.ts`, `png.ts` (including `encodePngCompressed`) |
 | `stats` | `summary.ts` (`summarize`, frequencies, SEM), `percentile.ts` (numpy-linear percentiles, rank selection), `tdist.ts` (Student's t, CI95) |

@@ -16,7 +16,7 @@ export function drill(popId: string) {
 }
 
 /** The fields the plot-type and axis pickers edit; shared by saved plots and reference plots. */
-export type PlotAxes = Pick<PlotSpec, 'kind' | 'x' | 'y' | 'style'>;
+export type PlotAxes = Pick<PlotSpec, 'kind' | 'x' | 'y' | 'color' | 'style'>;
 export type EditAxes = (label: string, fn: (p: PlotAxes, g: Group, w: Workspace) => void) => void;
 
 /** Which of a group's plots a settings panel edits: the Gate view's, the Tiles view's, or the Plot view's grid. */

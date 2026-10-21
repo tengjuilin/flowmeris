@@ -15,6 +15,7 @@ export type PlotCard =
   | 'baseFont'
   | 'xaxis'
   | 'yaxis'
+  | 'caxis'
   | 'ticks'
   | 'titleText'
   | 'tickText'
@@ -39,7 +40,11 @@ const plotPanel = (key: string, name: string): PanelSpec<PlotPanelTab, PlotCard>
       label: 'Figure',
       cards: { plot: 'Plot', overlay: 'Sample overlay', display: 'Display' },
     },
-    { id: 'axis', label: 'Axis', cards: { xaxis: 'X axis', yaxis: 'Y axis', ticks: 'Ticks and spine' } },
+    {
+      id: 'axis',
+      label: 'Axis',
+      cards: { xaxis: 'X axis', yaxis: 'Y axis', caxis: 'Color axis', ticks: 'Ticks and spine' },
+    },
     {
       id: 'text',
       label: 'Text',

@@ -1,7 +1,7 @@
 import type { PlotSpec, Workspace } from '@flowmeris/model';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_FIGURE } from './figure.ts';
-import { axisLabel, plotAriaLabel, plotBox } from './plotLayout.ts';
+import { axisLabel, colorBarLayout, plotAriaLabel, plotBox } from './plotLayout.ts';
 
 const plot = (figure: Partial<typeof DEFAULT_FIGURE> = {}, kind = 'dot'): PlotSpec =>
   ({
@@ -11,6 +11,12 @@ const plot = (figure: Partial<typeof DEFAULT_FIGURE> = {}, kind = 'dot'): PlotSp
     y: { channel: 'FL2-A', comp: 'group', transform: 't', range: [0, 1] },
     style: { figure: { ...DEFAULT_FIGURE, ...figure } },
   }) as unknown as PlotSpec;
+
+/** A Pseudocolor channel plot colored by FL3-A. */
+const colored = (figure: Partial<typeof DEFAULT_FIGURE> = {}): PlotSpec => ({
+  ...plot(figure, 'pseudocolor-channel'),
+  color: { channel: 'FL3-A', comp: 'group', transform: 't', range: [0, 1], stat: 'median' },
+});
 
 describe('plotBox', () => {
   it('without a box aspect ratio, fills the space given, less the margins', () => {
@@ -60,5 +66,34 @@ describe('axisLabel', () => {
   it('describe the plot for screen readers', () => {
     expect(plotAriaLabel(ws, 's', plot())).toBe('dot plot of CD4 :: FL1-A versus FL2-A');
     expect(plotAriaLabel(ws, 's', plot({}, 'histogram'))).toBe('histogram plot of CD4 :: FL1-A');
+    expect(plotAriaLabel(ws, 's', plot({}, 'pseudocolor'))).toBe(
+      'pseudocolor density plot of CD4 :: FL1-A versus FL2-A',
+    );
+    expect(plotAriaLabel(ws, 's', colored())).toBe(
+      'pseudocolor channel plot of CD4 :: FL1-A versus FL2-A, colored by FL3-A',
+    );
+  });
+
+  it('names the color axis by its channel, or its custom title', () => {
+    expect(axisLabel(ws, 's', colored(), 'color')).toBe('FL3-A');
+    expect(axisLabel(ws, 's', colored({ colorTitle: 'IL-2' }), 'color')).toBe('IL-2');
+  });
+});
+
+describe('color bar', () => {
+  it('widens the right margin of a Pseudocolor channel plot only, while shown', () => {
+    const r = (p: PlotSpec) => plotBox(p, 400, 300).margin.r;
+    expect(r(colored())).toBeGreaterThan(r(plot()));
+    expect(r(colored({ colorBar: false }))).toBe(r(plot()));
+    expect(r({ ...colored(), kind: 'pseudocolor' })).toBe(r(plot()));
+    expect(plotBox(colored(), 400, 300, true).margin.r).toBe(4);
+  });
+
+  it('places the title right of the tick labels, nearer without them', () => {
+    const on = colorBarLayout(colored())!;
+    const off = colorBarLayout(colored({ showTickLabels: false }))!;
+    expect(on.titleX).toBeGreaterThan(on.labelX);
+    expect(off.titleX).toBeLessThan(on.titleX);
+    expect(on.width).toBeGreaterThan(on.titleX);
   });
 });

@@ -4,6 +4,8 @@ import {
   axisAtFactory,
   defaultAxis,
   defaultChannels,
+  defaultColorChannel,
+  ensureColorAxis,
   factoryAxis,
   registerTransform,
   resetAxisToFactory,
@@ -94,5 +96,43 @@ describe('factory axes', () => {
     expect(axisAtFactory(ws, g, a)).toBe(false);
     resetAxisToFactory(ws, g, a);
     expect(a).toEqual(factoryAxis(ws, g, 'FL1-A'));
+  });
+});
+
+describe('color axis (Pseudocolor channel plots)', () => {
+  it('colors by the first fluorescence channel on neither axis, else the first other non-time one', () => {
+    const { ws, g } = setup([...CHANNELS, { pnn: 'FL2-A', kind: 'fluor' as const, pnr: 512 }]);
+    expect(defaultColorChannel(ws, g, 'FSC-A', 'SSC-A')).toBe('FL1-A');
+    expect(defaultColorChannel(ws, g, 'FL1-A', 'SSC-A')).toBe('FL2-A');
+    const two = setup(CHANNELS.slice(0, 4));
+    expect(defaultColorChannel(two.ws, two.g, 'FSC-A', 'SSC-A')).toBe('FSC-H');
+  });
+
+  it('gives a new Pseudocolor channel plot its default color axis, coloring by the median', () => {
+    const { ws, g } = setup(CHANNELS);
+    const p = newPlot(ws, g, 'root', 'pseudocolor-channel', ['FSC-A', 'SSC-A']);
+    expect(p.color).toEqual({ ...defaultAxis(ws, g, 'FL1-A'), stat: 'median' });
+    expect(newPlot(ws, g, 'root', 'pseudocolor', ['FSC-A', 'SSC-A']).color).toBeUndefined();
+  });
+
+  it('keeps a color axis the plot has, and leaves other plot types alone', () => {
+    const { ws, g } = setup(CHANNELS);
+    const p = newPlot(ws, g, 'root', 'dot', ['FSC-A', 'SSC-A']);
+    ensureColorAxis(ws, g, p);
+    expect(p.color).toBeUndefined();
+    p.kind = 'pseudocolor-channel';
+    p.color = { ...defaultAxis(ws, g, 'FSC-H'), stat: 'max' };
+    ensureColorAxis(ws, g, p);
+    expect(p.color.channel).toBe('FSC-H');
+    expect(p.color.stat).toBe('max');
+  });
+
+  it('passes a Pseudocolor channel plot and its color axis on to the Tiles plot', () => {
+    const { ws, g } = setup(CHANNELS);
+    const p = newPlot(ws, g, 'root', 'pseudocolor-channel', ['FSC-A', 'SSC-A']);
+    p.color = { ...p.color!, stat: 'mean' };
+    const t = newTilePlot(ws, g, 'root');
+    expect(t.kind).toBe('pseudocolor-channel');
+    expect(t.color).toEqual(p.color);
   });
 });

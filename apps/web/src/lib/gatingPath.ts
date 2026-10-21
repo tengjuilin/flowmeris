@@ -42,6 +42,10 @@ export function plotForGate(g: Group, popId: string, gate: Gate): { plot: PlotSp
       DEFAULT_STYLE,
   };
   if (!is1d) plot.y = axes[1]!;
+  if (plot.kind === 'pseudocolor-channel') {
+    if (base?.color) plot.color = base.color;
+    else plot.kind = 'pseudocolor';
+  }
   return { plot, real: false };
 }
 

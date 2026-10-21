@@ -8,7 +8,8 @@ import {
   logContourLevels,
   smooth2d,
 } from '@flowmeris/density';
-import { type PlotStyle, REFERENCE_PLOT_PX } from '@flowmeris/model';
+import { type ColorStat, type PlotStyle, REFERENCE_PLOT_PX } from '@flowmeris/model';
+import { channelColorAtPixels, pixelsByValue } from './channelColor.ts';
 import { colormapLut, hex } from './colormaps.ts';
 
 // ---------------------------------------------------------------------------
@@ -16,7 +17,7 @@ import { colormapLut, hex } from './colormaps.ts';
 // ---------------------------------------------------------------------------
 
 export interface Raster2DInput {
-  kind: 'dot' | 'pseudocolor' | 'density' | 'contour' | 'zebra';
+  kind: 'dot' | 'pseudocolor' | 'pseudocolor-channel' | 'density' | 'contour' | 'zebra';
   width: number;
   height: number;
   x: ArrayLike<number>;
@@ -28,6 +29,8 @@ export interface Raster2DInput {
   style: PlotStyle;
   /** Dot color (#rrggbb); outliers take the style's. */
   dotColor: string;
+  /** Pseudocolor channel plots: the color channel's values (transformed), its range and statistic. */
+  color?: { values: ArrayLike<number>; range: [number, number]; stat: ColorStat };
 }
 
 export interface Raster2DOutput {
@@ -214,7 +217,8 @@ const maxOf = (v: Float64Array) => {
 export function raster2d(inp: Raster2DInput): Raster2DOutput {
   const { width: w, height: h, style } = inp;
   // Occupied image pixels: where points (dots, pseudocolor, outliers) are drawn.
-  const counts = bin2d(inp.x, inp.y, inp.indices, inp.xRange, inp.yRange, w, h).grid.values;
+  const pixels = bin2d(inp.x, inp.y, inp.indices, inp.xRange, inp.yRange, w, h);
+  const counts = pixels.grid.values;
   const rgba = new Uint8ClampedArray(w * h * 4);
   const scale = w / REFERENCE_PLOT_PX;
   const lut = colormapLut(style.colormap);
@@ -228,6 +232,17 @@ export function raster2d(inp: Raster2DInput): Raster2DOutput {
     const dot = hex(inp.dotColor);
     paintPoints(rgba, w, h, counts, point, () => dot);
     return { width: w, height: h, rgba, contours: [], stats: densityGrid(inp, 0).stats };
+  }
+  if (inp.kind === 'pseudocolor-channel') {
+    if (!inp.color) throw new Error('A Pseudocolor channel plot needs a color channel');
+    const { values, range, stat } = inp.color;
+    const t = channelColorAtPixels({ ...inp, c: values, cRange: range, stat });
+    // Lowest values first, so the points of the highest are drawn over the others.
+    for (const i of pixelsByValue(t)) {
+      const [r, g, b] = mapColor(t[i] as number);
+      putPixel(rgba, w, h, i % w, h - 1 - Math.floor(i / w), r, g, b, point);
+    }
+    return { width: w, height: h, rgba, contours: [], stats: pixels.stats };
   }
   const isContour = inp.kind === 'contour' || inp.kind === 'zebra';
   const { grid: dens, stats } = densityGrid(inp, inp.kind === 'pseudocolor' ? 0 : 1);

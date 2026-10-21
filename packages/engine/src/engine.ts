@@ -172,7 +172,8 @@ export class Engine {
     const s = await this.sample(req.sampleId);
     const plot = req.plot;
     if (plot.kind === 'histogram' || !plot.y) throw new Error('raster() needs a 2D plot');
-    await this.columns.ensure(ctx, s, [plot.population], [plot.x, plot.y]);
+    const color = plot.kind === 'pseudocolor-channel' && plot.color ? [plot.color] : [];
+    await this.columns.ensure(ctx, s, [plot.population], [plot.x, plot.y, ...color]);
     return rasterOf(this.columns, this.pops, ctx, s, req);
   }
 

@@ -11,8 +11,11 @@
 | Range (H, histograms) | drag horizontally | drag either edge |
 | Bisector (B, histograms) | click where to split; the percentages on each side are shown before you click | drag the vertical line |
 
-- **Plot type** (in the settings panel's Figure tab, and when adding a Plot grid plot) is Pseudocolor,
-  Dot, Density, Contour, Zebra or Histogram ([definitions](../methods/plots#plot-types)). A zebra plot is
+- **Plot type** (in the settings panel's Figure tab, and when adding a Plot grid plot) is Pseudocolor
+  density, Pseudocolor channel, Dot, Density, Contour, Zebra or Histogram
+  ([definitions](../methods/plots#plot-types)). Pseudocolor density colors each point by how many events
+  are around it. Pseudocolor channel colors each point by a third channel of your choice, as FlowJo's
+  color mapping does; see [Color axis](#color-axis) below. A zebra plot is
   a contour plot whose bands are each filled with a gradient, from the outer color (black) at a band's
   outer line to the inner color (white) at its inner line. Gates are drawn and edited the same way on
   every 2D type.
@@ -69,6 +72,24 @@
 Gates are defined in the scale of the axes they were drawn on. If you later change an axis scale, the
 gate is drawn mapped onto the new scale, and its membership does not change
 ([why](../methods/gating#m-gate-space-coordinates-of-a-gate)).
+
+## Color axis
+
+A **Pseudocolor channel** plot colors each point by a third channel, FlowJo's color mapping. Its color
+axis is set in the settings panel's Axis tab, in the **Color axis** card below the Y axis:
+
+- **Channel**: the channel that colors the points. A new Pseudocolor channel plot takes the first
+  fluorescence channel on neither axis. The color channel is kept when you change the plot type or the X
+  and Y channels.
+- **Scale and range**, as for the X and Y axes: the color map spans the range, lowest values at its
+  first color. Values beyond the range take the color at its end.
+- **Color by**: the **Median** (default), **Mean** or **Maximum** of the color channel's values of the
+  events drawn at a point. Where points overlap, the higher value is drawn on top.
+- **Show color bar** (on by default) draws the color map with the color axis's ticks and title right of
+  the plot, in exports too. **Title** replaces the channel name on it.
+
+The **Color map** is picked in the Figure tab's Display card, as for a pseudocolor density plot
+([definition](../methods/plots#m-plot-pseudo-channel-points-colored-by-a-third-channel)).
 
 ## Reference plots
 

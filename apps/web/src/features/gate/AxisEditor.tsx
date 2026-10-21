@@ -2,13 +2,31 @@ import type { AxisSpec, PlotSpec } from '@flowmeris/model';
 import type { ReactNode } from 'react';
 import { type ApplyAxis, AxisFields } from '../../components/controls/AxisFields.tsx';
 import { Card } from '../../components/ui/settings/index.ts';
-import { axisAtFactory, groupSample, resetAxisToFactory } from '../../lib/axisDefaults.ts';
+import {
+  axisAtFactory,
+  axisOnly,
+  defaultColorAxis,
+  groupSample,
+  resetAxisToFactory,
+} from '../../lib/axisDefaults.ts';
 import type { PlotCard } from '../../lib/panelSpecs.ts';
 import type { CardOf } from '../../lib/settingsPanel.ts';
-import { type PlotTarget, axisChannelSetter, plotsOf, targetEdit } from '../../state/commands/plots.ts';
+import {
+  type PlotTarget,
+  axisChannelSetter,
+  editPlot,
+  plotsOf,
+  targetEdit,
+} from '../../state/commands/plots.ts';
 import { useGroup, useStore } from '../../state/store.ts';
 
-/** An axis card: channel, scale and range, plus `children` (the axis title). */
+const CARD = { x: 'xaxis', y: 'yaxis', color: 'caxis' } as const;
+const TITLE = { x: 'X axis', y: 'Y axis', color: 'Color axis' } as const;
+
+/**
+ * An axis card: channel, scale and range, plus `children` (the axis title). The color axis of a
+ * Pseudocolor channel plot is edited as the x and y axes; a new color channel keeps the statistic.
+ */
 export function AxisEditor({
   which,
   plot,
@@ -17,7 +35,7 @@ export function AxisEditor({
   extra,
   target = 'gate',
 }: {
-  which: 'x' | 'y';
+  which: 'x' | 'y' | 'color';
   plot: PlotSpec;
   card: CardOf<PlotCard>;
   /** Which plots to edit; only a Gate-view plot's scales become the channel's defaults. */
@@ -38,16 +56,32 @@ export function AxisEditor({
         const g = w.groups.find((x) => x.id === group.id)!;
         const a = plotsOf(g, target).find((x) => x.id === plot.id)![which]!;
         fn(a, w, g);
-        if (shared && target === 'gate') g.axisDefaults[a.channel] = { ...a };
+        if (shared && target === 'gate') g.axisDefaults[a.channel] = axisOnly(a);
       },
       `axis:${plot.id}:${which}:${label}`,
     );
   const axis = plot[which] as AxisSpec;
   const sample = groupSample(ws, group);
-  const title = `${which.toUpperCase()} axis`;
+  const title = TITLE[which];
+  const setChannel = (ch: string) =>
+    which === 'color'
+      ? editPlot(
+          group.id,
+          plot.id,
+          'Change color channel',
+          (p, g, w) => {
+            p.color = { ...defaultColorAxis(w, g, ch), stat: p.color?.stat ?? 'median' };
+          },
+          target,
+        )
+      : axisChannelSetter(
+          group,
+          plot,
+          target === 'gate' ? undefined : targetEdit(group.id, plot.id, target),
+        )(which, ch);
   return (
     <Card
-      {...card(which === 'x' ? 'xaxis' : 'yaxis', {
+      {...card(CARD[which], {
         changed: !!extra?.changed || !axisAtFactory(ws, group, axis),
         onReset: () => {
           extra?.reset();
@@ -57,16 +91,7 @@ export function AxisEditor({
     >
       <label className="field">
         Channel
-        <select
-          value={axis.channel}
-          onChange={(e) =>
-            axisChannelSetter(
-              group,
-              plot,
-              target === 'gate' ? undefined : targetEdit(group.id, plot.id, target),
-            )(which, e.target.value)
-          }
-        >
+        <select value={axis.channel} onChange={(e) => setChannel(e.target.value)}>
           {group.channels.map((c) => {
             const pns = sample?.channels.find((x) => x.pnn === c)?.pns;
             return (
