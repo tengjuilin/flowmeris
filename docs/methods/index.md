@@ -8,7 +8,7 @@ definition used.
 |---|---|---|
 | Reading FCS files | [FCS parsing](./fcs) | M-FCS-HEADER, -TEXT, -OFFSETS, -DATA, -LIN, -WRITE |
 | Spillover correction | [Compensation](./compensation) | M-COMP-MODEL, -PARSE, -INV, -COND |
-| Axis scales | [Transforms](./transforms) | M-TR-FLIN, -FLOG, -LOGNP, -FASINH, -LOGICLE, -HYPERLOG, -TICKS |
+| Axis scales | [Transforms](./transforms) | M-TR-FLIN, -FLOG, -LOGNP, -FASINH, -LOGICLE, -HYPERLOG, -BIEX, -MILTENYI, -TICKS |
 | Gates and populations | [Gating](./gating) | M-GATE-SPACE, -RECT, -POLY, -ELLIPSE, -QUAD, -SPIDER, -CURLY, -TREE |
 | Population statistics | [Statistics](./statistics) | M-STAT-* |
 | Visualization | [Plots](./plots) | M-PLOT-BIN, -SMOOTH, -PSEUDO, -DENSITY, -CONTOUR-EQP, -CONTOUR-LOG, -ZEBRA, M-EXPORT-PLOT |

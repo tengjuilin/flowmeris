@@ -98,12 +98,16 @@ function offsetQuadrantRects(
   return body;
 }
 
+/** Scales Gating-ML has no element for, written as `flowmeris:` elements only Flowmeris reads (ADR-0014). */
+const EXTENSION_KINDS: ReadonlySet<Transform['kind']> = new Set(['biex', 'miltenyi']);
+
 function transformXml(id: string, t: Transform): string {
+  const ns = EXTENSION_KINDS.has(t.kind) ? 'flowmeris' : 'transforms';
   const attrs = Object.entries(t)
     .filter(([k]) => k !== 'kind')
-    .map(([k, v]) => `transforms:${k}="${num(v as number)}"`)
+    .map(([k, v]) => `${ns}:${k}="${num(v as number)}"`)
     .join(' ');
-  return `  <transforms:transformation transforms:id="${esc(id)}">\n    <transforms:${t.kind} ${attrs} />\n  </transforms:transformation>\n`;
+  return `  <transforms:transformation transforms:id="${esc(id)}">\n    <${ns}:${t.kind} ${attrs} />\n  </transforms:transformation>\n`;
 }
 
 export interface GmlExportOptions {

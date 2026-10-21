@@ -67,7 +67,7 @@ export function formatLinear(v: number): string {
  * Axis ticks for a transform over a display range [lo, hi] in scale units.
  *
  * - flin: nice linear ticks in data units.
- * - flog, fasinh, logicle, hyperlog: decade ticks ±10^k (major, labeled) plus
+ * - flog, fasinh, logicle, hyperlog, biex, miltenyi: decade ticks ±10^k (major, labeled) plus
  *   2–9 × 10^k minor ticks, and 0 when it is on scale. Major labels that would
  *   fall closer than `minLabelGap` (scale units) to an already-labeled tick
  *   are suppressed, which handles crowding around zero.
@@ -91,21 +91,12 @@ export function axisTicks(
     }
     return ticks;
   }
-  const dLo = inverse(lo);
-  const dHi = inverse(hi);
-  const maxAbs = Math.max(Math.abs(dLo), Math.abs(dHi), 1);
-  const kMax = Math.ceil(Math.log10(maxAbs)) + 1;
-  const kMin = def.kind === 'flog' ? Math.floor(Math.log10(Math.max(dLo, Number.MIN_VALUE))) - 1 : -1;
-  const candidates: { value: number; major: boolean; sign: number; k: number }[] = [];
-  if (def.kind !== 'flog') candidates.push({ value: 0, major: true, sign: 0, k: 0 });
-  for (let k = kMin; k <= kMax; k++) {
-    for (const sign of def.kind === 'flog' ? [1] : [1, -1]) {
-      for (let m = 1; m <= 9; m++) candidates.push({ value: sign * m * 10 ** k, major: m === 1, sign, k });
-    }
-  }
-  for (const c of candidates) {
+  for (const c of decadeCandidates(def.kind === 'flog', inverse(lo), inverse(hi))) {
     const pos = forward(c.value);
     if (!inRange(pos)) continue;
+    // A scale held at its ends (biex) maps values past them onto the end: no tick there.
+    const back = inverse(pos);
+    if (Math.abs(back - c.value) > 1e-6 * Math.max(1, Math.abs(c.value))) continue;
     ticks.push({ value: c.value, pos, major: c.major, label: c.major ? formatPow10(c.sign, c.k) : '' });
   }
   ticks.sort((a, b) => a.pos - b.pos);
@@ -118,6 +109,25 @@ export function axisTicks(
     } else kept.push(t.pos);
   }
   return ticks;
+}
+
+/** 0 (unless `logOnly`) and ±m·10^k, m = 1…9, for the decades spanning data values [dLo, dHi]. */
+function decadeCandidates(
+  logOnly: boolean,
+  dLo: number,
+  dHi: number,
+): { value: number; major: boolean; sign: number; k: number }[] {
+  const maxAbs = Math.max(Math.abs(dLo), Math.abs(dHi), 1);
+  const kMax = Math.ceil(Math.log10(maxAbs)) + 1;
+  const kMin = logOnly ? Math.floor(Math.log10(Math.max(dLo, Number.MIN_VALUE))) - 1 : -1;
+  const candidates: { value: number; major: boolean; sign: number; k: number }[] = [];
+  if (!logOnly) candidates.push({ value: 0, major: true, sign: 0, k: 0 });
+  for (let k = kMin; k <= kMax; k++) {
+    for (const sign of logOnly ? [1] : [1, -1]) {
+      for (let m = 1; m <= 9; m++) candidates.push({ value: sign * m * 10 ** k, major: m === 1, sign, k });
+    }
+  }
+  return candidates;
 }
 
 function priority(t: Tick): number {

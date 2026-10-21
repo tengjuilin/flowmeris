@@ -66,6 +66,20 @@ function setup() {
     },
     ['in'],
   );
+  // Scales Gating-ML has no element for go out as flowmeris: extension elements (ADR-0014).
+  const bx: Transform = { kind: 'biex', T: 1024, width: -10, pos: 4.41854, neg: 0 };
+  const ml: Transform = { kind: 'miltenyi', T: 1024, M: 3, L: 1 };
+  ws.transforms[transformId(bx)] = bx;
+  ws.transforms[transformId(ml)] = ml;
+  add(
+    {
+      id: 'biex',
+      parentPop: 'root',
+      dims: [d('FL1-H', transformId(bx)), d('FL2-H', transformId(ml))],
+      geometry: { kind: 'rect', min: [0.3, 0.25], max: [0.8, 0.9] },
+    },
+    ['in'],
+  );
   add(
     {
       id: 'poly',
@@ -176,6 +190,8 @@ describe('M-EXPORT-GML: Gating-ML export round trip', () => {
     const xml = exportGatingML(ws, g, { appVersion: 'test' });
     // The Gating-ML 2.0 schema allows no custom_info inside a Quadrant (FlowKit rejects such files).
     expect(xml).not.toMatch(/<gating:Quadrant [^>]*>\s*<data-type:custom_info/);
+    expect(xml).toMatch(/<flowmeris:biex flowmeris:T="1024" flowmeris:width="-10" /);
+    expect(xml).toMatch(/<flowmeris:miltenyi flowmeris:T="1024" flowmeris:M="3" flowmeris:L="1" /);
     const doc = parseGatingML(xml);
     const res = evaluateGatingML(doc, {
       channels: ds.channels.map((c) => c.pnn),
@@ -196,6 +212,9 @@ describe('M-EXPORT-GML: Gating-ML export round trip', () => {
       for (let e = 0; e < ds.eventCount; e++) if ((getBit(bits, e) ? 1 : 0) !== gm![e]) bad++;
       expect(bad, popId).toBe(0);
     }
+    const biexIn = Array.from(res.get('biex_in')!).filter((v) => v === 1).length;
+    expect(biexIn).toBeGreaterThan(0);
+    expect(biexIn).toBeLessThan(ds.eventCount);
     expect(sampleId).toBeTruthy();
   });
 });

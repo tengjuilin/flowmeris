@@ -144,7 +144,7 @@ export function AxisFields({
             <NumInput label="Decades M" value={def.M} onCommit={(M) => setDef({ ...def, M })} />
           </>
         )}
-        {def.kind === 'logicle' && (
+        {(def.kind === 'logicle' || def.kind === 'hyperlog') && (
           <>
             <NumInput label="Top T" value={def.T} onCommit={(T) => setDef({ ...def, T })} />
             <NumInput
@@ -155,6 +155,41 @@ export function AxisFields({
             />
             <NumInput label="Decades M" value={def.M} onCommit={(M) => setDef({ ...def, M })} />
             <NumInput label="Extra neg. A" value={def.A} onCommit={(A) => setDef({ ...def, A })} />
+          </>
+        )}
+        {def.kind === 'biex' && (
+          <>
+            <NumInput label="Top T" value={def.T} onCommit={(T) => setDef({ ...def, T })} />
+            <NumInput
+              label="Width basis"
+              value={def.width}
+              onCommit={(width) => setDef({ ...def, width })}
+              title="FlowJo's width basis (≤ −1): more negative compresses more data into the linear region"
+            />
+            <NumInput label="Positive decades" value={def.pos} onCommit={(pos) => setDef({ ...def, pos })} />
+            <NumInput
+              label="Negative decades"
+              value={def.neg}
+              onCommit={(neg) => setDef({ ...def, neg })}
+              title="Extra negative decades shown below zero"
+            />
+          </>
+        )}
+        {def.kind === 'miltenyi' && (
+          <>
+            <NumInput label="Top T" value={def.T} onCommit={(T) => setDef({ ...def, T })} />
+            <NumInput
+              label="Log decades M"
+              value={def.M}
+              onCommit={(M) => setDef({ ...def, M })}
+              title="Decades on the log part, from T·10^−M up to T"
+            />
+            <NumInput
+              label="Linear decades L"
+              value={def.L}
+              onCommit={(L) => setDef({ ...def, L })}
+              title="Width of the linear part through zero and the negatives, in decades of the log part"
+            />
           </>
         )}
         {def.kind === 'fasinh' && (

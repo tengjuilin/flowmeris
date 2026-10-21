@@ -22,7 +22,7 @@ features:
   - title: Local by construction
     details: FCS files are parsed, gated and summarized inside the browser tab. A Content-Security-Policy forbids network requests to anywhere but the app's own origin.
   - title: Standards-based
-    details: FCS 2.0–3.2 input, Gating-ML 2.0 gates and transforms (linear, log, logicle, arcsinh, hyperlog), FCS 3.1 and Gating-ML output.
+    details: FCS 2.0–3.2 input, Gating-ML 2.0 gates and transforms (linear, log, logicle, arcsinh, hyperlog), FlowJo biex and Miltenyi scales, FCS 3.1 and Gating-ML output.
   - title: Validated
     details: Golden tests against FlowKit and NumPy; the ISAC Gating-ML 2.0 compliance suite passes with exact event-level agreement.
 ---

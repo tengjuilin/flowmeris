@@ -18,6 +18,7 @@ Each record states a decision and why it was made. Code comments cite them by nu
 | [0011](./0011-bundled-figure-fonts) | Bundled figure fonts, embedded in every export | Amended by 0012, 0013 |
 | [0012](./0012-system-font-menu) | System fonts in the font menu, bundled fonts as fallbacks | Amended by 0013 |
 | [0013](./0013-standard-pdf-fonts) | Standard fonts in PDF and SVG exports, named, not embedded | Accepted |
+| [0014](./0014-non-gating-ml-scales) | Scales outside Gating-ML, exported as extension elements | Accepted |
 
 To add a record, copy the shape of an existing one (title, status, decision, why) into the next number
 and add it to this table and to the sidebar in `docs/.vitepress/config.ts`.

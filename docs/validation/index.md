@@ -27,7 +27,7 @@ listed in `fixtures/PROVENANCE.md`.
 | FCS parsing + linearization | 10 files (FCS 2.0, 3.0, 3.1; integer, float, log-amplified, gain, 290k-event 8-color) | event count and channel names exact; sampled rows, column sums, minima and maxima within 10⁻¹⁴ relative |
 | Files FlowKit cannot read | multi-dataset `$NEXTDATA` file; files with malformed keywords | all datasets parsed, issues reported as warnings |
 | Compensation | `$SPILLOVER` (8 colors) and external CSV matrix | within 10⁻⁹ relative |
-| Transforms | logicle (6 parameter sets), hyperlog (3), arcsinh (3), linear (2), log (2) over 108 points each, including negatives and values above T | within 10⁻¹⁰ relative |
+| Transforms | logicle (6 parameter sets), hyperlog (3), arcsinh (3), linear (2), log (2), FlowJo biex (4, FlowKit `WSPBiexTransform`), Miltenyi (3, NumPy) over 108 points each, including negatives and values above T | within 10⁻¹⁰ relative |
 | Gating | **Gating-ML 2.0 compliance suite**: 51 reference gates on `data1.fcs` (rectangles, ranges, polygons incl. non-simple, ellipses, 3-D ellipsoid, quadrants, ratio transforms, all transforms, spectrum matrices, Boolean and/or/not, parent references) | **exact**: 0 mismatching events of 13,367 for every gate |
 | Engine | gates defined through the app's data model, evaluated via the engine | exact against the ISAC truth files |
 | Statistics | mean, SD, median, min, max, geometric mean, 9 percentiles on 8 channels | within 10⁻¹²; percentiles exact on linear channels |
@@ -37,7 +37,7 @@ listed in `fixtures/PROVENANCE.md`.
 | Statistics edge cases | n = 0, 1, 2; ties; NaN; zeros and negatives (geometric mean); 10⁹ offset; 10⁻²⁰⁰ and 10³⁰⁰ magnitudes; for the mode, two peaks, an IQR of 0 and two equally tall bins | within 10⁻¹²; percentiles exact |
 | Replicate summaries | mean, SD, SEM, 95% CI half-width, median, CV, min, max, grouped by two variables (pandas); t quantiles and CDF for df 1 – 10⁵ (SciPy) | within 10⁻¹² (t distribution 10⁻¹⁰) |
 | Formula and normalization columns | log to bases 2, e, 3, 10 and ½; ln, log2, log10, exp, sqrt, abs, min, max, powers, precedence; ratio, percent and difference to reference rows, overall and within a variable | within 10⁻¹⁴ (formulas), 10⁻¹² (normalization) |
-| Inverse transforms | logicle (4 parameter sets), hyperlog (2), arcsinh (2), linear (2), log (2) over 60 points of [−0.2, 1.2] | within 10⁻¹⁰ |
+| Inverse transforms | logicle (4 parameter sets), hyperlog (2), arcsinh (2), linear (2), log (2), biex (4), Miltenyi (3) over 60 points of [−0.2, 1.2] | within 10⁻¹⁰ |
 | Binning and smoothing | 1-D and 2-D histograms (NumPy) with values on every bin edge, off-scale and NaN; Gaussian smoothing (SciPy, σ = 0.5 – 3.7 bins); histogram count / % of max / fraction; equal-probability and logarithmic contour levels; Scott bandwidth | counts exact; others within 10⁻¹² |
 | Gated events as FCS | raw and compensated events of three files written by the app, read by FlowKit | every value exact (float32) |
 | End-to-end | gates drawn in the browser on three 8-color samples, exported, re-evaluated by FlowKit | every population count identical |

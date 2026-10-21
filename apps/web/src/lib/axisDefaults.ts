@@ -6,7 +6,15 @@ import {
   type Workspace,
   transformId,
 } from '@flowmeris/model';
-import { asinhDefFromCofactor, linearDef, logDef, logicleDef } from '@flowmeris/transforms';
+import {
+  asinhDefFromCofactor,
+  biexDef,
+  hyperlogDef,
+  linearDef,
+  logDef,
+  logicleDef,
+  miltenyiDef,
+} from '@flowmeris/transforms';
 
 /** Default axes and the scale choices offered for an axis. */
 
@@ -22,31 +30,50 @@ export function groupSample(ws: Workspace, g: Group): Sample | undefined {
   return undefined;
 }
 
-export type ScaleKind = 'linear' | 'log' | 'logicle' | 'arcsinh';
+export type ScaleKind = 'linear' | 'log' | 'logicle' | 'arcsinh' | 'hyperlog' | 'biex' | 'miltenyi';
 
 export const SCALE_KINDS: { id: ScaleKind; label: string }[] = [
   { id: 'linear', label: 'Linear' },
   { id: 'log', label: 'Log10' },
   { id: 'logicle', label: 'Logicle (biexponential)' },
   { id: 'arcsinh', label: 'Arcsinh' },
+  { id: 'hyperlog', label: 'Hyperlog' },
+  { id: 'biex', label: 'Biex (FlowJo)' },
+  { id: 'miltenyi', label: 'Miltenyi' },
 ];
 
+const KIND_OF: Record<Transform['kind'], ScaleKind> = {
+  flin: 'linear',
+  flog: 'log',
+  fasinh: 'arcsinh',
+  logicle: 'logicle',
+  hyperlog: 'hyperlog',
+  biex: 'biex',
+  miltenyi: 'miltenyi',
+};
+
 export function scaleKindOf(t: Transform): ScaleKind {
-  return t.kind === 'flin'
-    ? 'linear'
-    : t.kind === 'flog'
-      ? 'log'
-      : t.kind === 'fasinh'
-        ? 'arcsinh'
-        : 'logicle';
+  return KIND_OF[t.kind];
 }
 
 /** Default transform of scale kind `k` with top of scale `top`. */
 export function transformOfKind(k: ScaleKind, top: number): Transform {
-  if (k === 'linear') return linearDef(top);
-  if (k === 'log') return logDef(top, Math.max(1, Math.round(Math.log10(top))));
-  if (k === 'logicle') return logicleDef(top);
-  return asinhDefFromCofactor(150, top);
+  switch (k) {
+    case 'linear':
+      return linearDef(top);
+    case 'log':
+      return logDef(top, Math.max(1, Math.round(Math.log10(top))));
+    case 'logicle':
+      return logicleDef(top);
+    case 'arcsinh':
+      return asinhDefFromCofactor(150, top);
+    case 'hyperlog':
+      return hyperlogDef(top);
+    case 'biex':
+      return biexDef(top);
+    case 'miltenyi':
+      return miltenyiDef(top);
+  }
 }
 
 /**

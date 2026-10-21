@@ -73,6 +73,7 @@ export default defineConfig({
             { text: '0011 Bundled figure fonts', link: '/adr/0011-bundled-figure-fonts' },
             { text: '0012 System font menu', link: '/adr/0012-system-font-menu' },
             { text: '0013 Standard PDF fonts', link: '/adr/0013-standard-pdf-fonts' },
+            { text: '0014 Scales outside Gating-ML', link: '/adr/0014-non-gating-ml-scales' },
           ],
         },
       ],

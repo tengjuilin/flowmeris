@@ -1,12 +1,14 @@
 import type { Transform } from '@flowmeris/model';
+import { Biex, Miltenyi } from './flowjo.ts';
 import { Hyperlog, Logicle } from './logicle.ts';
 
+export { BIEX_CHANNELS, Biex, Miltenyi, biexTable } from './flowjo.ts';
 export { Hyperlog, Logicle, LogicleParameterError, validateLogicle } from './logicle.ts';
 export * from './ticks.ts';
 
 /**
  * A scale transform: data units ↔ display (scale) units.
- * All Gating-ML 2.0 transforms map the top of scale T to 1.
+ * All transforms map the top of scale T to 1 (biex: the top of its lookup table).
  */
 export interface Scale {
   readonly def: Transform;
@@ -26,6 +28,8 @@ const LN10 = Math.LN10;
  *  fasinh  f(x) = (asinh(x·sinh(M·ln10)/T) + A·ln10) / ((M + A)·ln10)
  *  logicle f    = inverse of the biexponential B(y) (Moore & Parks 2012)
  *  hyperlog f   = inverse of the hyperlog function (Bagwell 2005)
+ *  biex     f    = FlowJo's biex lookup table, read linearly (M-TR-BIEX)
+ *  miltenyi f    = log above T·10^−M, its tangent line below (M-TR-MILTENYI)
  */
 export function makeScale(def: Transform): Scale {
   let apply: (x: number) => number;
@@ -64,6 +68,18 @@ export function makeScale(def: Transform): Scale {
       inverse = (y) => h.inverse(y);
       break;
     }
+    case 'biex': {
+      const b = new Biex(def.T, def.width, def.pos, def.neg);
+      apply = (x) => b.scale(x);
+      inverse = (y) => b.inverse(y);
+      break;
+    }
+    case 'miltenyi': {
+      const m = new Miltenyi(def.T, def.M, def.L);
+      apply = (x) => m.scale(x);
+      inverse = (y) => m.inverse(y);
+      break;
+    }
   }
   return {
     def,
@@ -95,6 +111,21 @@ export function logDef(max: number, decades = 5): Transform {
 /** Logicle with the common defaults W = 0.5, M = 4.5, A = 0. */
 export function logicleDef(T = 262144, W = 0.5, M = 4.5, A = 0): Transform {
   return { kind: 'logicle', T, W, M, A };
+}
+
+/** Hyperlog with the same defaults as logicle: W = 0.5, M = 4.5, A = 0. */
+export function hyperlogDef(T = 262144, W = 0.5, M = 4.5, A = 0): Transform {
+  return { kind: 'hyperlog', T, W, M, A };
+}
+
+/** FlowJo's biex defaults (FlowJo 10, as in FlowKit): width basis −10, 4.41854 positive decades, no extra negative. */
+export function biexDef(T = 262144, width = -10, pos = 4.41854, neg = 0): Transform {
+  return { kind: 'biex', T, width, pos, neg };
+}
+
+/** Miltenyi-style scale over M = 4 log decades and L = 1 linear decade (M-TR-MILTENYI). */
+export function miltenyiDef(T = 262144, M = 4, L = 1): Transform {
+  return { kind: 'miltenyi', T, M, L };
 }
 
 /**

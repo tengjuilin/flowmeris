@@ -148,6 +148,15 @@ function parseTransform(t: Node): GmlTransform {
     const n = t.hyperlog as Node;
     return { kind: 'hyperlog', T: p(n, 'T'), W: p(n, 'W'), M: p(n, 'M'), A: p(n, 'A') };
   }
+  // Flowmeris extension elements (ADR-0014); the namespace prefix is removed on parsing.
+  if (t.biex) {
+    const n = t.biex as Node;
+    return { kind: 'biex', T: p(n, 'T'), width: p(n, 'width'), pos: p(n, 'pos'), neg: p(n, 'neg') };
+  }
+  if (t.miltenyi) {
+    const n = t.miltenyi as Node;
+    return { kind: 'miltenyi', T: p(n, 'T'), M: p(n, 'M'), L: p(n, 'L') };
+  }
   if (t.fratio) {
     const n = t.fratio as Node;
     const dims = arr(n, 'fcs-dimension').map((d) => attr(d, 'name') ?? '');

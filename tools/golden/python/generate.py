@@ -209,7 +209,34 @@ def golden_transforms():
         t = fk.transforms.LogTransform(param_t=T, param_m=M)
         y = t.apply(pos.reshape(-1, 1)).ravel()
         cases.append({"kind": "flog", "params": {"T": T, "M": M}, "x": finite_list(pos), "y": finite_list(y)})
+    # FlowJo biex (FlowKit's port of FlowJo 10), channels 0…4096 scaled so channel 4096 is 1 (M-TR-BIEX).
+    for T, width, pos, neg in BIEX_PARAMS:
+        t = fk.transforms.WSPBiexTransform(negative=neg, width=width, positive=pos, max_value=T)
+        y = t.apply(xs.reshape(-1, 1)).ravel() / BIEX_CHANNELS
+        cases.append({"kind": "biex", "params": {"T": T, "width": width, "pos": pos, "neg": neg}, "x": finite_list(xs), "y": finite_list(y)})
+    for T, M, L in MILTENYI_PARAMS:
+        y = miltenyi_apply(xs, T, M, L)
+        cases.append({"kind": "miltenyi", "params": {"T": T, "M": M, "L": L}, "x": finite_list(xs), "y": finite_list(y)})
     (OUT / "transforms.json").write_text(json.dumps(cases))
+
+
+BIEX_CHANNELS = 4096
+BIEX_PARAMS = [(262144, -10, 4.41854, 0), (262144, -100, 4.41854, 1), (262144, -1, 4.5, 0.5), (10000, -30, 4, 0)]
+MILTENYI_PARAMS = [(262144, 4, 1), (10000, 3.5, 2), (1000, 3, 0)]
+
+
+def miltenyi_apply(x: np.ndarray, T: float, M: float, L: float) -> np.ndarray:
+    """M-TR-MILTENYI: log10(x/x0) above x0 = T·10^-M, its tangent (x/x0 - 1)/ln 10 below, then (u + L)/(M + L)."""
+    x0 = T * 10.0 ** -M
+    with np.errstate(all="ignore"):
+        u = np.where(x >= x0, np.log10(np.maximum(x, x0) / x0), (x / x0 - 1) / np.log(10))
+    return (u + L) / (M + L)
+
+
+def miltenyi_inverse(y: np.ndarray, T: float, M: float, L: float) -> np.ndarray:
+    x0 = T * 10.0 ** -M
+    u = y * (M + L) - L
+    return np.where(u >= 0, x0 * 10.0 ** np.maximum(u, 0), x0 * (1 + u * np.log(10)))
 
 
 def golden_stats():
@@ -628,6 +655,13 @@ def golden_transforms_inverse():
         with np.errstate(all="ignore"):
             x = t.inverse(ys.reshape(-1, 1)).ravel()
         cases.append({"kind": kind, "params": p, "y": finite_list(ys), "x": finite_list(x)})
+    for T, width, pos, neg in BIEX_PARAMS:
+        t = fk.transforms.WSPBiexTransform(negative=neg, width=width, positive=pos, max_value=T)
+        x = t.inverse((ys * BIEX_CHANNELS).reshape(-1, 1)).ravel()
+        cases.append({"kind": "biex", "params": {"T": T, "width": width, "pos": pos, "neg": neg}, "y": finite_list(ys), "x": finite_list(x)})
+    for T, M, L in MILTENYI_PARAMS:
+        x = miltenyi_inverse(ys, T, M, L)
+        cases.append({"kind": "miltenyi", "params": {"T": T, "M": M, "L": L}, "y": finite_list(ys), "x": finite_list(x)})
     write("transforms_inverse.json", cases)
 
 

@@ -9,6 +9,8 @@ const SCALE_NAMES: Record<Transform['kind'], string> = {
   fasinh: 'Arcsinh',
   logicle: 'Logicle',
   hyperlog: 'Hyperlog',
+  biex: 'Biex',
+  miltenyi: 'Miltenyi',
 };
 
 /**
