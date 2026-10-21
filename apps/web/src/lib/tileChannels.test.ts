@@ -27,17 +27,17 @@ function setup() {
 }
 
 describe('tileChannels', () => {
-  it('goes through every channel but the fixed one and the hidden ones', () => {
+  it('goes through every channel but the fixed one', () => {
     const { g, plot } = setup();
-    expect(tileChannels(g, plot, 'x', [])).toEqual(['SSC-A', 'FL1-A', 'FL2-A', 'Time']);
-    expect(tileChannels(g, plot, 'y', ['Time'])).toEqual(['FSC-A', 'FL1-A', 'FL2-A']);
+    expect(tileChannels(g, plot, 'x')).toEqual(['SSC-A', 'FL1-A', 'FL2-A', 'Time']);
+    expect(tileChannels(g, plot, 'y')).toEqual(['FSC-A', 'FL1-A', 'FL2-A', 'Time']);
   });
 
   it('keeps every channel for a histogram, whose x axis varies', () => {
     const { g, plot } = setup();
     const hist: PlotSpec = { ...plot, kind: 'histogram', y: undefined };
     expect(variedAxis(hist, 'x')).toBe('x');
-    expect(tileChannels(g, hist, 'x', ['FL2-A'])).toEqual(['FSC-A', 'SSC-A', 'FL1-A', 'Time']);
+    expect(tileChannels(g, hist, 'x')).toEqual(['FSC-A', 'SSC-A', 'FL1-A', 'FL2-A', 'Time']);
   });
 });
 

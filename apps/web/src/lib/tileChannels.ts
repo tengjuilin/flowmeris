@@ -20,14 +20,13 @@ export function variedAxis(plot: PlotSpec, fixed: TileAxis): TileAxis {
 }
 
 /**
- * The channels the varied axis goes through, in the group's order: all but the hidden ones and, for a
- * 2D plot, the fixed axis's channel.
+ * The channels the varied axis goes through, in the group's order: all of them but, for a 2D plot, the
+ * fixed axis's channel.
  */
-export function tileChannels(g: Group, plot: PlotSpec, fixed: TileAxis, hidden: readonly string[]): string[] {
-  const skip = new Set(hidden);
+export function tileChannels(g: Group, plot: PlotSpec, fixed: TileAxis): string[] {
   const is1d = plot.kind === 'histogram' || !plot.y;
-  if (!is1d) skip.add(plot[fixed]?.channel ?? '');
-  return g.channels.filter((c) => !skip.has(c));
+  const kept = is1d ? undefined : plot[fixed]?.channel;
+  return g.channels.filter((c) => c !== kept);
 }
 
 /**

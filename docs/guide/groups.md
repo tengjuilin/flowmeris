@@ -40,14 +40,14 @@ the Gate view for the current population.
 **Tiles by channel.** *Samples* | *Channels* in the Tiles toolbar switches between the plot for every
 checked sample and one sample's plot over its channels. In *Channels* mode:
 
-- the sample is picked in the toolbar (◀ ▶ step through the group), or with a sample tile's **Channels**
-  button;
-- *X fixed* / *Y fixed* chooses the axis every tile keeps; the other axis goes through the channels. A
-  histogram keeps no axis: there is one histogram per channel;
-- the **Channels** menu checks which channels get a tile (the fixed axis's channel never does). The
-  choice lasts until the page is reloaded;
+- the sample is the one selected in the sidebar (click a sample there to change it), or the one whose
+  **Channels** button you clicked on its sample tile;
+- one axis is fixed on a channel, shown in the toolbar (for example *X fixed: FSC-A*), and the other axis
+  goes through every other channel, a tile each. To change it, click an axis title on any tile and pick a
+  channel: that axis becomes the fixed one, on that channel. A histogram has no fixed axis: there is one
+  histogram per channel;
 - each tile's varied axis has the group's default scale for its channel (the Tiles plot's own scale and
-  range on the channel it is set to). Clicking the fixed axis's title changes its channel for every tile;
+  range on the channel it is set to);
 - click a tile to select it, then draw and edit gates on it as in the Gate view: a gate drawn there is
   on that tile's two channels;
 - **Gate** opens the tile in the Gate view (the population's saved plot on those channels, if there is

@@ -42,25 +42,32 @@ test('tiles by channel: one sample, one axis fixed, the other through the channe
   const toolbar = page.locator('.tiles-view .toolbar');
   await expect(titles(page)).toHaveText(['A01', 'A02']);
 
-  // A tile's Channels button shows that sample's plot over its channels, with x (FSC-A) kept.
+  // A tile's Channels button shows that sample's plot over every channel, with x (FSC-A) fixed.
   await page.getByRole('button', { name: 'Tile A02 by channel' }).click();
-  await expect(toolbar.getByRole('combobox', { name: 'Sample' }).locator('option:checked')).toHaveText('A02');
+  await expect(page.locator('.sample-list button.on .name')).toHaveText('A02');
+  await expect(toolbar.getByText('X fixed: FSC-A')).toBeVisible();
+  await expect(titles(page)).toHaveText(['SSC-A', 'FL1-A · GFP', 'FL2-A · PE']);
+  await expect(page.locator('.tiles-grid .tile .tile-title', { hasText: 'A02' })).toHaveCount(0);
+
+  // The sample follows the sidebar.
+  await page.locator('.sample-list button', { hasText: 'A01' }).click();
+  await expect(page.locator('.tiles-view .tiles-side')).toContainText('Populations A01');
   await expect(titles(page)).toHaveText(['SSC-A', 'FL1-A · GFP', 'FL2-A · PE']);
 
-  // Keeping y (SSC-A) varies x instead.
-  await toolbar.getByRole('button', { name: 'Fix the y axis' }).click();
+  // Picking a channel on a tile's y axis title fixes y on it; x then goes through the channels.
+  const fl1 = () => page.locator('.tiles-grid .tile', { hasText: 'FL1-A · GFP' });
+  await fl1()
+    .getByRole('button', { name: /^Y axis: .*Change channel/ })
+    .press('Enter');
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /^SSC-A/ })
+    .click();
+  await expect(toolbar.getByText('Y fixed: SSC-A')).toBeVisible();
   await expect(titles(page)).toHaveText(['FSC-A', 'FL1-A · GFP', 'FL2-A · PE']);
 
-  // The checklist hides a channel.
-  await toolbar.getByRole('button', { name: /^Channels \(\d+\)$/ }).click();
-  await page.getByRole('checkbox', { name: /FL2-A/ }).uncheck();
-  await expect(titles(page)).toHaveText(['FSC-A', 'FL1-A · GFP']);
-  await expect(toolbar.getByRole('button', { name: 'Channels (2)' })).toBeVisible();
-  await page.getByRole('checkbox', { name: /FL2-A/ }).check();
-  await page.locator('body').click({ position: { x: 5, y: 5 } });
-
   // A gate drawn on a tile is on that tile's channels: it shows there and not on the others.
-  const tile = page.locator('.tiles-grid .tile', { hasText: 'FL1-A · GFP' });
+  const tile = fl1();
   await tile.locator('.tile-title > span').first().click();
   await expect(tile).toHaveClass(/\bon\b/);
   await page.getByRole('button', { name: 'Rectangle' }).click();

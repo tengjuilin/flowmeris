@@ -63,7 +63,7 @@ function Tiles({ group, saved }: { group: Group; saved: PlotSpec }) {
       <div className="toolbar">
         <ToolButtons is1d={plot.kind === 'histogram'} />
         <EditScopeToggle />
-        <TilesModeControls group={group} plot={plot} />
+        <TilesModeControls plot={plot} />
         <div className="spacer" />
         <div className="view-controls">
           <PlotSizeSlider

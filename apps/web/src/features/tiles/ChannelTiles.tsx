@@ -8,13 +8,13 @@ import { useRegisterBuilt } from '../plot/index.ts';
 import type { TileListProps } from './SampleTiles.tsx';
 import { Tile, TileButton } from './Tile.tsx';
 
-/** The axis titles a Channels tile lets the user pick a channel for: the fixed one (none for histograms). */
-const PICKABLE: Record<TileAxis, readonly TileAxis[]> = { x: ['x'], y: ['y'] };
+/** The axis titles a Channels tile lets the user pick a channel for: both, none for a histogram. */
+const BOTH: readonly TileAxis[] = ['x', 'y'];
 const NONE: readonly TileAxis[] = [];
 
 /**
- * The sample the Channels mode shows: the selected sample when it is in the group, else the first one
- * checked in the sidebar, else the group's first.
+ * The sample the Channels mode shows: the one selected in the sidebar when it is in the group, else the
+ * first one checked there, else the group's first.
  */
 export function useChannelSample(group: Group): string | null {
   const selected = useStore((s) => s.ui.sampleId);
@@ -32,8 +32,7 @@ export function ChannelTiles({ group, plot, size, renderSize, emptySpan }: TileL
   const ws = useStore((s) => s.ws);
   const sampleId = useChannelSample(group);
   const fixed = useStore((s) => s.views.tilesFixedAxis);
-  const hidden = useStore((s) => s.views.tilesHiddenChannels);
-  const channels = useMemo(() => tileChannels(group, plot, fixed, hidden), [group, plot, fixed, hidden]);
+  const channels = useMemo(() => tileChannels(group, plot, fixed), [group, plot, fixed]);
   const built = useMemo(
     () => channelTilePlots(ws, group, plot, fixed, channels),
     [ws, group, plot, fixed, channels],
@@ -46,15 +45,10 @@ export function ChannelTiles({ group, plot, size, renderSize, emptySpan }: TileL
     useStore.getState().setUi({ selectedGateId: null });
   }, []);
   const own = plot[variedAxis(plot, fixed)]?.channel;
-  const message = !sampleId
-    ? 'The group has no samples.'
-    : channels.length === 0
-      ? 'No channels to show: check some in the Channels menu.'
-      : null;
-  if (message)
+  if (!sampleId)
     return (
       <div className="empty" style={{ gridColumn: `1 / span ${emptySpan}`, gridRow: 1 }}>
-        {message}
+        The group has no samples.
       </div>
     );
   if (size <= 0 || !sampleId) return null;
@@ -120,7 +114,12 @@ const ChannelTile = memo(function ChannelTile({
       sampleId={sampleId}
       plot={plot}
       {...axisPickers(group, plot, edit)}
-      pickChannelAxes={vary === fixed ? NONE : PICKABLE[fixed]}
+      // Picking a channel for an axis fixes that axis on it; the other axis goes through the channels.
+      onPickChannel={(axis, ch) => {
+        setAxisChannel(edit, axis, ch);
+        if (axis !== fixed) setViews({ tilesFixedAxis: axis });
+      }}
+      pickChannelAxes={plot.kind === 'histogram' || !plot.y ? NONE : BOTH}
       name={name}
       current={current}
       onSelect={() => onSelect(channel)}
