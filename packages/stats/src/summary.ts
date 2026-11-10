@@ -109,11 +109,19 @@ export function mean(xs: ArrayLike<number>): number {
   return xs.length === 0 ? Number.NaN : sum(xs) / xs.length;
 }
 
+function hasNaN(xs: Float64Array): boolean {
+  for (let i = 0; i < xs.length; i++) if (Number.isNaN(xs[i] as number)) return true;
+  return false;
+}
+
 /** Sample SD (n − 1), two-pass with compensated sums. */
 export function sd(xs: ArrayLike<number>): number {
+  return xs.length < 2 ? Number.NaN : sdAbout(xs, mean(xs));
+}
+
+/** The second pass of `sd`, about the mean `m` of `xs` (at least two values). */
+function sdAbout(xs: ArrayLike<number>, m: number): number {
   const n = xs.length;
-  if (n < 2) return Number.NaN;
-  const m = mean(xs);
   let s = 0;
   let c = 0;
   for (let i = 0; i < n; i++) {
@@ -140,25 +148,37 @@ export function summarize(
   requests: { stat: ValueStat; p?: number }[],
   owned = false,
 ): StatValue[] {
-  const clean =
-    owned && values instanceof Float64Array && !values.some(Number.isNaN) ? values : dropNaN(values);
+  const clean = owned && values instanceof Float64Array && !hasNaN(values) ? values : dropNaN(values);
   const nanCount = values.length - clean.length;
   const n = clean.length;
   const base = (value: number): StatValue => ({ value, n, nExcluded: nanCount });
   const out: StatValue[] = new Array(requests.length);
+  // Mean, SD and MAD are computed once however many requests read them (the same function of the same
+  // values each time, so the results are those of computing them per request).
+  let meanV: number | undefined;
+  let sdV: number | undefined;
+  let madV: number | undefined;
+  const meanOnce = () => {
+    meanV ??= mean(clean);
+    return meanV;
+  };
+  const sdOnce = () => {
+    sdV ??= n < 2 ? Number.NaN : sdAbout(clean, meanOnce());
+    return sdV;
+  };
 
   // Order-dependent statistics first, while `clean` is still in event order.
   const ranks = new Set<number>();
   requests.forEach(({ stat, p }, i) => {
     switch (stat) {
       case 'mean':
-        out[i] = base(mean(clean));
+        out[i] = base(meanOnce());
         break;
       case 'sd':
-        out[i] = base(sd(clean));
+        out[i] = base(sdOnce());
         break;
       case 'cv':
-        out[i] = base((100 * sd(clean)) / mean(clean));
+        out[i] = base((100 * sdOnce()) / meanOnce());
         break;
       case 'geomMean': {
         let k = 0;
@@ -219,6 +239,10 @@ export function summarize(
       0,
       ranks.size - 1,
     );
+  const madOnce = () => {
+    madV ??= madOf(s, medianSorted(s));
+    return madV;
+  };
   requests.forEach(({ stat, p }, i) => {
     switch (stat) {
       case 'median':
@@ -236,11 +260,10 @@ export function summarize(
         break;
       }
       case 'mad':
-        out[i] = base(madOf(s, medianSorted(s)));
+        out[i] = base(madOnce());
         break;
       case 'madp': {
-        const med = medianSorted(s);
-        out[i] = base((100 * madOf(s, med)) / med);
+        out[i] = base((100 * madOnce()) / medianSorted(s));
         break;
       }
       case 'mode':
