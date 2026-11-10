@@ -208,35 +208,47 @@ export function spiderRegion(
   x: number,
   y: number,
 ): 0 | 1 | 2 | 3 | 4 {
+  return spiderRegionOf(prepareSpider(cx, cy, arms), x, y);
+}
+
+/** A spider gate's center and its arms as vectors from the center, computed once per gate. */
+export interface PreparedSpider {
+  cx: number;
+  cy: number;
+  /** [up, right, down, left] arm vectors, x then y: arm k is (d[2k], d[2k + 1]). */
+  d: Float64Array;
+}
+
+export function prepareSpider(
+  cx: number,
+  cy: number,
+  arms: readonly (readonly [number, number])[],
+): PreparedSpider {
+  const d = new Float64Array(8);
+  for (let k = 0; k < 4; k++) {
+    const a = arms[k] as readonly [number, number];
+    d[2 * k] = a[0] - cx;
+    d[2 * k + 1] = a[1] - cy;
+  }
+  return { cx, cy, d };
+}
+
+/** M-GATE-SPIDER on a prepared gate: the same arithmetic as spiderRegion, arm vectors computed once. */
+export function spiderRegionOf(s: PreparedSpider, x: number, y: number): 0 | 1 | 2 | 3 | 4 {
   if (Number.isNaN(x) || Number.isNaN(y)) return 0;
-  const [up, right, down, left] = arms as [
-    readonly [number, number],
-    readonly [number, number],
-    readonly [number, number],
-    readonly [number, number],
-  ];
-  const px = x - cx;
-  const py = y - cy;
-  let yPlus: boolean;
-  if (px >= 0) {
-    const dx = right[0] - cx;
-    const dy = right[1] - cy;
-    yPlus = dx * py - dy * px >= 0;
-  } else {
-    const dx = left[0] - cx;
-    const dy = left[1] - cy;
-    yPlus = dx * py - dy * px <= 0;
-  }
-  let xPlus: boolean;
-  if (py >= 0) {
-    const dx = up[0] - cx;
-    const dy = up[1] - cy;
-    xPlus = dx * py - dy * px <= 0;
-  } else {
-    const dx = down[0] - cx;
-    const dy = down[1] - cy;
-    xPlus = dx * py - dy * px >= 0;
-  }
+  const d = s.d;
+  const px = x - s.cx;
+  const py = y - s.cy;
+  // Right arm (k = 1) or left arm (k = 3) for the horizontal divider.
+  const yPlus =
+    px >= 0
+      ? (d[2] as number) * py - (d[3] as number) * px >= 0
+      : (d[6] as number) * py - (d[7] as number) * px <= 0;
+  // Up arm (k = 0) or down arm (k = 2) for the vertical divider.
+  const xPlus =
+    py >= 0
+      ? (d[0] as number) * py - (d[1] as number) * px <= 0
+      : (d[4] as number) * py - (d[5] as number) * px >= 0;
   if (yPlus) return xPlus ? 2 : 1;
   return xPlus ? 3 : 4;
 }

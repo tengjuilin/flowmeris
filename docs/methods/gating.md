@@ -28,6 +28,12 @@ Inside iff the winding count around the point is **odd**: Sunday's winding-numbe
 half-open crossing rule, preceded by a bounding-box test, identical to FlowUtils `points_in_polygon`
 (`wind_count % 2 ≠ 0`). Self-intersecting polygons therefore follow the even–odd rule.
 
+The engine indexes the edges by horizontal band once per gate: the bands lie between consecutive distinct
+vertex $y$ values, and each lists the edges whose half-open $y$-interval covers it. An event's band is
+found by binary search, and the unchanged crossing test runs on that band's edges only. The other edges
+fail the half-open rule at that $y$ and add nothing, so the result is identical, event for event, to
+testing every edge (a property test checks this, ties at vertex coordinates included).
+
 ## M-GATE-ELLIPSE — ellipse
 
 Inside iff $(\mathbf{x}-\boldsymbol{\mu})^\top \Sigma^{-1} (\mathbf{x}-\boldsymbol{\mu}) \le d^2$
