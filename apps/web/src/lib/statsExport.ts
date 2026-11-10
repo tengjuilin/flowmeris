@@ -1,4 +1,3 @@
-import { exportGatingML } from '@flowmeris/export';
 import type { Group, Workspace } from '@flowmeris/model';
 import type { Cell, ColumnDef, Row, Table } from '@flowmeris/table';
 import { safeName } from './download.ts';
@@ -10,8 +9,12 @@ import { stripDataExt } from './files.ts';
 export const statsCsvName = (groupName: string, kind: string) =>
   `${safeName(`${groupName}_statistics_${kind}`)}.csv`;
 
-/** Gating-ML of the group template, then the effective gates of every sample with overrides. */
-export function gatingMlFiles(ws: Workspace, group: Group, appVersion: string) {
+/**
+ * Gating-ML of the group template, then the effective gates of every sample with overrides. The Gating-ML
+ * writer is loaded on the first export.
+ */
+export async function gatingMlFiles(ws: Workspace, group: Group, appVersion: string) {
+  const { exportGatingML } = await import('@flowmeris/export');
   const files = [
     {
       name: `${safeName(group.name)}_template.gating-ml.xml`,
