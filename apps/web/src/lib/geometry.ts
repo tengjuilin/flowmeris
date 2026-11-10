@@ -4,7 +4,7 @@ import { type Scale, makeScale } from '@flowmeris/transforms';
 
 const scaleCache = new Map<string, Scale>();
 
-export function scaleFor(ws: Workspace, transformId: string): Scale {
+export function scaleFor(ws: Pick<Workspace, 'transforms'>, transformId: string): Scale {
   const def = ws.transforms[transformId];
   if (!def) throw new Error(`Unknown transform ${transformId}`);
   return scaleOf(def, transformId);
@@ -22,7 +22,11 @@ export function scaleOf(def: Transform, key = JSON.stringify(def)): Scale {
 /** Map a gate-space coordinate on one dimension into an axis' display units. */
 export type DimMap = { identity: boolean; f: (v: number) => number; inv: (v: number) => number };
 
-export function dimMap(ws: Workspace, gateDim: Gate['dims'][number], axis: AxisSpec): DimMap {
+export function dimMap(
+  ws: Pick<Workspace, 'transforms'>,
+  gateDim: Gate['dims'][number],
+  axis: AxisSpec,
+): DimMap {
   if (gateDim.transform === axis.transform && gateDim.comp === axis.comp)
     return { identity: true, f: (v) => v, inv: (v) => v };
   const ax = scaleFor(ws, axis.transform);

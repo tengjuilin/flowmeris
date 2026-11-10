@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ExportMenu } from '../../components/controls/ExportMenu.tsx';
 import { useSize } from '../../components/hooks/useSize.ts';
 import { PlotSizeSlider } from '../../components/ui/PlotSizeSlider.tsx';
@@ -25,8 +25,12 @@ const SIDE_MIN = 280;
 
 /** The Plot view: a fixed grid of plots, each with its own population, sample(s), type and axes. */
 export function PlotGridView() {
-  const ws = useStore((s) => s.ws);
-  const ui = useStore((s) => s.ui);
+  const samples = useStore((s) => s.ws.samples);
+  const gridCellId = useStore((s) => s.ui.gridCellId);
+  const gridClip = useStore((s) => s.ui.gridClip);
+  const gridSlot = useStore((s) => s.ui.gridSlot);
+  const selectedSample = useStore((s) => s.ui.sampleId);
+  const popId = useStore((s) => s.ui.popId);
   const missing = useStore((s) => s.status.missing);
   const gridSettings = useStore((s) => s.views.gridSettings);
   const setViews = useStore((s) => s.setViews);
@@ -39,6 +43,19 @@ export function PlotGridView() {
   const [treeWidth, setTreeWidth] = useState(0);
   useGridKeys();
   const drag = useGridDrag(group?.id ?? '', group?.grid.cells ?? []);
+  const active = group?.grid.cells.find((c) => c?.id === gridCellId) ?? null;
+  const onDrill = useCallback(
+    (pop: string) => {
+      if (!group) return;
+      // Double-clicking a gate shows its population in the next empty cell, keeping the parent in view.
+      const src = active;
+      const slot = group.grid.cells.findIndex((c) => c === null);
+      const at = slot >= 0 ? slot : group.grid.cells.length;
+      const xy: [string, string?] | undefined = src ? [src.x.channel, src.y?.channel] : undefined;
+      addCell(group.id, at, src?.kind ?? 'pseudocolor', pop, xy);
+    },
+    [group, active],
+  );
   if (!group) return <div className="empty">Select or add a group.</div>;
 
   const { cells } = group.grid;
@@ -53,12 +70,11 @@ export function PlotGridView() {
       : group.grid.size
         ? nearestColumns(group.grid.size, sizeFor, MIN_COLUMNS, maxColumns)
         : Math.max(MIN_COLUMNS, Math.min(maxColumns, group.grid.columns));
-  const active = cells.find((c) => c?.id === ui.gridCellId) ?? null;
-  const clip = ui.gridClip?.groupId === group.id ? ui.gridClip : null;
+  const clip = gridClip?.groupId === group.id ? gridClip : null;
   // The tools act on the selected plot: grayed out while an empty slot or nothing is selected instead.
-  const emptySelected = !active && ui.gridSlot !== null && !cells[ui.gridSlot];
+  const emptySelected = !active && gridSlot !== null && !cells[gridSlot];
   const noPlot = !active;
-  const activeSample = active ? cellSample(group, active, ui.sampleId) : undefined;
+  const activeSample = active ? cellSample(group, active, selectedSample) : undefined;
   const { gap } = GRID_ROW;
   const cellW = width > 0 ? sizeFor(columns) : 0;
   // The populations card takes the top-right cells (as in Tiles), as many as show its rows in full;
@@ -67,16 +83,7 @@ export function PlotGridView() {
   const span = cellW > 0 ? sideSpan(sideW, cellW, columns, GRID_ROW) : 1;
   const rows = Math.max(2, Math.ceil((cells.length + span) / columns) + 1);
   const slots = Array.from({ length: rows * columns - span }, (_, i) => cells[i] ?? null);
-  const sampleName = (id: string) => names[id] ?? ws.samples[id]?.fileName ?? id;
-
-  const onDrill = (popId: string) => {
-    // Double-clicking a gate shows its population in the next empty cell, keeping the parent in view.
-    const src = active;
-    const slot = group.grid.cells.findIndex((c) => c === null);
-    const at = slot >= 0 ? slot : group.grid.cells.length;
-    const xy: [string, string?] | undefined = src ? [src.x.channel, src.y?.channel] : undefined;
-    addCell(group.id, at, src?.kind ?? 'pseudocolor', popId, xy);
-  };
+  const sampleName = (id: string) => names[id] ?? samples[id]?.fileName ?? id;
 
   return (
     <div className="grid-view">
@@ -92,7 +99,7 @@ export function PlotGridView() {
                 ? void toast('Select a plot to export it.')
                 : {
                     figure: storePlotFigure(handle.current, plotOf(active), activeSample),
-                    name: stripDataExt(ws.samples[activeSample ?? '']?.fileName ?? 'plot'),
+                    name: stripDataExt(samples[activeSample ?? '']?.fileName ?? 'plot'),
                   }
             }
           />
@@ -139,15 +146,14 @@ export function PlotGridView() {
           cell ? (
             <GridCell
               key={cell.id}
-              ws={ws}
               group={group}
               cell={cell}
               size={cellW}
               active={cell.id === active?.id}
-              sampleId={cellSample(group, cell, ui.sampleId)}
+              sampleId={cellSample(group, cell, selectedSample)}
               sampleName={sampleName}
               missing={missing}
-              onActivate={() => cell.id !== ui.gridCellId && setUi({ gridCellId: cell.id })}
+              onActivate={() => cell.id !== gridCellId && setUi({ gridCellId: cell.id })}
               onDrill={onDrill}
               handle={cell.id === active?.id ? handle : undefined}
               extraClass={(clip?.cut && clip.cell.id === cell.id ? ' cut' : '') + drag.dragClass(i)}
@@ -159,7 +165,7 @@ export function PlotGridView() {
             <div
               key={`empty${i}`}
               {...drag.target(i)}
-              className={`grid-cell empty-cell${emptySelected && ui.gridSlot === i ? ' on' : ''}${drag.dragClass(i)}`}
+              className={`grid-cell empty-cell${emptySelected && gridSlot === i ? ' on' : ''}${drag.dragClass(i)}`}
               style={{ height: cellW || undefined }}
               aria-label={`Empty slot ${i + 1}`}
               onPointerDown={() => setUi({ gridCellId: null, gridSlot: i })}
@@ -170,7 +176,7 @@ export function PlotGridView() {
                   <button
                     type="button"
                     key={k.id}
-                    onClick={() => addCell(group.id, i, k.id, ui.popId)}
+                    onClick={() => addCell(group.id, i, k.id, popId)}
                     title={`Add a ${k.label.toLowerCase()} plot of the current population`}
                   >
                     {k.label}

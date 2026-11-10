@@ -1,6 +1,6 @@
 import type { Group, Workspace } from '@flowmeris/model';
 import { parseDelimited } from '@flowmeris/table';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { PLAIN_DECIMAL, fracDigits } from '../../lib/format.ts';
 import {
   NW,
@@ -20,21 +20,33 @@ function display(x: number | string | undefined): string {
 }
 
 /**
+ * Space right of a number for its missing decimals (in digits), and for its point when it has none, in a
+ * column whose longest fractional part is `fracLen`.
+ */
+function decimalPad(t: string, fracLen: number): { digits: number; point: boolean } | undefined {
+  if (!fracLen || !PLAIN_DECIMAL.test(t)) return undefined;
+  const point = !t.includes('.');
+  const digits = fracLen - fracDigits(t);
+  return digits || point ? { digits, point } : undefined;
+}
+
+/**
  * Spreadsheet-like table: one row per sample, Well, Row and Column (linked:
  * editing one updates the others), then one column per variable. Drag across cells (or shift-click) to select a block; a paste then
  * fills the block, ⌘C copies it and Delete clears it.
  */
 export function MetaTable({ group }: { group: Group }) {
-  const ws = useStore((s) => s.ws);
+  const samples = useStore((s) => s.ws.samples);
+  const vars = useStore((s) => s.ws.variables);
   const mutate = useStore((s) => s.mutate);
   const names = useSampleNames(group);
   const ids = group.sampleIds;
-  const vars = ws.variables;
   // Columns 0–2 are the well, its row and its column; NW… are the variables.
   const ncol = vars.length + NW;
   const [sel, setSel] = useState<CellRect | null>(null);
   const partial = useRef(new Map<string, PartialWell>());
-  const [, rerender] = useState(0);
+  /** Bumped after each write: the partly typed wells (`partial`) are not in the store. */
+  const [rev, rerender] = useState(0);
   /** Value menu of the focused categorical cell: `query` is the text typed so far (null: show every value). */
   const [menu, setMenu] = useState<{
     r: number;
@@ -94,26 +106,33 @@ export function MetaTable({ group }: { group: Group }) {
   /** Write one cell's text into the draft workspace; false if it does not fit the column. */
   const write = (x: Workspace, row: number, col: number, raw: string): boolean =>
     writeMetaCell(x, ids[row] ?? '', vars, col, raw, partial.current);
-  const cellValue = (row: number, col: number) =>
-    metaCellValue(ws, ids[row] ?? '', vars, col, partial.current);
-  const cellText = (row: number, col: number): string => display(cellValue(row, col));
+  // Every cell's value and text, computed once per change rather than for each use while rendering
+  // (`rev` marks a change of `partial.current`).
+  const values = useMemo(
+    () =>
+      ids.map((id) =>
+        Array.from({ length: ncol }, (_, c) => metaCellValue({ samples }, id, vars, c, partial.current)),
+      ),
+    [samples, vars, ids, ncol, rev],
+  );
+  const texts = useMemo(() => values.map((row) => row.map(display)), [values]);
+  const cellText = (row: number, col: number): string => texts[row]?.[col] ?? '';
 
   const colName = (col: number) => (col < NW ? WELL_COLS[col]! : vars[col - NW]!.name);
 
   const isNumeric = (col: number) => col === 2 || (col >= NW && vars[col - NW]!.type === 'numeric');
 
   /** Longest fractional part of each numeric column, so its decimal points line up. */
-  const fracLen = Array.from({ length: ncol }, (_, c) =>
-    isNumeric(c) ? Math.max(0, ...ids.map((_, r) => fracDigits(cellText(r, c)))) : 0,
+  const fracLen = useMemo(
+    () =>
+      Array.from({ length: ncol }, (_, c) =>
+        c === 2 || (c >= NW && vars[c - NW]!.type === 'numeric')
+          ? Math.max(0, ...texts.map((row) => fracDigits(row[c] ?? '')))
+          : 0,
+      ),
+    [texts, vars, ncol],
   );
-  /** Space right of a number for its missing decimals (in digits), and for its point when it has none. */
-  const fracPad = (row: number, col: number): { digits: number; point: boolean } | undefined => {
-    const t = cellText(row, col);
-    if (!fracLen[col] || !PLAIN_DECIMAL.test(t)) return undefined;
-    const point = !t.includes('.');
-    const digits = fracLen[col]! - fracDigits(t);
-    return digits || point ? { digits, point } : undefined;
-  };
+  const fracPad = (row: number, col: number) => decimalPad(cellText(row, col), fracLen[col]!);
   const padStyle = (row: number, col: number) => {
     const p = fracPad(row, col);
     if (!p) return undefined;
@@ -122,19 +141,29 @@ export function MetaTable({ group }: { group: Group }) {
   };
 
   /** Column widths that fit their longest value (the header can still widen a column). */
-  const widths = Array.from({ length: ncol }, (_, c) =>
-    Math.max(
-      c < NW ? 1 : 4,
-      ...ids.map(
-        (_, r) => cellText(r, c).length + (fracPad(r, c)?.digits ?? 0) + (fracPad(r, c)?.point ? 1 : 0),
+  const widths = useMemo(
+    () =>
+      Array.from({ length: ncol }, (_, c) =>
+        Math.max(
+          c < NW ? 1 : 4,
+          ...texts.map((row) => {
+            const t = row[c] ?? '';
+            const p = decimalPad(t, fracLen[c]!);
+            return t.length + (p?.digits ?? 0) + (p?.point ? 1 : 0);
+          }),
+        ),
       ),
-    ),
+    [texts, fracLen, ncol],
   );
 
-  const levels = new Map(
-    vars
-      .filter((v) => v.type === 'categorical')
-      .map((v) => [v.id, distinctValues(ws, v, Object.keys(ws.samples)).map(String)]),
+  const levels = useMemo(
+    () =>
+      new Map(
+        vars
+          .filter((v) => v.type === 'categorical')
+          .map((v) => [v.id, distinctValues({ samples }, v, Object.keys(samples)).map(String)]),
+      ),
+    [samples, vars],
   );
   const isCategorical = (col: number) => col >= NW && vars[col - NW]!.type === 'categorical';
   const menuItems = (() => {
@@ -215,15 +244,14 @@ export function MetaTable({ group }: { group: Group }) {
         </thead>
         <tbody>
           {ids.map((id, r) => {
-            const s = ws.samples[id];
+            const s = samples[id];
             if (!s) return null;
-            const values = Array.from({ length: ncol }, (_, c) => cellValue(r, c));
             return (
               <tr key={id}>
                 <th scope="row" title={s.relativePath}>
                   {names[id] ?? s.fileName}
                 </th>
-                {values.map((x, c) => (
+                {values[r]!.map((x, c) => (
                   <td
                     key={c < NW ? WELL_COLS[c] : vars[c - NW]!.id}
                     className={multi && inRect(r, c) ? 'sel' : undefined}

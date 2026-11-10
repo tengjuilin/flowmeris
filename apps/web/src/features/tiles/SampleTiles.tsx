@@ -2,7 +2,7 @@ import type { Group, PlotSpec } from '@flowmeris/model';
 import { memo } from 'react';
 import { openTileInGrid } from '../../state/commands/grid.ts';
 import { axisPickers, tilesEdit } from '../../state/commands/plots.ts';
-import { useSampleNames, useSelectedSampleIds, useStore } from '../../state/store.ts';
+import { usePlotWorkspace, useSampleNames, useSelectedSampleIds, useStore } from '../../state/store.ts';
 import { Tile, TileButton } from './Tile.tsx';
 
 export interface TileListProps {
@@ -48,7 +48,7 @@ const SampleTile = memo(function SampleTile({
   renderSize,
   name,
 }: { group: Group; sampleId: string; plot: PlotSpec; size: number; renderSize: number; name: string }) {
-  const ws = useStore((s) => s.ws);
+  const ws = usePlotWorkspace();
   const current = useStore((s) => s.ui.sampleId === sampleId);
   const setUi = useStore((s) => s.setUi);
   const setViews = useStore((s) => s.setViews);

@@ -83,7 +83,11 @@ export function newGroup(name: string, sampleIds: string[], channels: string[]):
  * Geometry of `gateId` as applied to `sampleId`: the sample's override if one
  * exists, otherwise the group template's geometry.
  */
-export function effectiveGeometry(group: Group, gateId: string, sampleId: string): Geometry {
+export function effectiveGeometry(
+  group: Pick<Group, 'overrides' | 'template'>,
+  gateId: string,
+  sampleId: string,
+): Geometry {
   const ov = group.overrides.find((o) => o.gateId === gateId && o.sampleId === sampleId);
   if (ov) return ov.geometry;
   const g = group.template.gates[gateId];

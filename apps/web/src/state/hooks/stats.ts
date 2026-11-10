@@ -1,10 +1,5 @@
-import {
-  type CompMatrix,
-  type Group,
-  type Population,
-  type Transform,
-  populationsDepthFirst,
-} from '@flowmeris/model';
+import type { AnalysisContext } from '@flowmeris/engine';
+import { type Group, type Population, populationsDepthFirst } from '@flowmeris/model';
 import { type LevelOrder, type Table, aggregate, applyDerived } from '@flowmeris/table';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getPool } from '../../engine-client/pool.ts';
@@ -20,7 +15,7 @@ import {
   statColumns,
   toTable,
 } from '../../lib/statsTable.ts';
-import { toast, useStore } from '../store.ts';
+import { contextFor, toast, useStore } from '../store.ts';
 
 // ---------------------------------------------------------------------------
 // Per-sample results
@@ -45,13 +40,14 @@ function remember(key: string, t: SampleTable) {
 
 function fetchTable(
   key: string,
-  ctx: { group: Group; transforms: Record<string, Transform>; compMatrices: Record<string, CompMatrix> },
+  group: Group,
+  ctx: AnalysisContext,
   sid: string,
   popIds: string[],
 ): Promise<SampleTable> {
   let p = inflight.get(key);
   if (!p) {
-    const specs = ctx.group.stats;
+    const specs = group.stats;
     p = getPool()
       .table(ctx, sid, popIds, specs)
       .then(({ counts, stats }) => {
@@ -127,12 +123,12 @@ export function useSampleStats(group: Group | undefined) {
     if (!group) return;
     let live = true;
     let frame = 0;
-    const ctx = { group, transforms, compMatrices };
+    const ctx = contextFor({ transforms, compMatrices }, group);
     const popIds = pops.map((p) => p.id);
     let failed = false;
     for (const [sid, key] of keys) {
       if (missing[sid] || tableCache.has(key)) continue;
-      fetchTable(key, ctx, sid, popIds).then(
+      fetchTable(key, group, ctx, sid, popIds).then(
         () => {
           if (live && !frame)
             frame = requestAnimationFrame(() => {

@@ -88,9 +88,11 @@ const FOLDER_TITLE = 'Each folder becomes a group sharing one analysis';
 export const REPO_URL = 'https://github.com/tengjuilin/flowmeris';
 
 export function Header() {
-  const ws = useStore((s) => s.ws);
-  const past = useStore((s) => s.past);
-  const future = useStore((s) => s.future);
+  const wsName = useStore((s) => s.ws.name);
+  // The labels of the next undo and redo steps (undefined = none), so an edit re-renders the header only
+  // when they change.
+  const undoLabel = useStore((s) => s.past[s.past.length - 1]?.label);
+  const redoLabel = useStore((s) => s.future[0]?.label);
   const undo = useStore((s) => s.undo);
   const redo = useStore((s) => s.redo);
   const mutate = useStore((s) => s.mutate);
@@ -113,8 +115,8 @@ export function Header() {
         className="icon"
         aria-label="Undo"
         onClick={undo}
-        disabled={past.length === 0}
-        title={past.length ? `Undo: ${past[past.length - 1]!.label}${keyHint(keys, 'undo')}` : 'Undo'}
+        disabled={undoLabel === undefined}
+        title={undoLabel !== undefined ? `Undo: ${undoLabel}${keyHint(keys, 'undo')}` : 'Undo'}
       >
         <UndoIcon />
       </button>
@@ -123,8 +125,8 @@ export function Header() {
         className="icon"
         aria-label="Redo"
         onClick={redo}
-        disabled={future.length === 0}
-        title={future.length ? `Redo: ${future[0]!.label}${keyHint(keys, 'redo')}` : 'Redo'}
+        disabled={redoLabel === undefined}
+        title={redoLabel !== undefined ? `Redo: ${redoLabel}${keyHint(keys, 'redo')}` : 'Redo'}
       >
         <RedoIcon />
       </button>
@@ -170,7 +172,7 @@ export function Header() {
       <input
         className="ws-name"
         aria-label="Workspace name"
-        value={ws.name}
+        value={wsName}
         onChange={(e) => mutate('Rename workspace', (w) => void (w.name = e.target.value))}
       />
       <div className="spacer" />

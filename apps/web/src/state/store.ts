@@ -4,6 +4,7 @@ import { type Patch, applyPatches, enablePatches, produce, produceWithPatches } 
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import { gridCarry } from '../lib/gridCarry.ts';
+import type { PlotWorkspace } from '../lib/keys.ts';
 import { displayNames } from '../lib/names.ts';
 import type { SaveState } from '../lib/saveStatus.ts';
 import { addUnsaved, gateViewPlot, settleUnsaved } from '../lib/unsavedPlot.ts';
@@ -396,6 +397,17 @@ export function useSampleNames(g: Group | undefined): Record<string, string> {
   );
 }
 
+/**
+ * What plots read of the workspace (transforms, compensation matrices, samples), as one object that
+ * changes only with them: plots given it re-render only when these change, not on every edit.
+ */
+export function usePlotWorkspace(): PlotWorkspace {
+  const transforms = useStore((s) => s.ws.transforms);
+  const compMatrices = useStore((s) => s.ws.compMatrices);
+  const samples = useStore((s) => s.ws.samples);
+  return useMemo(() => ({ transforms, compMatrices, samples }), [transforms, compMatrices, samples]);
+}
+
 /** The group's samples that are checked for display, in group order. */
 export function useSelectedSampleIds(g: Group | undefined): string[] {
   const excluded = useStore((s) => s.ui.excluded);
@@ -422,8 +434,24 @@ export function mutateGroup(
   );
 }
 
-export function contextFor(ws: Workspace, g: Group): AnalysisContext {
-  return { group: g, transforms: ws.transforms, compMatrices: ws.compMatrices };
+const contexts = new WeakMap<Group, AnalysisContext>();
+
+/**
+ * The analysis context of a group's requests: only the parts of the group the engine reads, so a request
+ * does not copy its plots, tables and layouts to the worker. The same object while the group and the
+ * workspace's transforms and matrices are unchanged.
+ */
+export function contextFor(ws: Pick<Workspace, 'transforms' | 'compMatrices'>, g: Group): AnalysisContext {
+  const hit = contexts.get(g);
+  if (hit && hit.transforms === ws.transforms && hit.compMatrices === ws.compMatrices) return hit;
+  const { id, template, overrides, compensation } = g;
+  const ctx = {
+    group: { id, template, overrides, compensation },
+    transforms: ws.transforms,
+    compMatrices: ws.compMatrices,
+  };
+  contexts.set(g, ctx);
+  return ctx;
 }
 
 /** Show a warning: something did not come out as the user asked (e.g. a font replaced in an export). */

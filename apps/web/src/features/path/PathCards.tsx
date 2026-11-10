@@ -5,7 +5,7 @@ import { withBaseFont } from '../../lib/figure.ts';
 import { type Count, pctOfParent } from '../../lib/gatingPath.ts';
 import { openGatePlotInGrid, openInTilesView } from '../../state/commands/grid.ts';
 import { openPathPlot } from '../../state/commands/plots.ts';
-import { useSampleNames } from '../../state/store.ts';
+import { usePlotWorkspace, useSampleNames } from '../../state/store.ts';
 import { PlotCanvas, plotBox } from '../plot/index.ts';
 
 /** Base font size (px) of the plots, as in Tiles. */
@@ -46,7 +46,11 @@ export function WhenVisible({
 }
 
 interface CardProps {
-  ws: Workspace;
+  /**
+   * Not read: the card takes what its plot reads of the workspace from the store (usePlotWorkspace), so
+   * an edit elsewhere in the workspace does not redraw it.
+   */
+  ws?: Workspace;
   group: Group;
   sampleId: string;
   pop: Population;
@@ -61,11 +65,10 @@ interface CardProps {
 
 /**
  * A population's plot: buttons opening it in the Gate, Plot or Tiles view above it, and the population's
- * name, count and percentage of its parent below it. Memoised: a card re-renders only when its own plot,
+ * name, count and percentage of its parent below it. Memoized: a card re-renders only when its own plot,
  * count, size or overlay changes.
  */
 export const StepCard = memo(function StepCard({
-  ws,
   group,
   sampleId,
   pop,
@@ -81,6 +84,7 @@ export const StepCard = memo(function StepCard({
   const shown = useMemo(() => withBaseFont(plot, FONT_PX), [plot]);
   const box = plotBox(shown, size, size);
   const sampleName = useSampleNames(group)[sampleId] ?? sampleId;
+  const ws = usePlotWorkspace();
   return (
     <div className="path-card">
       <div className="path-card-links">
@@ -141,7 +145,14 @@ export const StepCard = memo(function StepCard({
       </div>
     </div>
   );
-});
+}, sameCard);
+
+/** Whether a card's props are the same, apart from the workspace it does not read. */
+function sameCard(a: CardProps, b: CardProps): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof CardProps>;
+  for (const k of keys) if (k !== 'ws' && !Object.is(a[k], b[k])) return false;
+  return true;
+}
 
 /** A card's button opening its plot in another view. */
 function OpenButton({
