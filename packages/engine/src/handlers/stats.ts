@@ -1,4 +1,3 @@
-import { forEachSet, popcount } from '@flowmeris/gating';
 import { type ValueStat, summarize } from '@flowmeris/stats';
 import type { Columns } from '../columns.ts';
 import { type KeyMemo, statKey } from '../keys.ts';
@@ -15,6 +14,14 @@ const statTransform = (spec: StatSpec): string | null =>
 /** The channels the value statistics in `specs` read, for Columns.ensure(). */
 export const statDims = (specs: StatSpec[]) =>
   specs.flatMap((sp) => (sp.channel ? [{ channel: sp.channel, comp: 'group' as const }] : []));
+
+/** A column's values at `idx` (all `n` events when null), in a new array. */
+function gather(col: Float64Array, idx: Uint32Array | null, n: number): Float64Array {
+  if (!idx) return col.slice(0, n);
+  const vals = new Float64Array(idx.length);
+  for (let k = 0; k < idx.length; k++) vals[k] = col[idx[k] as number] as number;
+  return vals;
+}
 
 /** Statistics of one sample, whose columns are loaded, in the order of `specs`. */
 export function statsOf(
@@ -77,17 +84,14 @@ export function statsOf(
   }
   for (const { bitsKey, colKey, specs: list } of groups.values()) {
     const first = list[0]!;
-    const bits = pops.bits(ctx, s, first.population, memo);
+    // The population's events in index order (null = all of them), from the cached indices.
+    const idx = pops.indices(ctx, s, first.population, memo);
     const col = columns.column(ctx, s, {
       channel: first.channel!,
       comp: 'group',
       transform: statTransform(first),
     });
-    const vals = new Float64Array(popcount(bits));
-    let k = 0;
-    forEachSet(bits, (i) => {
-      vals[k++] = col[i] as number;
-    });
+    const vals = gather(col, idx, s.eventCount);
     const res = summarize(
       vals,
       list.map((sp) => ({ stat: sp.stat as ValueStat, ...(sp.p !== undefined ? { p: sp.p } : {}) })),

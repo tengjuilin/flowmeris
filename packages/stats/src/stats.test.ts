@@ -72,6 +72,32 @@ describe('golden parity: statistics vs NumPy on data1.fcs', () => {
 });
 
 describe('M-STAT definitions', () => {
+  it('gives each statistic the same value requested together as alone', () => {
+    const stats: ValueStat[] = ['mean', 'sd', 'cv', 'mad', 'madp', 'median', 'rcv'];
+    fc.assert(
+      fc.property(
+        fc.array(fc.oneof(fc.double({ min: -1e6, max: 1e6 }), fc.constant(Number.NaN)), { maxLength: 60 }),
+        fc.shuffledSubarray([...stats, ...stats]),
+        fc.boolean(),
+        (xs, reqs, owned) => {
+          const together = summarize(
+            Float64Array.from(xs),
+            reqs.map((stat) => ({ stat })),
+            owned,
+          );
+          reqs.forEach((stat, i) => {
+            const alone = summarize(Float64Array.from(xs), [{ stat }])[0]!;
+            expect(Object.is(together[i]!.value, alone.value)).toBe(true);
+            expect(together[i]!.n).toBe(alone.n);
+          });
+          if (reqs.includes('sd')) {
+            const clean = xs.filter((v) => !Number.isNaN(v));
+            expect(Object.is(together[reqs.indexOf('sd')]!.value, sd(clean))).toBe(true);
+          }
+        },
+      ),
+    );
+  });
   it('percentile type 7 on small arrays', () => {
     const s = [1, 2, 3, 4];
     expect(percentileSorted(s, 0)).toBe(1);

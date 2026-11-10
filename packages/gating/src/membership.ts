@@ -2,7 +2,8 @@ import { invert } from '@flowmeris/compensation';
 import type { Geometry, Region } from '@flowmeris/model';
 import { type Bitset, emptyBitset, fullBitset } from './bitset.ts';
 import { curlyRegion } from './curly.ts';
-import { inPolygon, preparePolygon, quadrantDividers, spiderRegion } from './geometry.ts';
+import { inPolygon, preparePolygon, prepareSpider, quadrantDividers, spiderRegionOf } from './geometry.ts';
+import { inPolygonBands, polygonBands } from './polygonBands.ts';
 
 export interface GateResult {
   /** Region → membership bitset. Simple gates produce only 'in'. */
@@ -99,30 +100,8 @@ export function evaluateGate(
       }
       return { regions: { in: out } };
     }
-    case 'polygon': {
-      if (!y) throw new Error('Polygon gate needs two dimensions');
-      const poly = preparePolygon(geometry.vertices);
-      const { minX, maxX, minY, maxY } = poly;
-      const out = emptyBitset(n);
-      for (let w = 0; w < words; w++) {
-        let v = par[w] as number;
-        if (v === 0) continue;
-        let o = 0;
-        const base = w << 5;
-        while (v !== 0) {
-          const t = v & -v;
-          v ^= t;
-          const i = base + (31 - Math.clz32(t));
-          const xv = x[i] as number;
-          const yv = y[i] as number;
-          // Bounding-box prefilter (also rejects NaN) before the winding test.
-          if (!(xv >= minX && xv <= maxX && yv >= minY && yv <= maxY)) continue;
-          if (inPolygon(poly, xv, yv)) o |= t;
-        }
-        out[w] = o;
-      }
-      return { regions: { in: out } };
-    }
+    case 'polygon':
+      return polygonGate(geometry, x, y, n, par);
     case 'ellipse': {
       if (!y) throw new Error('Ellipse gate needs two dimensions');
       const inv = invert([
@@ -203,31 +182,8 @@ export function evaluateGate(
       return { regions: { Q1: q1, Q2: q2, Q3: q3, Q4: q4 } };
     }
     case 'spider':
-    case 'curly': {
-      if (!y) throw new Error(`${geometry.kind} gate needs two dimensions`);
-      const g = geometry;
-      const region =
-        g.kind === 'spider'
-          ? (xv: number, yv: number) => spiderRegion(g.center[0], g.center[1], g.arms, xv, yv)
-          : (xv: number, yv: number) => curlyRegion(g.center, g.up, g.right, xv, yv);
-      const q = [emptyBitset(n), emptyBitset(n), emptyBitset(n), emptyBitset(n)] as const;
-      const o = new Int32Array(4);
-      for (let w = 0; w < words; w++) {
-        let v = par[w] as number;
-        if (v === 0) continue;
-        o.fill(0);
-        const base = w << 5;
-        while (v !== 0) {
-          const t = v & -v;
-          v ^= t;
-          const i = base + (31 - Math.clz32(t));
-          const r = region(x[i] as number, y[i] as number);
-          if (r !== 0) o[r - 1] = (o[r - 1] as number) | t;
-        }
-        for (let k = 0; k < 4; k++) (q[k] as Bitset)[w] = o[k] as number;
-      }
-      return { regions: { Q1: q[0], Q2: q[1], Q3: q[2], Q4: q[3] } };
-    }
+    case 'curly':
+      return sectorGate(geometry, x, y, n, par);
     case 'split': {
       const at = geometry.at;
       const lo = emptyBitset(n);
@@ -252,6 +208,76 @@ export function evaluateGate(
       return { regions: { lo, hi } };
     }
   }
+}
+
+/** M-GATE-POLY over the events in `par` (bounding box, then the banded winding test). */
+function polygonGate(
+  geometry: Extract<Geometry, { kind: 'polygon' }>,
+  x: ArrayLike<number>,
+  y: ArrayLike<number> | undefined,
+  n: number,
+  par: Bitset,
+): GateResult {
+  const words = par.length;
+  if (!y) throw new Error('Polygon gate needs two dimensions');
+  const poly = preparePolygon(geometry.vertices);
+  const { minX, maxX, minY, maxY } = poly;
+  // The edges indexed by y band: the same winding count, from the edges that can count only.
+  const bands = polygonBands(poly);
+  const out = emptyBitset(n);
+  for (let w = 0; w < words; w++) {
+    let v = par[w] as number;
+    if (v === 0) continue;
+    let o = 0;
+    const base = w << 5;
+    while (v !== 0) {
+      const t = v & -v;
+      v ^= t;
+      const i = base + (31 - Math.clz32(t));
+      const xv = x[i] as number;
+      const yv = y[i] as number;
+      // Bounding-box prefilter (also rejects NaN) before the winding test.
+      if (!(xv >= minX && xv <= maxX && yv >= minY && yv <= maxY)) continue;
+      if (bands ? inPolygonBands(bands, xv, yv) : inPolygon(poly, xv, yv)) o |= t;
+    }
+    out[w] = o;
+  }
+  return { regions: { in: out } };
+}
+
+/** M-GATE-SPIDER and M-GATE-CURLY over the events in `par`: each event to its region Q1–Q4. */
+function sectorGate(
+  geometry: Extract<Geometry, { kind: 'spider' | 'curly' }>,
+  x: ArrayLike<number>,
+  y: ArrayLike<number> | undefined,
+  n: number,
+  par: Bitset,
+): GateResult {
+  const words = par.length;
+  if (!y) throw new Error(`${geometry.kind} gate needs two dimensions`);
+  const g = geometry;
+  const spider = g.kind === 'spider' ? prepareSpider(g.center[0], g.center[1], g.arms) : null;
+  const curlyUp = g.kind === 'curly' ? g.up : [];
+  const curlyRight = g.kind === 'curly' ? g.right : [];
+  const q = [emptyBitset(n), emptyBitset(n), emptyBitset(n), emptyBitset(n)] as const;
+  const o = new Int32Array(4);
+  for (let w = 0; w < words; w++) {
+    let v = par[w] as number;
+    if (v === 0) continue;
+    o.fill(0);
+    const base = w << 5;
+    while (v !== 0) {
+      const t = v & -v;
+      v ^= t;
+      const i = base + (31 - Math.clz32(t));
+      const xv = x[i] as number;
+      const yv = y[i] as number;
+      const r = spider ? spiderRegionOf(spider, xv, yv) : curlyRegion(g.center, curlyUp, curlyRight, xv, yv);
+      if (r !== 0) o[r - 1] = (o[r - 1] as number) | t;
+    }
+    for (let k = 0; k < 4; k++) (q[k] as Bitset)[w] = o[k] as number;
+  }
+  return { regions: { Q1: q[0], Q2: q[1], Q3: q[2], Q4: q[3] } };
 }
 
 /** Quadrant gate center → spider arms that reproduce it exactly (axis-aligned). */

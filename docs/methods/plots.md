@@ -57,7 +57,9 @@ on the x and y axes. A pixel's color is the color map at the **median** of its e
 median: the mean of the two middle values for an even count), their **mean**, or their **maximum**
 (Color axis → Color by). Clamping before the median or maximum gives what clamping after would; the mean
 is of the clamped values. Points are drawn from the lowest value to the highest, so where points overlap
-the higher value is on top. A color bar right of the plot shows the color map over the color axis's
+the higher value is on top. The points are ordered by a counting sort on their color-map entry (of 256);
+points of one entry share a color, and an overlap keeps the highest coverage, so their order does not
+change the image. A color bar right of the plot shows the color map over the color axis's
 range with its ticks and title (Color axis → Show color bar; its width, length and ticks are set there
 too).
 
