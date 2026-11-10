@@ -144,8 +144,13 @@ export class Logicle {
     // Initial guess (reference algorithm), except that the logarithmic guess is
     // only used when it lies above x1: for W = 0 (f = 0) the reference would
     // start tiny values far below x1, outside the Taylor region (note 3).
-    const logGuess = Math.log(value / this.a) / this.b;
-    let x = value < this.f || !(logGuess > this.x1) ? this.x1 + value / (this.taylor[0] as number) : logGuess;
+    // The logarithmic guess is computed only where it can be used (value ≥ f).
+    let x: number;
+    if (value < this.f) x = this.x1 + value / (this.taylor[0] as number);
+    else {
+      const logGuess = Math.log(value / this.a) / this.b;
+      x = logGuess > this.x1 ? logGuess : this.x1 + value / (this.taylor[0] as number);
+    }
     const tolerance = x > 1 ? 3 * x * EPS : 3 * EPS;
     for (let i = 0; i < 40; i++) {
       const ae2bx = this.a * Math.exp(this.b * x);

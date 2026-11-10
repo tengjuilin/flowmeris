@@ -122,14 +122,58 @@ export function writeFcs(channels: WriteChannel[], opts: WriteOptions = {}): Uin
   const out = new Uint8Array(dataStart + dataLen + 8);
   for (let i = 0; i < header.length; i++) out[i] = header.charCodeAt(i);
   out.set(text, textStart);
-  const dv = new DataView(out.buffer, dataStart, dataLen);
-  for (let e = 0; e < tot; e++) {
-    for (let c = 0; c < par; c++) {
-      dv.setFloat32((e * par + c) * 4, (channels[c] as WriteChannel).values[e] as number, true);
-    }
-  }
+  const values = channels.map((c) => c.values);
+  if (HOST_LITTLE_ENDIAN) writeDataNative(out, dataStart, values, tot);
+  else writeDataView(out, dataStart, values, tot);
   // CRC field: FCS 3.1 permits "00000000" when no CRC is computed.
   const crc = '00000000';
   for (let i = 0; i < 8; i++) out[dataStart + dataLen + i] = crc.charCodeAt(i);
   return out;
+}
+
+/** True when the host stores numbers little-endian, the byte order written. */
+const HOST_LITTLE_ENDIAN = new Uint8Array(new Uint16Array([1]).buffer)[0] === 1;
+
+/** Events per block: a block's values stay in cache while it is filled channel by channel. */
+const BLOCK = 1024;
+
+/**
+ * DATA through a Float32Array (little-endian hosts): event e's value of channel c at e·par + c, filled
+ * a block of events at a time, then copied into `out` unless `dataStart` is 4-byte aligned. Storing
+ * into a Float32Array rounds as DataView.setFloat32 does.
+ */
+export function writeDataNative(
+  out: Uint8Array,
+  dataStart: number,
+  values: ArrayLike<number>[],
+  tot: number,
+): void {
+  const par = values.length;
+  const aligned = (out.byteOffset + dataStart) % 4 === 0;
+  const f32 = aligned
+    ? new Float32Array(out.buffer, out.byteOffset + dataStart, tot * par)
+    : new Float32Array(tot * par);
+  for (let e0 = 0; e0 < tot; e0 += BLOCK) {
+    const e1 = Math.min(tot, e0 + BLOCK);
+    for (let c = 0; c < par; c++) {
+      const col = values[c] as ArrayLike<number>;
+      for (let e = e0, p = e0 * par + c; e < e1; e++, p += par) f32[p] = col[e] as number;
+    }
+  }
+  if (!aligned) out.set(new Uint8Array(f32.buffer), dataStart);
+}
+
+/** DATA one value at a time through a DataView, little-endian (any host). */
+export function writeDataView(
+  out: Uint8Array,
+  dataStart: number,
+  values: ArrayLike<number>[],
+  tot: number,
+): void {
+  const par = values.length;
+  const dv = new DataView(out.buffer, out.byteOffset + dataStart, tot * par * 4);
+  for (let e = 0; e < tot; e++) {
+    for (let c = 0; c < par; c++)
+      dv.setFloat32((e * par + c) * 4, (values[c] as ArrayLike<number>)[e] as number, true);
+  }
 }
