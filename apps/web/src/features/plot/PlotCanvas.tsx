@@ -1,4 +1,4 @@
-import type { Group, PlotFigure, PlotSpec, Workspace } from '@flowmeris/model';
+import type { Group, PlotFigure, PlotSpec } from '@flowmeris/model';
 import {
   type RefObject,
   forwardRef,
@@ -11,7 +11,7 @@ import {
 } from 'react';
 import type { PlotHandle } from '../../lib/export/index.ts';
 import { DEFAULT_FIGURE, contourCss, figureText } from '../../lib/figure.ts';
-import { plotKey } from '../../lib/keys.ts';
+import { type PlotWorkspace, plotKey } from '../../lib/keys.ts';
 import { plotFrame } from '../../lib/plotFrame.ts';
 import { plotAriaLabel, plotBox } from '../../lib/plotLayout.ts';
 import type { ChannelAxis } from '../../state/commands/plots.ts';
@@ -29,7 +29,7 @@ const ALL_AXES: readonly ChannelAxis[] = ['x', 'y', 'color'];
 const NO_OVERLAYS: { color: string; heights: Float64Array }[] = [];
 
 export interface PlotCanvasProps {
-  ws: Workspace;
+  ws: PlotWorkspace;
   group: Group;
   sampleId: string;
   plot: PlotSpec;

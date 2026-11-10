@@ -6,13 +6,16 @@ import {
   populationLineage,
 } from '@flowmeris/model';
 
+/** What a plot reads of the workspace: scales, compensation matrices and the samples' channels. */
+export type PlotWorkspace = Pick<Workspace, 'transforms' | 'compMatrices' | 'samples'>;
+
 /**
  * Dependency keys of plots and statistics, used as worker-pool cache keys (engine-client/pool.ts):
  * a key must change whenever anything the result depends on changes.
  */
 
 /** A dependency key covering everything a plot/statistic of `popId` on `sampleId` depends on. */
-export function lineageKey(ws: Workspace, g: Group, sampleId: string | null, popId: string): string {
+export function lineageKey(ws: PlotWorkspace, g: Group, sampleId: string | null, popId: string): string {
   const lineage = populationLineage(g.template, popId);
   const gates = lineage
     .filter((p) => p.gate)
@@ -45,11 +48,11 @@ export function plotDataSpec(plot: PlotSpec) {
 }
 
 /** A key of what a plot's events depend on apart from its population's lineage: its settings and scales. */
-export function plotSpecKey(ws: Workspace, plot: PlotSpec): string {
+export function plotSpecKey(ws: PlotWorkspace, plot: PlotSpec): string {
   return JSON.stringify(plotSpecParts(ws, plot));
 }
 
-function plotSpecParts(ws: Workspace, plot: PlotSpec) {
+function plotSpecParts(ws: PlotWorkspace, plot: PlotSpec) {
   return [
     plotDataSpec(plot),
     ws.transforms[plot.x.transform],
@@ -58,6 +61,6 @@ function plotSpecParts(ws: Workspace, plot: PlotSpec) {
   ];
 }
 
-export function plotKey(ws: Workspace, g: Group, sampleId: string, plot: PlotSpec): string {
+export function plotKey(ws: PlotWorkspace, g: Group, sampleId: string, plot: PlotSpec): string {
   return JSON.stringify([lineageKey(ws, g, sampleId, plot.population), ...plotSpecParts(ws, plot)]);
 }

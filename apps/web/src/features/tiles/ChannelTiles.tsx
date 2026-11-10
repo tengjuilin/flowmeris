@@ -9,7 +9,7 @@ import {
   setAxisChannel,
   tilesEdit,
 } from '../../state/commands/plots.ts';
-import { useSelectedSampleIds, useStore } from '../../state/store.ts';
+import { usePlotWorkspace, useSelectedSampleIds, useStore } from '../../state/store.ts';
 import { useRegisterBuilt } from '../plot/index.ts';
 import type { TileListProps } from './SampleTiles.tsx';
 import { Tile, TileButton } from './Tile.tsx';
@@ -35,16 +35,19 @@ export function useChannelSample(group: Group): string | null {
  * tile as in the Gate view, on that tile's channels.
  */
 export function ChannelTiles({ group, plot, size, renderSize, emptySpan }: TileListProps) {
-  const ws = useStore((s) => s.ws);
+  const transforms = useStore((s) => s.ws.transforms);
+  const samples = useStore((s) => s.ws.samples);
   const sampleId = useChannelSample(group);
   const fixed = useStore((s) => s.views.tilesFixedAxis);
   const channels = useMemo(() => tileChannels(group, plot, fixed), [group, plot, fixed]);
-  const built = useMemo(
-    () => channelTilePlots(ws, group, plot, fixed, channels),
-    [ws, group, plot, fixed, channels],
-  );
+  // Building the plots reads the workspace's transforms and samples and the group only, so they are
+  // built again (and the tiles redrawn) only when those change, not on every edit.
+  const { base, built } = useMemo(() => {
+    const base = useStore.getState().ws;
+    return { base, built: channelTilePlots(base, group, plot, fixed, channels) };
+  }, [transforms, samples, group, plot, fixed, channels]);
   // The transforms and axis defaults of channels no plot used yet, registered so they can be drawn.
-  useRegisterBuilt(ws, built.ws, group.id);
+  useRegisterBuilt(base, built.ws, group.id);
   const [selected, setSelected] = useState<string | null>(null);
   const onSelect = useCallback((channel: string) => {
     setSelected(channel);
@@ -58,7 +61,7 @@ export function ChannelTiles({ group, plot, size, renderSize, emptySpan }: TileL
       </div>
     );
   if (size <= 0 || !sampleId) return null;
-  const sample = ws.samples[sampleId];
+  const sample = samples[sampleId];
   return built.plots.map((p, i) => {
     const channel = channels[i] ?? '';
     const marker = sample?.channels.find((c) => c.pnn === channel)?.pns;
@@ -108,7 +111,7 @@ const ChannelTile = memo(function ChannelTile({
   size: number;
   renderSize: number;
 }) {
-  const ws = useStore((s) => s.ws);
+  const ws = usePlotWorkspace();
   const setUi = useStore((s) => s.setUi);
   const setViews = useStore((s) => s.setViews);
   const vary = variedAxis(plot, fixed);

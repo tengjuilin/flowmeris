@@ -1,10 +1,11 @@
-import type { Group, PlotFigure, PlotSpec, Workspace } from '@flowmeris/model';
+import type { Group, PlotFigure, PlotSpec } from '@flowmeris/model';
 import { axisTicks } from '@flowmeris/transforms';
 import { useMemo } from 'react';
 import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from '../../components/ui/PickerMenu.tsx';
 import { SupLabel } from '../../components/ui/SupLabel.tsx';
 import { figureText } from '../../lib/figure.ts';
 import { scaleFor } from '../../lib/geometry.ts';
+import type { PlotWorkspace } from '../../lib/keys.ts';
 import type { PlotFrame } from '../../lib/plotFrame.ts';
 import { axisLabel } from '../../lib/plotLayout.ts';
 import { customTicks, formatHistTick, histYTicks } from '../../lib/ticks.ts';
@@ -28,7 +29,7 @@ export function histNormTitle(norm: HistNorm): string {
 export type AxisMenu = { axis: ChannelAxis; anchor: Anchor };
 
 export interface PlotAxesProps {
-  ws: Workspace;
+  ws: PlotWorkspace;
   sampleId: string;
   plot: PlotSpec;
   fig: PlotFigure;
@@ -162,7 +163,7 @@ export function AxisPickerMenu({
   onClose,
 }: {
   menu: AxisMenu;
-  ws: Workspace;
+  ws: PlotWorkspace;
   group: Group;
   sampleId: string;
   plot: PlotSpec;

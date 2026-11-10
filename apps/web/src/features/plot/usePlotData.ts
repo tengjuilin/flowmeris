@@ -1,13 +1,13 @@
 import type { AnalysisContext, HistogramResponse, RasterResponse } from '@flowmeris/engine';
-import { type Group, type PlotSpec, type Workspace, populationsOfGate } from '@flowmeris/model';
+import { type Group, type PlotSpec, populationsOfGate } from '@flowmeris/model';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getPool } from '../../engine-client/pool.ts';
 import { gateMatchesAxes } from '../../lib/geometry.ts';
-import { lineageKey, plotSpecKey } from '../../lib/keys.ts';
+import { type PlotWorkspace, lineageKey, plotSpecKey } from '../../lib/keys.ts';
 
 /** What every data hook of one plot needs: where it is drawn and at what resolution. */
 export interface PlotDataArgs {
-  ws: Workspace;
+  ws: PlotWorkspace;
   group: Group;
   ctx: AnalysisContext;
   sampleId: string;

@@ -52,7 +52,7 @@ export function retype(ws: Workspace, variableId: string, type: Variable['type']
 }
 
 /** Distinct values of a variable among the given samples, in display order. */
-export function distinctValues(ws: Workspace, v: Variable, sampleIds: string[]): Cell[] {
+export function distinctValues(ws: Pick<Workspace, 'samples'>, v: Variable, sampleIds: string[]): Cell[] {
   const seen = new Map<string, Cell>();
   for (const id of sampleIds) {
     const x = ws.samples[id]?.meta[v.id];

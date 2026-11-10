@@ -4,6 +4,7 @@ import { type Patch, applyPatches, enablePatches, produce, produceWithPatches } 
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import { gridCarry } from '../lib/gridCarry.ts';
+import type { PlotWorkspace } from '../lib/keys.ts';
 import { displayNames } from '../lib/names.ts';
 import type { SaveState } from '../lib/saveStatus.ts';
 import { addUnsaved, gateViewPlot, settleUnsaved } from '../lib/unsavedPlot.ts';
@@ -394,6 +395,17 @@ export function useSampleNames(g: Group | undefined): Record<string, string> {
     () => (g ? displayNames(g.sampleIds.flatMap((id) => (samples[id] ? [samples[id]] : []))) : {}),
     [g, samples],
   );
+}
+
+/**
+ * What plots read of the workspace (transforms, compensation matrices, samples), as one object that
+ * changes only with them: plots given it re-render only when these change, not on every edit.
+ */
+export function usePlotWorkspace(): PlotWorkspace {
+  const transforms = useStore((s) => s.ws.transforms);
+  const compMatrices = useStore((s) => s.ws.compMatrices);
+  const samples = useStore((s) => s.ws.samples);
+  return useMemo(() => ({ transforms, compMatrices, samples }), [transforms, compMatrices, samples]);
 }
 
 /** The group's samples that are checked for display, in group order. */
