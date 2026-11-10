@@ -5,7 +5,7 @@ import { getPool } from '../../engine-client/pool.ts';
 import { lineageKey } from '../../lib/keys.ts';
 import { deleteGate, renamePopulation } from '../../state/commands/gates.ts';
 import { drill } from '../../state/commands/plots.ts';
-import { useGroup, useSampleNames, useStore } from '../../state/store.ts';
+import { contextFor, useGroup, useSampleNames, useStore } from '../../state/store.ts';
 
 let ctx: CanvasRenderingContext2D | null = null;
 /** A canvas context to measure text with (shared). */
@@ -60,7 +60,7 @@ export function PopulationTree({
     const ac = new AbortController();
     const popIds = pops.map((p) => p.id);
     getPool()
-      .counts({ group, transforms, compMatrices }, sampleId, popIds, {
+      .counts(contextFor({ transforms, compMatrices }, group), sampleId, popIds, {
         key: JSON.stringify(['counts', popIds, key]),
         signal: ac.signal,
       })

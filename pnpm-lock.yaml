@@ -217,10 +217,6 @@ importers:
       '@flowmeris/model':
         specifier: workspace:*
         version: link:../model
-    devDependencies:
-      '@flowmeris/testkit':
-        specifier: workspace:*
-        version: link:../testkit
 
   packages/gatingml:
     dependencies:

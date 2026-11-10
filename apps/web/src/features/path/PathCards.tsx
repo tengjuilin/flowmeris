@@ -1,4 +1,4 @@
-import type { Group, PlotSpec, Population, Workspace } from '@flowmeris/model';
+import type { Group, PlotSpec, Population } from '@flowmeris/model';
 import { Component, type ReactNode, memo, useEffect, useMemo, useRef, useState } from 'react';
 import { OpenInIcon } from '../../components/ui/icons.tsx';
 import { withBaseFont } from '../../lib/figure.ts';
@@ -46,11 +46,6 @@ export function WhenVisible({
 }
 
 interface CardProps {
-  /**
-   * Not read: the card takes what its plot reads of the workspace from the store (usePlotWorkspace), so
-   * an edit elsewhere in the workspace does not redraw it.
-   */
-  ws?: Workspace;
   group: Group;
   sampleId: string;
   pop: Population;
@@ -145,14 +140,7 @@ export const StepCard = memo(function StepCard({
       </div>
     </div>
   );
-}, sameCard);
-
-/** Whether a card's props are the same, apart from the workspace it does not read. */
-function sameCard(a: CardProps, b: CardProps): boolean {
-  const keys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof CardProps>;
-  for (const k of keys) if (k !== 'ws' && !Object.is(a[k], b[k])) return false;
-  return true;
-}
+});
 
 /** A card's button opening its plot in another view. */
 function OpenButton({

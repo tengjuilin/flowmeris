@@ -40,18 +40,6 @@ export function popcount(b: Bitset): number {
   return c;
 }
 
-/** Calls fn(i) for each set bit in ascending order. */
-export function forEachSet(b: Bitset, fn: (i: number) => void): void {
-  for (let w = 0; w < b.length; w++) {
-    let v = b[w] as number;
-    while (v !== 0) {
-      const t = v & -v;
-      fn((w << 5) + (31 - Math.clz32(t)));
-      v ^= t;
-    }
-  }
-}
-
 /** Indices of set bits as Uint32Array. */
 export function toIndices(b: Bitset): Uint32Array {
   const out = new Uint32Array(popcount(b));

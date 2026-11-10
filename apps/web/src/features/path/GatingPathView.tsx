@@ -6,7 +6,7 @@ import { useSize } from '../../components/hooks/useSize.ts';
 import { getPool } from '../../engine-client/pool.ts';
 import { type Counts, pathSteps, pctOfParent, treeLayout } from '../../lib/gatingPath.ts';
 import { lineageKey } from '../../lib/keys.ts';
-import { contextFor, useGroup, useStore } from '../../state/store.ts';
+import { contextFor, useGroup, usePlotWorkspace, useStore } from '../../state/store.ts';
 
 import { PopChip, StepCard, ViewErrorBoundary } from './PathCards.tsx';
 import { PopulationsPanel } from './PopulationsPanel.tsx';
@@ -25,7 +25,8 @@ const treeScroll = new Map<string, TreeView>();
 
 /** The Gating path view. Each plot's card has buttons opening it in the Gate, Plot or Tiles view. */
 export function GatingPathView() {
-  const ws = useStore((s) => s.ws);
+  // What the plots and counts read of the workspace, so an edit elsewhere in it redraws nothing here.
+  const ws = usePlotWorkspace();
   const uiSampleId = useStore((s) => s.ui.sampleId);
   const uiPopId = useStore((s) => s.ui.popId);
   const uiMissing = useStore((s) => s.status.missing);
@@ -166,7 +167,6 @@ export function GatingPathView() {
     return (
       <StepCard
         key={keyId}
-        ws={ws}
         group={group}
         sampleId={sampleId}
         pop={pop}

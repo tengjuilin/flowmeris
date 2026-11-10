@@ -4,7 +4,7 @@ import type { PlotSpec } from '@flowmeris/model';
 import { useEffect, useMemo, useState } from 'react';
 import { getPool } from '../../engine-client/pool.ts';
 import { lineageKey } from '../../lib/keys.ts';
-import { useStore } from '../../state/store.ts';
+import { contextFor, useStore } from '../../state/store.ts';
 import type { Ridge } from './useRidge.ts';
 
 /**
@@ -36,7 +36,7 @@ export function useRidgeCurves({ group, style, combine, axis, rows }: Ridge, sam
   useEffect(() => {
     if (!group || !axis) return;
     const ac = new AbortController();
-    const ctx = { group, transforms, compMatrices };
+    const ctx = contextFor({ transforms, compMatrices }, group);
     // Counts, so replicates can be combined; each ridge is scaled to its mode below.
     const hist = {
       histBins: style.bins,

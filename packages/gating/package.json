@@ -10,8 +10,5 @@
   "dependencies": {
     "@flowmeris/model": "workspace:*",
     "@flowmeris/compensation": "workspace:*"
-  },
-  "devDependencies": {
-    "@flowmeris/testkit": "workspace:*"
   }
 }
