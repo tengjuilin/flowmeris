@@ -25,7 +25,7 @@ describe('statistics export files', () => {
     expect(eventsFileName('x.lmd', undefined, 'fcs')).toBe('x_population.fcs');
   });
 
-  it('Gating-ML: the template, then the effective gates of each overridden sample once', () => {
+  it('Gating-ML: the template, then the effective gates of each overridden sample once', async () => {
     const ws = newWorkspace('W', { version: '0', commit: '', kernels: '' });
     const g = newGroup('G 1', ['s1', 's2'], ['FSC-A']);
     ws.samples.s2 = { fileName: 'b.fcs' } as (typeof ws.samples)[string];
@@ -33,7 +33,7 @@ describe('statistics export files', () => {
       { gateId: 'a', sampleId: 's2', geometry: { kind: 'rect', min: [0], max: [1] }, at: '' },
       { gateId: 'b', sampleId: 's2', geometry: { kind: 'rect', min: [0], max: [1] }, at: '' },
     ];
-    const files = gatingMlFiles(ws, g, '1.0');
+    const files = await gatingMlFiles(ws, g, '1.0');
     expect(files.map((f) => f.name)).toEqual([
       'G_1_template.gating-ml.xml',
       'G_1_b.fcs_effective.gating-ml.xml',

@@ -25,6 +25,9 @@ export async function loadAutosave(): Promise<Workspace | null> {
   }
 }
 
+/** Snapshots kept. */
+const SNAPSHOTS = 20;
+
 let timer: ReturnType<typeof setTimeout> | null = null;
 let last: Workspace | null = null;
 
@@ -49,10 +52,21 @@ async function save(ws: Workspace) {
   report('saving');
   try {
     const db = await DB;
-    await db.put('workspace', ws, 'current');
-    await db.add('snapshots', { at: new Date().toISOString(), ws });
-    const keys = await db.getAllKeys('snapshots');
-    for (const k of keys.slice(0, Math.max(0, keys.length - 20))) await db.delete('snapshots', k);
+    // One transaction: the workspace, a new snapshot, and the snapshots older than the last 20 dropped
+    // with one range delete (keys ascend, so they are the ones below the 20th newest).
+    const tx = db.transaction(['workspace', 'snapshots'], 'readwrite');
+    const snapshots = tx.objectStore('snapshots');
+    // Requests run in order, so the keys include the new snapshot's.
+    const [, , keys] = await Promise.all([
+      tx.objectStore('workspace').put(ws, 'current'),
+      snapshots.add({ at: new Date().toISOString(), ws }),
+      snapshots.getAllKeys(),
+    ]);
+    const oldestKept = keys[keys.length - SNAPSHOTS];
+    await Promise.all([
+      oldestKept !== undefined && snapshots.delete(IDBKeyRange.upperBound(oldestKept, true)),
+      tx.done,
+    ]);
     // A change made while writing waits for its own save.
     report(useStore.getState().ws === ws ? 'saved' : 'unsaved');
   } catch (e) {

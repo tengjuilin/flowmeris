@@ -46,8 +46,8 @@ export function StatsInspector() {
     download(statsCsvName(group.name, kind), toCsv(out), 'text/csv');
   };
 
-  const exportGml = () => {
-    for (const f of gatingMlFiles(useStore.getState().ws, group, APP_INFO.version))
+  const exportGml = async () => {
+    for (const f of await gatingMlFiles(useStore.getState().ws, group, APP_INFO.version))
       download(f.name, f.xml, 'application/xml');
   };
 
@@ -145,7 +145,7 @@ export function StatsInspector() {
               title="Download Gating-ML 2.0 for the group template (+ effective gates of overridden samples)"
               icon={<ExportIcon />}
               disabled={false}
-              onClick={exportGml}
+              onClick={() => void exportGml()}
             />
           </Card>
           <Card {...card('events')}>

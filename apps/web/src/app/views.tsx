@@ -1,17 +1,56 @@
-import type { ReactNode } from 'react';
-import { ChartInspector, ChartsView } from '../features/charts/index.ts';
-import { CompensationView } from '../features/compensation/index.ts';
+import { type ComponentType, type ReactNode, Suspense, lazy } from 'react';
 import { GateExportCard, GateToolbar, Inspector, PlotPanel, RefPlots } from '../features/gate/index.ts';
 import { PlotGridView } from '../features/grid/index.ts';
-import { MetadataInspector, MetadataView } from '../features/metadata/index.ts';
-import { GatingPathView } from '../features/path/index.ts';
-import { RidgeCombinePanel, RidgeExportCard, RidgeInspector, RidgeView } from '../features/ridge/index.ts';
-import { SamplesView } from '../features/samples/index.ts';
-import { StatsInspector, StatsView } from '../features/stats/index.ts';
 import { TilesView } from '../features/tiles/index.ts';
 import { PopulationTree } from '../features/tree/index.ts';
 import { drill } from '../state/commands/plots.ts';
 import type { View, ViewPrefs } from '../state/store.ts';
+
+// The plot views (Gate, Plot grid, Tiles) are in the main bundle; the other views and their settings
+// panels are loaded when first shown, and in the background once the page is idle, so a tab opens at once.
+const load = {
+  charts: () => import('../features/charts/index.ts'),
+  compensation: () => import('../features/compensation/index.ts'),
+  metadata: () => import('../features/metadata/index.ts'),
+  path: () => import('../features/path/index.ts'),
+  ridge: () => import('../features/ridge/index.ts'),
+  samples: () => import('../features/samples/index.ts'),
+  stats: () => import('../features/stats/index.ts'),
+};
+
+/** Component `name` of a module loaded on demand. */
+function lazyPart<M, K extends keyof M>(from: () => Promise<M>, name: K) {
+  return lazy(async () => ({ default: (await from())[name] as ComponentType }));
+}
+
+const ChartsView = lazyPart(load.charts, 'ChartsView');
+const ChartInspector = lazyPart(load.charts, 'ChartInspector');
+const CompensationView = lazyPart(load.compensation, 'CompensationView');
+const MetadataView = lazyPart(load.metadata, 'MetadataView');
+const MetadataInspector = lazyPart(load.metadata, 'MetadataInspector');
+const GatingPathView = lazyPart(load.path, 'GatingPathView');
+const RidgeView = lazyPart(load.ridge, 'RidgeView');
+const RidgeExportCard = lazyPart(load.ridge, 'RidgeExportCard');
+const RidgeCombinePanel = lazyPart(load.ridge, 'RidgeCombinePanel');
+const RidgeInspector = lazyPart(load.ridge, 'RidgeInspector');
+const SamplesView = lazyPart(load.samples, 'SamplesView');
+const StatsView = lazyPart(load.stats, 'StatsView');
+const StatsInspector = lazyPart(load.stats, 'StatsInspector');
+
+/** A view loaded on demand: nothing until its code arrives. */
+const later = (view: ReactNode) => <Suspense fallback={null}>{view}</Suspense>;
+/** A settings panel loaded on demand: its empty frame until its code arrives, so the view keeps its width. */
+const laterPanel = (panel: ReactNode) => (
+  <Suspense fallback={<aside className="inspector insp-panel" />}>{panel}</Suspense>
+);
+
+if (typeof window !== 'undefined' && import.meta.env.MODE !== 'test') {
+  const preload = () => {
+    for (const f of Object.values(load)) f().catch(() => {});
+  };
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(preload, { timeout: 5000 });
+  else setTimeout(preload, 2000);
+}
 
 /** One tab of the app. */
 export interface ViewDef {
@@ -35,8 +74,8 @@ export interface ViewDef {
 export const VIEW_DEFS: Record<View, ViewDef> = {
   metadata: {
     label: 'Metadata',
-    Main: () => <MetadataView />,
-    Panel: () => <MetadataInspector />,
+    Main: () => later(<MetadataView />),
+    Panel: () => laterPanel(<MetadataInspector />),
     panelFlag: 'metaSettings',
   },
   gate: {
@@ -72,25 +111,34 @@ export const VIEW_DEFS: Record<View, ViewDef> = {
     Panel: () => <Inspector key="tiles" target="tiles" />,
     panelFlag: 'tilesSettings',
   },
-  path: { label: 'Gating path', Main: () => <GatingPathView /> },
-  stats: { label: 'Statistics', Main: () => <StatsView />, Panel: () => <StatsInspector /> },
+  path: { label: 'Gating path', Main: () => later(<GatingPathView />) },
+  stats: {
+    label: 'Statistics',
+    Main: () => later(<StatsView />),
+    Panel: () => laterPanel(<StatsInspector />),
+  },
   ridge: {
     label: 'Ridge',
-    Main: () => (
-      <div className="plot-layout">
-        <RidgeView />
-        <div className="plot-side">
-          <RidgeExportCard />
-          <PopulationTree />
-          <RidgeCombinePanel />
-        </div>
-      </div>
-    ),
-    Panel: () => <RidgeInspector />,
+    Main: () =>
+      later(
+        <div className="plot-layout">
+          <RidgeView />
+          <div className="plot-side">
+            <RidgeExportCard />
+            <PopulationTree />
+            <RidgeCombinePanel />
+          </div>
+        </div>,
+      ),
+    Panel: () => laterPanel(<RidgeInspector />),
   },
-  charts: { label: 'Charts', Main: () => <ChartsView />, Panel: () => <ChartInspector /> },
-  compensation: { label: 'Compensation', Main: () => <CompensationView /> },
-  samples: { label: 'Samples', Main: () => <SamplesView /> },
+  charts: {
+    label: 'Charts',
+    Main: () => later(<ChartsView />),
+    Panel: () => laterPanel(<ChartInspector />),
+  },
+  compensation: { label: 'Compensation', Main: () => later(<CompensationView />) },
+  samples: { label: 'Samples', Main: () => later(<SamplesView />) },
 };
 
 /** The tabs, left to right. */
