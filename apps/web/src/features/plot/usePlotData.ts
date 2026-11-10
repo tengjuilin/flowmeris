@@ -3,7 +3,7 @@ import { type Group, type PlotSpec, type Workspace, populationsOfGate } from '@f
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getPool } from '../../engine-client/pool.ts';
 import { gateMatchesAxes } from '../../lib/geometry.ts';
-import { lineageKey } from '../../lib/keys.ts';
+import { lineageKey, plotSpecKey } from '../../lib/keys.ts';
 
 /** What every data hook of one plot needs: where it is drawn and at what resolution. */
 export interface PlotDataArgs {
@@ -170,9 +170,7 @@ export function useOverlaySamples(a: PlotDataArgs, ovSamples: { sampleId: string
   const ovKey = useMemo(
     () =>
       JSON.stringify([
-        plot,
-        ws.transforms[plot.x.transform],
-        plot.y ? ws.transforms[plot.y.transform] : null,
+        plotSpecKey(ws, plot),
         ovSamples.map((o) => [lineageKey(ws, group, o.sampleId, plot.population), o.color]),
       ]),
     [plot, ws, group, ovSamples],

@@ -34,12 +34,30 @@ export function lineageKey(ws: Workspace, g: Group, sampleId: string | null, pop
   return JSON.stringify([sampleId, gates, transforms, comp]);
 }
 
-export function plotKey(ws: Workspace, g: Group, sampleId: string, plot: PlotSpec): string {
-  return JSON.stringify([
-    lineageKey(ws, g, sampleId, plot.population),
-    plot,
+/**
+ * The plot as the workers read it: without its id, the settings kept for other channel pairs, and the
+ * appearance only the UI draws (figure, contour lines), so editing those keeps the cached events.
+ */
+export function plotDataSpec(plot: PlotSpec) {
+  const { id: _id, styleFollow: _f, stylesByAxes: _s, styleBase: _b, style, ...rest } = plot;
+  const { figure: _fig, contourWidth: _cw, contourColor: _cc, ...dataStyle } = style;
+  return { ...rest, style: dataStyle };
+}
+
+/** A key of what a plot's events depend on apart from its population's lineage: its settings and scales. */
+export function plotSpecKey(ws: Workspace, plot: PlotSpec): string {
+  return JSON.stringify(plotSpecParts(ws, plot));
+}
+
+function plotSpecParts(ws: Workspace, plot: PlotSpec) {
+  return [
+    plotDataSpec(plot),
     ws.transforms[plot.x.transform],
     plot.y ? ws.transforms[plot.y.transform] : null,
     plot.kind === 'pseudocolor-channel' && plot.color ? ws.transforms[plot.color.transform] : null,
-  ]);
+  ];
+}
+
+export function plotKey(ws: Workspace, g: Group, sampleId: string, plot: PlotSpec): string {
+  return JSON.stringify([lineageKey(ws, g, sampleId, plot.population), ...plotSpecParts(ws, plot)]);
 }

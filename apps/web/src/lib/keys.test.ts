@@ -57,4 +57,22 @@ describe('dependency keys', () => {
     (ws.transforms.t1 as unknown as { T: number }).T = 5;
     expect(plotKey(ws, g, 's1', plot)).not.toBe(k0);
   });
+
+  it('of a plot stay the same when only its appearance changes', () => {
+    const { ws, g, pop } = setup();
+    const plot = {
+      id: 'p',
+      population: pop,
+      kind: 'pseudocolor',
+      x: { channel: 'A', comp: 'group', transform: 't1', range: [0, 1] },
+      y: { channel: 'B', comp: 'group', transform: 't1', range: [0, 1] },
+      style: { colormap: 'viridis', pointPx: 1, contourWidth: 1 },
+    } as unknown as PlotSpec;
+    const k0 = plotKey(ws, g, 's1', plot);
+    const fig = { ...plot.style, figure: { titleFontSize: 20 }, contourWidth: 3, contourColor: '#ff0000' };
+    const restyled = { ...plot, id: 'q', styleFollow: false, style: fig } as unknown as PlotSpec;
+    expect(plotKey(ws, g, 's1', restyled)).toBe(k0);
+    expect(plotKey(ws, g, 's1', { ...plot, style: { ...plot.style, colormap: 'magma' } })).not.toBe(k0);
+    expect(plotKey(ws, g, 's1', { ...plot, style: { ...plot.style, pointPx: 2 } })).not.toBe(k0);
+  });
 });

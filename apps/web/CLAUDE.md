@@ -63,7 +63,7 @@ What is in `src/lib/`:
 
 | File | Contents |
 |---|---|
-| `keys.ts` | worker-pool cache keys: `lineageKey`, `plotKey` |
+| `keys.ts` | worker-pool cache keys: `lineageKey`, `plotKey` (built on `plotDataSpec`, the plot without what only the UI draws) |
 | `gates.ts` | `addGate`: a new gate's populations and their names |
 | `axisDefaults.ts`, `plotFactories.ts`, `plotKinds.ts` | default axes and channels, scale kinds, factory axes (`axisAtFactory`, `resetAxisToFactory`), a Pseudocolor channel plot's default color axis (`ensureColorAxis`); new Gate-view and Tiles plots (`populationPlot`: a population's first plot); the plot types' names in menu order (`PLOT_KINDS`) |
 | `unsavedPlot.ts` | the Gate view's plot (`gateViewPlot`), which may be unsaved (`UNSAVED_PLOT_ID`), and saving it with the first edit that changes it (`addUnsaved`, `settleUnsaved`, used by `mutate`) |
