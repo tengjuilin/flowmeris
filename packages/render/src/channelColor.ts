@@ -79,9 +79,32 @@ export function channelColorAtPixels(inp: ChannelColorInput): Float64Array {
   return out;
 }
 
-/** The occupied pixels of `t` (NaN = empty) from the lowest value to the highest. */
-export function pixelsByValue(t: Float64Array): Int32Array {
-  const occupied: number[] = [];
-  for (let p = 0; p < t.length; p++) if (!Number.isNaN(t[p] as number)) occupied.push(p);
-  return Int32Array.from(occupied).sort((a, b) => (t[a] as number) - (t[b] as number) || a - b);
+/** The colormap entry (of 256) a position `t` on the color scale takes, clamped to the ends. */
+export const colorBucket = (t: number): number => Math.max(0, Math.min(255, Math.round(t * 255)));
+
+/**
+ * The occupied pixels of `t` (NaN = empty) from the lowest color to the highest: a counting sort on the
+ * colormap entry `colorBucket(t)`, pixels in index order within an entry. As `colorBucket` never
+ * decreases with `t`, this is sorting by `t` with the pixels of one entry reordered; those paint the same
+ * color and an overlap keeps the highest coverage, so the painted image does not depend on their order.
+ */
+export function pixelsByColor(t: Float64Array): Int32Array {
+  const start = new Int32Array(257);
+  for (let p = 0; p < t.length; p++) {
+    const v = t[p] as number;
+    if (!Number.isNaN(v)) {
+      const b = colorBucket(v) + 1;
+      start[b] = (start[b] as number) + 1;
+    }
+  }
+  for (let b = 0; b < 256; b++) start[b + 1] = (start[b + 1] as number) + (start[b] as number);
+  const out = new Int32Array(start[256] as number);
+  for (let p = 0; p < t.length; p++) {
+    const v = t[p] as number;
+    if (Number.isNaN(v)) continue;
+    const b = colorBucket(v);
+    out[start[b] as number] = p;
+    start[b] = (start[b] as number) + 1;
+  }
+  return out;
 }
