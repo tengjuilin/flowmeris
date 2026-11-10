@@ -9,7 +9,6 @@
   "sideEffects": false,
   "dependencies": {
     "@flowmeris/density": "workspace:*",
-    "@flowmeris/transforms": "workspace:*",
     "@flowmeris/model": "workspace:*"
   },
   "devDependencies": {

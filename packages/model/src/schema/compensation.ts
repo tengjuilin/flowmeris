@@ -33,4 +33,3 @@ export const GroupCompensationSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('per-sample-keyword') }),
   z.object({ mode: z.literal('matrix'), matrixId: Id }),
 ]);
-export type GroupCompensation = z.infer<typeof GroupCompensationSchema>;

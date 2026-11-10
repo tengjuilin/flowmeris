@@ -56,6 +56,5 @@ export const TransformSchema = z.discriminatedUnion('kind', [
   MiltenyiSchema,
 ]);
 export type Transform = z.infer<typeof TransformSchema>;
-export type TransformKind = Transform['kind'];
 /** Content-addressed id: `t_` + fingerprint(transform). See `transformId()`. */
 export type TransformId = string;

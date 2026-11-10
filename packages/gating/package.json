@@ -9,7 +9,6 @@
   "sideEffects": false,
   "dependencies": {
     "@flowmeris/model": "workspace:*",
-    "@flowmeris/transforms": "workspace:*",
     "@flowmeris/compensation": "workspace:*"
   },
   "devDependencies": {

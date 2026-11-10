@@ -2,7 +2,7 @@ import { BUNDLED, type BundledFamily, FACES, type FaceName } from './catalog.ts'
 
 /**
  * The bundled font files (ADR-0011), served with the app. They are absent until tools/fetch-fonts.mjs
- * has run; figures then fall back to system fonts and exports warn (see `fontsMissing`).
+ * has run; figures then fall back to system fonts and exports warn for each face not found.
  */
 
 const URLS = import.meta.glob<string>('../../assets/fonts/*.ttf', {
@@ -14,11 +14,6 @@ const URLS = import.meta.glob<string>('../../assets/fonts/*.ttf', {
 /** URL of a bundled font file, or undefined when it has not been fetched. */
 export function fontUrl(file: string): string | undefined {
   return URLS[`../../assets/fonts/${file}`];
-}
-
-/** True when the bundled fonts were not fetched before this build (see tools/fetch-fonts.mjs). */
-export function fontsMissing(): boolean {
-  return BUNDLED.some((f) => FACES.some((face) => !fontUrl(f.files[face])));
 }
 
 const bytes = new Map<string, Promise<Uint8Array>>();

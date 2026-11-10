@@ -142,8 +142,7 @@ table.matrix input {
   color: var(--text-2);
 }
 .ingest,
-.toast,
-.storage-warning {
+.toast {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
@@ -174,10 +173,6 @@ table.matrix input {
 .toast.warning .warning-icon {
   flex: none;
   color: var(--danger);
-}
-.storage-warning {
-  top: 60px;
-  color: var(--warn);
 }
 table.stats td.text-cell {
   text-align: left;

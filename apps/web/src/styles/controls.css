@@ -7,13 +7,6 @@
   flex-wrap: wrap;
   margin-bottom: 6px;
 }
-.axis-pickers {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 4px;
-}
 .seg {
   display: inline-flex;
   flex-wrap: wrap;

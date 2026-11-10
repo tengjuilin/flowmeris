@@ -51,9 +51,6 @@
 .tt-btn.small-a {
   font-size: 11px;
 }
-.tt-btn.tt-text {
-  font-size: 11.5px;
-}
 .tt-sep {
   width: 1px;
   align-self: stretch;
@@ -337,7 +334,6 @@
 .insp-panel .insp-section-head,
 .insp-panel .insp-section-body > fieldset > legend,
 .insp-panel .insp-pane-title,
-.insp-panel .tt-btn.tt-text,
 .insp-panel .group-picker,
 .insp-panel .small,
 .plot-side .pop-tree,

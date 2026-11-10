@@ -68,7 +68,6 @@ export const GeometrySchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('split'), at: Num }),
 ]);
 export type Geometry = z.infer<typeof GeometrySchema>;
-export type GeometryKind = Geometry['kind'];
 
 export const GateSchema = z.object({
   id: Id,
@@ -117,4 +116,3 @@ export const GateOverrideSchema = z.object({
   note: z.string().optional(),
   at: z.string(),
 });
-export type GateOverride = z.infer<typeof GateOverrideSchema>;
