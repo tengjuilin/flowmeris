@@ -65,18 +65,12 @@ importers:
       '@flowmeris/gating':
         specifier: workspace:^
         version: link:../../packages/gating
-      '@flowmeris/gatingml':
-        specifier: workspace:^
-        version: link:../../packages/gatingml
       '@flowmeris/model':
         specifier: workspace:^
         version: link:../../packages/model
       '@flowmeris/render':
         specifier: workspace:^
         version: link:../../packages/render
-      '@flowmeris/stats':
-        specifier: workspace:^
-        version: link:../../packages/stats
       '@flowmeris/storage':
         specifier: workspace:^
         version: link:../../packages/storage
@@ -223,13 +217,6 @@ importers:
       '@flowmeris/model':
         specifier: workspace:*
         version: link:../model
-      '@flowmeris/transforms':
-        specifier: workspace:*
-        version: link:../transforms
-    devDependencies:
-      '@flowmeris/testkit':
-        specifier: workspace:*
-        version: link:../testkit
 
   packages/gatingml:
     dependencies:
@@ -273,9 +260,6 @@ importers:
       '@flowmeris/model':
         specifier: workspace:*
         version: link:../model
-      '@flowmeris/transforms':
-        specifier: workspace:*
-        version: link:../transforms
     devDependencies:
       '@flowmeris/testkit':
         specifier: workspace:*

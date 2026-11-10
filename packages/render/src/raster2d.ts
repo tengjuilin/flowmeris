@@ -9,7 +9,8 @@ import {
   smooth2d,
 } from '@flowmeris/density';
 import { type ColorStat, type PlotStyle, REFERENCE_PLOT_PX } from '@flowmeris/model';
-import { channelColorAtPixels, pixelsByValue } from './channelColor.ts';
+import { binTwice } from './bins.ts';
+import { channelColorAtPixels, colorBucket, pixelsByColor } from './channelColor.ts';
 import { colormapLut, hex } from './colormaps.ts';
 
 // ---------------------------------------------------------------------------
@@ -41,6 +42,11 @@ export interface Raster2DOutput {
   stats: BinStats;
 }
 
+/** How much of the pixel [d, d + 1) the span [lo, hi] covers. */
+function cover(d: number, lo: number, hi: number): number {
+  return Math.max(0, Math.min(d + 1, hi) - Math.max(d, lo));
+}
+
 /**
  * Paint a square point `size` px wide centered on pixel (px, py). A fractional size covers its edge
  * pixels partly; their alpha is that coverage (kept at the highest of overlapping points).
@@ -58,15 +64,14 @@ function putPixel(
 ) {
   const lo = 0.5 - size / 2;
   const hi = 0.5 + size / 2;
-  const cover = (d: number) => Math.max(0, Math.min(d + 1, hi) - Math.max(d, lo));
   const reach = Math.ceil(size / 2);
   for (let dy = -reach; dy <= reach; dy++) {
     const yy = py + dy;
-    const cy = cover(dy);
+    const cy = cover(dy, lo, hi);
     if (yy < 0 || yy >= h || cy <= 0) continue;
     for (let dx = -reach; dx <= reach; dx++) {
       const xx = px + dx;
-      const c = cy * cover(dx);
+      const c = cy * cover(dx, lo, hi);
       if (xx < 0 || xx >= w || c <= 0) continue;
       const o = (yy * w + xx) * 4;
       const a = Math.round(c * 255);
@@ -85,25 +90,12 @@ function putPixel(
  */
 export const DENSITY_BINS = 256;
 
-/** An RGB color, 0–255 per channel. */
-type Rgb = [number, number, number];
-
 /**
  * The smoothed density on the fixed grid (M-PLOT-SMOOTH): σ is `smoothPct` % of each axis's range, at least
  * `minBins` bins.
  */
-function densityGrid(inp: Raster2DInput, minBins: number): { grid: Grid2D; stats: BinStats } {
-  const { grid, stats } = bin2d(
-    inp.x,
-    inp.y,
-    inp.indices,
-    inp.xRange,
-    inp.yRange,
-    DENSITY_BINS,
-    DENSITY_BINS,
-  );
-  const sigma = Math.max((inp.style.smoothPct / 100) * DENSITY_BINS, minBins);
-  return { grid: smooth2d(grid, sigma), stats };
+function smoothDensity(grid: Grid2D, style: PlotStyle, minBins: number): Grid2D {
+  return smooth2d(grid, Math.max((style.smoothPct / 100) * DENSITY_BINS, minBins));
 }
 
 /** Contour levels of a density (M-PLOT-CONTOUR-EQP, -LOG). */
@@ -126,9 +118,12 @@ export function bilinear(g: Grid2D, fx: number, fy: number): number {
   const y1 = Math.min(g.ny - 1, y0 + 1);
   const tx = x - x0;
   const ty = y - y0;
-  const at = (i: number, j: number) => g.values[j * g.nx + i] as number;
+  const v = g.values;
+  const r0 = y0 * g.nx;
+  const r1 = y1 * g.nx;
   return (
-    (1 - ty) * ((1 - tx) * at(x0, y0) + tx * at(x1, y0)) + ty * ((1 - tx) * at(x0, y1) + tx * at(x1, y1))
+    (1 - ty) * ((1 - tx) * (v[r0 + x0] as number) + tx * (v[r0 + x1] as number)) +
+    ty * ((1 - tx) * (v[r1 + x0] as number) + tx * (v[r1 + x1] as number))
   );
 }
 
@@ -143,7 +138,16 @@ function densityAtPixels(dens: Grid2D, w: number, h: number): Float64Array {
 }
 
 /** Writes one opaque pixel; `gy` counts from the lowest y, image row 0 is the top. */
-function setPixel(rgba: Uint8ClampedArray, w: number, h: number, gx: number, gy: number, [r, g, b]: Rgb) {
+function setPixel(
+  rgba: Uint8ClampedArray,
+  w: number,
+  h: number,
+  gx: number,
+  gy: number,
+  r: number,
+  g: number,
+  b: number,
+) {
   const o = ((h - 1 - gy) * w + gx) * 4;
   rgba[o] = r;
   rgba[o + 1] = g;
@@ -151,22 +155,31 @@ function setPixel(rgba: Uint8ClampedArray, w: number, h: number, gx: number, gy:
   rgba[o + 3] = 255;
 }
 
-/** One point per occupied pixel, `size` px wide, in the color `colorAt` gives it (null = none). */
+/**
+ * One point per occupied pixel, `size` px wide, in one color; with `below`, only the pixels whose
+ * density `atPx` is below `below.level` (outliers).
+ */
 function paintPoints(
   rgba: Uint8ClampedArray,
   w: number,
   h: number,
   counts: Float64Array,
   size: number,
-  colorAt: (i: number) => Rgb | null,
+  [r, g, b]: [number, number, number],
+  below?: { atPx: Float64Array; level: number },
 ) {
   for (let gy = 0; gy < h; gy++)
     for (let gx = 0; gx < w; gx++) {
       const i = gy * w + gx;
       if (!((counts[i] as number) > 0)) continue;
-      const c = colorAt(i);
-      if (c) putPixel(rgba, w, h, gx, h - 1 - gy, c[0], c[1], c[2], size);
+      if (below && !((below.atPx[i] as number) < below.level)) continue;
+      putPixel(rgba, w, h, gx, h - 1 - gy, r, g, b, size);
     }
+}
+
+/** The offset in a colormap LUT of a position `t` on the color scale (0–1, clamped to the 256 entries). */
+function lutIndex(t: number): number {
+  return colorBucket(t) * 3;
 }
 
 /**
@@ -194,12 +207,16 @@ function paintZebra(
     const lo = edges[k - 1] as number;
     const hi = edges[k] as number;
     const t = hi > lo ? Math.min(1, (d - lo) / (hi - lo)) : 0;
-    const rgb: Rgb = [
+    setPixel(
+      rgba,
+      w,
+      h,
+      i % w,
+      Math.floor(i / w),
       Math.round(fr + (br - fr) * t),
       Math.round(fg + (bg - fg) * t),
       Math.round(fb + (bb - fb) * t),
-    ];
-    setPixel(rgba, w, h, i % w, Math.floor(i / w), rgb);
+    );
   }
 }
 
@@ -209,70 +226,108 @@ const maxOf = (v: Float64Array) => {
   return m;
 };
 
+/** M-PLOT-PSEUDO: each occupied pixel colored by log(1 + local density) / log(1 + max). */
+function paintPseudocolor(
+  rgba: Uint8ClampedArray,
+  w: number,
+  h: number,
+  counts: Float64Array,
+  atPx: Float64Array,
+  max: number,
+  lut: Uint8Array,
+  size: number,
+) {
+  const lmax = Math.log1p(max);
+  for (let gy = 0; gy < h; gy++)
+    for (let gx = 0; gx < w; gx++) {
+      const i = gy * w + gx;
+      if (!((counts[i] as number) > 0)) continue;
+      const c = lutIndex(lmax > 0 ? Math.log1p(atPx[i] as number) / lmax : 0);
+      putPixel(rgba, w, h, gx, h - 1 - gy, lut[c]!, lut[c + 1]!, lut[c + 2]!, size);
+    }
+}
+
+/** M-PLOT-DENSITY: linear color scale; pixels below 0.5% of the maximum are left transparent. */
+function paintDensity(
+  rgba: Uint8ClampedArray,
+  w: number,
+  h: number,
+  atPx: Float64Array,
+  max: number,
+  lut: Uint8Array,
+) {
+  for (let i = 0; i < atPx.length; i++) {
+    const d = atPx[i] as number;
+    if (!(max > 0 && d >= 0.005 * max)) continue;
+    const c = lutIndex(d / max);
+    setPixel(rgba, w, h, i % w, Math.floor(i / w), lut[c]!, lut[c + 1]!, lut[c + 2]!);
+  }
+}
+
 /**
  * A 2D plot's image at `width` × `height` px. Its density is estimated on a fixed grid and its point sizes
  * are px at the reference plot width, scaled with `width`: the same plot drawn at any size, or exported at
  * any DPI, is the same picture.
  */
 export function raster2d(inp: Raster2DInput): Raster2DOutput {
+  if (inp.kind === 'pseudocolor-channel') return channelRaster(inp);
   const { width: w, height: h, style } = inp;
-  // Occupied image pixels: where points (dots, pseudocolor, outliers) are drawn.
-  const pixels = bin2d(inp.x, inp.y, inp.indices, inp.xRange, inp.yRange, w, h);
-  const counts = pixels.grid.values;
+  // Occupied image pixels (where points are drawn) and the fixed density grid, binned in one pass.
+  const bins = binTwice(inp, w, h, DENSITY_BINS);
+  const counts = bins.pixels;
   const rgba = new Uint8ClampedArray(w * h * 4);
   const scale = w / REFERENCE_PLOT_PX;
   const lut = colormapLut(style.colormap);
-  const mapColor = (t: number): Rgb => {
-    const i = Math.max(0, Math.min(255, Math.round(t * 255)));
-    return [lut[i * 3]!, lut[i * 3 + 1]!, lut[i * 3 + 2]!];
-  };
   const point = style.pointPx * scale;
+  const stats = bins.stats;
 
   if (inp.kind === 'dot') {
-    const dot = hex(inp.dotColor);
-    paintPoints(rgba, w, h, counts, point, () => dot);
-    return { width: w, height: h, rgba, contours: [], stats: densityGrid(inp, 0).stats };
-  }
-  if (inp.kind === 'pseudocolor-channel') {
-    if (!inp.color) throw new Error('A Pseudocolor channel plot needs a color channel');
-    const { values, range, stat } = inp.color;
-    const t = channelColorAtPixels({ ...inp, c: values, cRange: range, stat });
-    // Lowest values first, so the points of the highest are drawn over the others.
-    for (const i of pixelsByValue(t)) {
-      const [r, g, b] = mapColor(t[i] as number);
-      putPixel(rgba, w, h, i % w, h - 1 - Math.floor(i / w), r, g, b, point);
-    }
-    return { width: w, height: h, rgba, contours: [], stats: pixels.stats };
+    paintPoints(rgba, w, h, counts, point, hex(inp.dotColor));
+    return { width: w, height: h, rgba, contours: [], stats };
   }
   const isContour = inp.kind === 'contour' || inp.kind === 'zebra';
-  const { grid: dens, stats } = densityGrid(inp, inp.kind === 'pseudocolor' ? 0 : 1);
+  const grid: Grid2D = {
+    nx: DENSITY_BINS,
+    ny: DENSITY_BINS,
+    values: bins.density,
+    x: inp.xRange,
+    y: inp.yRange,
+  };
+  const dens = smoothDensity(grid, style, inp.kind === 'pseudocolor' ? 0 : 1);
   const atPx = densityAtPixels(dens, w, h);
   const max = maxOf(dens.values);
   let contours: ContourLine[] = [];
 
-  if (inp.kind === 'pseudocolor') {
-    // M-PLOT-PSEUDO: each occupied pixel colored by log(1 + local density) / log(1 + max).
-    const lmax = Math.log1p(max);
-    paintPoints(rgba, w, h, counts, point, (i) =>
-      mapColor(lmax > 0 ? Math.log1p(atPx[i] as number) / lmax : 0),
-    );
-  } else if (inp.kind === 'density') {
-    // M-PLOT-DENSITY: linear color scale; pixels below 0.5% of the maximum are left transparent.
-    for (let i = 0; i < atPx.length; i++) {
-      const d = atPx[i] as number;
-      if (max > 0 && d >= 0.005 * max) setPixel(rgba, w, h, i % w, Math.floor(i / w), mapColor(d / max));
-    }
-  } else if (isContour) {
+  if (inp.kind === 'pseudocolor') paintPseudocolor(rgba, w, h, counts, atPx, max, lut, point);
+  else if (inp.kind === 'density') paintDensity(rgba, w, h, atPx, max, lut);
+  else if (isContour) {
     const levels = levelsOf(dens, style);
     if (inp.kind === 'zebra') paintZebra(rgba, w, h, atPx, levels, max, style.zebraColors);
     if (inp.kind === 'contour' || style.zebraLines) contours = contourLines(dens, levels);
     const lowest = levels[0];
-    if (style.showOutliers && lowest !== undefined) {
-      const out = hex(style.outlierColor);
-      paintPoints(rgba, w, h, counts, style.outlierPx * scale, (i) =>
-        (atPx[i] as number) < lowest ? out : null,
-      );
-    }
+    if (style.showOutliers && lowest !== undefined)
+      paintPoints(rgba, w, h, counts, style.outlierPx * scale, hex(style.outlierColor), {
+        atPx,
+        level: lowest,
+      });
   }
   return { width: w, height: h, rgba, contours, stats };
+}
+
+/** M-PLOT-PSEUDO-CHANNEL: each occupied pixel colored by its events' statistic of the color channel. */
+function channelRaster(inp: Raster2DInput): Raster2DOutput {
+  if (!inp.color) throw new Error('A Pseudocolor channel plot needs a color channel');
+  const { width: w, height: h, style } = inp;
+  const { stats } = bin2d(inp.x, inp.y, inp.indices, inp.xRange, inp.yRange, w, h);
+  const rgba = new Uint8ClampedArray(w * h * 4);
+  const lut = colormapLut(style.colormap);
+  const point = style.pointPx * (w / REFERENCE_PLOT_PX);
+  const { values, range, stat } = inp.color;
+  const t = channelColorAtPixels({ ...inp, c: values, cRange: range, stat });
+  // Lowest colors first, so the points of the highest are drawn over the others.
+  for (const i of pixelsByColor(t)) {
+    const c = lutIndex(t[i] as number);
+    putPixel(rgba, w, h, i % w, h - 1 - Math.floor(i / w), lut[c]!, lut[c + 1]!, lut[c + 2]!, point);
+  }
+  return { width: w, height: h, rgba, contours: [], stats };
 }

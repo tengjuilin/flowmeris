@@ -57,12 +57,6 @@ export const VariableSchema = z.object({
 });
 export type Variable = z.infer<typeof VariableSchema>;
 
-/**
- * Key of a statistics-table column: `sample:name`, `sample:well`, `var:<variableId>`,
- * `<popId>|count`, `<popId>|pctParent`, `<statSpecId>` or `derived:<derivedId>`.
- */
-export type ColumnKey = string;
-
 const SigFigs = z.number().int().min(1).max(15);
 
 export const DerivedColumnSchema = z.discriminatedUnion('kind', [
@@ -110,4 +104,3 @@ export const StatAnalysisSchema = z.object({
   /** Columns of the table export, in table order; omitted = all. */
   exportColumns: z.array(z.string()).optional(),
 });
-export type StatAnalysis = z.infer<typeof StatAnalysisSchema>;

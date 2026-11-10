@@ -1,17 +1,21 @@
-import { type CompMatrix, type Group, type Transform, populationsDepthFirst } from '@flowmeris/model';
-import { aggregate, applyDerived } from '@flowmeris/table';
+import type { AnalysisContext } from '@flowmeris/engine';
+import { type Group, type Population, populationsDepthFirst } from '@flowmeris/model';
+import { type LevelOrder, type Table, aggregate, applyDerived } from '@flowmeris/table';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getPool } from '../../engine-client/pool.ts';
+import { LastResult } from '../../lib/lastResult.ts';
+import { displayNames } from '../../lib/names.ts';
 import {
   type SampleRow,
   type SampleTable,
+  type StatColumn,
   baseTable,
   levelOrder,
   sampleKeys,
   statColumns,
   toTable,
 } from '../../lib/statsTable.ts';
-import { toast, useSampleNames, useSelectedSampleIds, useStore } from '../store.ts';
+import { contextFor, toast, useStore } from '../store.ts';
 
 // ---------------------------------------------------------------------------
 // Per-sample results
@@ -36,13 +40,14 @@ function remember(key: string, t: SampleTable) {
 
 function fetchTable(
   key: string,
-  ctx: { group: Group; transforms: Record<string, Transform>; compMatrices: Record<string, CompMatrix> },
+  group: Group,
+  ctx: AnalysisContext,
   sid: string,
   popIds: string[],
 ): Promise<SampleTable> {
   let p = inflight.get(key);
   if (!p) {
-    const specs = ctx.group.stats;
+    const specs = group.stats;
     p = getPool()
       .table(ctx, sid, popIds, specs)
       .then(({ counts, stats }) => {
@@ -56,6 +61,20 @@ function fetchTable(
   return p;
 }
 
+// Each step's last result, shared by every caller with the same inputs: the Statistics and Charts views
+// and their settings panels compute the table once per change. The steps depend on the group's fields
+// they read, not on the group, so an edit elsewhere in the group (a chart's style) recomputes nothing.
+const lastShownIds = new LastResult<string[]>();
+const lastPops = new LastResult<Population[]>();
+const lastKeys = new LastResult<Map<string, string>>();
+const lastMarker = new LastResult<(c?: string) => string | undefined>();
+const lastColumns = new LastResult<StatColumn[]>();
+const lastNames = new LastResult<Record<string, string>>();
+const lastBase = new LastResult<Table>();
+const lastLevels = new LastResult<LevelOrder>();
+const lastDerived = new LastResult<ReturnType<typeof applyDerived>>();
+const lastAggregated = new LastResult<Table | undefined>();
+
 /**
  * Per-sample statistics of the group's checked samples, computed in the
  * workers and cached. Rows whose recomputation is pending keep their last
@@ -66,13 +85,37 @@ export function useSampleStats(group: Group | undefined) {
   const transforms = useStore((s) => s.ws.transforms);
   const compMatrices = useStore((s) => s.ws.compMatrices);
   const missing = useStore((s) => s.status.missing);
-  const shown = useSelectedSampleIds(group);
+  const excluded = useStore((s) => s.ui.excluded);
   const [, setTick] = useState(0);
 
-  const pops = useMemo(() => (group ? populationsDepthFirst(group.template) : []), [group]);
+  const sampleIds = group?.sampleIds;
+  const template = group?.template;
+  // The group's checked samples (as `useSelectedSampleIds`).
+  const shown = useMemo(
+    () => lastShownIds.get([sampleIds, excluded], () => sampleIds?.filter((id) => !excluded[id]) ?? []),
+    [sampleIds, excluded],
+  );
+  const pops = useMemo(
+    () => lastPops.get([template], () => (template ? populationsDepthFirst(template) : [])),
+    [template],
+  );
+  // Everything `sampleKeys` reads.
+  const keyDeps = [
+    pops,
+    template?.gates,
+    group?.compensation,
+    group?.stats,
+    group?.overrides,
+    transforms,
+    compMatrices,
+    shown,
+  ];
   const keys = useMemo(
-    () => (group ? sampleKeys(group, pops, transforms, compMatrices, shown) : new Map<string, string>()),
-    [group, pops, transforms, compMatrices, shown],
+    () =>
+      lastKeys.get(keyDeps, () =>
+        group ? sampleKeys(group, pops, transforms, compMatrices, shown) : new Map<string, string>(),
+      ),
+    keyDeps,
   );
 
   // Fetch the rows that are not cached yet; re-render (at most once per frame) as they arrive.
@@ -80,12 +123,12 @@ export function useSampleStats(group: Group | undefined) {
     if (!group) return;
     let live = true;
     let frame = 0;
-    const ctx = { group, transforms, compMatrices };
+    const ctx = contextFor({ transforms, compMatrices }, group);
     const popIds = pops.map((p) => p.id);
     let failed = false;
     for (const [sid, key] of keys) {
       if (missing[sid] || tableCache.has(key)) continue;
-      fetchTable(key, ctx, sid, popIds).then(
+      fetchTable(key, group, ctx, sid, popIds).then(
         () => {
           if (live && !frame)
             frame = requestAnimationFrame(() => {
@@ -114,13 +157,22 @@ export function useSampleStats(group: Group | undefined) {
   if (group && lastShown.current.groupId !== group.id)
     lastShown.current = { groupId: group.id, rows: new Map() };
 
-  const marker = useMemo(() => {
-    const sample0 = group ? samples[group.sampleIds[0] ?? ''] : undefined;
-    const pns = new Map(sample0?.channels.map((c) => [c.pnn, c.pns]) ?? []);
-    return (c?: string) => (c ? pns.get(c) : undefined);
-  }, [group, samples]);
+  const sample0 = sampleIds?.[0];
+  const marker = useMemo(
+    () =>
+      lastMarker.get([sample0, samples], () => {
+        const s0 = samples[sample0 ?? ''];
+        const pns = new Map(s0?.channels.map((c) => [c.pnn, c.pns]) ?? []);
+        return (c?: string) => (c ? pns.get(c) : undefined);
+      }),
+    [sample0, samples],
+  );
 
-  const columns = useMemo(() => (group ? statColumns(group, pops, marker) : []), [group, pops, marker]);
+  const stats = group?.stats;
+  const columns = useMemo(
+    () => lastColumns.get([stats, pops, marker], () => (group ? statColumns(group, pops, marker) : [])),
+    [stats, pops, marker],
+  );
 
   let busy = 0;
   const rows: SampleRow[] = shown.map((sid) => {
@@ -159,33 +211,47 @@ export function useAnalysisTable(group: Group | undefined) {
   const stats = useSampleStats(group);
   const samples = useStore((s) => s.ws.samples);
   const variables = useStore((s) => s.ws.variables);
-  const names = useSampleNames(group);
+  const sampleIds = group?.sampleIds;
+  // The samples' short names (as `useSampleNames`).
+  const names = useMemo(
+    () =>
+      lastNames.get([sampleIds, samples], () =>
+        sampleIds ? displayNames(sampleIds.flatMap((id) => (samples[id] ? [samples[id]] : []))) : {},
+      ),
+    [sampleIds, samples],
+  );
   const { columns: statCols, rows } = stats;
 
   // `rows` is a new array every render; rebuild only when the tables shown change.
   const rowsKey = rows.map((r) => `${r.sid}:${tableSerial(r.table)}`).join(',');
+  // `baseTable` reads only the group's populations.
+  const template = group?.template;
+  const baseDeps = [template, statCols, rowsKey, samples, variables, names];
   const base = useMemo(
-    () => baseTable(group, statCols, rows, samples, variables, names),
     // `rows` itself is left out: rowsKey stands for its content.
-    [group, statCols, rowsKey, samples, variables, names],
+    () => lastBase.get(baseDeps, () => baseTable(group, statCols, rows, samples, variables, names)),
+    baseDeps,
   );
 
-  const levels = useMemo(() => levelOrder(variables), [variables]);
+  const levels = useMemo(() => lastLevels.get([variables], () => levelOrder(variables)), [variables]);
+  const derivedSpecs = group?.analysis.derived;
   const derived = useMemo(
-    () => applyDerived(base, group?.analysis.derived ?? []),
-    [base, group?.analysis.derived],
+    () => lastDerived.get([base, derivedSpecs], () => applyDerived(base, derivedSpecs ?? [])),
+    [base, derivedSpecs],
   );
   const agg = group?.analysis.aggregate;
   const aggregated = useMemo(
     () =>
-      agg?.enabled
-        ? aggregate(
-            derived.table,
-            agg.by.map((v) => `var:${v}`),
-            agg.funcs,
-            levels,
-          )
-        : undefined,
+      lastAggregated.get([derived, agg, levels], () =>
+        agg?.enabled
+          ? aggregate(
+              derived.table,
+              agg.by.map((v) => `var:${v}`),
+              agg.funcs,
+              levels,
+            )
+          : undefined,
+      ),
     [derived, agg, levels],
   );
   return { stats, base, perSample: derived.table, errors: derived.errors, aggregated, levels };

@@ -1,3 +1,4 @@
+import { decodeNative, nativeWidth } from './dataNative.ts';
 import { latin1 } from './text.ts';
 import { type FcsChannel, FcsParseError, type FcsWarning } from './types.ts';
 
@@ -28,12 +29,17 @@ function nextPow2(x: number): number {
   return 2 ** Math.ceil(Math.log2(x) - 1e-12);
 }
 
+/**
+ * Decodes DATA. `native = false` turns off the typed-array fast path (dataNative.ts), so tests can
+ * compare it with the per-channel DataView reads.
+ */
 export function decodeData(
   data: Uint8Array,
   channels: FcsChannel[],
   tot: number,
   byteord: string,
   warnings: FcsWarning[],
+  native = true,
 ): { columns: Column[]; eventCount: number } {
   const par = channels.length;
   if (par === 0) return { columns: [], eventCount: tot };
@@ -59,6 +65,13 @@ export function decodeData(
     const exactF32 = c.dataType === 'F' || (c.dataType === 'I' && w <= 3);
     return exactF32 ? new Float32Array(n) : new Float64Array(n);
   });
+
+  const nw = native ? nativeWidth(channels, widths, order.little, order.perm !== null) : 0;
+  if (nw !== 0) {
+    const float = channels[0]?.dataType === 'F';
+    decodeNative(data, columns, n, nw, float, float ? [] : channels.map((c) => intModulus(c, nw)));
+    return { columns, eventCount: n };
+  }
 
   let base = 0;
   for (let ci = 0; ci < par; ci++) {
@@ -144,8 +157,8 @@ interface Layout {
  * valueReader(), without the per-value closure and type dispatch.
  */
 function readFast(col: Column, c: FcsChannel, w: number, { dv, n, base, stride, little }: Layout): void {
-  const range = c.dataType === 'I' ? nextPow2(Math.ceil(c.pnr)) : 0;
-  const mask = c.dataType === 'I' && range > 0 && range < 2 ** (w * 8);
+  const range = intModulus(c, w);
+  const mask = range > 0;
   let p = base;
   if (c.dataType === 'F') for (let e = 0; e < n; e++, p += stride) col[e] = dv.getFloat32(p, little);
   else if (c.dataType === 'D') for (let e = 0; e < n; e++, p += stride) col[e] = dv.getFloat64(p, little);
@@ -154,6 +167,16 @@ function readFast(col: Column, c: FcsChannel, w: number, { dv, n, base, stride, 
     else for (let e = 0; e < n; e++, p += stride) col[e] = dv.getUint16(p, little);
   } else if (mask) for (let e = 0; e < n; e++, p += stride) col[e] = dv.getUint32(p, little) % range;
   else for (let e = 0; e < n; e++, p += stride) col[e] = dv.getUint32(p, little);
+}
+
+/**
+ * The modulus applied to integer channel `c` of `w` bytes: bits above the next power of two ≥ $PnR are
+ * ignored. 0 when nothing is masked (not an integer channel, or the power of two covers all `w` bytes).
+ */
+function intModulus(c: FcsChannel, w: number): number {
+  if (c.dataType !== 'I') return 0;
+  const range = nextPow2(Math.ceil(c.pnr));
+  return range > 0 && range < 2 ** (w * 8) ? range : 0;
 }
 
 /** Any other layout, one value at a time through `read`. */

@@ -4,7 +4,7 @@ import {
   findSpillover,
   makeCompensator,
 } from '@flowmeris/compensation';
-import { linearize } from '@flowmeris/fcs';
+import { isIdentityScaling, linearize } from '@flowmeris/fcs';
 import type { CompRef } from '@flowmeris/model';
 import { makeScale } from '@flowmeris/transforms';
 import { type Fingerprints, sampleKey } from './keys.ts';
@@ -203,8 +203,10 @@ export class Columns {
         s.channels.map((c) => c.pnn),
       );
       if (!comp.channelIndex.includes(ci)) return this.linear(s, ci);
+      // Detector inputs are read without caching them (8 bytes per event each); a cached linear
+      // column is still used.
       const cols = s.channels.map((_, k) =>
-        comp.channelIndex.includes(k) ? this.linear(s, k) : new Float64Array(0),
+        comp.channelIndex.includes(k) ? this.linearUncached(s, k) : new Float64Array(0),
       );
       return compensateChannel(comp, cols, ci) as Float64Array;
     });
@@ -230,12 +232,17 @@ export class Columns {
     );
   }
 
-  /** linear() without adding the result to the cache (it is still reused when already there). */
-  private linearUncached(s: SampleData, ci: number): Float64Array {
-    return (
-      (this.cache.get(`lin|${sampleKey(s)}|${ci}`) as Float64Array | undefined) ??
-      linearize(this.stored(s, ci), s.channels[ci]!.scaling)
-    );
+  /**
+   * linear()'s values without adding them to the cache (a cached column is still reused). When
+   * linearization is the identity this is the stored column itself, not a Float64 copy: widening its
+   * values to float64 where they are read gives exactly what linearize() would store. Read-only.
+   */
+  private linearUncached(s: SampleData, ci: number): Float32Array | Float64Array {
+    const hit = this.cache.get(`lin|${sampleKey(s)}|${ci}`) as Float64Array | undefined;
+    if (hit) return hit;
+    const scaling = s.channels[ci]!.scaling;
+    const stored = this.stored(s, ci);
+    return isIdentityScaling(scaling) ? stored : linearize(stored, scaling);
   }
 
   /** Identifies a column's values: channel, compensation and transform. */

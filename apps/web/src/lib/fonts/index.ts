@@ -3,7 +3,7 @@
  * installed fonts (local.ts), and which font a text is drawn in (resolve.ts).
  */
 export * from './catalog.ts';
-export { bundledBytes, fontUrl, fontsMissing, registerBundledFonts } from './files.ts';
+export { bundledBytes, fontUrl, registerBundledFonts } from './files.ts';
 export { installedFonts, installedTrueType } from './local.ts';
 export { type FaceMetrics, faceMetrics, underlineMetrics } from './sfnt.ts';
 export {

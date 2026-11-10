@@ -1,11 +1,11 @@
-import type { Group, PlotSpec, Population, Workspace } from '@flowmeris/model';
+import type { Group, PlotSpec, Population } from '@flowmeris/model';
 import { Component, type ReactNode, memo, useEffect, useMemo, useRef, useState } from 'react';
 import { OpenInIcon } from '../../components/ui/icons.tsx';
 import { withBaseFont } from '../../lib/figure.ts';
 import { type Count, pctOfParent } from '../../lib/gatingPath.ts';
 import { openGatePlotInGrid, openInTilesView } from '../../state/commands/grid.ts';
 import { openPathPlot } from '../../state/commands/plots.ts';
-import { useSampleNames } from '../../state/store.ts';
+import { usePlotWorkspace, useSampleNames } from '../../state/store.ts';
 import { PlotCanvas, plotBox } from '../plot/index.ts';
 
 /** Base font size (px) of the plots, as in Tiles. */
@@ -46,7 +46,6 @@ export function WhenVisible({
 }
 
 interface CardProps {
-  ws: Workspace;
   group: Group;
   sampleId: string;
   pop: Population;
@@ -61,11 +60,10 @@ interface CardProps {
 
 /**
  * A population's plot: buttons opening it in the Gate, Plot or Tiles view above it, and the population's
- * name, count and percentage of its parent below it. Memoised: a card re-renders only when its own plot,
+ * name, count and percentage of its parent below it. Memoized: a card re-renders only when its own plot,
  * count, size or overlay changes.
  */
 export const StepCard = memo(function StepCard({
-  ws,
   group,
   sampleId,
   pop,
@@ -81,6 +79,7 @@ export const StepCard = memo(function StepCard({
   const shown = useMemo(() => withBaseFont(plot, FONT_PX), [plot]);
   const box = plotBox(shown, size, size);
   const sampleName = useSampleNames(group)[sampleId] ?? sampleId;
+  const ws = usePlotWorkspace();
   return (
     <div className="path-card">
       <div className="path-card-links">

@@ -77,7 +77,7 @@ function writeWellPart(
 
 /** What cell `col` of sample `sampleId` shows. */
 export function metaCellValue(
-  ws: Workspace,
+  ws: Pick<Workspace, 'samples'>,
   sampleId: string,
   vars: Variable[],
   col: number,

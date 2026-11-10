@@ -1,11 +1,12 @@
-import type { PlotFigure, PlotSpec, Workspace } from '@flowmeris/model';
+import type { PlotFigure, PlotSpec } from '@flowmeris/model';
 import { colormapCss } from '@flowmeris/render';
 import { axisTicks } from '@flowmeris/transforms';
-import { useId, useMemo } from 'react';
+import { memo, useId, useMemo } from 'react';
 import { type Anchor, pickerTrigger } from '../../components/ui/PickerMenu.tsx';
 import { SupLabel } from '../../components/ui/SupLabel.tsx';
 import { figureText } from '../../lib/figure.ts';
 import { scaleFor } from '../../lib/geometry.ts';
+import type { PlotWorkspace } from '../../lib/keys.ts';
 import { axisLabel, colorBarLayout, colorBarSpan } from '../../lib/plotLayout.ts';
 import { customTicks } from '../../lib/ticks.ts';
 
@@ -17,7 +18,7 @@ const STOPS = 16;
  * axis's range, lowest at the bottom, with the axis's ticks and title, styled as the y axis. With
  * `onOpenMenu` its title opens a picker of the color channel.
  */
-export function ColorBar({
+export const ColorBar = memo(function ColorBar({
   ws,
   sampleId,
   plot,
@@ -26,7 +27,7 @@ export function ColorBar({
   ph,
   onOpenMenu,
 }: {
-  ws: Workspace;
+  ws: PlotWorkspace;
   sampleId: string;
   plot: PlotSpec;
   fig: PlotFigure;
@@ -90,4 +91,4 @@ export function ColorBar({
       </text>
     </g>
   );
-}
+});

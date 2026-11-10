@@ -19,10 +19,8 @@ export const ChannelSpecSchema = z.object({
   /** Largest linearized value of a time channel (seconds); sets the default time axis. */
   dataMax: Num.optional(),
 });
-export type ChannelSpec = z.infer<typeof ChannelSpecSchema>;
 
 export const ParseWarningSchema = z.object({ code: z.string(), message: z.string() });
-export type ParseWarning = z.infer<typeof ParseWarningSchema>;
 
 export const SampleSchema = z.object({
   id: Id,

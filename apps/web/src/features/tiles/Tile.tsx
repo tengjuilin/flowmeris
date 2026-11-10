@@ -1,13 +1,14 @@
-import type { Group, PlotSpec, Workspace } from '@flowmeris/model';
+import type { Group, PlotSpec } from '@flowmeris/model';
 import type { ReactNode } from 'react';
 import { useVisible } from '../../components/hooks/useVisible.ts';
 import { OpenInIcon } from '../../components/ui/icons.tsx';
+import type { PlotWorkspace } from '../../lib/keys.ts';
 import { type ChannelAxis, drill } from '../../state/commands/plots.ts';
 import { PlotCanvas } from '../plot/index.ts';
 
 /** What a tile draws: one sample's plot, with the props making its axis titles clickable. */
 export interface TilePlot {
-  ws: Workspace;
+  ws: PlotWorkspace;
   group: Group;
   sampleId: string;
   plot: PlotSpec;

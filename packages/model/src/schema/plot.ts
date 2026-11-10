@@ -46,7 +46,6 @@ export const ContourSpecSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('equal-prob'), pct: z.union([z.literal(2), z.literal(5), z.literal(10)]) }),
   z.object({ mode: z.literal('log'), levels: z.number().int().min(1).max(20) }),
 ]);
-export type ContourSpec = z.infer<typeof ContourSpecSchema>;
 
 /**
  * Sizes in px (points, outliers, contour lines) are px of a plot whose plot area is `REFERENCE_PLOT_PX` wide;
@@ -147,4 +146,3 @@ export const PlotGridSchema = z.object({
   size: z.number().int().positive().optional(),
   cells: z.array(PlotCellSchema.nullable()).default([]),
 });
-export type PlotGrid = z.infer<typeof PlotGridSchema>;

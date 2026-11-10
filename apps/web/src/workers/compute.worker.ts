@@ -119,9 +119,10 @@ const api = {
     provenance: Record<string, string>,
   ): Promise<Uint8Array> {
     const ev = await engine.populationEvents(ctx, sampleId, popId, mode);
-    if (format === 'csv') return new TextEncoder().encode(eventsToCsv(ev));
-    const s = await engine.sample(sampleId);
-    const bytes = eventsToFcs(s.keywords, ev, mode, provenance);
+    const bytes =
+      format === 'csv'
+        ? eventsToCsv(ev)
+        : eventsToFcs((await engine.sample(sampleId)).keywords, ev, mode, provenance);
     return Comlink.transfer(bytes, [bytes.buffer]);
   },
 };

@@ -66,7 +66,7 @@ export function colorBarSpan(fig: PlotFigure, ph: number): { top: number; height
  * histogram only the x title is customizable.
  */
 export function axisLabel(
-  ws: Workspace,
+  ws: Pick<Workspace, 'samples'>,
   sampleId: string,
   plot: PlotSpec,
   axis: 'x' | 'y' | 'color',
@@ -84,7 +84,7 @@ export function axisLabel(
  * What a plot shows, for screen readers: `dot plot of CD4 :: FL1-A versus FL2-A`, and `colored by …` for
  * a Pseudocolor channel plot.
  */
-export function plotAriaLabel(ws: Workspace, sampleId: string, plot: PlotSpec): string {
+export function plotAriaLabel(ws: Pick<Workspace, 'samples'>, sampleId: string, plot: PlotSpec): string {
   const is1d = plot.kind === 'histogram' || !plot.y;
   const y = plot.y && !is1d ? ` versus ${axisLabel(ws, sampleId, plot, 'y')}` : '';
   const color =

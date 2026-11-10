@@ -14,10 +14,11 @@ import { VIEW_DEFS } from './views.tsx';
 export function App() {
   const view = useStore((s) => s.ui.view);
   const groupId = useStore((s) => s.ui.groupId);
-  const views = useStore((s) => s.views);
   const setViews = useStore((s) => s.setViews);
   const setUi = useStore((s) => s.setUi);
-  const groups = useStore((s) => s.ws.groups);
+  const hasGroups = useStore((s) => s.ws.groups.length > 0);
+  const firstGroupId = useStore((s) => s.ws.groups[0]?.id);
+  const firstSampleId = useStore((s) => s.ws.groups[0]?.sampleIds[0] ?? null);
   // Drawn again from scratch after the default appearance changed (Settings dialog).
   const rev = useSettings((s) => s.rev);
   const { dragOver, props: dropProps } = useDropIngest();
@@ -27,20 +28,20 @@ export function App() {
   useHotkeys(drawer ? closeDrawer : undefined);
 
   useEffect(() => {
-    if (!groupId && groups[0]) setUi({ groupId: groups[0].id, sampleId: groups[0].sampleIds[0] ?? null });
-  }, [groupId, groups, setUi]);
+    if (!groupId && firstGroupId) setUi({ groupId: firstGroupId, sampleId: firstSampleId });
+  }, [groupId, firstGroupId, firstSampleId, setUi]);
 
   const def = VIEW_DEFS[view];
   const { Main, Panel, panelFlag } = def;
   // A panel the view's toolbar shows and hides is open per that preference; the others always render
   // (beside the view, or in the drawer on narrow windows).
-  const flagOpen = panelFlag ? views[panelFlag] : false;
+  const flagOpen = useStore((s) => (panelFlag ? s.views[panelFlag] : false));
   const open = panelFlag ? flagOpen : drawer;
 
   return (
     <div className={`app${dragOver ? ' drag-over' : ''}`} {...dropProps}>
       <Header />
-      {groups.length === 0 ? (
+      {!hasGroups ? (
         <Welcome />
       ) : (
         <div className="main" key={rev}>

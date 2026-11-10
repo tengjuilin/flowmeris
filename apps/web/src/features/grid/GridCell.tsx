@@ -1,10 +1,11 @@
-import type { Group, PlotCell, Workspace } from '@flowmeris/model';
+import type { Group, PlotCell, PlotSpec } from '@flowmeris/model';
 import { populationLineage, populationsDepthFirst } from '@flowmeris/model';
-import { useCallback, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { type Anchor, type PickOption, PickerMenu } from '../../components/ui/PickerMenu.tsx';
 import { OpenInIcon } from '../../components/ui/icons.tsx';
 import type { PlotHandle } from '../../lib/export/index.ts';
 import { overlayColors, plotOf } from '../../lib/gridCells.ts';
+import type { PlotWorkspace } from '../../lib/keys.ts';
 import {
   editCell,
   openInGateView,
@@ -13,7 +14,7 @@ import {
   setCellSample,
 } from '../../state/commands/grid.ts';
 import { axisPickers } from '../../state/commands/plots.ts';
-import { useStore } from '../../state/store.ts';
+import { usePlotWorkspace, useStore } from '../../state/store.ts';
 import { PlotCanvas } from '../plot/index.ts';
 
 /** The group's populations, depth first and indented, with their colors. */
@@ -50,7 +51,6 @@ function openOnPress(open: (el: HTMLElement) => void) {
  * the plot), legend and plot.
  */
 export function GridCell({
-  ws,
   group,
   cell,
   size,
@@ -65,7 +65,6 @@ export function GridCell({
   slotProps,
   titleProps,
 }: {
-  ws: Workspace;
   group: Group;
   cell: PlotCell;
   size: number;
@@ -87,7 +86,16 @@ export function GridCell({
   const [menu, setMenu] = useState<{ kind: 'population' | 'sample'; anchor: Anchor } | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
   const followName = selected && group.sampleIds.includes(selected) ? sampleName(selected) : '–';
-  const overlay = sampleId ? overlayColors(cell, sampleId, group) : null;
+  const ws = usePlotWorkspace();
+  const plot = useMemo(() => plotOf(cell), [cell]);
+  const overlay = useMemo(
+    () => (sampleId ? overlayColors(cell, sampleId, group) : null),
+    [cell, sampleId, group],
+  );
+  const pickers = useMemo(
+    () => axisPickers(group, plot, (label, fn) => editCell(group.id, cell.id, label, fn)),
+    [group, plot, cell.id],
+  );
   const overlaying = !!overlay && overlay.samples.length > 0;
   const titleH = overlaying ? 44 : 26;
   const side = Math.max(0, Math.min(size, size - titleH));
@@ -187,19 +195,17 @@ export function GridCell({
           <div className="empty small">This group has no samples.</div>
         ) : (
           side > 0 && (
-            <PlotCanvas
-              ref={handle}
+            <CellPlot
+              handle={handle}
               ws={ws}
               group={group}
               sampleId={sampleId}
-              plot={plotOf(cell)}
-              width={side}
-              height={side}
-              hideOffScaleNote
-              interactive={active}
+              plot={plot}
+              side={side}
+              active={active}
               onDrill={onDrill}
-              {...axisPickers(group, plotOf(cell), (label, fn) => editCell(group.id, cell.id, label, fn))}
-              {...(overlaying && overlay ? { overlay } : {})}
+              pickers={pickers}
+              overlay={overlaying ? overlay : null}
             />
           )
         )}
@@ -207,3 +213,46 @@ export function GridCell({
     </div>
   );
 }
+
+/** A cell's plot; memoized, so selecting or dragging another cell does not redraw it. */
+const CellPlot = memo(function CellPlot({
+  handle,
+  ws,
+  group,
+  sampleId,
+  plot,
+  side,
+  active,
+  onDrill,
+  pickers,
+  overlay,
+}: {
+  handle: React.RefObject<PlotHandle> | undefined;
+  ws: PlotWorkspace;
+  group: Group;
+  sampleId: string;
+  plot: PlotSpec;
+  side: number;
+  active: boolean;
+  onDrill: (popId: string) => void;
+  pickers: ReturnType<typeof axisPickers>;
+  /** Other samples overlaid, when there are any. */
+  overlay: ReturnType<typeof overlayColors> | null;
+}) {
+  return (
+    <PlotCanvas
+      ref={handle}
+      ws={ws}
+      group={group}
+      sampleId={sampleId}
+      plot={plot}
+      width={side}
+      height={side}
+      hideOffScaleNote
+      interactive={active}
+      onDrill={onDrill}
+      {...pickers}
+      {...(overlay ? { overlay } : {})}
+    />
+  );
+});

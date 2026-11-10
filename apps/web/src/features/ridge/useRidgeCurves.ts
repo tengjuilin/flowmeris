@@ -12,27 +12,31 @@ import type { Ridge } from './useRidge.ts';
  * and scaled to the mode. A ridge is null until all its replicates (other than missing files) have loaded.
  */
 export function useRidgeCurves({ group, style, combine, axis, rows }: Ridge, sampleIds: string[]) {
-  const ws = useStore((s) => s.ws);
+  const transforms = useStore((s) => s.ws.transforms);
+  const compMatrices = useStore((s) => s.ws.compMatrices);
   const popId = useStore((s) => s.ui.popId);
   const noData = useStore((s) => s.status.missing);
   const [data, setData] = useState<Record<string, HistogramResponse>>({});
 
-  const key = useMemo(
-    () =>
-      group && axis
-        ? JSON.stringify([
-            [...sampleIds].sort().map((s) => lineageKey(ws, group, s, popId)),
-            axis,
-            ws.transforms[axis.transform],
-            [style.bins, style.smoothing],
-          ])
-        : '',
-    [group, sampleIds, axis, ws, popId],
-  );
+  // Each sample's histogram's cache key: everything it depends on.
+  const keys = useMemo(() => {
+    const out = new Map<string, string>();
+    if (!group || !axis) return out;
+    // lineageKey reads only the workspace's transforms and compensation matrices (the dependencies).
+    const ws = useStore.getState().ws;
+    const hist = [style.bins, style.smoothing];
+    for (const s of [...sampleIds].sort())
+      out.set(
+        s,
+        JSON.stringify(['ridge', lineageKey(ws, group, s, popId), axis, transforms[axis.transform], hist]),
+      );
+    return out;
+  }, [group, sampleIds, axis, transforms, compMatrices, popId, style.bins, style.smoothing]);
+  const key = useMemo(() => JSON.stringify([...keys.values()]), [keys]);
   useEffect(() => {
     if (!group || !axis) return;
-    let live = true;
-    const ctx = contextFor(ws, group);
+    const ac = new AbortController();
+    const ctx = contextFor({ transforms, compMatrices }, group);
     // Counts, so replicates can be combined; each ridge is scaled to its mode below.
     const hist = {
       histBins: style.bins,
@@ -40,16 +44,37 @@ export function useRidgeCurves({ group, style, combine, axis, rows }: Ridge, sam
       histSmooth: style.smoothing > 0,
       histSigmaBins: style.smoothing,
     };
-    setData({});
+    // Cached histograms are shown at once; the others as they arrive, at most one update per frame.
+    const shown: Record<string, HistogramResponse> = {};
+    let arrived: Record<string, HistogramResponse> = {};
+    let frame = 0;
+    const flush = () => {
+      frame = 0;
+      const add = arrived;
+      arrived = {};
+      setData((d) => ({ ...d, ...add }));
+    };
     for (const sid of sampleIds) {
       if (noData[sid]) continue;
+      const k = keys.get(sid)!;
+      const hit = getPool().cached<HistogramResponse>(k);
+      if (hit) {
+        shown[sid] = hit;
+        continue;
+      }
       getPool()
-        .histogram(ctx, sid, popId, axis, hist as unknown as PlotSpec['style'])
-        .then((h) => live && setData((d) => ({ ...d, [sid]: h })))
+        .histogram(ctx, sid, popId, axis, hist as unknown as PlotSpec['style'], { key: k, signal: ac.signal })
+        .then((h) => {
+          if (ac.signal.aborted) return;
+          arrived[sid] = h;
+          frame ||= requestAnimationFrame(flush);
+        })
         .catch(() => {});
     }
+    setData(shown);
     return () => {
-      live = false;
+      ac.abort();
+      cancelAnimationFrame(frame);
     };
   }, [key]);
 

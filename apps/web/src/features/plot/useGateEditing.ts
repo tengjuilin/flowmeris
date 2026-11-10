@@ -5,7 +5,6 @@ import {
   type Geometry,
   type Group,
   type PlotSpec,
-  type Workspace,
   effectiveGeometry,
 } from '@flowmeris/model';
 import {
@@ -34,6 +33,7 @@ import {
   translate,
 } from '../../lib/gateEdit.ts';
 import { type DimMap, dimMap } from '../../lib/geometry.ts';
+import type { PlotWorkspace } from '../../lib/keys.ts';
 import { type PlotFrame, type ShownGate, hitGate, popAt } from '../../lib/plotFrame.ts';
 import { matchHotkey } from '../../lib/settings/index.ts';
 import { createGate, deleteGate, setGateGeometry, setLabelOffset } from '../../state/commands/gates.ts';
@@ -58,7 +58,7 @@ export type Drag =
 export type HoverGeometry = Extract<Geometry, { kind: 'quadrant' | 'spider' | 'split' | 'curly' }>;
 
 export interface GateEditingArgs {
-  ws: Workspace;
+  ws: PlotWorkspace;
   group: Group;
   ctx: AnalysisContext;
   sampleId: string;

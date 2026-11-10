@@ -32,66 +32,115 @@ const LN10 = Math.LN10;
  *  miltenyi f    = log above T·10^−M, its tangent line below (M-TR-MILTENYI)
  */
 export function makeScale(def: Transform): Scale {
-  let apply: (x: number) => number;
-  let inverse: (y: number) => number;
+  // Each kind has its own array loop, so the per-element call in the loop is monomorphic. The
+  // element arithmetic is the same as `apply`'s.
   switch (def.kind) {
     case 'flin': {
       const { T, A } = def;
-      apply = (x) => (x + A) / (T + A);
-      inverse = (y) => y * (T + A) - A;
-      break;
+      return {
+        def,
+        apply: (x) => (x + A) / (T + A),
+        inverse: (y) => y * (T + A) - A,
+        applyArray(src, out) {
+          const n = src.length;
+          const res = out ?? new Float64Array(n);
+          for (let i = 0; i < n; i++) res[i] = ((src[i] as number) + A) / (T + A);
+          return res;
+        },
+      };
     }
     case 'flog': {
       const { T, M } = def;
-      apply = (x) => (x > 0 ? (1 / M) * Math.log10(x / T) + 1 : Number.NaN);
-      inverse = (y) => T * 10 ** ((y - 1) * M);
-      break;
+      return {
+        def,
+        apply: (x) => (x > 0 ? (1 / M) * Math.log10(x / T) + 1 : Number.NaN),
+        inverse: (y) => T * 10 ** ((y - 1) * M),
+        applyArray(src, out) {
+          const n = src.length;
+          const res = out ?? new Float64Array(n);
+          for (let i = 0; i < n; i++) {
+            const x = src[i] as number;
+            res[i] = x > 0 ? (1 / M) * Math.log10(x / T) + 1 : Number.NaN;
+          }
+          return res;
+        },
+      };
     }
     case 'fasinh': {
       const { T, M, A } = def;
       const preScale = Math.sinh(M * LN10) / T;
       const transpose = A * LN10;
       const divisor = (M + A) * LN10;
-      apply = (x) => (Math.asinh(x * preScale) + transpose) / divisor;
-      inverse = (y) => Math.sinh(y * divisor - transpose) / preScale;
-      break;
+      return {
+        def,
+        apply: (x) => (Math.asinh(x * preScale) + transpose) / divisor,
+        inverse: (y) => Math.sinh(y * divisor - transpose) / preScale,
+        applyArray(src, out) {
+          const n = src.length;
+          const res = out ?? new Float64Array(n);
+          for (let i = 0; i < n; i++)
+            res[i] = (Math.asinh((src[i] as number) * preScale) + transpose) / divisor;
+          return res;
+        },
+      };
     }
     case 'logicle': {
       const l = new Logicle(def.T, def.W, def.M, def.A);
-      apply = (x) => l.scale(x);
-      inverse = (y) => l.inverse(y);
-      break;
+      return {
+        def,
+        apply: (x) => l.scale(x),
+        inverse: (y) => l.inverse(y),
+        applyArray(src, out) {
+          const n = src.length;
+          const res = out ?? new Float64Array(n);
+          for (let i = 0; i < n; i++) res[i] = l.scale(src[i] as number);
+          return res;
+        },
+      };
     }
     case 'hyperlog': {
       const h = new Hyperlog(def.T, def.W, def.M, def.A);
-      apply = (x) => h.scale(x);
-      inverse = (y) => h.inverse(y);
-      break;
+      return {
+        def,
+        apply: (x) => h.scale(x),
+        inverse: (y) => h.inverse(y),
+        applyArray(src, out) {
+          const n = src.length;
+          const res = out ?? new Float64Array(n);
+          for (let i = 0; i < n; i++) res[i] = h.scale(src[i] as number);
+          return res;
+        },
+      };
     }
     case 'biex': {
       const b = new Biex(def.T, def.width, def.pos, def.neg);
-      apply = (x) => b.scale(x);
-      inverse = (y) => b.inverse(y);
-      break;
+      return {
+        def,
+        apply: (x) => b.scale(x),
+        inverse: (y) => b.inverse(y),
+        applyArray(src, out) {
+          const n = src.length;
+          const res = out ?? new Float64Array(n);
+          for (let i = 0; i < n; i++) res[i] = b.scale(src[i] as number);
+          return res;
+        },
+      };
     }
     case 'miltenyi': {
       const m = new Miltenyi(def.T, def.M, def.L);
-      apply = (x) => m.scale(x);
-      inverse = (y) => m.inverse(y);
-      break;
+      return {
+        def,
+        apply: (x) => m.scale(x),
+        inverse: (y) => m.inverse(y),
+        applyArray(src, out) {
+          const n = src.length;
+          const res = out ?? new Float64Array(n);
+          for (let i = 0; i < n; i++) res[i] = m.scale(src[i] as number);
+          return res;
+        },
+      };
     }
   }
-  return {
-    def,
-    apply,
-    inverse,
-    applyArray(src, out) {
-      const n = src.length;
-      const res = out ?? new Float64Array(n);
-      for (let i = 0; i < n; i++) res[i] = apply(src[i] as number);
-      return res;
-    },
-  };
 }
 
 // ---------------------------------------------------------------------------

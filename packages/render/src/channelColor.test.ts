@@ -1,6 +1,6 @@
 import { Rng } from '@flowmeris/testkit';
 import { describe, expect, it } from 'vitest';
-import { type ChannelColorInput, channelColorAtPixels } from './channelColor.ts';
+import { type ChannelColorInput, channelColorAtPixels, colorBucket, pixelsByColor } from './channelColor.ts';
 import { colormapLut, raster2d } from './index.ts';
 
 const style = {
@@ -157,5 +157,28 @@ describe('raster2d pseudocolor-channel', () => {
         dotColor: '#000000',
       }),
     ).toThrow(/color channel/);
+  });
+});
+
+describe('pixelsByColor', () => {
+  it('orders the occupied pixels as sorting by value does, up to order within one color', () => {
+    const rng = new Rng(11);
+    // Many ties and near-ties at bucket edges, and empty pixels.
+    const t = Float64Array.from({ length: 5000 }, () => {
+      const u = rng.next();
+      if (u < 0.2) return Number.NaN;
+      if (u < 0.4) return Math.round(rng.next() * 255) / 255 + (rng.next() - 0.5) * 1e-12;
+      if (u < 0.5) return Math.round(rng.next() * 255) / 255 + 0.5 / 255;
+      return rng.next();
+    });
+    const byValue = Array.from({ length: t.length }, (_, p) => p)
+      .filter((p) => !Number.isNaN(t[p]))
+      .sort((a, b) => t[a]! - t[b]! || a - b);
+    const got = Array.from(pixelsByColor(t));
+    expect(got.map((p) => colorBucket(t[p]!))).toEqual(byValue.map((p) => colorBucket(t[p]!)));
+    expect([...got].sort((a, b) => a - b)).toEqual([...byValue].sort((a, b) => a - b));
+    for (let k = 1; k < got.length; k++)
+      if (colorBucket(t[got[k]!]!) === colorBucket(t[got[k - 1]!]!))
+        expect(got[k]!).toBeGreaterThan(got[k - 1]!);
   });
 });

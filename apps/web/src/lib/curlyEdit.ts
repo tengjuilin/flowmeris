@@ -9,7 +9,7 @@ export type CurlyAxes = readonly [CurlyAxis, CurlyAxis];
 const IDENTITY: CurlyAxis = { toLinear: (v) => v, fromLinear: (v) => v };
 
 /** Gate units ↔ linear data units on a gate's two dimensions (identity on a raw dimension). */
-export function curlyAxes(ws: Workspace, dims: Gate['dims']): [CurlyAxis, CurlyAxis] {
+export function curlyAxes(ws: Pick<Workspace, 'transforms'>, dims: Gate['dims']): [CurlyAxis, CurlyAxis] {
   const axis = (t: string | null | undefined): CurlyAxis => {
     if (!t) return IDENTITY;
     const s = scaleFor(ws, t);

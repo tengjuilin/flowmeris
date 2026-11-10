@@ -332,6 +332,20 @@ describe('gated events as CSV', () => {
       ],
       count: 2,
     });
-    expect(csv).toBe('"FSC-A","FL1 \\"x\\""\n1,-0.125\n2.5,3\n');
+    expect(new TextDecoder().decode(csv)).toBe('"FSC-A","FL1 \\"x\\""\n1,-0.125\n2.5,3\n');
+  });
+
+  it('matches one joined string across row chunks', () => {
+    const n = 40000;
+    const columns = [
+      Float64Array.from({ length: n }, (_, i) => i / 7 - 100),
+      Float64Array.from({ length: n }, (_, i) => -i * 1e-9),
+    ];
+    const channels = ['A', 'µ'];
+    const lines = [channels.map((c) => JSON.stringify(c)).join(',')];
+    for (let i = 0; i < n; i++) lines.push(columns.map((c) => String(c[i])).join(','));
+    const csv = eventsToCsv({ channels, columns, count: n });
+    expect(csv).toEqual(new TextEncoder().encode(`${lines.join('\n')}\n`));
+    expect(new TextDecoder().decode(eventsToCsv({ channels, columns, count: 0 }))).toBe('"A","µ"\n');
   });
 });
