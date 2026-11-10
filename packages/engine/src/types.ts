@@ -15,7 +15,8 @@ import type {
  * workers are stateless with respect to the workspace document.
  */
 export interface AnalysisContext {
-  group: Group;
+  /** Only what the engine reads of the group. */
+  group: Pick<Group, 'id' | 'template' | 'overrides' | 'compensation'>;
   transforms: Record<string, Transform>;
   compMatrices: Record<string, CompMatrix>;
 }

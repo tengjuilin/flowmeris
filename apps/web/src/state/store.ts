@@ -422,8 +422,24 @@ export function mutateGroup(
   );
 }
 
-export function contextFor(ws: Workspace, g: Group): AnalysisContext {
-  return { group: g, transforms: ws.transforms, compMatrices: ws.compMatrices };
+const contexts = new WeakMap<Group, AnalysisContext>();
+
+/**
+ * The analysis context of a group's requests: only the parts of the group the engine reads, so a request
+ * does not copy its plots, tables and layouts to the worker. The same object while the group and the
+ * workspace's transforms and matrices are unchanged.
+ */
+export function contextFor(ws: Pick<Workspace, 'transforms' | 'compMatrices'>, g: Group): AnalysisContext {
+  const hit = contexts.get(g);
+  if (hit && hit.transforms === ws.transforms && hit.compMatrices === ws.compMatrices) return hit;
+  const { id, template, overrides, compensation } = g;
+  const ctx = {
+    group: { id, template, overrides, compensation },
+    transforms: ws.transforms,
+    compMatrices: ws.compMatrices,
+  };
+  contexts.set(g, ctx);
+  return ctx;
 }
 
 /** Show a warning: something did not come out as the user asked (e.g. a font replaced in an export). */
