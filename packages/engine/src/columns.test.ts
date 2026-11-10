@@ -1,8 +1,10 @@
+import { compensateChannel, makeCompensator } from '@flowmeris/compensation';
 import { linearize } from '@flowmeris/fcs';
 import { type ChannelScaling, newGroup } from '@flowmeris/model';
 import { logicleDef, makeScale } from '@flowmeris/transforms';
 import { describe, expect, it } from 'vitest';
 import { Columns } from './columns.ts';
+import { Engine } from './engine.ts';
 import { Fingerprints, sampleKey } from './keys.ts';
 import { LruCache } from './lru.ts';
 import type { Cached } from './memo.ts';
@@ -71,5 +73,68 @@ describe('Columns', () => {
       expect(bytes(got)).toEqual(bytes(want));
       expect(cache.has(`lin|${sampleKey(s)}|${ci}`)).toBe(false);
     });
+  });
+  it('compensates from detector inputs it does not cache', () => {
+    const { s, cache, cols, ctx } = setup();
+    const ref = reference(s, ctx);
+    s.channels.forEach((_, ci) => {
+      expect(bytes(cols.compensated(ctx, s, ci))).toEqual(bytes(ref[ci]!));
+    });
+    for (const ci of [0, 1, 2, 3]) expect(cache.has(`lin|${sampleKey(s)}|${ci}`)).toBe(false);
+  });
+});
+
+/** Every channel's whole compensated column, from fully linearized columns. */
+function reference(s: SampleData, ctx: AnalysisContext): Float64Array[] {
+  const m = ctx.compMatrices.m!;
+  const comp = makeCompensator(
+    { detectors: m.detectors, spill: m.spill },
+    s.channels.map((c) => c.pnn),
+  );
+  const lin = s.channels.map((c, ci) => linearize(s.columns[ci]!, c.scaling));
+  return lin.map((col, ci) => compensateChannel(comp, lin, ci) ?? col);
+}
+
+describe('populationEvents', () => {
+  it("gives the whole columns' values at the population's events", async () => {
+    for (const all of [true, false]) {
+      const { s, ctx } = setup();
+      const [lo, hi] = all ? [-1e9, 1e9] : [0, 300];
+      ctx.group.template.gates.g1 = {
+        id: 'g1',
+        parentPop: 'root',
+        dims: [
+          { channel: 'A', comp: 'uncompensated', transform: null },
+          { channel: 'B', comp: 'uncompensated', transform: null },
+        ],
+        geometry: { kind: 'rect', min: [lo, lo], max: [3 * hi, hi] },
+      };
+      ctx.group.template.populations.p1 = {
+        id: 'p1',
+        name: 'P1',
+        gate: 'g1',
+        parent: 'root',
+        region: 'in',
+        color: '#2a78d6',
+      };
+      const storage = new MemoryStorage();
+      storage.put(s);
+      const engine = new Engine(storage);
+      const comp = reference(s, ctx);
+      const lin = s.channels.map((c, ci) => linearize(s.columns[ci]!, c.scaling));
+      const a = s.columns[0]!;
+      const b = s.columns[1]!;
+      const inside = (v: number, max: number) => v >= lo && v <= max;
+      const idx = [...a.keys()].filter((e) => inside(a[e]!, 3 * hi) && inside(b[e]! / 3, hi));
+      expect(idx.length === N).toBe(all);
+      for (const mode of ['raw', 'compensated'] as const) {
+        const got = await engine.populationEvents(ctx, s.sampleId, 'p1', mode);
+        const full = mode === 'raw' ? lin : comp;
+        expect(got.count).toBe(idx.length);
+        got.columns.forEach((col, ci) => {
+          expect(bytes(col)).toEqual(bytes(Float64Array.from(idx, (e) => full[ci]![e]!)));
+        });
+      }
+    }
   });
 });

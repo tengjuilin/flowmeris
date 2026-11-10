@@ -203,8 +203,10 @@ export class Columns {
         s.channels.map((c) => c.pnn),
       );
       if (!comp.channelIndex.includes(ci)) return this.linear(s, ci);
+      // Detector inputs are read without caching them (8 bytes per event each); a cached linear
+      // column is still used.
       const cols = s.channels.map((_, k) =>
-        comp.channelIndex.includes(k) ? this.linear(s, k) : new Float64Array(0),
+        comp.channelIndex.includes(k) ? this.linearUncached(s, k) : new Float64Array(0),
       );
       return compensateChannel(comp, cols, ci) as Float64Array;
     });
