@@ -3,11 +3,16 @@ import { summaryForPlot } from '@flowmeris/table';
 import { useMemo } from 'react';
 import { includedRows, visiblePoints } from '../../lib/chartSelection.ts';
 import { cellText, orderSeries } from '../../lib/chartStyle.ts';
+import { LastResult } from '../../lib/lastResult.ts';
 import { editChart } from '../../state/commands/charts.ts';
 import { useAnalysisTable } from '../../state/hooks/stats.ts';
 import { useGroup, useStore } from '../../state/store.ts';
 
 export type ChartData = ReturnType<typeof useChart>;
+
+type Series = ReturnType<typeof orderSeries>;
+const lastSeries = new LastResult<{ allSeries: Series; summary: Series }>();
+const lastRowNames = new LastResult<Record<string, string>>();
 
 /**
  * The Charts view's open chart (`ui.chartId`, else the group's first) with its data and edits; shared by
@@ -21,22 +26,30 @@ export function useChart() {
   const plot = group?.statPlots.find((p) => p.id === chartId) ?? group?.statPlots[0];
   const seriesCol = plot?.series ? `var:${plot.series}` : undefined;
   // `allSeries` has every point with all its rows, for the Groups list; `summary` is what is plotted.
-  const { allSeries, summary } = useMemo(() => {
-    if (!plot) return { allSeries: [], summary: [] };
-    const sum = (rows: typeof perSample.rows) =>
-      orderSeries(
-        summaryForPlot(rows, plot.x, plot.y, seriesCol, plot.error, levels),
-        plot.style.seriesOrder,
-      );
-    const allSeries = sum(perSample.rows);
-    const kept = includedRows(perSample.rows, plot.excludeRows);
-    return {
-      allSeries,
-      summary: visiblePoints(kept === perSample.rows ? allSeries : sum(kept), plot.hiddenPoints),
-    };
-  }, [plot, perSample, seriesCol, levels]);
+  // Shared with the other callers (the view and its settings panel compute it once per change).
+  const { allSeries, summary } = useMemo(
+    () =>
+      lastSeries.get([plot, perSample, seriesCol, levels], () => {
+        if (!plot) return { allSeries: [], summary: [] };
+        const sum = (rows: typeof perSample.rows) =>
+          orderSeries(
+            summaryForPlot(rows, plot.x, plot.y, seriesCol, plot.error, levels),
+            plot.style.seriesOrder,
+          );
+        const allSeries = sum(perSample.rows);
+        const kept = includedRows(perSample.rows, plot.excludeRows);
+        return {
+          allSeries,
+          summary: visiblePoints(kept === perSample.rows ? allSeries : sum(kept), plot.hiddenPoints),
+        };
+      }),
+    [plot, perSample, seriesCol, levels],
+  );
   const rowNames = useMemo(
-    () => Object.fromEntries(perSample.rows.map((r) => [r.id, cellText(r.values['sample:name'])])),
+    () =>
+      lastRowNames.get([perSample], () =>
+        Object.fromEntries(perSample.rows.map((r) => [r.id, cellText(r.values['sample:name'])])),
+      ),
     [perSample],
   );
 
