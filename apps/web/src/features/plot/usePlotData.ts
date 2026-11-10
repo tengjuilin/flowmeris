@@ -134,14 +134,19 @@ export function useBackgate(a: PlotDataArgs, bgPop: { popId: string; color: stri
     setBgHist(null);
     if (!bgPop || missing) return;
     let live = true;
+    const ac = new AbortController();
+    const { signal } = ac;
     const run = async () => {
       if (is1d) {
         // Both in counts so the overlay can be put on the base histogram's normalization:
         // smoothing and every normalization are linear, so one factor maps counts to heights.
         const style = { ...plot.style, histNorm: 'count' as const };
         const [base, sub] = await Promise.all([
-          getPool().histogram(ctx, sampleId, plot.population, plot.x, style, { key: `${bgKey}|base` }),
-          getPool().histogram(ctx, sampleId, bgPop.popId, plot.x, style, { key: `${bgKey}|sub` }),
+          getPool().histogram(ctx, sampleId, plot.population, plot.x, style, {
+            key: `${bgKey}|base`,
+            signal,
+          }),
+          getPool().histogram(ctx, sampleId, bgPop.popId, plot.x, style, { key: `${bgKey}|sub`, signal }),
         ]);
         if (live) setBgHist({ sub: sub.heights, base: base.heights });
       } else {
@@ -157,13 +162,15 @@ export function useBackgate(a: PlotDataArgs, bgPop: { popId: string; color: stri
           height: Math.round(ph * dpr),
           dotColor: bgPop.color,
         };
-        const r = await getPool().raster(ctx, req, { key: `${bgKey}|raster|${req.width}|${req.height}` });
+        const key = `${bgKey}|raster|${req.width}|${req.height}`;
+        const r = await getPool().raster(ctx, req, { key, signal });
         if (live) setBgRaster(r);
       }
     };
     run().catch(() => {});
     return () => {
       live = false;
+      ac.abort();
     };
   }, [bgKey, pw, ph, dpr, missing]);
 
@@ -182,24 +189,31 @@ export function useOverlaySamples(a: PlotDataArgs, ovSamples: { sampleId: string
   const { ws, group, ctx, plot, is1d, pw, ph, dpr } = a;
   const ovCanvasRef = useRef<HTMLCanvasElement>(null);
   const [ovHists, setOvHists] = useState<{ color: string; heights: Float64Array }[]>([]);
-  const ovKey = useMemo(
-    () =>
-      JSON.stringify([
-        plotSpecKey(ws, plot),
-        ovSamples.map((o) => [lineageKey(ws, group, o.sampleId, plot.population), o.color]),
-      ]),
-    [plot, ws, group, ovSamples],
-  );
+  // Each overlaid sample's key: its lineage, the plot's settings and scales, and its color.
+  const ovKeys = useMemo(() => {
+    const spec = plotSpecKey(ws, plot);
+    return ovSamples.map((o) =>
+      JSON.stringify([spec, lineageKey(ws, group, o.sampleId, plot.population), o.color]),
+    );
+  }, [plot, ws, group, ovSamples]);
+  const ovKey = useMemo(() => JSON.stringify(ovKeys), [ovKeys]);
   useEffect(() => {
     setOvHists([]);
     const c = ovCanvasRef.current;
     if (c) c.getContext('2d')?.clearRect(0, 0, c.width, c.height);
     if (ovSamples.length === 0) return;
     let live = true;
+    const ac = new AbortController();
+    const { signal } = ac;
     const run = async () => {
       if (is1d) {
         const hs = await Promise.all(
-          ovSamples.map((o) => getPool().histogram(ctx, o.sampleId, plot.population, plot.x, plot.style)),
+          ovSamples.map((o, i) =>
+            getPool().histogram(ctx, o.sampleId, plot.population, plot.x, plot.style, {
+              key: `ov|hist|${ovKeys[i]}`,
+              signal,
+            }),
+          ),
         );
         if (live) setOvHists(hs.map((h, i) => ({ color: ovSamples[i]!.color, heights: h.heights })));
         return;
@@ -207,14 +221,12 @@ export function useOverlaySamples(a: PlotDataArgs, ovSamples: { sampleId: string
       const w = Math.round(pw * dpr);
       const h = Math.round(ph * dpr);
       const rs = await Promise.all(
-        ovSamples.map((o) =>
-          getPool().raster(ctx, {
-            sampleId: o.sampleId,
-            plot: overlayDots(plot),
-            width: w,
-            height: h,
-            dotColor: o.color,
-          }),
+        ovSamples.map((o, i) =>
+          getPool().raster(
+            ctx,
+            { sampleId: o.sampleId, plot: overlayDots(plot), width: w, height: h, dotColor: o.color },
+            { key: `ov|raster|${ovKeys[i]}|${w}|${h}`, signal },
+          ),
         ),
       );
       const c = ovCanvasRef.current;
@@ -235,6 +247,7 @@ export function useOverlaySamples(a: PlotDataArgs, ovSamples: { sampleId: string
     run().catch(() => {});
     return () => {
       live = false;
+      ac.abort();
     };
   }, [ovKey, pw, ph, dpr]);
 
