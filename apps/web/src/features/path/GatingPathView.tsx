@@ -74,19 +74,23 @@ export function GatingPathView() {
   const steps = useMemo(() => (group ? pathSteps(group, lineage) : []), [group, lineage]);
   const finalPlots = (targetPop && layout?.plots.get(targetPop.id)) || [];
 
+  const transforms = ws.transforms;
+  const compMatrices = ws.compMatrices;
   const key = useMemo(
     () => (group && sampleId ? JSON.stringify(pops.map((p) => lineageKey(ws, group, sampleId, p.id))) : ''),
-    [pops, ws, group, sampleId],
+    // lineageKey reads only the workspace's transforms and compensation matrices.
+    [pops, transforms, compMatrices, group, sampleId],
   );
   useEffect(() => {
     if (!group || !sampleId || missing) return;
     let live = true;
+    const ac = new AbortController();
+    const popIds = pops.map((p) => p.id);
     getPool()
-      .counts(
-        contextFor(ws, group),
-        sampleId,
-        pops.map((p) => p.id),
-      )
+      .counts(contextFor(ws, group), sampleId, popIds, {
+        key: JSON.stringify(['counts', popIds, key]),
+        signal: ac.signal,
+      })
       .then((cs) => {
         if (!live) return;
         setCountError(null);
@@ -95,6 +99,7 @@ export function GatingPathView() {
       .catch((e: unknown) => live && setCountError(e instanceof Error ? e.message : String(e)));
     return () => {
       live = false;
+      ac.abort();
     };
   }, [key, sampleId, missing]);
 
