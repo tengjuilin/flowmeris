@@ -23,6 +23,22 @@ export interface PlotDataArgs {
   missing: boolean;
 }
 
+let dotCache: { theme: string; color: string } | null = null;
+
+/**
+ * The theme's dot color (CSS `--dot`). It changes only with the theme (`data-theme` on the root element,
+ * else the system's color scheme), so it is read from the styles again only when that changes: reading
+ * computed styles in every plot's effect makes the browser recompute styles.
+ */
+function themeDotColor(): string {
+  const root = document.documentElement;
+  const dark = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = `${root.getAttribute('data-theme')}|${dark}`;
+  if (dotCache?.theme !== theme)
+    dotCache = { theme, color: getComputedStyle(root).getPropertyValue('--dot').trim() || '#333333' };
+  return dotCache.color;
+}
+
 /** Draws a raster result into a canvas (results may be shared cached objects: ImageData only reads them). */
 function paint(c: HTMLCanvasElement | null, r: RasterResponse | null) {
   if (!c || !r) return;
@@ -54,8 +70,7 @@ export function usePlotEvents(a: PlotDataArgs, ovColor: string | undefined) {
     const ac = new AbortController();
     const width = Math.round(pw * dpr);
     const height = Math.round(ph * dpr);
-    const dotColor =
-      ovColor ?? (getComputedStyle(document.documentElement).getPropertyValue('--dot').trim() || '#333333');
+    const dotColor = ovColor ?? themeDotColor();
     const dataKey = JSON.stringify(
       is1d ? ['hist', key] : ['raster', key, width, height, dotColor, !!ovColor],
     );

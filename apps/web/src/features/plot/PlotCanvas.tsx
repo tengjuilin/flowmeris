@@ -2,6 +2,7 @@ import type { Group, PlotFigure, PlotSpec } from '@flowmeris/model';
 import {
   type RefObject,
   forwardRef,
+  memo,
   useCallback,
   useId,
   useImperativeHandle,
@@ -9,6 +10,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import type { Anchor } from '../../components/ui/PickerMenu.tsx';
 import type { PlotHandle } from '../../lib/export/index.ts';
 import { DEFAULT_FIGURE, contourCss, figureText } from '../../lib/figure.ts';
 import { type PlotWorkspace, plotKey } from '../../lib/keys.ts';
@@ -156,6 +158,17 @@ export const PlotCanvas = forwardRef<PlotHandle, PlotCanvasProps>(function PlotC
   const [axisMenu, setAxisMenu] = useState<AxisMenu | null>(null);
   const closeAxisMenu = useCallback(() => setAxisMenu(null), []);
   const { maps } = edit;
+  // Stable props, so the memoized axes, color bar and paths skip the re-renders of a gate drag.
+  const canPickChannel = useCallback(
+    (axis: ChannelAxis) => !!onPickChannel && pickChannelAxes.includes(axis),
+    [onPickChannel, pickChannelAxes],
+  );
+  const pickColor = !!onPickChannel && pickChannelAxes.includes('color');
+  const openColorMenu = useMemo(
+    () => (pickColor ? (anchor: Anchor) => setAxisMenu({ axis: 'color', anchor }) : undefined),
+    [pickColor],
+  );
+  const contourStyle = useMemo(() => contourCss(plot.style, pw), [plot.style, pw]);
 
   const nonIdentityWarning =
     interactive && gates.some((g) => !maps(g).every((m) => m.identity))
@@ -202,7 +215,7 @@ export const PlotCanvas = forwardRef<PlotHandle, PlotCanvasProps>(function PlotC
               contourPaths={contourPaths}
               bgColor={bgPop?.color}
               ovColor={ovColor}
-              contourCss={contourCss(plot.style, pw)}
+              contourCss={contourStyle}
             />
             <GateShapes
               group={group}
@@ -245,7 +258,7 @@ export const PlotCanvas = forwardRef<PlotHandle, PlotCanvasProps>(function PlotC
                 xTitleY={xTitleY}
                 yTitleX={yTitleX}
                 histTop={histPath?.top ?? 1}
-                canPickChannel={(axis) => !!onPickChannel && pickChannelAxes.includes(axis)}
+                canPickChannel={canPickChannel}
                 canPickHistNorm={!!onPickHistNorm}
                 onOpenMenu={setAxisMenu}
               />
@@ -256,11 +269,7 @@ export const PlotCanvas = forwardRef<PlotHandle, PlotCanvasProps>(function PlotC
                 fig={fig}
                 pw={pw}
                 ph={ph}
-                onOpenMenu={
-                  onPickChannel && pickChannelAxes.includes('color')
-                    ? (anchor) => setAxisMenu({ axis: 'color', anchor })
-                    : undefined
-                }
+                onOpenMenu={openColorMenu}
               />
             </>
           )}
@@ -296,7 +305,11 @@ function spineCss(fig: PlotFigure) {
   return { strokeWidth: fig.spineWidth, ...(fig.spineColor ? { stroke: fig.spineColor } : {}) };
 }
 
-function PlotTitle({ title, fig, pw }: { title: string | undefined; fig: PlotFigure; pw: number }) {
+const PlotTitle = memo(function PlotTitle({
+  title,
+  fig,
+  pw,
+}: { title: string | undefined; fig: PlotFigure; pw: number }) {
   if (!title) return null;
   return (
     <text
@@ -309,7 +322,7 @@ function PlotTitle({ title, fig, pw }: { title: string | undefined; fig: PlotFig
       {title}
     </text>
   );
-}
+});
 
 type Box = { left: number; top: number; width: number; height: number };
 

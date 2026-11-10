@@ -1,6 +1,6 @@
 import type { Group, PlotFigure, PlotSpec } from '@flowmeris/model';
 import { axisTicks } from '@flowmeris/transforms';
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { type Anchor, PickerMenu, channelOptions, pickerTrigger } from '../../components/ui/PickerMenu.tsx';
 import { SupLabel } from '../../components/ui/SupLabel.tsx';
 import { figureText } from '../../lib/figure.ts';
@@ -47,8 +47,11 @@ export interface PlotAxesProps {
   onOpenMenu: (menu: AxisMenu) => void;
 }
 
-/** The x and y axes: ticks, tick labels and titles, under and left of the plot area. */
-export function PlotAxes(props: PlotAxesProps) {
+/**
+ * The x and y axes: ticks, tick labels and titles, under and left of the plot area. Memoized: a gate drag
+ * re-renders the plot, not its axes.
+ */
+export const PlotAxes = memo(function PlotAxes(props: PlotAxesProps) {
   const { ws, sampleId, plot, fig, frame, is1d, tickY, xTitleY, yTitleX, histTop } = props;
   const { canPickChannel, canPickHistNorm, onOpenMenu } = props;
   const { xr, yr, pw, ph, X, Y } = frame;
@@ -148,7 +151,7 @@ export function PlotAxes(props: PlotAxesProps) {
       </g>
     </>
   );
-}
+});
 
 /** The menu an axis title opens: another channel, or what a histogram's y axis shows. */
 export function AxisPickerMenu({

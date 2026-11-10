@@ -1,5 +1,5 @@
 import type { HistogramResponse, RasterResponse } from '@flowmeris/engine';
-import { type CSSProperties, useMemo } from 'react';
+import { type CSSProperties, memo, useMemo } from 'react';
 import type { PlotFrame } from '../../lib/plotFrame.ts';
 import { backgateHeights, contourPath, histAreaPath, histTop } from '../../lib/plotPaths.ts';
 
@@ -55,7 +55,7 @@ export function usePlotPaths({
  * The histogram (faded under a backgate; an outline in `ovColor` when other samples are overlaid), the
  * overlaid samples' and backgated population's histograms, and contours.
  */
-export function EventPaths({
+export const EventPaths = memo(function EventPaths({
   histPath,
   bgHistPath,
   contourPaths,
@@ -88,4 +88,4 @@ export function EventPaths({
       ))}
     </>
   );
-}
+});
